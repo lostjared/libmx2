@@ -10,13 +10,14 @@ namespace mx {
             std::cerr.flush();
             exit(EXIT_FAILURE);
         }
-
         if(TTF_Init() < 0) {
             std::cerr << "mx: Error could not initalize SDL_ttf...\n";
             std::cerr.flush();
             exit(EXIT_FAILURE);
         }
         create_window(name, w, h, full);
+        text.setRenderer(renderer);
+        text.setColor({255,255,255,255});
     }
 
     void mxWindow::setObject(obj::Object *o) {

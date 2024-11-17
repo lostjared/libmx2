@@ -7,6 +7,7 @@
 #include<string>
 #include"util.hpp"
 #include"object.hpp"
+#include"font.hpp"
 #include<memory>
 
 namespace mx {
@@ -24,6 +25,7 @@ namespace mx {
         void destroy() { setActive(false); }
 
         mxUtil util;
+        Text text;
         std::unique_ptr<obj::Object> object;
         SDL_Renderer *renderer = nullptr;
         int width = 0, height = 0;
