@@ -5,7 +5,7 @@
 #include "SDL_ttf.h"
 #include<iostream>
 #include<string>
-#include<functional>
+#include"util.hpp"
 
 namespace mx {
 
@@ -20,6 +20,8 @@ namespace mx {
         void setActive(bool a) { active = a; }
         void loop();
         void destroy() { setActive(false); }
+        
+        mxUtil util;
     protected:
         SDL_Window *window;
         SDL_Renderer *renderer;

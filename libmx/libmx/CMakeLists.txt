@@ -1,4 +1,4 @@
-add_library(mx SHARED mx.cpp util.cpp)
+add_library(mx SHARED mx.cpp util.cpp loadpng.cpp)
 find_package(SDL2 REQUIRED)
 find_package(SDL2_ttf REQUIRED)
 target_include_directories(mx PUBLIC
@@ -6,8 +6,9 @@ target_include_directories(mx PUBLIC
     $<INSTALL_INTERFACE:${INSTALL_INCLUDE_DIR}>
     ${SDL2_INCLUDE_DIRS}
     ${SDL2_TTF_INCLUDE_DIRS}
+    ${PNG_DIRS}
 )
-target_link_libraries(mx PUBLIC SDL2::SDL2 SDL2_ttf::SDL2_ttf)
+target_link_libraries(mx PUBLIC SDL2::SDL2 SDL2_ttf::SDL2_ttf ${PNG_LIBS})
 add_library(libmx2::mx ALIAS mx)
 install(TARGETS mx
     EXPORT libmx2Targets

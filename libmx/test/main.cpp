@@ -6,6 +6,8 @@ public:
 
     }
     
+    virtual ~MainWindow() = default;
+    
     virtual void event(SDL_Event &e) override {
         
     }
