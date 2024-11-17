@@ -1,12 +1,9 @@
 @PACKAGE_INIT@
-
 include("${CMAKE_CURRENT_LIST_DIR}/libmx2Targets.cmake")
 set(libmx2_INCLUDE_DIRS "@INSTALL_INCLUDE_DIR@")
-set(libmx2_LIBRARIES "@INSTALL_LIB_DIR@/libmx.so")
-set_and_check(libmx2_INCLUDE_DIRS "@INSTALL_INCLUDE_DIR@")
-set_and_check(libmx2_LIBRARIES "@INSTALL_LIB_DIR@/libmx.so")
 add_library(libmx2::libmx2 SHARED IMPORTED)
 set_target_properties(libmx2::libmx2 PROPERTIES
-    IMPORTED_LOCATION "@INSTALL_LIB_DIR@/libmx.so"
+    IMPORTED_LOCATION "@INSTALL_LIB_DIR@/$<IF:$<PLATFORM_ID:Windows>,libmx.dll,$<IF:$<PLATFORM_ID:Darwin>,libmx.dylib,libmx.so>>"
     INTERFACE_INCLUDE_DIRECTORIES "@INSTALL_INCLUDE_DIR@"
 )
+set(libmx2_LIBRARIES libmx2::libmx2)
