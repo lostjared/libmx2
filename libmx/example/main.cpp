@@ -5,7 +5,7 @@ public:
     Intro() = default;
     virtual ~Intro() = default;
     virtual void load(mx::mxWindow *win) override {
-		font.loadFont("font.ttf", 14);
+		font.loadFont(win->util.getFilePath("font.ttf"), 14);
 	}
     virtual void draw(mx::mxWindow *win) override {
         win->text.printText_Solid(font, 25, 25, "Hello, World!");
@@ -18,7 +18,8 @@ private:
 
 class MainWindow : public mx::mxWindow {
 public:
-    MainWindow() : mx::mxWindow("Hello World", 640, 480, false) {
+    MainWindow(std::string path) : mx::mxWindow("Hello World", 640, 480, false) {
+		util.path = path;
         setObject(new Intro());
 		object->load(this);
     }
@@ -34,7 +35,11 @@ public:
 };
 
 int main(int argc, char **argv) {
-    MainWindow main_window;
-    main_window.loop();
+	if(argc == 2) {
+    	MainWindow main_window(argv[1]);
+    	main_window.loop();
+	} else {
+		std::cerr << "Error requies one argumen to path of font.\n";
+	}
     return 0;
 }

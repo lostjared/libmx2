@@ -12,6 +12,11 @@ namespace mx {
 
     class mxUtil {
     public:
+    #ifdef FOR_WASM
+        std::string path = "/assets";
+    #else
+        std::string path = "assets";
+    #endif
         std::string getFilePath(const std::string &filename);
         void printText(SDL_Renderer *renderer,TTF_Font *font, int x, int y, const std::string &text, SDL_Color col);
         SDL_Texture *loadTexture(SDL_Renderer *renderer, const std::string &filename);
