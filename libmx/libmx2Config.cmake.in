@@ -1,0 +1,14 @@
+@PACKAGE_INIT@
+
+# Include the target export file
+include("${CMAKE_CURRENT_LIST_DIR}/libmx2Targets.cmake")
+
+# Define include directories
+set(libmx2_INCLUDE_DIRS "@INSTALL_INCLUDE_DIR@")
+
+# Define library directories
+set(libmx2_LIBRARIES libmx2)
+
+# Make variables accessible to consuming projects
+set_and_check(libmx2_INCLUDE_DIRS "@INSTALL_INCLUDE_DIR@")
+set_and_check(libmx2_LIBRARIES libmx2)
