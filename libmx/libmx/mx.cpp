@@ -18,9 +18,13 @@ namespace mx {
         }
         create_window(name, w, h, full);
     }
+
+    void mxWindow::setObject(obj::Object *o) {
+        object.reset(o);
+    }
     
     mxWindow::~mxWindow() {
-
+        object.reset();
         SDL_DestroyWindow(window);
         SDL_DestroyRenderer(renderer);
         TTF_Quit();
@@ -56,6 +60,13 @@ namespace mx {
     }
 
     void mxWindow::loop() {
+
+        if(!object) {
+            std::cerr << "mx: Requires you set an object..\n";
+            std::cerr.flush();
+            exit(EXIT_FAILURE);
+        }
+
         SDL_Event e;
         active = true;
         while(active) {
@@ -64,6 +75,7 @@ namespace mx {
                     active = false;
 
                 event(e);
+                object->event(renderer, e);
             }
             draw(renderer);
         }

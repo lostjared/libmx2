@@ -15,7 +15,7 @@ install(TARGETS mx
     LIBRARY DESTINATION ${INSTALL_LIB_DIR}
     INCLUDES DESTINATION ${INSTALL_INCLUDE_DIR}
 )
-install(FILES mx.hpp argz.hpp util.hpp loadpng.hpp
+install(FILES mx.hpp argz.hpp util.hpp loadpng.hpp object.hpp
     DESTINATION ${INSTALL_INCLUDE_DIR}
 )
 install(EXPORT libmx2Targets

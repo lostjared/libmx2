@@ -6,6 +6,8 @@
 #include<iostream>
 #include<string>
 #include"util.hpp"
+#include"object.hpp"
+#include<memory>
 
 namespace mx {
 
@@ -20,8 +22,12 @@ namespace mx {
         void setActive(bool a) { active = a; }
         void loop();
         void destroy() { setActive(false); }
-        
+
         mxUtil util;
+        std::unique_ptr<obj::Object> object;
+        
+        void setObject(obj::Object *o);
+
     protected:
         SDL_Window *window;
         SDL_Renderer *renderer;
