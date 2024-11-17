@@ -1,4 +1,4 @@
-#include"mx.h"
+#include"mx.hpp"
 
 class MainWindow : public mx::mxWindow {
 public:

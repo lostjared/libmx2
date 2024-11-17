@@ -1,4 +1,4 @@
-#include"mx.h"
+#include"mx.hpp"
 #ifdef FOR_WASM
 #include<emscripten/emscripten.h>
 #endif
@@ -17,10 +17,15 @@ namespace mx {
             exit(EXIT_FAILURE);
         }
         create_window(name, w, h, full);
-
-    
     }
+    
+    mxWindow::~mxWindow() {
 
+        SDL_DestroyWindow(window);
+        SDL_DestroyRenderer(renderer);
+        TTF_Quit();
+        SDL_Quit();
+    }
     SDL_Texture *mxWindow::createTexture(int w, int h) {
         SDL_Texture *tex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, w, h);
         if(!tex) {
