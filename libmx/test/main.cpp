@@ -6,15 +6,21 @@ public:
     Intro() = default;
     virtual ~Intro() = default;
 
-    virtual void load(SDL_Renderer *renderer) override {
+    virtual void load(mx::mxWindow *win) override {
 
     }
 
-    virtual void draw(SDL_Renderer *renderer) override {
-
+    virtual void draw(mx::mxWindow *win) override {
+        for(int i = 0; i < win->width; i += 32) {
+            for(int z = 0; z < win->height; z += 32) {
+                SDL_Rect rc = {i, z, 32, 32};
+                SDL_SetRenderDrawColor(win->renderer, rand()%255, rand()%255, rand()%255, 255);
+                SDL_RenderFillRect(win->renderer, &rc);
+            }
+        }
     }
 
-    virtual void event(SDL_Renderer *renderer, SDL_Event &e) override  {
+    virtual void event(mx::mxWindow *win, SDL_Event &e) override  {
 
     }
 };
@@ -36,7 +42,7 @@ public:
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
         // draw
-        object->draw(renderer);
+        object->draw(this);
         SDL_RenderPresent(renderer);
     }
 };

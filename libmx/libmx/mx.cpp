@@ -48,7 +48,8 @@ namespace mx {
             SDL_Quit();
             exit(EXIT_FAILURE);
         }
-
+        width = w;
+        height = h;
         renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
         if (!renderer) {
             std::cerr << "mx: Error Creating Renderer: " << SDL_GetError() << "\n";
@@ -57,6 +58,7 @@ namespace mx {
             SDL_Quit();
             exit(EXIT_FAILURE);
         }
+
     }
 
     void mxWindow::loop() {
@@ -75,7 +77,7 @@ namespace mx {
                     active = false;
 
                 event(e);
-                object->event(renderer, e);
+                object->event(this, e);
             }
             draw(renderer);
         }

@@ -25,12 +25,11 @@ namespace mx {
 
         mxUtil util;
         std::unique_ptr<obj::Object> object;
-        
+        SDL_Renderer *renderer = nullptr;
+        int width = 0, height = 0;
         void setObject(obj::Object *o);
-
     protected:
-        SDL_Window *window;
-        SDL_Renderer *renderer;
+        SDL_Window *window = nullptr;
         void create_window(const std::string &name, int w, int h, bool full); 
         bool active = false;      
     };
