@@ -5,3 +5,9 @@ target_include_directories(mx PUBLIC
     ${SDL2_TTF_INCLUDE_DIRS}
 )
 target_link_libraries(mx PUBLIC ${SDL2_LIBRARIES} ${SDL2_TTF_LIBRARIES})
+install(TARGETS mx
+    LIBRARY DESTINATION ${INSTALL_LIB_DIR}
+)
+install(FILES mx.h argz.hpp
+    DESTINATION ${INSTALL_INCLUDE_DIR}
+)

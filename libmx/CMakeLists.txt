@@ -1,12 +1,21 @@
 cmake_minimum_required(VERSION 3.10)
 project(libmx_project)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 find_package(SDL2 REQUIRED)
-find_package(SDL2_ttf REQUIRED)
+find_package(SDL2_ttf REQUIREmaD)
 
 set(SDL2_INCLUDE_DIRS ${SDL2_INCLUDE_DIRS})
 set(SDL2_LIBRARIES ${SDL2_LIBRARIES})
 set(SDL2_TTF_INCLUDE_DIRS ${SDL2_TTF_INCLUDE_DIRS})
 set(SDL2_TTF_LIBRARIES SDL2_ttf::SDL2_ttf)
+
+include(GNUInstallDirs)
+set(INSTALL_INCLUDE_DIR ${CMAKE_INSTALL_INCLUDEDIR}/mx2)
+set(INSTALL_LIB_DIR ${CMAKE_INSTALL_LIBDIR})
 
 add_subdirectory(libmx)
 add_subdirectory(test)
