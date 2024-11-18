@@ -4,6 +4,10 @@
 #include <array>
 #include <cstdlib>
 #include <ctime>
+#include<functional>
+#ifdef __EMSCRIPTEN__
+#include <emscripten/emscripten.h>
+#endif
 
 class Tour {
 public:
@@ -242,6 +246,14 @@ public:
     }
 };
 
+MainWindow *main_win = nullptr;
+
+void eventProc() {
+    if(main_win) {
+        main_win->proc();
+    }
+}
+
 int main(int argc, char **argv) {
     
     Argz<std::string> parser(argc, argv);
@@ -290,17 +302,21 @@ int main(int argc, char **argv) {
     } catch (const ArgException<std::string>& e) {
         mx::system_err << e.text() << std::endl;
     }
-
+#ifndef __EMSCRIPTEN__
     if(path.empty()) {
         mx::system_err << "KnightsTour: Requires path variable to assets...\n";
         mx::system_err.flush();
         exit(EXIT_FAILURE);
     }
-
+#endif
     try {
         MainWindow main_window(path, tw, th);
+#ifdef __EMSCRIPTEN__
+        main_win =  &main_window;
+        emscripten_set_main_loop(eventProc, 0, 1);
+#else
         main_window.loop();
-
+#endif
     } catch(const mx::Exception &e) {
         mx::system_err << "mx: " << e.text() << "\n";
     }

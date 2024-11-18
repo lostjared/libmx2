@@ -63,22 +63,23 @@ namespace mx {
     }
 
     void mxWindow::loop() {
-
         if(!object) {
             throw Exception("Requires you set an Object");
         }
-
-        SDL_Event e;
         active = true;
         while(active) {
-            while(SDL_PollEvent(&e)) {
-                if(e.type == SDL_QUIT || (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE))
-                    active = false;
-
-                event(e);
-                object->event(this, e);
-            }
-            draw(renderer);
+            proc();
         }
+    }
+
+    void mxWindow::proc() {
+        while(SDL_PollEvent(&e)) {
+            if(e.type == SDL_QUIT || (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE))
+                active = false;
+
+            event(e);
+            object->event(this, e);
+        }
+        draw(renderer);
     }
 }
