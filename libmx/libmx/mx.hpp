@@ -8,6 +8,7 @@
 #include"util.hpp"
 #include"object.hpp"
 #include"font.hpp"
+#include"tee_stream.hpp"
 #include<memory>
 
 namespace mx {

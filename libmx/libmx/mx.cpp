@@ -6,13 +6,13 @@ namespace mx {
 
     mxWindow::mxWindow(const std::string &name, int w, int h, bool full) {
         if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK) != 0) {
-            std::cerr << "mx: Error initalizing SDL: " << SDL_GetError() << "\n";
-            std::cerr.flush();
+            mx::system_err << "mx: Error initalizing SDL: " << SDL_GetError() << "\n";
+            mx::system_err.flush();
             exit(EXIT_FAILURE);
         }
         if(TTF_Init() < 0) {
-            std::cerr << "mx: Error could not initalize SDL_ttf...\n";
-            std::cerr.flush();
+            mx::system_err << "mx: Error could not initalize SDL_ttf...\n";
+            mx::system_err.flush();
             exit(EXIT_FAILURE);
         }
         create_window(name, w, h, full);
@@ -34,8 +34,8 @@ namespace mx {
     SDL_Texture *mxWindow::createTexture(int w, int h) {
         SDL_Texture *tex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, w, h);
         if(!tex) {
-            std::cerr << "mx: Error creating texture: " << SDL_GetError() << "\n";
-            std::cerr.flush();
+            mx::system_err << "mx: Error creating texture: " << SDL_GetError() << "\n";
+            mx::system_err.flush();
             exit(EXIT_FAILURE);
         }
         return tex;
@@ -44,8 +44,8 @@ namespace mx {
     void mxWindow::create_window(const std::string &name, int w, int h, bool full) {
         window = SDL_CreateWindow(name.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w, h, full == true ? SDL_WINDOW_FULLSCREEN : SDL_WINDOW_SHOWN);
         if (!window) {
-            std::cerr << "mx: Error initalzing Window: " << SDL_GetError() << "\n";
-            std::cerr.flush();
+            mx::system_err << "mx: Error initalzing Window: " << SDL_GetError() << "\n";
+            mx::system_err.flush();
             SDL_Quit();
             exit(EXIT_FAILURE);
         }
@@ -53,8 +53,8 @@ namespace mx {
         height = h;
         renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
         if (!renderer) {
-            std::cerr << "mx: Error Creating Renderer: " << SDL_GetError() << "\n";
-            std::cerr.flush();
+            mx::system_err << "mx: Error Creating Renderer: " << SDL_GetError() << "\n";
+            mx::system_err.flush();
             SDL_DestroyWindow(window);
             SDL_Quit();
             exit(EXIT_FAILURE);
@@ -65,8 +65,8 @@ namespace mx {
     void mxWindow::loop() {
 
         if(!object) {
-            std::cerr << "mx: Requires you set an object..\n";
-            std::cerr.flush();
+            mx::system_err << "mx: Requires you set an object..\n";
+            mx::system_err.flush();
             exit(EXIT_FAILURE);
         }
 

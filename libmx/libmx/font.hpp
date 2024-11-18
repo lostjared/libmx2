@@ -4,6 +4,7 @@
 #include"SDL.h"
 #include"SDL_ttf.h"
 #include<string>
+#include"tee_stream.hpp"
 
 namespace mx {
 
@@ -21,7 +22,6 @@ namespace mx {
         bool tryLoadFont(const std::string &fname, int size);
         void loadFont(const std::string &fname, int size);
         TTF_Font *handle() const { return the_font; }
-        
     private:
         TTF_Font *the_font = nullptr;
     };

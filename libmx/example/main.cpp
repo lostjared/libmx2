@@ -39,7 +39,7 @@ int main(int argc, char **argv) {
     	MainWindow main_window(argv[1]);
     	main_window.loop();
 	} else {
-		std::cerr << "Error requies one argumen to path of font.\n";
+		mx::system_err << "Error requies one argumen to path of font.\n";
 	}
     return 0;
 }

@@ -31,7 +31,7 @@ namespace mx {
         bool Font::tryLoadFont(const std::string &fname, int size) {
             the_font = TTF_OpenFont(fname.c_str(), size);
             if(!the_font) {
-                std::cerr << "mx: Error opening font: " << TTF_GetError() << "\n";
+                mx::system_err << "mx: Error opening font: " << TTF_GetError() << "\n";
                 return false;
             }
             return true;
@@ -53,12 +53,12 @@ namespace mx {
         void Text::printText_Solid(const Font &f, int x, int y, const std::string &text) {
                 SDL_Surface *surf = TTF_RenderText_Solid(f.handle(),text.c_str(), color_value);
                 if(!surf) {
-                    std::cerr << "mx: Error rendering text...\n";
+                    mx::system_err << "mx: Error rendering text...\n";
                     return;
                 }
                 SDL_Texture *tex = SDL_CreateTextureFromSurface(renderer, surf);
                 if(!tex) {
-                    std::cerr << "mx: Error creating texture..\n";
+                    mx::system_err << "mx: Error creating texture..\n";
                     SDL_FreeSurface(surf);
                     return;
                 }
@@ -71,12 +71,12 @@ namespace mx {
         void Text::printText_Blended(const Font &f, int x, int y, const std::string &text) {
                 SDL_Surface *surf = TTF_RenderText_Blended(f.handle(),text.c_str(), color_value);
                 if(!surf) {
-                    std::cerr << "mx: Error rendering text...\n";
+                    mx::system_err << "mx: Error rendering text...\n";
                     return;
                 }
                 SDL_Texture *tex = SDL_CreateTextureFromSurface(renderer, surf);
                 if(!tex) {
-                    std::cerr << "mx: Error creating texture..\n";
+                    mx::system_err << "mx: Error creating texture..\n";
                     SDL_FreeSurface(surf);
                     return;
                 }
