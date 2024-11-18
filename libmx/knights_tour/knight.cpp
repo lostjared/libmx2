@@ -83,6 +83,16 @@ public:
                         break;
                 }
                 break;
+            case SDL_MOUSEBUTTONDOWN:
+                switch(e.button.button) {
+                    case SDL_BUTTON_LEFT:
+                        tour.nextMove();
+                    break;
+                    case SDL_BUTTON_RIGHT:
+                        tour.resetTour();
+                    break;
+                }
+            break;
         }
     }
 private:
