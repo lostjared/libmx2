@@ -43,8 +43,8 @@ namespace mx {
         TeeBuf tbuf;
     };
 
-    inline std::ofstream log_file("system.log.txt", std::ios::app);
-    inline std::ofstream error_file("error.log.txt", std::ios::app);
+    inline std::ofstream log_file("system.log.txt", std::ios::out);
+    inline std::ofstream error_file("error.log.txt", std::ios::out);
     inline TeeStream system_out(std::cout, log_file);
     inline TeeStream system_err(std::cerr, error_file);
 
