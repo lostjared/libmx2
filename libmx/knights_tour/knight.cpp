@@ -170,7 +170,7 @@ public:
         }
     }
 
-    virtual void event(mx::mxWindow *win, SDL_Event &e) {
+    virtual void event(mx::mxWindow *win, SDL_Event &e) override {
 
     }
     private:
