@@ -23,8 +23,8 @@ public:
         setObject(new Intro());
 		object->load(this);
     }
-    virtual ~MainWindow() {
-        
+    ~MainWindow() override {
+
     }
     virtual void event(SDL_Event &e) override {}
     virtual void draw(SDL_Renderer *renderer) override {

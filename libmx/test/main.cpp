@@ -33,7 +33,9 @@ public:
         object->load(this);
     }
     
-    virtual ~MainWindow() = default;
+     ~MainWindow() override {
+        
+     }
 
     virtual void event(SDL_Event &e) override {
         
