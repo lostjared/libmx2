@@ -59,8 +59,12 @@ public:
         tour.drawBoard(win);
         tour.drawKnight(win, knight);
         win->text.setColor({255, 255, 255, 255});
-        win->text.printText_Blended(the_font, TEXT_OFFSET_X, TEXT_OFFSET_Y, "Knights Tour - Tap Space, Press Return to Reset");
-        win->text.printText_Blended(the_font, 400, TEXT_OFFSET_Y, "Moves: " + std::to_string(tour.getMoves()));
+        if(tour.getMoves() < 65) {
+            win->text.printText_Blended(the_font, TEXT_OFFSET_X, TEXT_OFFSET_Y, "Knights Tour - Tap Space, Press Return to Reset");
+            win->text.printText_Blended(the_font, 400, TEXT_OFFSET_Y, "Moves: " + std::to_string(tour.getMoves()));
+        } else {
+            win->text.printText_Blended(the_font, TEXT_OFFSET_X, TEXT_OFFSET_Y, "-[ Tour Complete ]- Press Return to Reset");
+        }
     }
     
     virtual void event(mx::mxWindow *win, SDL_Event &e) override {
