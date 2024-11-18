@@ -48,6 +48,7 @@ private:
     static constexpr std::array<int, 8> vertical = {-1, -2, -2, -1, 1, 2, 2, 1};
 };
 
+
 class KnightsTour : public obj::Object {
 public:
     KnightsTour() {}
@@ -122,6 +123,58 @@ private:
     static constexpr int TEXT_SIZE = 14;
     
     Tour tour;
+};
+
+class Intro : public obj::Object {
+public:
+    Intro() {}
+    ~Intro() override {}
+
+    virtual void load(mx::mxWindow *win) override {
+        tex.loadTexture(win, win->util.getFilePath("data/logo.png"));
+    }
+
+    virtual void draw(mx::mxWindow *win) override {
+        static Uint32 previous_time = SDL_GetTicks();
+        Uint32 current_time = SDL_GetTicks();
+        static int alpha = 255;
+        static bool fading_out = true;
+        static bool done = false;
+
+        SDL_SetTextureAlphaMod(tex.handle(), alpha);
+        SDL_RenderCopy(win->renderer, tex.handle(), nullptr, nullptr);
+
+        if(done == true) {
+            win->setObject(new KnightsTour());
+            win->object->load(win);
+            return;
+        }
+        
+        if (current_time - previous_time >= 15) {
+            previous_time = current_time;
+            if (fading_out) {
+                alpha -= 3;  
+                if (alpha <= 0) {
+                    alpha = 0;
+                    fading_out = false;
+                    done = true;
+                }
+            } else {
+                alpha += 3;
+                if (alpha >= 255) {
+                    alpha = 255;
+                    fading_out = true;
+                    previous_time = SDL_GetTicks();
+                }
+            }
+        }
+    }
+
+    virtual void event(mx::mxWindow *win, SDL_Event &e) {
+
+    }
+    private:
+        mx::Texture tex;
 };
 
 Tour::Tour() : moves(1), tourOver(false) {
@@ -253,7 +306,7 @@ public:
     : mx::mxWindow("Knights Tour", tex_w, tex_h, false) {
         bg_tex.createTexture(this, 640, 480);
         setPath(path);
-        setObject(new KnightsTour());
+        setObject(new Intro());
         object->load(this);
     }
     
