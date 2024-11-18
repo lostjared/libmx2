@@ -115,6 +115,12 @@ namespace png {
         png_bytep* row_pointers = (png_bytep*) malloc(sizeof(png_bytep) * height);
         if(row_pointers == NULL) {
             fprintf(stderr, "Error memory allocation error.\n");
+            if (surface)
+                SDL_FreeSurface(surface);
+            if (png && info) 
+                png_destroy_read_struct(&png, &info, nullptr);
+            if (fp) 
+                fclose(fp);
             return NULL;
         }
         Uint8* pixels = (Uint8*) surface->pixels;

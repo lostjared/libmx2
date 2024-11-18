@@ -51,13 +51,15 @@ namespace mx {
         h = surface->h;
         width_ = w;
         height_ = h;
-
         SDL_Texture *tex = SDL_CreateTextureFromSurface(window->renderer, surface);
         if(!tex) {
             mx::system_err << "mx: Error creating texture from surface..\n";
             mx::system_err.flush();
             exit(EXIT_FAILURE);
         }
+        if(surface)
+            SDL_FreeSurface(surface);
+
         texture = tex;
     }
  
