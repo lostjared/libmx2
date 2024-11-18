@@ -11,6 +11,7 @@
 #include"tee_stream.hpp"
 #include"texture.hpp"
 #include"exception.hpp"
+#include"joystick.hpp"
 #include<memory>
 
 namespace mx {

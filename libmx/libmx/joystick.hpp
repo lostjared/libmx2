@@ -14,6 +14,11 @@ namespace mx {
         void close();
         SDL_Joystick *handle();
         int joystickIndex() const;
+
+        static int joysticks() {
+            return SDL_NumJoysticks();
+        }
+
     protected:
         SDL_Joystick *stick = nullptr;
         int index = -1;
