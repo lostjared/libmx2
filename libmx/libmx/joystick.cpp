@@ -17,6 +17,7 @@ namespace mx {
             return false;
         }
         this->index = index;
+        SDL_JoystickEventState(SDL_ENABLE);
         return true;
     }
     
