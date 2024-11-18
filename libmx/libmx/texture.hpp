@@ -31,7 +31,7 @@ namespace mx {
             if(texture) {
                 return texture;
             }
-            mx::system_err << "mx: Invalid Texture.\n";
+            mx::system_err << "mx: panic Invalid Texture.\n";
             mx::system_err.flush();
             exit(EXIT_FAILURE);
             return 0;

@@ -48,7 +48,7 @@ namespace mx {
         if(stick) {
             return stick;
         }
-        mx::system_err << "mx: Invalid Joystick.\n";
+        mx::system_err << "mx: panic Invalid Joystick.\n";
         mx::system_err.flush();
         exit(EXIT_FAILURE);
         return 0;
