@@ -265,7 +265,7 @@ int main(int argc, char **argv) {
         mx::system_err << e.text() << std::endl;
     }
 
-    if(!path.empty()) {
+    if(path.empty()) {
         mx::system_err << "KnightsTour: Requires path variable to assets...\n";
         mx::system_err.flush();
         exit(EXIT_FAILURE);
@@ -274,7 +274,7 @@ int main(int argc, char **argv) {
     try {
         MainWindow main_window(path);
         main_window.loop();
-        
+
     } catch(const mx::Exception &e) {
         mx::system_err << "mx: " << e.text() << "\n";
     }
