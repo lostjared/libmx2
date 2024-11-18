@@ -211,11 +211,11 @@ void Tour::drawKnight(mx::mxWindow* win, mx::Texture& tex) {
 
 class MainWindow : public mx::mxWindow {
 public:
-    static constexpr int WINDOW_WIDTH = 640;
-    static constexpr int WINDOW_HEIGHT = 480;
-    
-    MainWindow(const std::string &path)
-    : mx::mxWindow("Knights Tour", WINDOW_WIDTH, WINDOW_HEIGHT, false) {
+    mx::Texture bg_tex;
+
+    MainWindow(const std::string &path, int tex_w, int tex_h)
+    : mx::mxWindow("Knights Tour", tex_w, tex_h, false) {
+        bg_tex.createTexture(this, 640, 480);
         setPath(path);
         setObject(new KnightsTour());
         object->load(this);
@@ -228,9 +228,12 @@ public:
     }
     
     virtual void draw(SDL_Renderer *renderer) override {
+        SDL_SetRenderTarget(renderer,bg_tex.handle());
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
         object->draw(this);
+        SDL_SetRenderTarget(renderer, nullptr);
+        SDL_RenderCopy(renderer, bg_tex.handle(), nullptr, nullptr);
         SDL_RenderPresent(renderer);
     }
 };
@@ -241,12 +244,15 @@ int main(int argc, char **argv) {
     
     parser.addOptionSingle('h', "Display help message")
           .addOptionSingleValue('p', "assets path")
-          .addOptionDoubleValue('P', "path", "assets path");
+          .addOptionDoubleValue('P', "path", "assets path")
+          .addOptionSingleValue('r',"Resolution WidthxHeight")
+          .addOptionDoubleValue('R',"resolution", "Resolution WidthxHeight");
     
     // Parse arguments
     Argument<std::string> arg;
     std::string path;
     int value = 0;
+    int tw = 960, th = 720;
     try {
         while((value = parser.proc(arg)) != -1) {
             switch(value) {
@@ -257,8 +263,24 @@ int main(int argc, char **argv) {
                     break;
                 case 'p':
                 case 'P':
-                path = arg.arg_value;
+                    path = arg.arg_value;
                 break;
+                case 'r':
+                case 'R': {
+                    auto pos = arg.arg_value.find("x");
+                    if(pos == std::string::npos)  {
+                        mx::system_err << "Error invalid resolution use WidthxHeight\n";
+                        mx::system_err.flush();
+                        exit(EXIT_FAILURE);
+                    }
+                    std::string left, right;
+                    left = arg.arg_value.substr(0, pos);
+                    right = arg.arg_value.substr(pos+1);
+                    tw = atoi(left.c_str());
+                    th = atoi(right.c_str());
+                }
+                break;
+
             }
         }
     } catch (const ArgException<std::string>& e) {
@@ -272,7 +294,7 @@ int main(int argc, char **argv) {
     }
 
     try {
-        MainWindow main_window(path);
+        MainWindow main_window(path, tw, th);
         main_window.loop();
 
     } catch(const mx::Exception &e) {
