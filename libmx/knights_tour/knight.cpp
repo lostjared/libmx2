@@ -57,13 +57,13 @@ public:
         the_font.loadFont(win->util.getFilePath("data/font.ttf"), TEXT_SIZE);
         int w = 0, h = 0;
         knight.loadTexture(win, win->util.getFilePath("data/knight.png"), w, h, true, {255, 255, 255, 255});
-       // if(mx::Joystick::joysticks() > 0) {
+        if(mx::Joystick::joysticks() > 0) {
             if(stick.open(0)) {
                 mx::system_out << "Joystick opened: " << stick.name() << "\n";
             } else {
                 mx::system_out << "Could not open joystick..\n";
             }
-        //}
+        }
     }
     
     virtual void draw(mx::mxWindow *win) override {
