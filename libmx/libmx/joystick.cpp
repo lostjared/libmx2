@@ -1,5 +1,6 @@
 #include"joystick.hpp"
 #include<optional>
+#include"tee_stream.hpp"
 
 namespace mx {
 
@@ -41,6 +42,16 @@ namespace mx {
             return stick; 
 
         return std::nullopt;
+    }
+
+    SDL_Joystick *Joystick::unwrap() const {    
+        if(stick) {
+            return stick;
+        }
+        mx::system_err << "mx: Invalid Joystick.\n";
+        mx::system_err.flush();
+        exit(EXIT_FAILURE);
+        return 0;
     }
 
     int Joystick::joystickIndex() const {

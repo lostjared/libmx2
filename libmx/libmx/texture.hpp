@@ -27,6 +27,15 @@ namespace mx {
                 return texture; 
             return std::nullopt;
         }
+        SDL_Texture *unwrap() const {
+            if(texture) {
+                return texture;
+            }
+            mx::system_err << "mx: Invalid Texture.\n";
+            mx::system_err.flush();
+            exit(EXIT_FAILURE);
+            return 0;
+        }
         int width() const { return width_; }
         int height() const { return height_; }
     private:

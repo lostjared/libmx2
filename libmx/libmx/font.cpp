@@ -51,11 +51,7 @@ namespace mx {
         }
         
         void Text::printText_Solid(const Font &f, int x, int y, const std::string &text) {
-
-                if(!f.handle().has_value())
-                    return;
-
-                SDL_Surface *surf = TTF_RenderText_Solid(f.handle().value(),text.c_str(), color_value);
+                SDL_Surface *surf = TTF_RenderText_Solid(f.unwrap(),text.c_str(), color_value);
                 if(!surf) {
                     mx::system_err << "mx: Error rendering text...\n";
                     return;
@@ -73,11 +69,7 @@ namespace mx {
         }
 
         void Text::printText_Blended(const Font &f, int x, int y, const std::string &text) {
-
-                if(!f.handle().has_value())
-                    return;
-
-                SDL_Surface *surf = TTF_RenderText_Blended(f.handle().value(),text.c_str(), color_value);
+                SDL_Surface *surf = TTF_RenderText_Blended(f.unwrap(),text.c_str(), color_value);
                 if(!surf) {
                     mx::system_err << "mx: Error rendering text...\n";
                     return;

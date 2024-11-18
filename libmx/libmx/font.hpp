@@ -26,6 +26,17 @@ namespace mx {
                 return the_font; 
             return std::nullopt;
         }
+
+        TTF_Font *unwrap() const {
+            if(the_font) {
+                return the_font;
+            }
+            mx::system_err << "mx: Invalid Font.\n";
+            mx::system_err.flush();
+            exit(EXIT_FAILURE);
+            return 0;
+        }
+
     private:
         TTF_Font *the_font = nullptr;
     };

@@ -15,7 +15,7 @@ namespace mx {
         std::string name() const;
         void close();
         std::optional<SDL_Joystick*> handle();
-        SDL_Joystick *unwrap();
+        SDL_Joystick *unwrap() const;
         int joystickIndex() const;
 
         static int joysticks() {

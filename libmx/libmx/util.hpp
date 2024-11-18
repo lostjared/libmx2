@@ -7,6 +7,7 @@
 #include "SDL.h"
 #include "SDL_ttf.h"
 #include"tee_stream.hpp"
+#include<optional>
 
 namespace mx {
 
@@ -28,7 +29,6 @@ namespace mx {
         void closeJoystick();
         std::vector<SDL_Joystick *> stick;
     };
-
 }
 
 #endif

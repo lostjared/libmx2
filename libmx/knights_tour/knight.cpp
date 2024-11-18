@@ -141,12 +141,8 @@ public:
         static bool fading_out = true;
         static bool done = false;
 
-        if(!tex.handle().has_value())
-            return;
-
-
-        SDL_SetTextureAlphaMod(tex.handle().value(), alpha);
-        SDL_RenderCopy(win->renderer, tex.handle().value(), nullptr, nullptr);
+        SDL_SetTextureAlphaMod(tex.unwrap(), alpha);
+        SDL_RenderCopy(win->renderer, tex.unwrap(), nullptr, nullptr);
 
         if(done == true) {
             win->setObject(new KnightsTour());
@@ -299,9 +295,7 @@ void Tour::drawBoard(mx::mxWindow* win) {
 
 void Tour::drawKnight(mx::mxWindow* win, mx::Texture& tex) {
     SDL_Rect dst = {START_X + knightPos.col * CELL_SIZE + 5, START_Y + knightPos.row * CELL_SIZE + 5, KNIGHT_SIZE, KNIGHT_SIZE};
-    if(!tex.handle().has_value())
-        return;
-    SDL_RenderCopy(win->renderer, tex.handle().value(), nullptr, &dst);
+    SDL_RenderCopy(win->renderer, tex.unwrap(), nullptr, &dst);
 }
 
 class MainWindow : public mx::mxWindow {
@@ -323,16 +317,12 @@ public:
     }
     
     virtual void draw(SDL_Renderer *renderer) override {
-
-        if(!bg_tex.handle().has_value())
-            return;
-
-        SDL_SetRenderTarget(renderer,bg_tex.handle().value());
+        SDL_SetRenderTarget(renderer,bg_tex.unwrap());
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
         object->draw(this);
         SDL_SetRenderTarget(renderer, nullptr);
-        SDL_RenderCopy(renderer, bg_tex.handle().value(), nullptr, nullptr);
+        SDL_RenderCopy(renderer, bg_tex.unwrap(), nullptr, nullptr);
         SDL_RenderPresent(renderer);
     }
 };
