@@ -19,6 +19,8 @@ set(INSTALL_INCLUDE_DIR ${CMAKE_INSTALL_INCLUDEDIR}/mx2)
 set(INSTALL_LIB_DIR ${CMAKE_INSTALL_LIBDIR})
 add_subdirectory(libmx)
 add_subdirectory(test)
+add_subdirectory(image_test)
+
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
     "${CMAKE_CURRENT_BINARY_DIR}/libmx2ConfigVersion.cmake"
