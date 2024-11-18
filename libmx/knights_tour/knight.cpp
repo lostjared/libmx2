@@ -1,4 +1,5 @@
 #include "mx.hpp"
+#include "argz.hpp"
 #include <algorithm>
 #include <array>
 #include <cstdlib>
@@ -235,12 +236,48 @@ public:
 };
 
 int main(int argc, char **argv) {
-    if (argc == 2) {
-        MainWindow main_window(argv[1]);
-        main_window.loop();
-        return 0;
-    } else {
-        mx::system_err << "Error: Requires argument of path to resources.\n";
-        return 1;
+    
+    Argz<std::string> parser(argc, argv);
+    
+    parser.addOptionSingle('h', "Display help message")
+          .addOptionSingleValue('p', "assets path")
+          .addOptionDoubleValue('P', "path", "assets path");
+    
+    // Parse arguments
+    Argument<std::string> arg;
+    std::string path;
+    int value = 0;
+    try {
+        while((value = parser.proc(arg)) != -1) {
+            switch(value) {
+                case 'h':
+                case 'v':
+                    parser.help(std::cout);
+                    exit(EXIT_SUCCESS);
+                    break;
+                case 'p':
+                case 'P':
+                path = arg.arg_value;
+                break;
+            }
+        }
+    } catch (const ArgException<std::string>& e) {
+        mx::system_err << e.text() << std::endl;
     }
+
+    if(!path.empty()) {
+        mx::system_err << "KnightsTour: Requires path variable to assets...\n";
+        mx::system_err.flush();
+        exit(EXIT_FAILURE);
+    }
+
+    try {
+        MainWindow main_window(path);
+        main_window.loop();
+        
+    } catch(const mx::Exception &e) {
+        mx::system_err << "mx: " << e.text() << "\n";
+    }
+
+    return 0;
 }

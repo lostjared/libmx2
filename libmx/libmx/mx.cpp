@@ -65,9 +65,7 @@ namespace mx {
     void mxWindow::loop() {
 
         if(!object) {
-            mx::system_err << "mx: Requires you set an object..\n";
-            mx::system_err.flush();
-            exit(EXIT_FAILURE);
+            throw Exception("Requires you set an Object");
         }
 
         SDL_Event e;
