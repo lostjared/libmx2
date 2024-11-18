@@ -1,4 +1,4 @@
-add_library(mx SHARED mx.cpp util.cpp loadpng.cpp font.cpp cfg.cpp)
+add_library(mx SHARED mx.cpp util.cpp loadpng.cpp font.cpp cfg.cpp texture.cpp)
 find_package(SDL2 REQUIRED)
 find_package(SDL2_ttf REQUIRED)
 target_include_directories(mx PUBLIC
