@@ -30,6 +30,7 @@ class MainWindow : public mx::mxWindow {
 public:
     MainWindow() : mx::mxWindow("Hello World", 640, 480, false) {
         setObject(new Intro());
+        object->load(this);
     }
     
     virtual ~MainWindow() = default;

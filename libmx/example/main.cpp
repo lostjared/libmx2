@@ -19,7 +19,7 @@ private:
 class MainWindow : public mx::mxWindow {
 public:
     MainWindow(std::string path) : mx::mxWindow("Hello World", 640, 480, false) {
-		util.path = path;
+      	setPath(path);
         setObject(new Intro());
 		object->load(this);
     }
@@ -39,7 +39,7 @@ int main(int argc, char **argv) {
     	MainWindow main_window(argv[1]);
     	main_window.loop();
 	} else {
-		mx::system_err << "Error requies one argumen to path of font.\n";
+		mx::system_err << "Error requies one argument to path of font.\n";
 	}
     return 0;
 }

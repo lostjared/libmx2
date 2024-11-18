@@ -1,12 +1,12 @@
-#ifndef __TSTREAM_H__
-#define __TSTREAM_H__
+#ifndef MX_TSTREAM_H
+#define MX_TSTREAM_H
 
-#include<iostream>
-#include<fstream>
-#include<streambuf>
-#include<chrono>
-#include<iomanip>
-#include<sstream>
+#include <iostream>
+#include <fstream>
+#include <streambuf>
+#include <chrono>
+#include <iomanip>
+#include <sstream>
 
 namespace mx {
 
@@ -31,8 +31,8 @@ namespace mx {
             return -1;
         }
     private:
-        std::streambuf* buf1 = 0;
-        std::streambuf* buf2 = 0;
+        std::streambuf* buf1 = nullptr;
+        std::streambuf* buf2 = nullptr;
     };
 
     class TeeStream : public std::ostream {
@@ -43,10 +43,11 @@ namespace mx {
         TeeBuf tbuf;
     };
 
-    inline std::ofstream file("system.log.txt", std::ios::app);
-    inline std::ofstream file_err("error.log.txt", std::ios::app);
-    inline TeeStream system_out(mx::system_out, file);
-    inline TeeStream system_err(mx::system_err, file_err);
-}
+    inline std::ofstream log_file("system.log.txt", std::ios::app);
+    inline std::ofstream error_file("error.log.txt", std::ios::app);
+    inline TeeStream system_out(std::cout, log_file);
+    inline TeeStream system_err(std::cerr, error_file);
 
-#endif
+} 
+
+#endif 

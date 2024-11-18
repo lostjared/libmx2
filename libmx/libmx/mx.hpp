@@ -24,7 +24,7 @@ namespace mx {
         void setActive(bool a) { active = a; }
         void loop();
         void destroy() { setActive(false); }
-
+        void setPath(const std::string &path) { util.path = path; }
         mxUtil util;
         Text text;
         std::unique_ptr<obj::Object> object;
