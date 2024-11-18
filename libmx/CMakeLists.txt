@@ -20,6 +20,7 @@ set(INSTALL_LIB_DIR ${CMAKE_INSTALL_LIBDIR})
 add_subdirectory(libmx)
 add_subdirectory(test)
 add_subdirectory(image_test)
+add_subdirectory(knights_tour)
 
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(

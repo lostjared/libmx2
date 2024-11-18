@@ -3,7 +3,10 @@
 class Intro : public obj::Object {
 public:
     Intro() = default;
-    virtual ~Intro() = default;
+    
+    ~Intro() override { 
+    
+    }
     virtual void load(mx::mxWindow *win) override {
 		font.loadFont(win->util.getFilePath("font.ttf"), 14);
 	}

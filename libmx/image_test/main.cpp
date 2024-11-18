@@ -3,7 +3,9 @@
 class Intro : public obj::Object {
 public:
     Intro() = default;
-    virtual ~Intro() = default;
+    ~Intro() override { 
+    
+    }
     virtual void load(mx::mxWindow *win) override {
         texture.loadTexture(win, win->util.getFilePath("img/logo.png"));
 	}
