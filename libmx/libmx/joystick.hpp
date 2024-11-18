@@ -3,6 +3,8 @@
 
 #include"SDL.h"
 #include<string>
+#include<optional>
+
 namespace mx {
 
     class Joystick {
@@ -12,7 +14,8 @@ namespace mx {
         bool open(int index);
         std::string name() const;
         void close();
-        SDL_Joystick *handle();
+        std::optional<SDL_Joystick*> handle();
+        SDL_Joystick *unwrap();
         int joystickIndex() const;
 
         static int joysticks() {

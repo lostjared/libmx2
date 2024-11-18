@@ -5,7 +5,7 @@
 #include"SDL_ttf.h"
 #include<string>
 #include"tee_stream.hpp"
-
+#include<optional>
 namespace mx {
 
     class Font {
@@ -21,7 +21,11 @@ namespace mx {
         Font &operator=(Font && f);
         bool tryLoadFont(const std::string &fname, int size);
         void loadFont(const std::string &fname, int size);
-        TTF_Font *handle() const { return the_font; }
+        std::optional<TTF_Font *> handle() const { 
+            if(the_font)
+                return the_font; 
+            return std::nullopt;
+        }
     private:
         TTF_Font *the_font = nullptr;
     };

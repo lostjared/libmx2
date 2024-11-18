@@ -1,5 +1,5 @@
 #include"joystick.hpp"
-
+#include<optional>
 
 namespace mx {
 
@@ -36,7 +36,12 @@ namespace mx {
         index = -1;
     }
     
-    SDL_Joystick *Joystick::handle() { return stick; }
+    std::optional<SDL_Joystick *> Joystick::handle() {
+        if(stick)
+            return stick; 
+
+        return std::nullopt;
+    }
 
     int Joystick::joystickIndex() const {
         return index;

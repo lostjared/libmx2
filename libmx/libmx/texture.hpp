@@ -5,6 +5,7 @@
 #include<string>
 #include<iostream>
 #include"tee_stream.hpp"
+#include<optional>
 
 namespace mx {
 
@@ -21,7 +22,11 @@ namespace mx {
         void createTexture(mxWindow *window, int width, int height);
         void loadTexture(mxWindow *window, const std::string &filename);
         void loadTexture(mxWindow *window, const std::string &filename, int &w, int &h, bool color, SDL_Color key);
-        SDL_Texture *handle() const { return texture; }
+        std::optional<SDL_Texture *> handle() const { 
+            if(texture)
+                return texture; 
+            return std::nullopt;
+        }
         int width() const { return width_; }
         int height() const { return height_; }
     private:

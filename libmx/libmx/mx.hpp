@@ -15,7 +15,6 @@
 #include<memory>
 
 namespace mx {
-
     class mxWindow {
     public:
         mxWindow() = delete;
@@ -41,7 +40,6 @@ namespace mx {
         bool active = false; 
         SDL_Event e;
     };
-
 }
 
 #endif
