@@ -1,4 +1,4 @@
-add_library(mx SHARED mx.cpp util.cpp loadpng.cpp font.cpp cfg.cpp texture.cpp exception.cpp)
+add_library(mx SHARED mx.cpp util.cpp loadpng.cpp font.cpp cfg.cpp texture.cpp exception.cpp joystick.cpp)
 find_package(SDL2 REQUIRED)
 find_package(SDL2_ttf REQUIRED)
 target_include_directories(mx PUBLIC
@@ -15,7 +15,7 @@ install(TARGETS mx
     LIBRARY DESTINATION ${INSTALL_LIB_DIR}
     INCLUDES DESTINATION ${INSTALL_INCLUDE_DIR}
 )
-install(FILES mx.hpp argz.hpp util.hpp loadpng.hpp object.hpp font.hpp cfg.hpp tee_stream.hpp texture.hpp exception.hpp
+install(FILES mx.hpp argz.hpp util.hpp loadpng.hpp object.hpp font.hpp cfg.hpp tee_stream.hpp texture.hpp exception.hpp joystick.hpp
     DESTINATION ${INSTALL_INCLUDE_DIR}
 )
 install(EXPORT libmx2Targets
