@@ -26,8 +26,8 @@ namespace mx {
     
     mxWindow::~mxWindow() {
         object.reset();
-        SDL_DestroyWindow(window);
         SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
         TTF_Quit();
         SDL_Quit();
     }

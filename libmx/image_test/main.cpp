@@ -23,7 +23,9 @@ public:
         setObject(new Intro());
 		object->load(this);
     }
-    virtual ~MainWindow() = default;
+    virtual ~MainWindow() {
+        
+    }
     virtual void event(SDL_Event &e) override {}
     virtual void draw(SDL_Renderer *renderer) override {
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
