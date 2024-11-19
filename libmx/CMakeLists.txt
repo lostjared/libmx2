@@ -23,6 +23,7 @@ add_subdirectory(test)
 add_subdirectory(image_test)
 add_subdirectory(knights_tour)
 add_subdirectory(pong)
+add_subdirectory(asteroids)
 
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(

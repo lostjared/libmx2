@@ -60,8 +60,9 @@ namespace mx {
             if(type.has_value())
                 return type.value();
 
-            mx::system_err << "mx: Error type is null...\n";
+            mx::system_err << "mx: panic, Wrapper Error type is null...\n";
             mx::system_err.flush();
+            exit(EXIT_FAILURE);
             return T();
         }
     private:
