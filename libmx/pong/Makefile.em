@@ -8,9 +8,9 @@ ZLIB_LIB = $(LIBS_PATH)/zlib/lib/libz.a
 PNG_LIB = $(LIBS_PATH)/libpng/lib/libpng.a
 LIBMX_LIB = $(LIBS_PATH)/mx2/lib/libmx.a 
 PRELOAD = --preload-file data
-SOURCES = knight.cpp
+SOURCES = pong.cpp
 OBJECTS = $(SOURCES:.cpp=.o)
-OUTPUT = KnightsTour.html
+OUTPUT = Pong.html
 
 .PHONY: all clean install
 

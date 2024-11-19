@@ -39,11 +39,16 @@ public:
 };
 
 int main(int argc, char **argv) {
-	if(argc == 2) {
-    	MainWindow main_window(argv[1]);
-    	main_window.loop();
-	} else {
-		mx::system_err << "Error requies one argument to path of font.\n";
-	}
+	try {
+        MainWindow main_window(path, tw, th);
+#ifdef __EMSCRIPTEN__
+        main_win =  &main_window;
+        emscripten_set_main_loop(eventProc, 0, 1);
+#else
+        main_window.loop();
+#endif
+    } catch(const mx::Exception &e) {
+        mx::system_err << "mx: " << e.text() << "\n";
+    }
     return 0;
 }
