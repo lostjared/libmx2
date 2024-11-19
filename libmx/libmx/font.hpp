@@ -6,6 +6,8 @@
 #include<string>
 #include"tee_stream.hpp"
 #include<optional>
+#include"wrapper.hpp"
+
 namespace mx {
 
     class Font {
@@ -21,6 +23,7 @@ namespace mx {
         Font &operator=(Font && f);
         bool tryLoadFont(const std::string &fname, int size);
         void loadFont(const std::string &fname, int size);
+     
         std::optional<TTF_Font *> handle() const { 
             if(the_font)
                 return the_font; 
@@ -35,6 +38,12 @@ namespace mx {
             mx::system_err.flush();
             exit(EXIT_FAILURE);
             return 0;
+        }
+
+        Wrapper<TTF_Font *> wrapper() const {
+            if(the_font)
+                return the_font;
+            return std::nullopt;
         }
 
     private:

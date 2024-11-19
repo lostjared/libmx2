@@ -6,6 +6,7 @@
 #include<iostream>
 #include"tee_stream.hpp"
 #include<optional>
+#include"wrapper.hpp"
 
 namespace mx {
 
@@ -36,6 +37,14 @@ namespace mx {
             exit(EXIT_FAILURE);
             return 0;
         }
+
+        Wrapper<SDL_Texture *> wrapper() const {
+            if(texture)
+                return texture;
+            
+            return std::nullopt;
+        }
+
         int width() const { return width_; }
         int height() const { return height_; }
     private:

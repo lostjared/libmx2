@@ -10,7 +10,7 @@ public:
         texture.loadTexture(win, win->util.getFilePath("img/logo.png"));
 	}
     virtual void draw(mx::mxWindow *win) override {
-        SDL_RenderCopy(win->renderer, texture.unwrap(), nullptr, nullptr);
+        SDL_RenderCopy(win->renderer, texture.wrapper().unwrap(), nullptr, nullptr);
     }
     virtual void event(mx::mxWindow *win, SDL_Event &e) override  {}
 private:

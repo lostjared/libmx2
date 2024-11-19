@@ -12,6 +12,7 @@
 #include"texture.hpp"
 #include"exception.hpp"
 #include"joystick.hpp"
+#include"wrapper.hpp"
 #include<memory>
 
 namespace mx {
