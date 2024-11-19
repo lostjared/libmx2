@@ -7,7 +7,10 @@
 
 namespace mx {
 
-    template<typename T>
+    template <typename T>
+    concept WrapType = std::is_pointer_v<T>;
+
+    template<WrapType T>
     class Wrapper {
     public:
         Wrapper() : type{std::nullopt} {}
@@ -57,7 +60,7 @@ namespace mx {
         }
 
         T unwrap() {
-            if(type.has_value())
+            if(type.has_value() && type.value() != nullptr)
                 return type.value();
 
             mx::system_err << "mx: panic, Wrapper Error type is null...\n";
@@ -68,14 +71,6 @@ namespace mx {
     private:
         std::optional<T> type;
     };
-
-
-
 }
-
-
-
-
-
 
 #endif
