@@ -43,8 +43,15 @@ public:
 
 int main(int argc, char **argv) {
 	if(argc == 2) {
-    	MainWindow main_window(argv[1]);
-    	main_window.loop();
+        try {
+            MainWindow main_window(argv[1]);
+            main_window.loop();
+        } 
+        catch(const mx::Exception &e) {
+            mx::system_err << "mx: Exception: " << e.text() << "\n";
+            mx::system_err.flush();
+            exit(EXIT_FAILURE);
+        }
 	} else {
 		mx::system_err << "Error requies one argument to path of font.\n";
 	}

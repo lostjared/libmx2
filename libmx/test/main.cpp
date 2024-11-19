@@ -53,7 +53,14 @@ public:
 };
 
 int main(int argc, char **argv) {
-    MainWindow main_window;
-    main_window.loop();
+    try {
+        MainWindow main_window;
+        main_window.loop();
+    } 
+    catch(const mx::Exception &e) {
+        mx::system_err << "mx: Exception: " << e.text() << "\n";
+        mx::system_err.flush();
+        exit(EXIT_FAILURE);
+    }
     return 0;
 }

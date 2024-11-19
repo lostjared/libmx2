@@ -45,6 +45,8 @@ int main(int argc, char **argv) {
             main_window.loop();
         } catch(const mx::Exception &e) {
             mx::system_err << "mx: " << e.text() << "\n";
+            mx::system_err.flush();
+            exit(EXIT_FAILURE);
         }
     }
     return 0;

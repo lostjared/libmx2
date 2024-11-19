@@ -4,6 +4,8 @@
 #include<iostream>
 #include<optional>
 #include "tee_stream.hpp"
+#include<sstream>
+#include"exception.hpp"
 
 namespace mx {
 
@@ -51,21 +53,21 @@ namespace mx {
         }
 
         T expect(const std::string &msg) {
-            if(type.has_value())
+            if(type.has_value() && type.value() != nullptr)
                 return type.value();
-            
-            mx::system_err << "panic: " << msg << "\n";
-            mx::system_err.flush();
-            exit(EXIT_FAILURE);
+
+            std::ostringstream stream; 
+            stream << "panic: " << msg;
+            throw Exception(stream.str());
         }
 
         T unwrap() {
             if(type.has_value() && type.value() != nullptr)
                 return type.value();
 
-            mx::system_err << "mx: panic, Wrapper Error type is null...\n";
-            mx::system_err.flush();
-            exit(EXIT_FAILURE);
+            std::ostringstream stream;
+            stream << "mx: panic, Wrapper Error: type is null...";
+            throw Exception(stream.str());
             return T();
         }
     private:
