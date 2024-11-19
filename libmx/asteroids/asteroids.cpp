@@ -51,7 +51,8 @@ int main(int argc, char **argv) {
     	MainWindow main_window(argv[1]);
     	main_window.loop();
 	} else {
-		mx::system_err << "Error requies one argument to path of font.\n";
+        MainWindow main_window(".");
+        main_window.loop();
 	}
     return 0;
 #endif
