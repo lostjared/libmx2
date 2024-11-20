@@ -59,3 +59,10 @@ See the [LICENSE](LICENSE) file for details.
 ## Acknowledgments
 
 Special thanks to the SDL2 community for providing a robust multimedia library.
+
+Screenshots of Examples
+
+![vb_tetris](https://github.com/user-attachments/assets/efbb3881-ba0a-483c-92db-4abba66c61d8)
+![vb_aster](https://github.com/user-attachments/assets/91bf11ad-b171-4363-96be-cad2bd7f5ea2)
+![vb_pong](https://github.com/user-attachments/assets/ae63f64b-1830-4a2d-a3ed-26ccc6fd2578)
+
