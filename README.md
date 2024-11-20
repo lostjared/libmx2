@@ -3,7 +3,7 @@
 
 ![image](https://github.com/user-attachments/assets/70299ae9-2d60-4a9a-8327-390145eb9191)
 
-libmx2 is a shared library designed to facilitate SDL2 development using C++20.
+libmx2 is a cross-platform library designed to facilitate SDL2 development using C++20.
 It provides a collection of utilities and abstractions to streamline the creation of multimedia applications.
 
 ## Features
