@@ -17,7 +17,7 @@ It provides a collection of utilities and abstractions to streamline the creatio
 ### Prerequisites
 
 - C++20 compatible compiler (e.g., GCC 10+, Clang 10+, MSVC 2019+
-- SDL2/SDL2_ttf,libpng,zlib installed
+- SDL2/SDL2_ttf, libpng, zlib installed
 
 ### Installation
 
