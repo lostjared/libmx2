@@ -31,7 +31,6 @@ private:
     Uint32 startTime2 = 0;
     Uint32 waitTime2 = 1000;
     bool show_cursor = false;
-    bool cursor_shown = false;
     mx::Font the_font;
     class TileMatrix {
     public:
