@@ -70,6 +70,13 @@ namespace mx {
             throw Exception(stream.str());
             return T();
         }
+
+        T unwrap_or(T value) {
+            if(type.has_value() && type.value() != nullptr)
+                return type.value();
+            return value;
+        }
+
     private:
         std::optional<T> type;
     };
