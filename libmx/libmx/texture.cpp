@@ -62,6 +62,10 @@ namespace mx {
 
         texture = tex;
     }
+
+    bool Texture::saveTexture(mxWindow *window, const std::string &filename) {
+        return png::SavePNG(texture, window->renderer, filename.c_str());
+    }
  
     Texture::~Texture() {
         if(texture)

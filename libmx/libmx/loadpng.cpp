@@ -5,6 +5,7 @@
 #include<cstdlib>
 #include<cctype>
 #include<string>
+#include<iostream>
 
 #if defined(_MSC_VER)
     #if _MSC_VER >= 1930
@@ -136,5 +137,78 @@ namespace png {
         png_destroy_read_struct(&png, &info, nullptr);
         fclose(fp);
         return surface;
+    }
+
+
+    bool SavePNG(SDL_Texture* texture, SDL_Renderer* renderer, const char* filename) {
+        int width, height;
+        SDL_QueryTexture(texture, nullptr, nullptr, &width, &height);
+        SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormat(0, width, height, 32, SDL_PIXELFORMAT_RGBA32);
+        if (!surface) {
+            std::cerr << "mx: Failed to create SDL_Surface: " << SDL_GetError() << "\n";
+            return false;
+        }
+
+        SDL_Texture *old = SDL_GetRenderTarget(renderer);
+
+        SDL_SetRenderTarget(renderer, texture);
+        if (SDL_RenderReadPixels(renderer, nullptr, surface->format->format, surface->pixels, surface->pitch) != 0) {
+            std::cerr << "mx: Failed to read pixels from renderer: " << SDL_GetError() << "\n";
+            SDL_FreeSurface(surface);
+            return false;
+        }
+        SDL_SetRenderTarget(renderer, nullptr); 
+        FILE* fp = fopen(filename, "wb");
+        if (!fp) {
+            std::cerr << "mx: Failed to open file for writing: " << filename << "\n";
+            SDL_FreeSurface(surface);
+            return false;
+        }
+
+        png_structp png = png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
+        if (!png) {
+            std::cerr << "mx: Failed to create PNG write struct." << "\n";
+            fclose(fp);
+            SDL_FreeSurface(surface);
+            return false;
+        }
+
+        png_infop info = png_create_info_struct(png);
+        if (!info) {
+            std::cerr << "mx: Failed to create PNG info struct." << "\n";
+            png_destroy_write_struct(&png, nullptr);
+            fclose(fp);
+            SDL_FreeSurface(surface);
+            return false;
+        }
+
+        if (setjmp(png_jmpbuf(png))) {
+            std::cerr << "mx: Error during PNG creation." << "\n";
+            png_destroy_write_struct(&png, &info);
+            fclose(fp);
+            SDL_FreeSurface(surface);
+            return false;
+        }
+
+        png_init_io(png, fp);
+        png_set_IHDR(png, info, surface->w, surface->h, 8, PNG_COLOR_TYPE_RGBA,
+                    PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+        png_write_info(png, info);
+
+        uint8_t* pixels = static_cast<uint8_t*>(surface->pixels);
+        png_bytep* row_pointers = new png_bytep[surface->h];
+        for (int y = 0; y < surface->h; ++y) {
+            row_pointers[y] = pixels + y * surface->pitch;
+        }
+
+        png_write_image(png, row_pointers);
+        png_write_end(png, nullptr);
+
+        delete[] row_pointers;
+        png_destroy_write_struct(&png, &info);
+        fclose(fp);
+        SDL_FreeSurface(surface);
+        SDL_SetRenderTarget(renderer, old);
+        return true;
     }
 }

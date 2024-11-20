@@ -313,7 +313,10 @@ public:
     ~MainWindow() override {}
     
     virtual void event(SDL_Event &e) override {
-
+        if(e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_s) {
+            bg_tex.saveTexture(this,"screenshot.png");
+            mx::system_out << "mx: Screenshot captured..\n";
+        }
     }
     
     virtual void draw(SDL_Renderer *renderer) override {
@@ -381,7 +384,7 @@ int main(int argc, char **argv) {
             }
         }
     } catch (const ArgException<std::string>& e) {
-        mx::system_err << e.text() << std::endl;
+        mx::system_err << e.text() << "\n";
     }
 #ifndef __EMSCRIPTEN__
     if(path.empty()) {
