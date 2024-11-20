@@ -18,6 +18,7 @@ set(SDL2_TTF_LIBRARIES SDL2_ttf::SDL2_ttf)
 include(GNUInstallDirs)
 set(INSTALL_INCLUDE_DIR ${CMAKE_INSTALL_INCLUDEDIR}/mx2)
 set(INSTALL_LIB_DIR ${CMAKE_INSTALL_LIBDIR})
+
 add_subdirectory(libmx)
 add_subdirectory(test)
 add_subdirectory(image_test)
@@ -26,6 +27,7 @@ add_subdirectory(pong)
 add_subdirectory(asteroids)
 add_subdirectory(blocks)
 add_subdirectory(piece)
+add_subdirectory(matrix)
 
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
