@@ -304,8 +304,9 @@ public:
 
     MainWindow(const std::string &path, int tex_w, int tex_h)
     : mx::mxWindow("Knights Tour", tex_w, tex_h, false) {
-        bg_tex.createTexture(this, 640, 480);
         setPath(path);
+        setIcon(util.getFilePath("data/knight.png"));
+        bg_tex.createTexture(this, 640, 480);
         setObject(new Intro());
         object->load(this);
     }

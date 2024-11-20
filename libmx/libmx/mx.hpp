@@ -13,6 +13,7 @@
 #include"exception.hpp"
 #include"joystick.hpp"
 #include"wrapper.hpp"
+#include"loadpng.hpp"
 #include<memory>
 
 namespace mx {
@@ -29,6 +30,8 @@ namespace mx {
         void proc();
         void destroy() { setActive(false); }
         void setPath(const std::string &path) { util.path = path; }
+        void setIcon(SDL_Surface *icon);
+        void setIcon(const std::string &icon);
         mxUtil util;
         Text text;
         std::unique_ptr<obj::Object> object;

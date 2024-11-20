@@ -87,4 +87,15 @@ namespace mx {
         }
         draw(renderer);
     }
+
+    void mxWindow::setIcon(SDL_Surface *icon) {
+        SDL_SetWindowIcon(window, icon);
+    }
+
+    void mxWindow::setIcon(const std::string &icon) {
+        SDL_Surface *ico = png::LoadPNG(icon.c_str());
+        setIcon(ico);
+        SDL_FreeSurface(ico);
+    }
+
 }
