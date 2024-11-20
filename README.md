@@ -43,6 +43,17 @@ It provides a collection of utilities and abstractions to streamline the creatio
    sudo make install
    ```
 
+Optionally you can build as a static library
+
+
+   ```bash
+   mkdir build
+   cd build
+   cmake .. -DBUILD_STATIC_LIB=ON
+   make -j4
+   sudo make install
+   ```
+
 ## Usage
 
 Include the `libmx2` headers in your project and link against the compiled library.
