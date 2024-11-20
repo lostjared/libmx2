@@ -7,7 +7,7 @@ MX_INCLUDE = -I$(LIBS_PATH)/mx2/include
 ZLIB_LIB = $(LIBS_PATH)/zlib/lib/libz.a
 PNG_LIB = $(LIBS_PATH)/libpng/lib/libpng.a
 LIBMX_LIB = $(LIBS_PATH)/mx2/lib/libmx.a 
-PRELOAD = --preload-file data
+PRELOAD = --preload-file mp_dat
 SOURCES = piece.cpp
 OBJECTS = $(SOURCES:.cpp=.o)
 OUTPUT = Piece.html
