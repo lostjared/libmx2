@@ -1,5 +1,5 @@
 #include"mx.hpp"
-
+#include"argz.hpp"
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 #endif
@@ -14,9 +14,7 @@ class Game : public obj::Object {
 public:
     Game() : pieceX(0), pieceY(0), isGameOver(false), score(0), lastFallTime(0), fallInterval(1000) {}
     ~Game() override {}
-
-    constexpr static int tex_width = 640, tex_height = 480;
-
+    
     void load(mx::mxWindow* win) override {
         the_font.loadFont(win->util.getFilePath("data/font.ttf"), 14);
         bg.loadTexture(win, win->util.getFilePath("data/bg.png"));
@@ -46,8 +44,8 @@ public:
             int textW = 0, textH = 0;
             SDL_QueryTexture(texture, nullptr, nullptr, &textW, &textH);
 
-            int windowWidth = win->width;
-            int windowHeight = win->height;
+            int windowWidth = 300 * 2;
+            int windowHeight = 630 * 2;
 
             SDL_Rect textRect = {(windowWidth - textW) / 2, (windowHeight - textH) / 2, textW, textH};
             SDL_RenderCopy(renderer, texture, nullptr, &textRect);
@@ -58,8 +56,8 @@ public:
 
         SDL_RenderCopy(win->renderer, bg.wrapper().unwrap(), nullptr, nullptr);
         
-        int windowWidth = win->width;
-        int windowHeight = win->height;
+        int windowWidth = 300 * 2;
+        int windowHeight = 630 * 2;
         SDL_Rect gameArea = {50, 50, windowWidth - 100, windowHeight - 100};
         int blockSize = gameArea.w / cols;
         for (int row = 0; row < rows; ++row) {
@@ -342,7 +340,7 @@ private:
 class MainWindow : public mx::mxWindow {
 public:
     
-    MainWindow(std::string path) : mx::mxWindow("Blocks", 300 * 2, 630 * 2, false) {
+    MainWindow(std::string path, int tw, int th) : mx::mxWindow("Blocks", tw, th, false) {
         tex.createTexture(this, 300 * 2, 630 * 2);
       	setPath(path);
         setObject(new Intro());
@@ -381,18 +379,63 @@ int main(int argc, char **argv) {
     main_w =&main_window;
     emscripten_set_main_loop(eventProc, 0, 1);
 #else
-	if(argc == 2) {
-        try {
-        MainWindow main_window(argv[1]);
-    	main_window.loop();
-        } catch(const mx::Exception &e) {
-            mx::system_err << "mx: Exception: " << e.text() << "\n";
-            mx::system_err.flush();
-            exit(EXIT_FAILURE);
+    Argz<std::string> parser(argc, argv);    
+    parser.addOptionSingle('h', "Display help message")
+          .addOptionSingleValue('p', "assets path")
+          .addOptionDoubleValue('P', "path", "assets path")
+          .addOptionSingleValue('r',"Resolution WidthxHeight")
+          .addOptionDoubleValue('R',"resolution", "Resolution WidthxHeight");
+    Argument<std::string> arg;
+    std::string path;
+    int value = 0;
+    int tw = 300 * 2, th = 630 * 2;
+    try {
+        while((value = parser.proc(arg)) != -1) {
+            switch(value) {
+                case 'h':
+                case 'v':
+                    parser.help(std::cout);
+                    exit(EXIT_SUCCESS);
+                    break;
+                case 'p':
+                case 'P':
+                    path = arg.arg_value;
+                break;
+                case 'r':
+                case 'R': {
+                    auto pos = arg.arg_value.find("x");
+                    if(pos == std::string::npos)  {
+                        mx::system_err << "Error invalid resolution use WidthxHeight\n";
+                        mx::system_err.flush();
+                        exit(EXIT_FAILURE);
+                    }
+                    std::string left, right;
+                    left = arg.arg_value.substr(0, pos);
+                    right = arg.arg_value.substr(pos+1);
+                    tw = atoi(left.c_str());
+                    th = atoi(right.c_str());
+                }
+                break;
+
+            }
         }
-	} else {
-		mx::system_err << "Error requies one argument to path of font.\n";
-	}
-    return 0;
+    } catch (const ArgException<std::string>& e) {
+        mx::system_err << e.text() << "\n";
+    }
+
+    if(path.empty()) {
+        mx::system_err << "KnightsTour: Requires path variable to assets...\n";
+        mx::system_err.flush();
+        exit(EXIT_FAILURE);
+    }
+    try {
+        MainWindow main_window(path, tw, th);
+        main_window.loop();
+    } catch(const mx::Exception &e) {
+        mx::system_err << "mx: Exception: " << e.text() << "\n";
+        mx::system_err.flush();
+        exit(EXIT_FAILURE);
+    }
 #endif
+    return 0;
 }
