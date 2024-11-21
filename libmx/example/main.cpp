@@ -13,7 +13,7 @@ public:
     
     }
     virtual void load(mx::mxWindow *win) override {
-		font.loadFont(win->util.getFilePath("font.ttf"), 14);
+		font.loadFont(win->util.getFilePath("data/font.ttf"), 14);
 	}
     virtual void draw(mx::mxWindow *win) override {
         win->text.printText_Solid(font, 25, 25, "Hello, World!");
