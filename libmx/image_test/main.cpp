@@ -1,6 +1,10 @@
 #include"mx.hpp"
 #include"argz.hpp"
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten/emscripten.h>
+#endif
+
 class Intro : public obj::Object {
 public:
     Intro() = default;
