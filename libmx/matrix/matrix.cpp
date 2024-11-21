@@ -291,7 +291,7 @@ int main(int argc, char **argv) {
     }
 
     if(path.empty()) {
-        mx::system_err << "KnightsTour: Requires path variable to assets...\n";
+        mx::system_err << "Matrix: Requires path variable to assets...\n";
         mx::system_err.flush();
         exit(EXIT_FAILURE);
     }

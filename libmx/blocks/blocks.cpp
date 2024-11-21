@@ -14,7 +14,7 @@ class Game : public obj::Object {
 public:
     Game() : pieceX(0), pieceY(0), isGameOver(false), score(0), lastFallTime(0), fallInterval(1000) {}
     ~Game() override {}
-    
+
     void load(mx::mxWindow* win) override {
         the_font.loadFont(win->util.getFilePath("data/font.ttf"), 14);
         bg.loadTexture(win, win->util.getFilePath("data/bg.png"));
@@ -424,7 +424,7 @@ int main(int argc, char **argv) {
     }
 
     if(path.empty()) {
-        mx::system_err << "KnightsTour: Requires path variable to assets...\n";
+        mx::system_err << "Blocks: Requires path variable to assets...\n";
         mx::system_err.flush();
         exit(EXIT_FAILURE);
     }
