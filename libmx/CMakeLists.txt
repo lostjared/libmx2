@@ -19,7 +19,12 @@ include(GNUInstallDirs)
 set(INSTALL_INCLUDE_DIR ${CMAKE_INSTALL_INCLUDEDIR}/mx2)
 set(INSTALL_LIB_DIR ${CMAKE_INSTALL_LIBDIR})
 
+option(EXAMPLES "Build Example Projects" ON)
+
 add_subdirectory(libmx)
+
+if(EXAMPLES)
+message(STATUS "Building with Example Projects")
 add_subdirectory(test)
 add_subdirectory(image_test)
 add_subdirectory(knights_tour)
@@ -28,6 +33,9 @@ add_subdirectory(asteroids)
 add_subdirectory(blocks)
 add_subdirectory(piece)
 add_subdirectory(matrix)
+else()
+message(STATUS "Not Building Examples")
+endif()
 
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
