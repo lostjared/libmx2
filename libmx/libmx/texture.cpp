@@ -40,17 +40,21 @@ namespace mx {
     }
     
     void Texture::loadTexture(mxWindow *window, const std::string &filename, int &w, int &h, bool color, SDL_Color key) {
-         auto chkString = [](const std::string &filename) -> bool {
+         auto chkString = [](const std::string &filename) -> int {
             std::string lwr;
             for(size_t i =  0; i < filename.length(); ++i) 
                 lwr += tolower(filename[i]);
-            if(lwr.find(".jpg") == std::string::npos)
-                return false;
-
-            return true;
+            if(lwr.find(".jpg") != std::string::npos)
+                return 1;
+            if(lwr.find(".png") != std::string::npos)
+                return 2;
+            if(lwr.find(".bmp") != std::string::npos)
+                return 3;
+            return 0;
         };
         SDL_Surface *surface = nullptr;
-        if(chkString(filename)) {
+        int type = chkString(filename);
+        if(type == 1) {
             #ifdef WITH_JPEG
             surface = jpeg::LoadJPEG(filename.c_str());
             #else
@@ -58,8 +62,14 @@ namespace mx {
             mx::system_err.flush();
             exit(EXIT_FAILURE);
             #endif
-        } else {
+        } else if(type == 2) {
             surface = png::LoadPNG(filename.c_str());
+        } else if(type == 3) {
+            surface = SDL_LoadBMP(filename.c_str());
+        } else {
+            mx::system_err << "mx: Image format not suported for: " << filename << "\n";
+            mx::system_err.flush();
+            exit(EXIT_FAILURE);
         }
         if(!surface) {
             mx::system_err << "mx: Error could not open file: " << filename << "\n";
