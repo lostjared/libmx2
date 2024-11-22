@@ -1,7 +1,9 @@
 #include"mx.hpp"
 #include"texture.hpp"
 #include"loadpng.hpp"
-
+#ifdef WITH_JPEG
+#include"jpeg.hpp"
+#endif
 namespace mx {
     
     Texture::Texture(const Texture &tex) : texture{tex.texture}, width_{tex.width_}, height_{tex.height_} {}
@@ -38,7 +40,27 @@ namespace mx {
     }
     
     void Texture::loadTexture(mxWindow *window, const std::string &filename, int &w, int &h, bool color, SDL_Color key) {
-        SDL_Surface *surface = png::LoadPNG(filename.c_str());
+         auto chkString = [](const std::string &filename) -> bool {
+            std::string lwr;
+            for(size_t i =  0; i < filename.length(); ++i) 
+                lwr += tolower(filename[i]);
+            if(lwr.find(".jpg") == std::string::npos)
+                return false;
+
+            return true;
+        };
+        SDL_Surface *surface = nullptr;
+        if(chkString(filename)) {
+            #ifdef WITH_JPEG
+            surface = jpeg::LoadJPEG(filename.c_str());
+            #else
+            mx::system_err << "mx: JPEG for file not suported: " << filename << "\n";
+            mx::system_err.flush();
+            exit(EXIT_FAILURE);
+            #endif
+        } else {
+            surface = png::LoadPNG(filename.c_str());
+        }
         if(!surface) {
             mx::system_err << "mx: Error could not open file: " << filename << "\n";
             mx::system_err.flush();

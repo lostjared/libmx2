@@ -1,10 +1,10 @@
 option(BUILD_STATIC_LIB "Build libmx2 as a static library" OFF)
 
 if(BUILD_STATIC_LIB)
-    add_library(mx STATIC mx.cpp util.cpp loadpng.cpp font.cpp cfg.cpp texture.cpp exception.cpp joystick.cpp)
+    add_library(mx STATIC mx.cpp util.cpp loadpng.cpp font.cpp cfg.cpp texture.cpp exception.cpp joystick.cpp jpeg.cpp)
     message(STATUS "Building libmx2 as a static library.")
 else()
-    add_library(mx SHARED mx.cpp util.cpp loadpng.cpp font.cpp cfg.cpp texture.cpp exception.cpp joystick.cpp)
+    add_library(mx SHARED mx.cpp util.cpp loadpng.cpp font.cpp cfg.cpp texture.cpp exception.cpp joystick.cpp jpeg.cpp)
     message(STATUS "Building libmx2 as a shared library.")
 endif()
 
@@ -17,9 +17,9 @@ target_include_directories(mx PUBLIC
     $<INSTALL_INTERFACE:${INSTALL_INCLUDE_DIR}>
     ${SDL2_INCLUDE_DIRS}
     ${SDL2_TTF_INCLUDE_DIRS}
-    ${PNG_DIRS}
+    ${IMG_INCLUDE}
 )
-target_link_libraries(mx PUBLIC SDL2::SDL2 SDL2_ttf::SDL2_ttf ${PNG_LIBS})
+target_link_libraries(mx PUBLIC SDL2::SDL2 SDL2_ttf::SDL2_ttf ${IMG_LIB})
 add_library(libmx2::mx ALIAS mx)
 install(TARGETS mx
     EXPORT libmx2Targets

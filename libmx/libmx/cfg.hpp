@@ -1,4 +1,4 @@
-#ifndef CFG_H_X 
+     #ifndef CFG_H_X 
 #define CFG_H_X
 
 #include<iostream>
