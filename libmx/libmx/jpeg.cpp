@@ -65,5 +65,64 @@ namespace jpeg {
 
         return surface;
     }
+
+    bool SaveJPEG(SDL_Renderer *renderer, SDL_Texture *texture, const char *filename, int quality) {
+        int width = 0, height = 0;
+        Uint32 format = 0;
+        int access = 0;
+
+        if (SDL_QueryTexture(texture, &format, &access, &width, &height) != 0) {
+            return false;
+        }
+
+        SDL_Texture *old = SDL_GetRenderTarget(renderer);
+        SDL_SetRenderTarget(renderer, texture);
+      
+
+        SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormat(0, width, height, 24, SDL_PIXELFORMAT_RGB24);
+        if (!surface) {
+            return false;
+        }
+
+        if (SDL_RenderReadPixels(renderer, nullptr, SDL_PIXELFORMAT_RGB24, surface->pixels, surface->pitch) != 0) {
+            SDL_FreeSurface(surface);
+            return false;
+        }
+
+        struct jpeg_compress_struct cinfo;
+        struct jpeg_error_mgr jerr;
+        cinfo.err = jpeg_std_error(&jerr);
+        jpeg_create_compress(&cinfo);
+
+        FILE* outfile = fopen(filename, "wb");
+        if (!outfile) {
+            SDL_FreeSurface(surface);
+            return false;
+        }
+
+        jpeg_stdio_dest(&cinfo, outfile);
+
+        cinfo.image_width = width;
+        cinfo.image_height = height;
+        cinfo.input_components = 3;
+        cinfo.in_color_space = JCS_RGB;
+
+        jpeg_set_defaults(&cinfo);
+        jpeg_set_quality(&cinfo, quality, TRUE);
+
+        jpeg_start_compress(&cinfo, TRUE);
+
+        JSAMPROW row_pointer;
+        while (cinfo.next_scanline < cinfo.image_height) {
+            row_pointer = (JSAMPROW)((Uint8*)surface->pixels + cinfo.next_scanline * surface->pitch);
+            jpeg_write_scanlines(&cinfo, &row_pointer, 1);
+        }
+        jpeg_finish_compress(&cinfo);
+        jpeg_destroy_compress(&cinfo);
+        fclose(outfile);
+        SDL_FreeSurface(surface);
+        SDL_SetRenderTarget(renderer, old);
+        return true;
+    }
 }
 #endif

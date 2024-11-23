@@ -23,7 +23,8 @@ public:
     }
 
     virtual void event(mx::mxWindow* win, SDL_Event& e) override {
-        
+
+    
     }
 
 private:
@@ -217,7 +218,16 @@ public:
 
     }
     
-    virtual void event(SDL_Event &e) override {}
+    virtual void event(SDL_Event &e) override {
+
+       if(e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_SPACE) {
+        #ifdef WITH_JPEG
+        if(tex.saveTexture(this, "snap.jpg")) {
+            std::cout << "JPEG Saved: snap.jpg\n";
+        }
+        #endif
+      }
+    }
 
     virtual void draw(SDL_Renderer *renderer) override {
         SDL_SetRenderTarget(renderer, tex.wrapper().unwrap());

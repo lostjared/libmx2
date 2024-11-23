@@ -40,20 +40,8 @@ namespace mx {
     }
     
     void Texture::loadTexture(mxWindow *window, const std::string &filename, int &w, int &h, bool color, SDL_Color key) {
-         auto chkString = [](const std::string &filename) -> int {
-            std::string lwr;
-            for(size_t i =  0; i < filename.length(); ++i) 
-                lwr += tolower(filename[i]);
-            if(lwr.find(".jpg") != std::string::npos)
-                return 1;
-            if(lwr.find(".png") != std::string::npos)
-                return 2;
-            if(lwr.find(".bmp") != std::string::npos)
-                return 3;
-            return 0;
-        };
         SDL_Surface *surface = nullptr;
-        int type = chkString(filename);
+        int type = imageType(filename);
         if(type == 1) {
             #ifdef WITH_JPEG
             surface = jpeg::LoadJPEG(filename.c_str());
@@ -96,7 +84,24 @@ namespace mx {
     }
 
     bool Texture::saveTexture(mxWindow *window, const std::string &filename) {
-        return png::SavePNG(texture, window->renderer, filename.c_str());
+        int image_t = imageType(filename);
+        switch(image_t) { 
+            case 1:
+#if WITH_JPEG
+                return jpeg::SaveJPEG(window->renderer, texture, filename.c_str());
+#else
+                mx::system_err << "mx: No JPEG Support..\n";
+                mx::system_err.flush();
+                exit(EXIT_FAILURE);
+#endif
+            case 2:
+                return png::SavePNG(texture, window->renderer, filename.c_str());
+            default:
+                mx::system_err << "mx: Invalid image type..\n";
+                mx::system_err.flush();
+                exit(EXIT_FAILURE);
+                return false;
+        }
     }
  
     Texture::~Texture() {
@@ -104,5 +109,17 @@ namespace mx {
             SDL_DestroyTexture(texture);
     }
 
+    int Texture::imageType(const std::string &filename) {
+        std::string lwr;
+        for(size_t i =  0; i < filename.length(); ++i) 
+            lwr += tolower(filename[i]);
+        if(lwr.find(".jpg") != std::string::npos)
+            return 1;
+        if(lwr.find(".png") != std::string::npos)
+            return 2;
+        if(lwr.find(".bmp") != std::string::npos)
+            return 3;
+        return 0;
+    }
 
 }

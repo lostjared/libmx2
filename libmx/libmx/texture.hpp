@@ -52,6 +52,8 @@ namespace mx {
     private:
         SDL_Texture *texture = nullptr;
         int width_ = 0, height_ = 0;
+
+        int imageType(const std::string &type);
     };
 
 
