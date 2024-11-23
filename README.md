@@ -6,6 +6,11 @@
 libmx2 is a cross-platform library designed to facilitate SDL2 development using C++20.
 It provides a collection of utilities and abstractions to streamline the creation of multimedia applications.
 
+## Motivation
+
+The motivation for creating this library was to give me an easy way to put together new SDL2 applications 
+while using an approach I prefer which is an Object Oriented Design.
+
 ## Features
 
 - **SDL2 Integration**: Simplifies the setup and management of SDL2 components.
