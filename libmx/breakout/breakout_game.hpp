@@ -74,36 +74,38 @@ public:
         return true;
     }
 };
-
 class Ball {
 public:
-    int x, y, vx, vy,  lives, score;
+    int x, y, vx, vy, lives, score;
     Ball() : lives(4), score(0) { reset(true); }
+
     void reset(bool init = false) {
         x = 1280 / 2;
         y = 720 / 2 - 50;
         vx = (rand() % 2 == 0 ? -5 : 5);
         vy = -5;
-        if(init == false)
-            --lives;    
+        if (!init) --lives;
     }
 
     void draw(SDL_Renderer* renderer) {
-        SDL_Rect rect = { x, y, 16, 16 };
+        SDL_Rect rect = {x, y, 16, 16};
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
         SDL_RenderFillRect(renderer, &rect);
     }
+
     void update(Paddle& paddle, Grid& grid) {
         x += vx;
         y += vy;
         if (x <= 0 || x >= 1280 - 16) vx = -vx;
         if (y <= 0) vy = -vy;
+        if ((x + 16 > paddle.x && x < paddle.x + paddle.width) &&
+            (y + 16 >= paddle.y && y < paddle.y + 25)) {
+            vy = -vy;
+            y = paddle.y - 16;
+        }
         if (y > paddle.y + 25) {
             if (y > 720) reset();
             return;
-        }
-        if ((x + 16 >= paddle.x && x <= paddle.x + paddle.width) && (y + 16 >= paddle.y)) {
-            vy = -vy;
         }
         for (int col = 0; col < grid.cols; ++col) {
             for (int row = 0; row < grid.rows; ++row) {
@@ -119,7 +121,8 @@ public:
                 }
             }
         }
-        if (y > 720) reset();
+        vx = std::clamp(vx, -10, 10);
+        vy = std::clamp(vy, -10, 10);
     }
 };
 
