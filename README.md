@@ -53,13 +53,17 @@ Optionally you can build as a static library
    make -j4
    sudo make install
    ```
+Current Options:
+
+* -DJPEG=OFF - optionally compile in support for JPEG images with jpeglib ON or OFF
+* -DBUILD_STATIC_LIB=OFF - optionally compile library as a static library ON or OFF
 
 ## Usage
 
 Include the `libmx2` headers in your project and link against the compiled library.
 Refer to the `examples` directory for sample usage scenarios. Also various subfolders for example projects
 
-## Contributingds
+## Contributing
 
 Contributions are welcome!
 Please fork the repository, create a new branch for your feature or bugfix, and submit a pull request.
