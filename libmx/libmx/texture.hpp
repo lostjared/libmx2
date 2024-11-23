@@ -54,6 +54,7 @@ namespace mx {
         int width_ = 0, height_ = 0;
 
         int imageType(const std::string &type);
+        bool saveBMP(SDL_Texture *texture,SDL_Renderer *renderer,const std::string &name);
     };
 
 

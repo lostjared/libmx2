@@ -96,6 +96,8 @@ namespace mx {
 #endif
             case 2:
                 return png::SavePNG(texture, window->renderer, filename.c_str());
+            case 3:
+                return this->saveBMP(texture, window->renderer, filename);
             default:
                 mx::system_err << "mx: Invalid image type..\n";
                 mx::system_err.flush();
@@ -120,6 +122,29 @@ namespace mx {
         if(lwr.find(".bmp") != std::string::npos)
             return 3;
         return 0;
+    }
+
+    bool Texture::saveBMP(SDL_Texture *texturex,SDL_Renderer *renderer, const std::string &filename) {
+        int width = 0, height = 0;
+        Uint32 format = 0;
+        int access = 0;
+        if (SDL_QueryTexture(texturex, &format, &access, &width, &height) != 0) {
+            return false;
+        }
+        SDL_Texture *old = SDL_GetRenderTarget(renderer);
+        SDL_SetRenderTarget(renderer, texturex);
+        SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormat(0, width, height, 24, SDL_PIXELFORMAT_RGB24);
+        if (!surface) {
+            return false;
+        }
+        if (SDL_RenderReadPixels(renderer, nullptr, SDL_PIXELFORMAT_RGB24, surface->pixels, surface->pitch) != 0) {
+            SDL_FreeSurface(surface);
+            return false;
+        }
+        SDL_SaveBMP(surface, filename.c_str());
+        SDL_FreeSurface(surface);
+        SDL_SetRenderTarget(renderer, old);
+        return true;
     }
 
 }
