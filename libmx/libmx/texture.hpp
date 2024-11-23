@@ -15,9 +15,9 @@ namespace mx {
     class Texture {
     public:
         Texture() = default;
-        Texture(const Texture &tex);
+        Texture(const Texture &tex) = delete;
         Texture(Texture &&tex);
-        Texture &operator=(const Texture &tex);
+        Texture &operator=(const Texture &tex) = delete;
         Texture &operator=(Texture &&tex);
         ~Texture();
         void createTexture(mxWindow *window, int width, int height);
@@ -46,6 +46,7 @@ namespace mx {
             
             return std::nullopt;
         }
+
 
         int width() const { return width_; }
         int height() const { return height_; }
