@@ -389,9 +389,8 @@ int main(int argc, char **argv) {
     }
 #ifndef __EMSCRIPTEN__
     if(path.empty()) {
-        mx::system_err << "KnightsTour: Requires path variable to assets...\n";
-        mx::system_err.flush();
-        exit(EXIT_FAILURE);
+        mx::system_out << "mx: No path provided trying default current directory.\n";
+        path = ".";
     }
 #endif
     try {

@@ -223,7 +223,7 @@ public:
        if(e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_SPACE) {
         #ifdef WITH_JPEG
         if(tex.saveTexture(this, "snap.jpg")) {
-            std::cout << "JPEG Saved: snap.jpg\n";
+            mx::system_out << "JPEG Saved: snap.jpg\n";
         }
         #endif
       }
@@ -301,9 +301,8 @@ int main(int argc, char **argv) {
     }
 
     if(path.empty()) {
-        mx::system_err << "Matrix: Requires path variable to assets...\n";
-        mx::system_err.flush();
-        exit(EXIT_FAILURE);
+        mx::system_out << "No path provided trying default current directory.\n";
+        path = ".";
     }
     try {
         MainWindow main_window(path, tw, th);

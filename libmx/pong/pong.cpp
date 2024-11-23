@@ -254,11 +254,9 @@ int main(int argc, char **argv) {
     } catch (const ArgException<std::string>& e) {
         mx::system_err << e.text() << "\n";
     }
-
     if(path.empty()) {
-        mx::system_err << "Pong: Requires path variable to assets...\n";
-        mx::system_err.flush();
-        exit(EXIT_FAILURE);
+        mx::system_out << "mx: No path provided trying default current directory.\n";
+        path = ".";
     }
     try {
         MainWindow main_window(path, tw, th);
