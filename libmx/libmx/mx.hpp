@@ -20,7 +20,7 @@ namespace mx {
     class mxWindow {
     public:
         mxWindow() = delete;
-        mxWindow(const std::string &name, int w, int h, bool full);
+        mxWindow(const std::string &name, int w, int h, bool full = false);
         virtual ~mxWindow();
         virtual void event(SDL_Event &e) = 0;
         virtual void draw(SDL_Renderer *ren) = 0;

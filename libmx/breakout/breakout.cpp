@@ -1,41 +1,106 @@
 #include"mx.hpp"
 #include"argz.hpp"
+#include"breakout_main.hpp"
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 #endif
 
+class Game : public obj::Object {
+public:
+    Game() = default;
+    ~Game() override {}
+
+    
+    virtual void load(mx::mxWindow* win) override {
+        breakout.setWindow(win);
+    }
+
+    virtual void draw(mx::mxWindow* win) override {
+        breakout.draw(win);
+    }
+
+    virtual void event(mx::mxWindow* win, SDL_Event& e) override {
+        breakout.handleEvent(e);
+    }
+
+private:
+    Breakout breakout;
+};
+
 class Intro : public obj::Object {
 public:
-    Intro() = default;
-    ~Intro() override { 
-    
-    }
+    Intro() {}
+    ~Intro() override {}
+
     virtual void load(mx::mxWindow *win) override {
-        texture.loadTexture(win, win->util.getFilePath("img/logo.jpg"));
-	}
-    virtual void draw(mx::mxWindow *win) override {
-        SDL_RenderCopy(win->renderer, texture.wrapper().unwrap(), nullptr, nullptr);
+        tex.loadTexture(win, win->util.getFilePath("data/logo.png"));
+        bg.loadTexture(win, win->util.getFilePath("data/img/start.png"));
     }
-    virtual void event(mx::mxWindow *win, SDL_Event &e) override  {}
+
+    virtual void draw(mx::mxWindow *win) override {
+        static Uint32 previous_time = SDL_GetTicks();
+        Uint32 current_time = SDL_GetTicks();
+        static int alpha = 255;
+        static bool fading_out = true;
+        static bool done = false;
+
+        SDL_RenderCopy(win->renderer, bg.wrapper().unwrap(), nullptr, nullptr);
+        SDL_SetTextureAlphaMod(tex.wrapper().unwrap(), alpha);
+        SDL_RenderCopy(win->renderer, tex.wrapper().unwrap(), nullptr, nullptr);
+
+        if(done == true) {
+            win->setObject(new Game());
+            win->object->load(win);
+            return;
+        }
+
+        if (current_time - previous_time >= 15) {
+            previous_time = current_time;
+            if (fading_out) {
+                alpha -= 3;  
+                if (alpha <= 0) {
+                    alpha = 0;
+                    fading_out = false;
+                    done = true;
+                }
+            } else {
+                alpha += 3;
+                if (alpha >= 255) {
+                    alpha = 255;
+                    fading_out = true;
+                    previous_time = SDL_GetTicks();
+                }
+            }
+        }
+    }
+
+    virtual void event(mx::mxWindow *win, SDL_Event &e) override {
+
+    }
 private:
-	mx::Texture texture;
+    mx::Texture tex;
+    mx::Texture bg;
 };
+
+
 
 
 class MainWindow : public mx::mxWindow {
 public:
-    MainWindow(std::string path, int tw, int th) : mx::mxWindow("Hello World", tw, th, false) {
-        tex.createTexture(this, 640, 480);
+    
+    MainWindow(std::string path, int tw, int th) : mx::mxWindow("Breakout", tw, th, false) {
+        tex.createTexture(this, 1280, 720);
       	setPath(path);
         setObject(new Intro());
 		object->load(this);
     }
-    ~MainWindow() override {
-
-    }
+    
+    ~MainWindow() override {}
+    
     virtual void event(SDL_Event &e) override {}
-    virtual void draw(SDL_Renderer *renderer) override {
+
+   virtual void draw(SDL_Renderer *renderer) override {
         SDL_SetRenderTarget(renderer, tex.wrapper().unwrap());
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
@@ -57,11 +122,10 @@ void eventProc() {
 
 int main(int argc, char **argv) {
 #ifdef __EMSCRIPTEN__
-    MainWindow main_window("/", 1440, 1080);
+    MainWindow main_window("/", 1920, 1080);
     main_w =&main_window;
     emscripten_set_main_loop(eventProc, 0, 1);
 #else
-
     Argz<std::string> parser(argc, argv);    
     parser.addOptionSingle('h', "Display help message")
           .addOptionSingleValue('p', "assets path")
@@ -71,7 +135,7 @@ int main(int argc, char **argv) {
     Argument<std::string> arg;
     std::string path;
     int value = 0;
-    int tw = 1440, th = 1080;
+    int tw = 1280, th = 720;
     try {
         while((value = parser.proc(arg)) != -1) {
             switch(value) {
@@ -105,8 +169,6 @@ int main(int argc, char **argv) {
     } catch (const ArgException<std::string>& e) {
         mx::system_err << e.text() << "\n";
     }
-
-
     if(path.empty()) {
         mx::system_out << "mx: No path provided trying default current directory.\n";
         path = ".";

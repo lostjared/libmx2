@@ -375,7 +375,7 @@ void eventProc() {
 
 int main(int argc, char **argv) {
 #ifdef __EMSCRIPTEN__
-    MainWindow main_window("/");
+    MainWindow main_window("/", 300 * 2 , 630 * 2);
     main_w =&main_window;
     emscripten_set_main_loop(eventProc, 0, 1);
 #else

@@ -40,6 +40,12 @@ namespace mx {
     }
     
     void Texture::loadTexture(mxWindow *window, const std::string &filename, int &w, int &h, bool color, SDL_Color key) {
+
+        if(texture != nullptr) {
+            SDL_DestroyTexture(texture);
+            texture = nullptr;
+        }
+
         SDL_Surface *surface = nullptr;
         int type = imageType(filename);
         if(type == 1) {

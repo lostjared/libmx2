@@ -251,7 +251,7 @@ void eventProc() {
 
 int main(int argc, char **argv) {
 #ifdef __EMSCRIPTEN__
-    MainWindow main_window("/");
+    MainWindow main_window("/", 1440, 1080);
     main_w =&main_window;
     emscripten_set_main_loop(eventProc, 0, 1);
 #else
@@ -301,7 +301,7 @@ int main(int argc, char **argv) {
     }
 
     if(path.empty()) {
-        mx::system_out << "No path provided trying default current directory.\n";
+        mx::system_out << "mx: No path provided trying default current directory.\n";
         path = ".";
     }
     try {
