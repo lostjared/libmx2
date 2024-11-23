@@ -65,6 +65,8 @@ public:
             } else if (mode == 2 && e.key.keysym.sym == SDLK_RETURN) {
                 setup();
                 mode = 0;
+                ball.score = 0;
+                ball.lives = 4;
             }
         }
     }
@@ -89,6 +91,7 @@ public:
                     endScore = ball.score;
                     mode = 1;
                     ball.lives = 4;
+                    ball.score = 0;
                 } else if (grid.isEmpty()) {
                     grid.reset();
                 }
