@@ -29,7 +29,6 @@ public:
         for(size_t i = 0; i < imgFiles.size(); ++i){
             imgTex[i].loadTexture(win, win->util.getFilePath(imgFiles[i]));
         }
-
         the_font.loadFont(win->util.getFilePath("data/font.ttf"),14);
     }
 
@@ -49,7 +48,6 @@ public:
             ball.draw(win->renderer);
             std::string scoreText = "Score: " + std::to_string(ball.score) + " Lives: " + std::to_string(ball.lives);
             win->text.printText_Solid(the_font, 15, 275, scoreText);
-            processInput();
             updateLogic();
         } else if (mode == 1) {
             SDL_RenderCopy(win->renderer, gameoverImg.wrapper().unwrap(), nullptr, nullptr);
@@ -84,6 +82,7 @@ public:
             static Uint32 previous_time = SDL_GetTicks();
             Uint32 current_time = SDL_GetTicks();
             if (current_time - previous_time >= 15) {
+                processInput();
                 previous_time = current_time;
             
                 ball.update(paddle, grid);
@@ -109,7 +108,7 @@ private:
 
     mx::Texture background, startImg , gameoverImg;
     mx::Font the_font;
-    mx::Texture imgTex[6];
+    mx::Texture imgTex[7];
 
     int mode;
     int endScore;
