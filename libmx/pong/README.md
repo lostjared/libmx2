@@ -1,6 +1,9 @@
 
 # Pong Game with AI Support
 
+![image](https://github.com/user-attachments/assets/cb7b6d98-ab2f-4951-963c-7255e5df221a)
+
+
 ## Overview
 This is a classic Pong game implemented using the `libmx2` library. The game supports both manual and AI-controlled Player 1. Player 2 is always AI-controlled. The objective is to score points by getting the ball past your opponent's paddle.
 
