@@ -62,14 +62,5 @@ This is a classic Pong game implemented using the `libmx2` library. The game sup
    ```bash
    ./pong -p /path/to/assets
    ```
-
-## Known Issues
-- **AI Paddle Speed:** Both AI players move at a constant speed and may not perform optimally in all scenarios.
-- **Intro Screen:** The transition from the intro screen may be slightly abrupt.
-
-## Future Enhancements
-- Adjustable difficulty for AI players.
-- Multiplayer support for Player 2.
-- Enhanced visuals and sound effects.
-
+   
 Enjoy the game!
