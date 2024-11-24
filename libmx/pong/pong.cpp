@@ -23,12 +23,21 @@ public:
     }
 
     void update(mx::mxWindow *win) {
-        const Uint8* state = SDL_GetKeyboardState(NULL);
-        if (state[SDL_SCANCODE_UP]) {
-            player_paddle.y -= paddle_speed;
-        }
-        if (state[SDL_SCANCODE_DOWN]) {
-            player_paddle.y += paddle_speed;
+        
+        if (ai_on) {
+            if (ball.y < player_paddle.y + player_paddle.h / 2) {
+                player_paddle.y -= paddle_speed;
+            } else if (ball.y > player_paddle.y + player_paddle.h / 2) {
+                player_paddle.y += paddle_speed;
+            }
+        } else {
+            const Uint8* state = SDL_GetKeyboardState(NULL);     
+            if (state[SDL_SCANCODE_UP]) {
+                player_paddle.y -= paddle_speed;
+            }
+            if (state[SDL_SCANCODE_DOWN]) {
+                player_paddle.y += paddle_speed;
+            }
         }
 
         if (player_paddle.y < 0)
@@ -63,16 +72,14 @@ public:
         }
 
         if (ball.x <= 0 || ball.x + ball.w >= tex_width) {
-
-            if(ball.x <= 0) {
-                player2_score ++;
-            } else if(ball.x + ball.w >= tex_width) {
-                player1_score ++;
+            if (ball.x <= 0) {
+                player2_score++;
+            } else if (ball.x + ball.w >= tex_width) {
+                player1_score++;
             }
 
             ball = {tex_width / 2 - 10, tex_height / 2 - 10, 20, 20};
             ball_vel_x = -ball_vel_x;
-
         }
     }
 
@@ -90,13 +97,20 @@ public:
         SDL_RenderFillRect(win->renderer, &ai_paddle);
         SDL_RenderFillRect(win->renderer, &ball);
 
-        win->text.printText_Solid(the_font, 15, 15, "Player 1: " + std::to_string(player1_score));
-        win->text.printText_Solid(the_font, 15, 35, "Player 2: " + std::to_string(player2_score));
+        std::string ai_name;
+        if(ai_on == true)
+            ai_name = "Ai ";
+
+        win->text.printText_Solid(the_font, 15, 15, ai_name + "Player 1: " + std::to_string(player1_score));
+        win->text.printText_Solid(the_font, 15, 35, "Ai Player 2: " + std::to_string(player2_score));
     }
 
     virtual void event(mx::mxWindow* win, SDL_Event& e) override {
-        
+        if(e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_SPACE) {
+            ai_on = !ai_on;
+        }   
     }
+
 
 private:
     mx::Texture bg;
@@ -109,6 +123,7 @@ private:
     const int paddle_speed = 5;
     int player1_score = 0;
     int player2_score = 0;
+    bool ai_on = false;
 };
 
 class Intro : public obj::Object {
