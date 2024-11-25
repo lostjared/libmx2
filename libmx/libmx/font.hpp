@@ -16,10 +16,10 @@ namespace mx {
         Font(const std::string &tf);
         Font(const std::string &tf, int size);
         Font(TTF_Font *tf);       
-        Font(const Font &f);
+        Font(const Font &f) = delete;
         Font(Font &&f);
         ~Font();
-        Font &operator=(const Font &f);
+        Font &operator=(const Font &f) = delete;
         Font &operator=(Font && f);
         bool tryLoadFont(const std::string &fname, int size);
         void loadFont(const std::string &fname, int size);
