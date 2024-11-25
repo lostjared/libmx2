@@ -15,7 +15,7 @@ public:
     constexpr static int bomberWidth = 60, bomberHeight = 40;
     constexpr static int bombRadius = 10, bombSpeed = 4;
 
-    void load(mx::mxWindow* win) override {
+    virtual void load(mx::mxWindow* win) override {
         bg.loadTexture(win, win->util.getFilePath("data/bg.png"));
         font.loadFont(win->util.getFilePath("data/font.ttf"), 24);
         win->text.setColor({255, 255, 255, 255});
@@ -45,7 +45,7 @@ public:
         }
     }
 
-    void draw(mx::mxWindow* win) override {
+    virtual void draw(mx::mxWindow* win) override {
         SDL_SetRenderDrawColor(win->renderer, 0, 0, 0, 255);
         SDL_RenderCopy(win->renderer, bg.wrapper().unwrap(), nullptr, nullptr);
         drawBomber(win);
@@ -61,7 +61,7 @@ public:
         
     }
 
-    void event(mx::mxWindow* win, SDL_Event& e) override {
+    virtual void event(mx::mxWindow* win, SDL_Event& e) override {
         if (e.type == SDL_MOUSEMOTION) {
             bucketX = e.motion.x - bucketWidth / 2;
         } else if (e.type == SDL_MOUSEBUTTONDOWN && gameOver) {
