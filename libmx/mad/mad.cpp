@@ -145,8 +145,7 @@ private:
     }
 
     void drawGameOver(mx::mxWindow* win) {
-        SDL_Color red = {255, 0, 0, 255};
-        win->text.setColor(red);
+        win->text.setColor({255,255,255,255});
         win->text.printText_Blended(font, canvasWidth / 2 - 100, canvasHeight / 2 - 20, "Game Over!");
         win->text.printText_Blended(font, canvasWidth / 2 - 150, canvasHeight / 2 + 20, "Double Click to Restart");
         win->text.setColor({255, 255, 255, 255});
