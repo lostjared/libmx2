@@ -188,8 +188,9 @@ void eventProc() {
 }
 
 int main(int argc, char **argv) {
+    int tw = 640, th = 480;
 #ifdef __EMSCRIPTEN__
-    MainWindow main_window("/", 960, 720);
+    MainWindow main_window("/", tw, th);
     main_w =&main_window;
     emscripten_set_main_loop(eventProc, 0, 1);
 #else
@@ -202,7 +203,6 @@ int main(int argc, char **argv) {
     Argument<std::string> arg;
     std::string path;
     int value = 0;
-    int tw = 960, th = 720;
     try {
         while((value = parser.proc(arg)) != -1) {
             switch(value) {
