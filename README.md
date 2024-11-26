@@ -68,6 +68,18 @@ Current Options:
 Include the `libmx2` headers in your project and link against the compiled library.
 Refer to the `examples` directory for sample usage scenarios. Also various subfolders for example projects
 
+## Examples Included
+
+* asteroids
+* blocks
+* breakout
+* frogger
+* knights tour
+* mad
+* matrix
+* piece
+* pong
+
 ## Contributing
 
 Contributions are welcome!
