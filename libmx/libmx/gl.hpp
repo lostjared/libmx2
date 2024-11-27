@@ -1,7 +1,6 @@
 #ifndef GL_H__
 #define GL_H__
 #ifdef WITH_GL
-#include <GL/glew.h>
 #include "mx.hpp"
 #include<string>
 #include<memory>
@@ -11,9 +10,11 @@
 #include <GLES3/gl3.h>
 #include "glm.hpp"
 #include "gtc/type_ptr.hpp"
+#include <GL/glew.h>
 #else
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <glad/glad.h>
 #endif
 namespace gl {
 

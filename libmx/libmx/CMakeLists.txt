@@ -1,10 +1,10 @@
 option(BUILD_STATIC_LIB "Build libmx2 as a static library" OFF)
 
 if(BUILD_STATIC_LIB)
-    add_library(mx STATIC mx.cpp util.cpp loadpng.cpp font.cpp cfg.cpp texture.cpp exception.cpp joystick.cpp jpeg.cpp gl.cpp)
+    add_library(mx STATIC mx.cpp util.cpp loadpng.cpp font.cpp cfg.cpp texture.cpp exception.cpp joystick.cpp jpeg.cpp gl.cpp src/glad.c)
     message(STATUS "Building libmx2 as a static library.")
 else()
-    add_library(mx SHARED mx.cpp util.cpp loadpng.cpp font.cpp cfg.cpp texture.cpp exception.cpp joystick.cpp jpeg.cpp gl.cpp)
+    add_library(mx SHARED mx.cpp util.cpp loadpng.cpp font.cpp cfg.cpp texture.cpp exception.cpp joystick.cpp jpeg.cpp gl.cpp src/glad.c)
     message(STATUS "Building libmx2 as a shared library.")
 endif()
 
@@ -14,6 +14,7 @@ find_package(SDL2_ttf REQUIRED)
 
 target_include_directories(mx PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:${INSTALL_INCLUDE_DIR}>
     ${SDL2_INCLUDE_DIRS}
     ${SDL2_TTF_INCLUDE_DIRS}

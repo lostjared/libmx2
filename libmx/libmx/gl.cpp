@@ -17,11 +17,16 @@ namespace gl {
     }
 
     void GLWindow::initGL(const std::string &title, int width, int height) {
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4); 
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-        SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 
+	if(SDL_Init(SDL_INIT_VIDEO) < 0) {
+		mx::system_err << "Error initalizing SDL.\n";
+		mx::system_err.flush();
+		exit(EXIT_FAILURE);
+	}
+
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
         window = SDL_CreateWindow(title.c_str(),SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,width,height,SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
 
         if (!window) {
@@ -32,6 +37,7 @@ namespace gl {
         if (!glContext) {
             throw std::runtime_error("Failed to create OpenGL context: " + std::string(SDL_GetError()));
         }
+#ifdef __EMSCRIPTEN__
         glewExperimental = GL_TRUE;
         GLenum glewError = glewInit();
         if (glewError != GLEW_OK) {
@@ -40,6 +46,16 @@ namespace gl {
         if (SDL_GL_SetSwapInterval(1) < 0) {
             throw std::runtime_error("Failed to set VSync: " + std::string(SDL_GetError()));
         }
+#else
+    if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress)) {
+        SDL_GL_DeleteContext(glContext);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        exit(EXIT_FAILURE);
+    }
+    std::cout << "OpenGL Version: " << glGetString(GL_VERSION) << "\n";
+#endif
+
         w = width;
         h = height;
     }
@@ -122,7 +138,7 @@ namespace gl {
         int glErr = glGetError();
         while(glErr != GL_NO_ERROR) {
             mx::system_err << "GL Error: " << glErr << "\n";
-            mx::system_err << "Error String: " << glewGetErrorString(glErr) << "\n";
+            //mx::system_err << "Error String: " << glewGetErrorString(glErr) << "\n";
             e = true;
             glErr = glGetError();
         }
