@@ -16,13 +16,14 @@ while using an approach I prefer which is an Object Oriented Design.
 - **SDL2 Integration**: Simplifies the setup and management of SDL2 components.
 - **Modern C++20 Design**: Utilizes C++20 features for cleaner and more efficient code.
 - **Modular Architecture**: Offers a flexible structure to accommodate various project needs.
-
+- ** Optional OpenGL/GLEW/GLM support**: You can compile in support for these libraries with examples
 ## Getting Started
 
 ### Prerequisites
 
 - C++20 compatible compiler (e.g., GCC 10+, Clang 10+, MSVC 2019+
 - SDL2/SDL2_ttf, libpng, zlib installed
+- Optional: OpenGL/GLEW/GLM
 
 ### Installation
 
