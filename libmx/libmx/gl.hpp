@@ -5,8 +5,13 @@
 #include "mx.hpp"
 #include<string>
 #include<memory>
-namespace gl {
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten/emscripten.h>
+#include <GLES3/gl3.h>
+#endif
+
+namespace gl {
 
     class GLObject;
 

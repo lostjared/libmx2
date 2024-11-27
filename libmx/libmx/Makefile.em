@@ -1,11 +1,11 @@
 CXX = em++
-CXXFLAGS = -std=c++20 -O2 -DFOR_WASM -s USE_SDL=2 -s USE_SDL_TTF=2
+CXXFLAGS = -std=c++20 -O2 -DFOR_WASM -DWITH_GL -s USE_SDL=2 -s USE_SDL_TTF=2
 LIBS_PATH = /home/jared/emscripten-libs
 ZLIB_INCLUDE = -I$(LIBS_PATH)/zlib/include
 PNG_INCLUDE = -I$(LIBS_PATH)/libpng/include
 ZLIB_LIB = $(LIBS_PATH)/zlib/lib/libz.a
 PNG_LIB = $(LIBS_PATH)/libpng/lib/libpng.a
-SOURCES = cfg.cpp exception.cpp font.cpp loadpng.cpp mx.cpp texture.cpp util.cpp joystick.cpp 
+SOURCES = cfg.cpp exception.cpp font.cpp loadpng.cpp mx.cpp texture.cpp util.cpp joystick.cpp gl.cpp
 OBJECTS = $(SOURCES:.cpp=.o)
 OUTPUT = libmx.a
 

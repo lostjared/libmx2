@@ -1,9 +1,13 @@
 #include"mx.hpp"
 #include"argz.hpp"
-#include"gl.hpp"
+
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
+#include <GLES3/gl3.h>
+#define WITH_GL
 #endif
+
+#include"gl.hpp"
 
 float vertices[] = {
      0.0f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,  
@@ -27,7 +31,7 @@ public:
         glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
         glEnableVertexAttribArray(1);
         glBindVertexArray(0); 
-        if (!shaderProgram.loadProgram(win->util.getFilePath("tri.vert"), win->util.getFilePath("tri.frag"))) {
+        if (!shaderProgram.loadProgram(win->util.getFilePath("data/tri.vert"), win->util.getFilePath("data/tri.frag"))) {
             throw mx::Exception("Failed to load shader program");
         }
         shaderProgram.useProgram();
