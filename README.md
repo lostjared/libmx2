@@ -62,6 +62,7 @@ Current Options:
 
 * -DJPEG=OFF - optionally compile in support for JPEG images with jpeglib ON or OFF
 * -DBUILD_STATIC_LIB=OFF - optionally compile library as a static library ON or OFF
+* -DOPENGL=ON optionally compile OpenGL support into the library either ON or OFF
 
 ## Usage
 
