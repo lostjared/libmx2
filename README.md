@@ -79,6 +79,8 @@ Refer to the `examples` directory for sample usage scenarios. Also various subfo
 * matrix
 * piece
 * pong
+* space shooter
+  
 
 ## Contributing
 
