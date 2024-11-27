@@ -15,6 +15,7 @@ public:
 
     virtual void load(mx::mxWindow *win) override {
         the_font.loadFont(win->util.getFilePath("data/font.ttf"), 14);
+        bg.loadTexture(win, win->util.getFilePath("data/spacelogo.png"));
         resetGame();
     }
 
@@ -78,13 +79,11 @@ public:
         for (auto it = enemies.begin(); it != enemies.end();) {
             it->y += 1.5;
             if (it->y > tex_height) {
-                explode(it->x + it->w / 2, tex_height, ExplosionType::Red);
+                explode(it->x + it->w / 2, tex_height, ExplosionType::Red, true);
                 it = enemies.erase(it);
-                subtractLife(win);
             } else if (SDL_HasIntersection(&player_rect, &(*it))) {
-                explode(player_rect.x + player_rect.w / 2, player_rect.y + player_rect.h / 2, ExplosionType::Red);
+                explode(player_rect.x + player_rect.w / 2, player_rect.y + player_rect.h / 2, ExplosionType::Red, true);
                 it = enemies.erase(it);
-                subtractLife(win);
             } else {
                 ++it;
             }
@@ -99,9 +98,8 @@ public:
 
             SDL_Rect circular_rect = {cit->x - 16, cit->y - 16, 32, 32};
             if (SDL_HasIntersection(&player_rect, &circular_rect)) {
-                explode(cit->x, cit->y, ExplosionType::Red);
+                explode(cit->x, cit->y, ExplosionType::Red, true);
                 cit = circular_enemies.erase(cit);
-                subtractLife(win);
             } else {
                 ++cit;
             }
@@ -145,18 +143,30 @@ public:
                 drawGradientCircle(renderer, circular.x, circular.y, 16);
             }
         }
-
+        win->text.setColor({255,255,255,255});
         std::string lives_text = "Lives: " + std::to_string(lives);
-        win->text.printText_Blended(the_font, 10, 10, lives_text.c_str());
+        win->text.printText_Blended(the_font, 10, 10, lives_text);
 
         std::string score_text = "Score: " + std::to_string(score);
-        win->text.printText_Blended(the_font, 10, 30, score_text.c_str());
+        win->text.printText_Blended(the_font, 10, 30, score_text);
 
         if (waiting_for_continue) {
+            SDL_RenderCopy(win->renderer, bg.wrapper().unwrap(), nullptr, nullptr);
+            SDL_Color col = { static_cast<unsigned char>(rand()%255), static_cast<unsigned char>(rand()%255), static_cast<unsigned char>(rand()%255), 255};
+            win->text.setColor(col);
+            SDL_Rect rc = { 195, 235, 275, 25 };
+            SDL_SetRenderDrawColor(win->renderer, 0, 0, 0, 255);
+            SDL_RenderFillRect(win->renderer, &rc);
             win->text.printText_Blended(the_font, 200, 240, "You Died! Press ENTER to continue");
         }
 
         if (is_game_over) {
+            SDL_RenderCopy(win->renderer, bg.wrapper().unwrap(), nullptr, nullptr);
+            SDL_Color col = { static_cast<unsigned char>(rand()%255), static_cast<unsigned char>(rand()%255), static_cast<unsigned char>(rand()%255), 255};
+            win->text.setColor(col);
+            SDL_Rect rc = { 195, 235, 275, 25 };
+            SDL_SetRenderDrawColor(win->renderer, 0, 0, 0, 255);
+            SDL_RenderFillRect(win->renderer, &rc);
             win->text.printText_Blended(the_font, 200, 240, "Game Over! Press ENTER to restart");
         }
 
@@ -182,6 +192,7 @@ public:
 
 private:
     mx::Font the_font;
+    mx::Texture bg;
 
     SDL_Rect player_rect;
     std::vector<SDL_Rect> projectiles;
@@ -196,6 +207,7 @@ private:
         int x, y;
         int duration;
         SDL_Color color;
+        bool die;
     };
     std::vector<Explosion> explosions;
 
@@ -216,7 +228,7 @@ private:
     int regular_enemies_destroyed = 0;
     bool is_game_over = false;
     bool waiting_for_continue = false;
-
+    bool player_die = false;
     Uint32 last_shot_time = 0;
     Uint32 last_spawn_time = 0;
 
@@ -242,24 +254,28 @@ private:
         circular_enemies.clear();
     }
 
-    void subtractLife(mx::mxWindow *win) {
+    void subtractLife() {
         lives--;
         if (lives <= 0) {
             is_game_over = true;
         } else {
             waiting_for_continue = true;
         }
+        player_die = false;
     }
 
-    void explode(int x, int y, ExplosionType type) {
+    void explode(int x, int y, ExplosionType type, bool d = false) {
         SDL_Color color = (type == ExplosionType::Red) ? SDL_Color{255, 0, 0, 255} : SDL_Color{0, 0, 255, 255};
-        explosions.push_back({x, y, 60, color});
+        player_die = d;    
+        explosions.push_back({x, y, 60, color, d});
     }
 
     void updateExplosions() {
         for (auto it = explosions.begin(); it != explosions.end();) {
             it->duration--;
             if (it->duration <= 0) {
+                if(it->die)
+                    subtractLife();
                 it = explosions.erase(it);
             } else {
                 ++it;
@@ -279,6 +295,8 @@ private:
     }
 
     void drawGradientTriangle(SDL_Renderer *renderer, int x1, int y1, int x2, int y2, int x3, int y3) {
+        if(player_die) return;
+
         for (int i = 0; i < (y3 - y1); ++i) {
             int r = 255 - (255 * i / (y3 - y1));
             int g = 255 * i / (y3 - y1);
@@ -325,6 +343,7 @@ public:
 
     virtual void load(mx::mxWindow *win) override {
         tex.loadTexture(win, win->util.getFilePath("data/logo.png"));
+        bg.loadTexture(win, win->util.getFilePath("data/spacelogo.png"));
     }
 
     virtual void draw(mx::mxWindow *win) override {
@@ -334,6 +353,7 @@ public:
         static bool fading_out = true;
         static bool done = false;
 
+        SDL_RenderCopy(win->renderer, bg.wrapper().unwrap(), nullptr, nullptr);
         SDL_SetTextureAlphaMod(tex.wrapper().unwrap(), alpha);
         SDL_RenderCopy(win->renderer, tex.wrapper().unwrap(), nullptr, nullptr);
 
@@ -368,6 +388,7 @@ public:
     }
 private:
     mx::Texture tex;
+    mx::Texture bg;
 };
 
 class MainWindow : public mx::mxWindow {
