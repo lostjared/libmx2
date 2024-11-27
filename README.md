@@ -37,7 +37,7 @@ while using an approach I prefer which is an Object Oriented Design.
 2. Navigate to the project directory:
 
    ```bash
-   cd libmx2
+   cd libmx2/libmx
    ```
 
 3. Build the library using CMake:
