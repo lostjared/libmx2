@@ -2,7 +2,7 @@
 # libmx2
 
 ![libmx cube](https://github.com/user-attachments/assets/68a4a55e-98a3-4bcc-9cf6-f6bf3cbb7b86)
-![image](https://github.com/user-attachments/assets/70299ae9-2d60-4a9a-8327-390145eb9191)
+![libmx knight 2](https://github.com/user-attachments/assets/0f12d584-6478-4df7-8da0-81903ce7eac6)
 
 libmx2 is a cross-platform library designed to facilitate SDL2 development using C++20.
 It provides a collection of utilities and abstractions to streamline the creation of multimedia applications.
