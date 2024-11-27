@@ -23,7 +23,7 @@ while using an approach I prefer which is an Object Oriented Design.
 
 - C++20 compatible compiler (e.g., GCC 10+, Clang 10+, MSVC 2019+
 - SDL2/SDL2_ttf, libpng, zlib installed
-- Optional: OpenGL/GLEW/GLM
+- Optional: OpenGL/GLEW/GLM includes GLAD
 
 ### Installation
 
