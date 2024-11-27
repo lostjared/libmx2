@@ -14,7 +14,7 @@ OUTPUT = libmx.a
 all: $(OUTPUT)
 
 %.o: %.cpp
-	$(CXX) $(CXXFLAGS) $(ZLIB_INCLUDE) $(PNG_INCLUDE) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(ZLIB_INCLUDE) $(PNG_INCLUDE) -I/usr/include/glm -c $< -o $@
 
 $(OUTPUT): $(OBJECTS)
 	emar cru $(OUTPUT) $(OBJECTS)

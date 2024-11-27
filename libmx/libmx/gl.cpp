@@ -213,6 +213,52 @@ namespace gl {
     void ShaderProgram::useProgram() {
         glUseProgram(shader_id);
     }
+
+    void ShaderProgram::setUniform(const std::string &name, int value) {
+        GLint location = glGetUniformLocation(shader_id, name.c_str());
+        if (location == -1) {
+            mx::system_err << "Uniform '" << name << "' not found or not used in shader.\n";
+            return;
+        }
+        glUniform1i(location, value);
+    }
+
+    void ShaderProgram::setUniform(const std::string &name, float value) {
+        GLint location = glGetUniformLocation(shader_id, name.c_str());
+        if (location == -1) {
+            mx::system_err << "Uniform '" << name << "' not found or not used in shader.\n";
+            return;
+        }
+        glUniform1f(location, value);
+    }
+
+    void ShaderProgram::setUniform(const std::string &name, const glm::vec3 &value) {
+        GLint location = glGetUniformLocation(shader_id, name.c_str());
+        if (location == -1) {
+            mx::system_err << "Uniform '" << name << "' not found or not used in shader.\n";
+            return;
+        }
+        glUniform3fv(location, 1, glm::value_ptr(value));
+    }
+
+    void ShaderProgram::setUniform(const std::string &name, const glm::vec4 &value) {
+        GLint location = glGetUniformLocation(shader_id, name.c_str());
+        if (location == -1) {
+            mx::system_err << "Uniform '" << name << "' not found or not used in shader.\n";
+            return;
+        }
+        glUniform4fv(location, 1, glm::value_ptr(value));
+    }
+
+    void ShaderProgram::setUniform(const std::string &name, const glm::mat4 &value) {
+        GLint location = glGetUniformLocation(shader_id, name.c_str());
+        if (location == -1) {
+            mx::system_err << "Uniform '" << name << "' not found or not used in shader.\n";
+            return;
+        }
+        glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(value));
+    }
+
 }
 
 

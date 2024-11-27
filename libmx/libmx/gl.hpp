@@ -9,8 +9,12 @@
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 #include <GLES3/gl3.h>
+#include "glm.hpp"
+#include "gtc/type_ptr.hpp"
+#else
+#include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #endif
-
 namespace gl {
 
     class GLObject;
@@ -36,10 +40,11 @@ namespace gl {
 
         std::unique_ptr<gl::GLObject> object;
         mx::mxUtil util;
+        int w = 0, h = 0;
+        
     private:
         SDL_GLContext glContext;
         SDL_Window *window;
-        int w = 0, h = 0;
         bool active = false;
         SDL_Event e;
     };
@@ -69,6 +74,13 @@ namespace gl {
         void useProgram();
         void setName(const std::string &n);
         std::string name() const { return name_; }
+
+        void setUniform(const std::string &name, int value);
+        void setUniform(const std::string &name, float value);
+        void setUniform(const std::string &name, const glm::vec3 &value);
+        void setUniform(const std::string &name, const glm::vec4 &value);
+        void setUniform(const std::string &name, const glm::mat4 &value);
+
     private:
         GLuint shader_id;
         std::string name_;
