@@ -87,6 +87,7 @@ Refer to the `examples` directory for sample usage scenarios. Also various subfo
 ## GL Examples
 
 * Triangle
+* Skeleton (Hello, World!)
 * 3D Texture Mapped Cube
 * GL Pong
   
