@@ -115,6 +115,50 @@ Then I would recommend running my ldd-deploy project https://github.com/lostjare
 ```bash
 mingw-deploy -i gl_pong.exe -o .
 ```
+
+## WebAssembly Makefiles
+
+To compile the WebAssembly makefiles its a little more difficult youw will first need to create a folder for libpng16 zlib and libmx to be installed to you will need to edit the Makefile and place
+te path to this folder
+
+```
+LIBS_PATH = /home/jared/emscripten-libs
+```
+
+then install libpng16, zlib by compiling them with emscripten and placing the files in this location
+you will also need to install GLM on your host system use  your package manager to get it  something like
+```
+sudo pacman -S glm
+```
+
+the paths in the Makefile look like this
+
+```
+ZLIB_INCLUDE = -I$(LIBS_PATH)/zlib/include
+PNG_INCLUDE = -I$(LIBS_PATH)/libpng/include
+MX_INCLUDE = -I$(LIBS_PATH)/mx2/include -I/usr/include/glm
+ZLIB_LIB = $(LIBS_PATH)/zlib/lib/libz.a
+PNG_LIB = $(LIBS_PATH)/libpng/lib/libpng.a
+```
+
+then enter the libmx directory edit the Makefile for the path
+and
+
+```bash
+make -f Makefile.em
+sudo make -f Makefile.em install
+```
+
+then you should be able to build the projects with emscripten using
+
+```bash
+make -f Makefile.em
+```
+
+## Playing the Example games in WebAssembly
+
+You can point your browser to https://lostsidedead.biz/
+and select Free Web Apps and the projects are available to play in your browser
   
 ## Contributing
 
