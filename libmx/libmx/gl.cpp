@@ -24,10 +24,11 @@ namespace gl {
             mx::system_err.flush();
             exit(EXIT_FAILURE);
         }
-
+#ifndef __EMSCRIPTEN__
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
 	    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
 	    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+#endif
         window = SDL_CreateWindow(title.c_str(),SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,width,height,SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
 
         if (!window) {
