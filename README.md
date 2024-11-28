@@ -10,7 +10,8 @@ It provides a collection of utilities and abstractions to streamline the creatio
 ## Motivation
 
 The motivation for creating this library was to give me an easy way to put together new SDL2 applications 
-while using an approach I prefer which is an Object Oriented Design.
+while using an approach I prefer, an Object Oriented Design. I have experimented with AI in some of the example projects for this library.
+
 
 ## Features
 
