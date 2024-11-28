@@ -18,15 +18,15 @@ namespace gl {
 
     void GLWindow::initGL(const std::string &title, int width, int height) {
 
-	if(SDL_Init(SDL_INIT_VIDEO) < 0) {
-		mx::system_err << "Error initalizing SDL.\n";
-		mx::system_err.flush();
-		exit(EXIT_FAILURE);
-	}
+        if(SDL_Init(SDL_INIT_VIDEO) < 0) {
+            mx::system_err << "Error initalizing SDL.\n";
+            mx::system_err.flush();
+            exit(EXIT_FAILURE);
+        }
 
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+	    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+	    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
         window = SDL_CreateWindow(title.c_str(),SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,width,height,SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
 
         if (!window) {
@@ -55,9 +55,13 @@ namespace gl {
     }
     std::cout << "OpenGL Version: " << glGetString(GL_VERSION) << "\n";
 #endif
-
         w = width;
         h = height;
+        if (TTF_Init() < 0) {
+            mx::system_err << "Failed to initialize SDL_ttf: " << TTF_GetError() << std::endl;
+            mx::system_err.flush();
+            exit(EXIT_FAILURE);
+        }
     }
 
     void GLWindow::setObject(gl::GLObject *o) {
