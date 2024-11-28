@@ -139,15 +139,17 @@ public:
     }
 };
 
+
 class Ball {
 public:
     glm::vec3 position;
     glm::vec3 velocity;
     float radius;
+    float speed;
     GLuint texture;
 
     Ball(glm::vec3 pos, glm::vec3 vel, float r, const std::string &texturePath)
-        : position(pos), velocity(vel), radius(r) {
+        : position(pos), velocity(vel), radius(r), speed(glm::length(vel)) {
         texture = loadTexture(texturePath);
     }
 
@@ -163,72 +165,95 @@ public:
         glDrawArrays(GL_TRIANGLES, 0, 36);
     }
 
-    void update(float deltaTime, Paddle &paddle1, Paddle &paddle2, int &score1, int &score2) {
-        position += velocity * deltaTime * 1.5f;
+    void resetBall() {
+        position = glm::vec3(0.0f, 0.0f, 0.0f);
+        float angle = glm::radians(static_cast<float>(rand() % 120 - 60)); 
+        speed = 1.0f;
 
-        if (position.y + radius > 1.0f || position.y - radius < -1.0f) {
+        float vx = cos(angle);
+        float vy = sin(angle);
+
+        if (std::abs(vx) < 0.5f) {
+            vx = (vx < 0) ? -0.5f : 0.5f;
+        }
+
+        vx *= (rand() % 2 == 0) ? 1.0f : -1.0f;
+
+        velocity = glm::normalize(glm::vec3(vx, vy, 0.0f)) * speed;
+    }
+
+    void update(float deltaTime, Paddle &paddle1, Paddle &paddle2, int &score1, int &score2) {
+        position += velocity * deltaTime;
+
+        if (position.y + radius > 1.0f) {
+            position.y = 1.0f - radius;
+            velocity.y = -velocity.y;
+        } else if (position.y - radius < -1.0f) {
+            position.y = -1.0f + radius;
             velocity.y = -velocity.y;
         }
 
-        if (position.x - radius <= paddle1.position.x + paddle1.size.x / 2 &&
-            position.x + radius >= paddle1.position.x - paddle1.size.x / 2 &&
-            position.y < paddle1.position.y + paddle1.size.y / 2 &&
-            position.y > paddle1.position.y - paddle1.size.y / 2) {
+        handlePaddleCollision(paddle1, deltaTime);
+        handlePaddleCollision(paddle2, deltaTime);
 
-            if (velocity.x > 0) { 
-                position.x = paddle1.position.x - paddle1.size.x / 2 - radius;
-                velocity.x = -fabs(velocity.x);
-            } else if (velocity.x < 0) { 
-                position.x = paddle1.position.x + paddle1.size.x / 2 + radius;
-                velocity.x = fabs(velocity.x);
-            }
-
-            velocity.y += (position.y - paddle1.position.y) * 0.5f;
-            paddle1.startRotation(360.0f);
-        }
-
-        if (position.x + radius >= paddle2.position.x - paddle2.size.x / 2 &&
-            position.x - radius <= paddle2.position.x + paddle2.size.x / 2 &&
-            position.y < paddle2.position.y + paddle2.size.y / 2 &&
-            position.y > paddle2.position.y - paddle2.size.y / 2) {
-
-            if (velocity.x < 0) { 
-                position.x = paddle2.position.x + paddle2.size.x / 2 + radius;
-                velocity.x = fabs(velocity.x);
-            } else if (velocity.x > 0) { 
-                position.x = paddle2.position.x - paddle2.size.x / 2 - radius;
-                velocity.x = -fabs(velocity.x);
-            }
-
-            velocity.y += (position.y - paddle2.position.y) * 0.5f;
-            paddle2.startRotation(360.0f);
-        }
-
-        if (position.x + radius < -1.5f) {
+        if ((position.x - radius < paddle1.position.x - paddle1.size.x / 2.0f) &&
+            (position.y + radius > paddle1.position.y - paddle1.size.y / 2.0f) &&
+            (position.y - radius < paddle1.position.y + paddle1.size.y / 2.0f)) {
             score2++;
             resetBall();
+            return;
         }
 
-        if (position.x - radius > 1.5f) {
+        if ((position.x + radius > paddle2.position.x + paddle2.size.x / 2.0f) &&
+            (position.y + radius > paddle2.position.y - paddle2.size.y / 2.0f) &&
+            (position.y - radius < paddle2.position.y + paddle2.size.y / 2.0f)) {
             score1++;
             resetBall();
+            return;
+        }
+
+        if (position.x - radius < -1.5f || position.x + radius > 1.5f) {
+            resetBall();
+            return;
         }
     }
 
-    void resetBall() {
-        position = glm::vec3(0.0f, 0.0f, 0.0f);
-        float angle = (rand() % 120 - 60) * (M_PI / 180.0f);
-        float speed = 0.5f;
-        velocity = glm::vec3(
-            (rand() % 2 == 0 ? speed : -speed) * cos(angle),
-            speed * sin(angle),
-            0.0f
-        );
+private:
+    float clamp(float value, float min, float max) {
+        return std::max(min, std::min(value, max));
     }
 
-
+    void handlePaddleCollision(Paddle &paddle, float deltaTime) {
+        float paddleLeft = paddle.position.x - paddle.size.x / 2.0f;
+        float paddleRight = paddle.position.x + paddle.size.x / 2.0f;
+        float paddleTop = paddle.position.y + paddle.size.y / 2.0f;
+        float paddleBottom = paddle.position.y - paddle.size.y / 2.0f;
+        float closestX = clamp(position.x, paddleLeft, paddleRight);
+        float closestY = clamp(position.y, paddleBottom, paddleTop);
+        float distanceX = position.x - closestX;
+        float distanceY = position.y - closestY;
+        float distanceSquared = (distanceX * distanceX) + (distanceY * distanceY);
+        if (distanceSquared < (radius * radius)) {
+            float distance = std::sqrt(distanceSquared);
+            if (distance == 0.0f) {
+                distance = 0.001f;
+            }
+            float nx = distanceX / distance;
+            float ny = distanceY / distance;
+            glm::vec3 normal(nx, ny, 0.0f);
+            velocity = glm::reflect(velocity, normal);
+            position += normal * (radius - distance);
+            float impactY = position.y - paddle.position.y;
+            velocity.y += impactY * 5.0f;
+            float maxVerticalComponent = speed * 0.75f; 
+            if (std::abs(velocity.y) > maxVerticalComponent) {
+                velocity.y = (velocity.y > 0) ? maxVerticalComponent : -maxVerticalComponent;
+            }
+            velocity = glm::normalize(velocity) * speed;
+            paddle.startRotation(360.0f);
+        }
+    }
 };
-
 class PongGame : public gl::GLObject {
 public:
     gl::ShaderProgram shaderProgram, textShader;
@@ -276,7 +301,7 @@ public:
             glm::vec3(0.0f, 0.0f, 0.0f), 
             glm::vec3(0.0f, 1.0f, 0.0f));
         shaderProgram.setUniform("view", view);
-
+        ball.resetBall();
 
     }
 
@@ -286,11 +311,9 @@ public:
         shaderProgram.useProgram();
         glBindVertexArray(VAO);
         Uint32 currentTime = SDL_GetTicks();
-        if (currentTime - lastUpdateTime >= 5) {
-            float deltaTime = (currentTime - lastUpdateTime) / 1000.0f; 
-            lastUpdateTime = currentTime;
-            update(deltaTime); 
-        }
+        float deltaTime = (currentTime - lastUpdateTime) / 1000.0f; // Convert to seconds
+        lastUpdateTime = currentTime;
+        update(deltaTime);
         paddle1.draw(shaderProgram, 15 / 1000.0f); 
         paddle2.draw(shaderProgram, 15 / 1000.0f); 
         ball.draw(shaderProgram);
