@@ -76,7 +76,7 @@ namespace gl {
         }
     }
 
- void GLWindow::loop() {
+    void GLWindow::loop() {
         if(!object) {
             throw mx::Exception("Requires you set an Object");
         }
@@ -84,6 +84,18 @@ namespace gl {
         while(active) {
             proc();
         }
+    }
+
+    void GLWindow::delay() {
+#ifndef __EMSCRIPTEN__
+        const int frameDelay = 1000 / 60;
+        Uint32 frameStart = SDL_GetTicks();
+        int frameTime = SDL_GetTicks() - frameStart;
+        
+        if (frameDelay > frameTime) {
+            SDL_Delay(frameDelay - frameTime);
+        }
+#endif
     }
 
     void GLWindow::proc() {

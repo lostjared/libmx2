@@ -36,7 +36,7 @@ namespace gl {
 
         void proc();
         void loop();
-        
+        void delay();
         void setPath(const std::string &path) { util.path = path; }
 
         std::unique_ptr<gl::GLObject> object;
