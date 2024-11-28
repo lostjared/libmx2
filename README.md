@@ -90,6 +90,31 @@ Refer to the `examples` directory for sample usage scenarios. Also various subfo
 * Skeleton (Hello, World!)
 * 3D Texture Mapped Cube
 * GL Pong
+
+## How to Run the Examples
+
+The examples require the resources for each instance to be within the same directory as the executable or to pass the path of that directory to the program with the -p or --path argument.
+If you created the build directory an example to run gl_pong from build/gl_pong would be
+
+```bash
+./gl_pong -p ../../gl_pong/v4
+```
+or to run space:
+
+```bash
+./space -p ../../space
+```
+If you are using Windows and MSYS/MINGW64 its a requirement to copy the libmx.dll file into the same directory as the EXE file. From inside say the build/gl_pong directory
+
+```bash
+cp ../libmx/libmx.dll .
+```
+
+Then I would recommend running my ldd-deploy project https://github.com/lostjared/ldd-deploy/tree/main/C%2B%2B20 mingw-deploy on the EXE to copy all the rqeuired DLL Files
+
+```bash
+mingw-deploy -i gl_pong.exe -o .
+```
   
 ## Contributing
 
