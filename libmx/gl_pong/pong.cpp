@@ -212,9 +212,14 @@ public:
             return;
         }
 
-        if (position.x - radius < -1.5f || position.x + radius > 1.5f) {
+        if (position.x - radius < -1.5f) {
+            score2 ++;
             resetBall();
             return;
+        }
+        if(position.x + radius > 1.5f) {
+            score1++;
+            resetBall();
         }
     }
 
