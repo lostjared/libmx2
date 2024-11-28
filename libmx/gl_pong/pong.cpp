@@ -340,9 +340,33 @@ public:
         shaderProgram.useProgram();
         glBindVertexArray(VAO);
     }
-    
-    void event(gl::GLWindow *win, SDL_Event &e) override {
         
+    void event(gl::GLWindow *win, SDL_Event &e) override {
+        switch (e.type) {
+            case SDL_MOUSEMOTION: {
+                int mouseY = e.motion.y;
+                float normalizedY = (mouseY / (float)win->h) * 2.0f - 1.0f; 
+                paddle1.position.y = -normalizedY; 
+                clampPaddle(paddle1);
+                break;
+            }
+            case SDL_FINGERMOTION: {
+                float touchY = e.tfinger.y; 
+                float normalizedY = touchY * 2.0f - 1.0f; 
+                paddle1.position.y = -normalizedY; 
+                clampPaddle(paddle1);
+                break;
+            }
+        }
+    }
+
+    void clampPaddle(Paddle &paddle) {
+        float halfPaddleHeight = paddle.size.y / 2.0f;
+        if (paddle.position.y + halfPaddleHeight > 1.0f) {
+            paddle.position.y = 1.0f - halfPaddleHeight;
+        } else if (paddle.position.y - halfPaddleHeight < -1.0f) {
+            paddle.position.y = -1.0f + halfPaddleHeight;
+        }
     }
     
     void update(float deltaTime) {
