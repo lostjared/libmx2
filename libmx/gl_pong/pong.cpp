@@ -480,15 +480,6 @@ public:
         glBindVertexArray(0);
         glDeleteBuffers(1, &VBO);
         glDeleteVertexArrays(1, &VAO);
-#ifndef __EMSCRIPTEN__
-        const int frameDelay = 1000 / 60;
-        Uint32 frameStart = SDL_GetTicks();
-        int frameTime = SDL_GetTicks() - frameStart;
-        
-        if (frameDelay > frameTime) {
-            SDL_Delay(frameDelay - frameTime);
-        }
-#endif
     }
 };
 
@@ -513,6 +504,7 @@ public:
         glViewport(0, 0, w, h);
         object->draw(this);
         swap();
+        delay();
     }
 private:
 };
