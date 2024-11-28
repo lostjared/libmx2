@@ -344,7 +344,7 @@ public:
     GLuint createTextTexture(const std::string &text, TTF_Font *font, SDL_Color color, int &textWidth, int &textHeight) {
         SDL_Surface *surface = TTF_RenderText_Blended(font, text.c_str(), color);
         if (!surface) {
-            std::cerr << "Failed to create text surface: " << TTF_GetError() << std::endl;
+            mx::system_err << "Failed to create text surface: " << TTF_GetError() << std::endl;
             return 0;
         }
 
@@ -356,7 +356,7 @@ public:
         if (surface->format->format != SDL_PIXELFORMAT_RGBA32) {
             SDL_Surface *converted = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_RGBA32, 0);
             if (!converted) {
-                std::cerr << "Failed to convert surface format: " << SDL_GetError() << std::endl;
+                mx::system_err << "Failed to convert surface format: " << SDL_GetError() << std::endl;
                 SDL_FreeSurface(surface);
                 return 0;
             }
@@ -376,7 +376,7 @@ public:
 
         GLenum error = glGetError();
         if (error != GL_NO_ERROR) {
-            std::cerr << "OpenGL Error: " << error << " while creating texture." << std::endl;
+            mx::system_err << "OpenGL Error: " << error << " while creating texture." << std::endl;
             SDL_FreeSurface(surface);
             return 0;
         }
