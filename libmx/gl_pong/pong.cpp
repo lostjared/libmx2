@@ -15,6 +15,10 @@
       if (err != GL_NO_ERROR) \
         printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 
 // Vertices with texture coordinates (Position X, Y, Z, Texture U, V)
 GLfloat vertices[] = {
@@ -166,38 +170,62 @@ public:
             velocity.y = -velocity.y;
         }
 
-        if (position.x - radius < paddle1.position.x + paddle1.size.x / 2 &&
-            position.x > paddle1.position.x &&
+        if (position.x - radius <= paddle1.position.x + paddle1.size.x / 2 &&
+            position.x + radius >= paddle1.position.x - paddle1.size.x / 2 &&
             position.y < paddle1.position.y + paddle1.size.y / 2 &&
             position.y > paddle1.position.y - paddle1.size.y / 2) {
-            position.x = paddle1.position.x + paddle1.size.x / 2 + radius;
-            velocity.x = fabs(velocity.x);
+
+            if (velocity.x > 0) { 
+                position.x = paddle1.position.x - paddle1.size.x / 2 - radius;
+                velocity.x = -fabs(velocity.x);
+            } else if (velocity.x < 0) { 
+                position.x = paddle1.position.x + paddle1.size.x / 2 + radius;
+                velocity.x = fabs(velocity.x);
+            }
+
             velocity.y += (position.y - paddle1.position.y) * 0.5f;
             paddle1.startRotation(360.0f);
         }
 
-        if (position.x + radius > paddle2.position.x - paddle2.size.x / 2 &&
-            position.x < paddle2.position.x &&
+        if (position.x + radius >= paddle2.position.x - paddle2.size.x / 2 &&
+            position.x - radius <= paddle2.position.x + paddle2.size.x / 2 &&
             position.y < paddle2.position.y + paddle2.size.y / 2 &&
             position.y > paddle2.position.y - paddle2.size.y / 2) {
-            position.x = paddle2.position.x - paddle2.size.x / 2 - radius;
-            velocity.x = -fabs(velocity.x);
+
+            if (velocity.x < 0) { 
+                position.x = paddle2.position.x + paddle2.size.x / 2 + radius;
+                velocity.x = fabs(velocity.x);
+            } else if (velocity.x > 0) { 
+                position.x = paddle2.position.x - paddle2.size.x / 2 - radius;
+                velocity.x = -fabs(velocity.x);
+            }
+
             velocity.y += (position.y - paddle2.position.y) * 0.5f;
             paddle2.startRotation(360.0f);
         }
 
         if (position.x + radius < -1.5f) {
             score2++;
-            position = glm::vec3(0.0f, 0.0f, 0.0f);
-            velocity = glm::vec3((rand() % 2 == 0 ? 0.5f : -0.5f), 0.3f, 0.0f);
+            resetBall();
         }
 
         if (position.x - radius > 1.5f) {
             score1++;
-            position = glm::vec3(0.0f, 0.0f, 0.0f);
-            velocity = glm::vec3((rand() % 2 == 0 ? 0.5f : -0.5f), 0.3f, 0.0f);
+            resetBall();
         }
     }
+
+    void resetBall() {
+        position = glm::vec3(0.0f, 0.0f, 0.0f);
+        float angle = (rand() % 120 - 60) * (M_PI / 180.0f);
+        float speed = 0.5f;
+        velocity = glm::vec3(
+            (rand() % 2 == 0 ? speed : -speed) * cos(angle),
+            speed * sin(angle),
+            0.0f
+        );
+    }
+
 
 };
 
