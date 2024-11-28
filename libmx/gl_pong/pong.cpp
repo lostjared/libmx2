@@ -480,6 +480,15 @@ public:
         glBindVertexArray(0);
         glDeleteBuffers(1, &VBO);
         glDeleteVertexArrays(1, &VAO);
+
+	const int frameDelay = 1000 / 60; 
+	Uint32 frameStart = SDL_GetTicks();
+	int frameTime = SDL_GetTicks() - frameStart;
+
+	if (frameDelay > frameTime) {
+    		SDL_Delay(frameDelay - frameTime);
+	}
+
     }
 
 
