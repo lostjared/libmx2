@@ -20,6 +20,13 @@ public:
     gl::ShaderProgram shaderProgram;
     GLuint VAO, VBO;
         
+    Intro() = default;
+    
+    virtual ~Intro() override {
+        glDeleteBuffers(1, &VBO);
+         glDeleteVertexArrays(1, &VAO);
+    }
+
     virtual void load(gl::GLWindow *win) {
         glGenVertexArrays(1, &VAO);
         glGenBuffers(1, &VBO);

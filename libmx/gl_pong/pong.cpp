@@ -109,6 +109,9 @@ public:
     : position(pos), size(sz), rotationAngle(0.0f), rotationSpeed(0.0f), isRotating(false) {
         texture = loadTexture(texturePath);
     }
+    ~Paddle() {
+        glDeleteTextures(1, &texture);
+    }
     
     void draw(gl::ShaderProgram &shader, float deltaTime) {
         if (isRotating) {
@@ -153,6 +156,10 @@ public:
         texture = loadTexture(texturePath);
     }
     
+    ~Ball() {
+        glDeleteTextures(1, &texture);
+    }
+
     void draw(gl::ShaderProgram &shader) {
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture);
@@ -273,29 +280,26 @@ public:
     paddle2(glm::vec3(0.9f, 0.0f, 0.0f), glm::vec3(0.1f, 0.4f, 0.1f), win->util.getFilePath("data/paddle_texture.png")),
     ball(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.5f, 0.3f, 0.0f), 0.05f, win->util.getFilePath("data/ball_texture.png")) {}
     
+    virtual ~PongGame() {
+         glDeleteBuffers(1, &VBO);
+         glDeleteVertexArrays(1, &VAO);
+    }
+
     void load(gl::GLWindow *win) override {
-        
-        
         font.loadFont(win->util.getFilePath("data/font.ttf"), 24);
-        
         shaderProgram.loadProgram(win->util.getFilePath("data/tri.vert"), win->util.getFilePath("data/tri.frag"));
         shaderProgram.useProgram();
-        
         textShader.loadProgram(win->util.getFilePath("data/text.vert"), win->util.getFilePath("data/text.frag"));
-        
         
         glGenVertexArrays(1, &VAO);
         glGenBuffers(1, &VBO);
         glBindVertexArray(VAO);
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
         glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-        
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
         glEnableVertexAttribArray(0);
-        
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
         glEnableVertexAttribArray(1);
-        
         glBindVertexArray(0);
         
         glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)win->w / win->h, 0.1f, 100.0f);
@@ -307,7 +311,6 @@ public:
                                      glm::vec3(0.0f, 1.0f, 0.0f));
         shaderProgram.setUniform("view", view);
         ball.resetBall();
-        
     }
     
     Uint32 lastUpdateTime = SDL_GetTicks();
@@ -323,9 +326,7 @@ public:
         paddle2.draw(shaderProgram, 15 / 1000.0f);
         ball.draw(shaderProgram);
         glBindVertexArray(0);
-        
         glDisable(GL_DEPTH_TEST);
-        
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         textShader.useProgram();
@@ -334,7 +335,6 @@ public:
         GLuint textTexture = createTextTexture("Player 1: " + std::to_string(score1) + " : Player 2: " + std::to_string(score2), font.wrapper().unwrap(), white, textWidth, textHeight);
         renderText(textTexture, textWidth, textHeight, win->w, win->h);
         glDeleteTextures(1, &textTexture);
-        
         glDisable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
         shaderProgram.useProgram();
@@ -463,9 +463,6 @@ public:
         SDL_FreeSurface(surface);
         return texture;
     }
-    
-    
-    
     
     void renderText(GLuint texture, int textWidth, int textHeight, int screenWidth, int screenHeight) {
         float x = -0.5f * (float)textWidth / screenWidth * 2.0f;

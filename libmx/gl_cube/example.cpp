@@ -127,6 +127,7 @@ public:
     virtual ~Cube() override {
         glDeleteVertexArrays(1, &VAO);
         glDeleteBuffers(1, &VBO);
+        glDeleteTextures(1, &texture);
     }
 
     std::vector<GLfloat> cubeData;
