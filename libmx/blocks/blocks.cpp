@@ -123,21 +123,129 @@ public:
             win->setObject(new Game());
             win->object->load(win);
             return;
+        } 
+        if(!isGameOver) {
+            if (e.type == SDL_FINGERDOWN || e.type == SDL_MOUSEBUTTONDOWN) {
+                touchActive = true;
+                accumulatedDeltaX = 0.0f;
+                if (e.type == SDL_FINGERDOWN) {
+                    touchStartX = e.tfinger.x;
+                    touchStartY = e.tfinger.y;
+                    lastTouchX = touchStartX;
+                } else if (e.type == SDL_MOUSEBUTTONDOWN) {
+                    int windowWidth, windowHeight;
+                    SDL_GetWindowSize(win->window, &windowWidth, &windowHeight);
+                    touchStartX = static_cast<float>(e.button.x) / windowWidth;
+                    touchStartY = static_cast<float>(e.button.y) / windowHeight;
+                    lastTouchX = touchStartX;
+                }
+            } else if (e.type == SDL_FINGERMOTION && touchActive) {
+                float currentTouchX = e.tfinger.x;
+                float deltaX = currentTouchX - lastTouchX;
+                lastTouchX = currentTouchX;
+                accumulatedDeltaX += deltaX * win->width; 
+                const float moveThreshold = 30.0f; 
+                if (accumulatedDeltaX <= -moveThreshold) {
+                    movePieceLeft();
+                    accumulatedDeltaX += moveThreshold;
+                } else if (accumulatedDeltaX >= moveThreshold) {
+                    movePieceRight();
+                    accumulatedDeltaX -= moveThreshold;
+                }
+            } else if (e.type == SDL_MOUSEMOTION && touchActive && (e.motion.state & SDL_BUTTON_LMASK)) {
+                int windowWidth, windowHeight;
+                SDL_GetWindowSize(win->window, &windowWidth, &windowHeight);
+
+                float currentTouchX = static_cast<float>(e.motion.x) / windowWidth;
+                float deltaX = currentTouchX - lastTouchX;
+                lastTouchX = currentTouchX;
+
+                accumulatedDeltaX += deltaX * windowWidth; 
+                const float moveThreshold = 10.0f; 
+
+                if (accumulatedDeltaX <= -moveThreshold) {
+                    movePieceLeft();
+                    accumulatedDeltaX += moveThreshold;
+                } else if (accumulatedDeltaX >= moveThreshold) {
+                    movePieceRight();
+                    accumulatedDeltaX -= moveThreshold;
+                }
+            } else if (e.type == SDL_FINGERUP || e.type == SDL_MOUSEBUTTONUP) {
+                    touchActive = false;
+                    float touchEndX, touchEndY;
+                    int windowWidth, windowHeight;
+                    SDL_GetWindowSize(win->window, &windowWidth, &windowHeight);
+
+                    if (e.type == SDL_FINGERUP) {
+                        touchEndX = e.tfinger.x;
+                        touchEndY = e.tfinger.y;
+                    } else if (e.type == SDL_MOUSEBUTTONUP) {
+                        touchEndX = static_cast<float>(e.button.x) / windowWidth;
+                        touchEndY = static_cast<float>(e.button.y) / windowHeight;
+                    }
+
+                    float deltaX = (touchEndX - touchStartX) * windowWidth;
+                    float deltaY = (touchEndY - touchStartY) * windowHeight;
+
+                    float absDeltaX = std::fabs(deltaX);
+                    float absDeltaY = std::fabs(deltaY);
+
+                    const float tapThreshold = 10.0f;    
+                    const float swipeThreshold = 50.0f;  
+
+                    Uint32 currentTime = SDL_GetTicks();
+
+                    if (absDeltaY > swipeThreshold && deltaY > 0) {
+                        movePieceDown();
+                        tapCount = 0; 
+                        lastTapTime = 0;
+                    } else if (absDeltaX < tapThreshold && absDeltaY < tapThreshold) {
+                        if (currentTime - lastTapTime < doubleTapThreshold) {
+                            tapCount++;
+                        } else {
+                            tapCount = 1;
+                        }
+
+                        lastTapTime = currentTime;
+
+                        if (tapCount == 2) {
+                            rotatePiece();
+                            tapCount = 0; 
+                            lastTapTime = 0;
+                        }
+                    } else {
+                        
+                        tapCount = 0;
+                        lastTapTime = 0;
+                    }        
+                }
+        } else {
+            if ((e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_RETURN) ||
+                e.type == SDL_FINGERDOWN || e.type == SDL_MOUSEBUTTONDOWN) {
+                win->setObject(new Game());
+                win->object->load(win);
+                return;
+            }
         }
     }
-
 private:
+    float touchStartX = 0.0f;
+    float touchStartY = 0.0f;
+    bool touchActive = false;
+    float lastTouchX = 0.0f;
+    float accumulatedDeltaX = 0.0f;
+    Uint32 lastTapTime = 0;
+    int tapCount = 0;
+    const Uint32 doubleTapThreshold = 300; 
     static const int rows = 21;
     static const int cols = 10;
-
-    int pieceX;
-    int pieceY;
+    int pieceX = 0;
+    int pieceY = 0;
     std::vector<std::vector<int>> grid;
     std::vector<std::vector<int>> currentPiece;
     std::vector<std::vector<int>> nextPiece;
-    bool isGameOver;
-    int score;
-
+    bool isGameOver = false;
+    int score = 0;
     Uint32 lastFallTime = 0;
     Uint32 fallInterval = 0; 
 
@@ -351,7 +459,9 @@ public:
 
     }
     
-    virtual void event(SDL_Event &e) override {}
+    virtual void event(SDL_Event &e) override {
+
+    }
 
     virtual void draw(SDL_Renderer *renderer) override {
         SDL_SetRenderTarget(renderer, tex.wrapper().unwrap());
