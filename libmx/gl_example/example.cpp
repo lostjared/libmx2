@@ -27,7 +27,7 @@ public:
          glDeleteVertexArrays(1, &VAO);
     }
 
-    virtual void load(gl::GLWindow *win) {
+    virtual void load(gl::GLWindow *win) override {
         glGenVertexArrays(1, &VAO);
         glGenBuffers(1, &VBO);
         glBindVertexArray(VAO);
@@ -44,14 +44,14 @@ public:
         shaderProgram.useProgram();
     }
 
-    virtual void draw(gl::GLWindow *win) {
+    virtual void draw(gl::GLWindow *win) override {
         shaderProgram.useProgram();
         glBindVertexArray(VAO);
         glDrawArrays(GL_TRIANGLES, 0, 3);
         glBindVertexArray(0);
     }
 
-    virtual void event(gl::GLWindow *window, SDL_Event &e) {
+    virtual void event(gl::GLWindow *window, SDL_Event &e) override {
 
     }
 };
