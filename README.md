@@ -86,7 +86,7 @@ Refer to the `examples` directory for sample usage scenarios. Also various subfo
 * space shooter
 
 ## GL Examples
-
+* Basic GL Window
 * Triangle
 * Skeleton (Hello, World!)
 * 3D Texture Mapped Cube
