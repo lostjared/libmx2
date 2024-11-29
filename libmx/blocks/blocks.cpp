@@ -27,6 +27,7 @@ public:
             if (currentTime - lastFallTime >= fallInterval) {
                 movePieceDown();
                 lastFallTime = currentTime;
+                pieceDropped = false;
             }
         }
     }
@@ -191,14 +192,15 @@ public:
                     float absDeltaY = std::fabs(deltaY);
 
                     const float tapThreshold = 10.0f;    
-                    const float swipeThreshold = 50.0f;  
+                    const float swipeThreshold = 75.0f;  
 
                     Uint32 currentTime = SDL_GetTicks();
 
-                    if (absDeltaY > swipeThreshold && deltaY > 0) {
-                        movePieceDown();
+                    if (absDeltaY > swipeThreshold && deltaY > 0 && !pieceDropped) {
+                        dropPiece();
                         tapCount = 0; 
                         lastTapTime = 0;
+                        pieceDropped = true;
                     } else if (absDeltaX < tapThreshold && absDeltaY < tapThreshold) {
                         if (currentTime - lastTapTime < doubleTapThreshold) {
                             tapCount++;
@@ -229,6 +231,7 @@ public:
         }
     }
 private:
+    bool pieceDropped = false;
     float touchStartX = 0.0f;
     float touchStartY = 0.0f;
     bool touchActive = false;
