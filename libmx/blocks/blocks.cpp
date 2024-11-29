@@ -172,8 +172,8 @@ public:
                 }
             } else if (e.type == SDL_FINGERUP || e.type == SDL_MOUSEBUTTONUP) {
                     touchActive = false;
-                    float touchEndX, touchEndY;
-                    int windowWidth, windowHeight;
+                    float touchEndX = 0.0f, touchEndY = 0.0f;
+                    int windowWidth = 0, windowHeight = 0;
                     SDL_GetWindowSize(win->window, &windowWidth, &windowHeight);
 
                     if (e.type == SDL_FINGERUP) {
