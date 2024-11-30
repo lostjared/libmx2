@@ -328,6 +328,10 @@ public:
     int score = 0;
     Uint32 lastTapTime = 0; 
     const Uint32 doubleTapThreshold = 300; 
+    float gridRotation = 0.0f;
+    float gridYRotation = 0.0f; 
+    float rotationSpeed = 50.0f; 
+    
 
     BreakoutGame() {}
     ~BreakoutGame() override {
@@ -396,7 +400,31 @@ public:
 
     void update(float deltaTime, gl::GLWindow *win) {
         const Uint8 *state = SDL_GetKeyboardState(NULL);
+
+        if (state[SDL_SCANCODE_A]) {
+            gridRotation -= rotationSpeed * deltaTime;
+        }
+        if (state[SDL_SCANCODE_S]) {
+            gridRotation += rotationSpeed * deltaTime;
+        }
+        if (state[SDL_SCANCODE_Z]) {
+            gridYRotation -= rotationSpeed * deltaTime;
+        }
+        if (state[SDL_SCANCODE_X]) {
+            gridYRotation += rotationSpeed * deltaTime;
+        }
+        if(state[SDL_SCANCODE_Q]) {
+            gridRotation = 0;
+            gridYRotation = 0;
+        }
+
+        if (gridRotation >= 360.0f) gridRotation -= 360.0f;
+        if (gridRotation <= -360.0f) gridRotation += 360.0f;
+        if (gridYRotation >= 360.0f) gridYRotation -= 360.0f;
+        if (gridYRotation <= -360.0f) gridYRotation += 360.0f;
+
         PlayerPaddle.processInput(state, deltaTime);
+
         if (state[SDL_SCANCODE_SPACE]) {
             GameBall.Stuck = false;
         }
@@ -420,6 +448,13 @@ public:
         lastTime = currentTime;
         update(deltaTime, win);
         shaderProgram.useProgram();
+
+        glm::mat4 modelView = glm::mat4(1.0f);
+        modelView = glm::rotate(modelView, glm::radians(gridRotation), glm::vec3(1.0f, 0.0f, 0.0f));
+        modelView = glm::rotate(modelView, glm::radians(gridYRotation), glm::vec3(0.0f, 1.0f, 0.0f));
+        shaderProgram.setUniform("view", modelView);
+
+
         PlayerPaddle.draw(win);
         GameBall.draw(win);
         for (auto &block : Blocks) {
