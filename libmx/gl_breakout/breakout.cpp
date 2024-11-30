@@ -74,6 +74,7 @@ public:
     GLfloat Rotation;
     GLuint VAO, VBO;
     GLuint texture;
+    bool owner = false;
     gl::ShaderProgram* shaderProgram; 
 
     GameObject(const GameObject&) = delete;
@@ -86,51 +87,46 @@ public:
     virtual ~GameObject() {
         glDeleteVertexArrays(1, &VAO);
         glDeleteBuffers(1, &VBO);
-        glDeleteTextures(1, &texture);
+        if(owner == true) {
+            glDeleteTextures(1, &texture);
+        }
     }
 
     void setShaderProgram(gl::ShaderProgram* shaderProgram) {
         this->shaderProgram = shaderProgram;
     }
 
-    virtual void load(gl::GLWindow *win) {
+    virtual void load(gl::GLWindow *win, bool gen_texture = true) {
         if (!shaderProgram) {
-            throw std::runtime_error("Shader program not set for GameObject");
+            throw mx::Exception("Shader program not set for GameObject");
         }
 
         shaderProgram->useProgram();
-
-        
         glGenVertexArrays(1, &VAO);
         glGenBuffers(1, &VBO);
-
         glBindVertexArray(VAO);
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
-
-        
         glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVertices), cubeVertices, GL_STATIC_DRAW);
-
-        
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
         glEnableVertexAttribArray(0);
-
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
         glEnableVertexAttribArray(1);
-
         glBindVertexArray(0);
 
-        
-        glGenTextures(1, &texture);
-        glBindTexture(GL_TEXTURE_2D, texture);
+        if(gen_texture) {    
+            glGenTextures(1, &texture);
+            glBindTexture(GL_TEXTURE_2D, texture);
 
-        SDL_Surface *surface = png::LoadPNG(win->util.getFilePath("data/texture.png").c_str());
-        if (!surface) {
-            throw std::runtime_error("Failed to load texture image");
+            SDL_Surface *surface = png::LoadPNG(win->util.getFilePath("data/texture.png").c_str());
+            if (!surface) {
+                throw std::runtime_error("Failed to load texture image");
+            }
+            GLenum format = (surface->format->BytesPerPixel == 4) ? GL_RGBA : GL_RGB;
+            glTexImage2D(GL_TEXTURE_2D, 0, format, surface->w, surface->h, 0, format, GL_UNSIGNED_BYTE, surface->pixels);
+            glGenerateMipmap(GL_TEXTURE_2D);
+            SDL_FreeSurface(surface);
+            owner = true;
         }
-        GLenum format = (surface->format->BytesPerPixel == 4) ? GL_RGBA : GL_RGB;
-        glTexImage2D(GL_TEXTURE_2D, 0, format, surface->w, surface->h, 0, format, GL_UNSIGNED_BYTE, surface->pixels);
-        glGenerateMipmap(GL_TEXTURE_2D);
-        SDL_FreeSurface(surface);
     }
 
     virtual void draw(gl::GLWindow *win) {
@@ -168,8 +164,8 @@ public:
 
     Paddle() : CurrentRotation(0.0f), Rotating(false), RotationSpeed(360.0f) {}
 
-    void load(gl::GLWindow *win) override {
-        GameObject::load(win);
+    void load(gl::GLWindow *win, bool gen_texture) override {
+        GameObject::load(win, true);
         Size = glm::vec3(2.0f, 0.5f, 1.0f);
     }
 
@@ -236,8 +232,8 @@ public:
 
     Ball() : Radius(0.25f), Stuck(true) {}
 
-    void load(gl::GLWindow *win) override {
-        GameObject::load(win);
+    void load(gl::GLWindow *win, bool gen_texture) override {
+        GameObject::load(win, true);
         Size = glm::vec3(Radius * 2.0f);
     }
 
@@ -270,9 +266,11 @@ public:
 
     Block() : Destroyed(false), Rotating(false), CurrentRotation(0.0f), RotationSpeed(360.0f) {}
 
-    void load(gl::GLWindow *win) override {
-        GameObject::load(win);
+    void load(gl::GLWindow *win, bool gen_texture) override {
+        GameObject::load(win, false);
         Size = glm::vec3(1.0f, 0.5f, 1.0f);
+
+
     }
 
     void startRotation() {
@@ -332,7 +330,11 @@ public:
     const Uint32 doubleTapThreshold = 300; 
 
     BreakoutGame() {}
-    ~BreakoutGame() override {}
+    ~BreakoutGame() override {
+        for(auto &t : Textures) {
+            glDeleteTextures(1, &t);
+        }
+    }
     
     void loadTextures(gl::GLWindow *win) {
         for (int i = 0; i < 4; ++i) {
@@ -371,9 +373,9 @@ public:
         shaderProgram.setUniform("view", view);
         PlayerPaddle.setShaderProgram(&shaderProgram);
         GameBall.setShaderProgram(&shaderProgram);
-        PlayerPaddle.load(win);
+        PlayerPaddle.load(win, true);
         PlayerPaddle.Position = glm::vec3(0.0f, -3.5f, 0.0f);
-        GameBall.load(win);
+        GameBall.load(win, true);
         GameBall.Position = PlayerPaddle.Position + glm::vec3(0.0f, 0.5f, 0.0f);
         GameBall.Velocity = glm::vec3(2.5f, 2.5f, 0.0f);
         Blocks.reserve(5 * 11); 
@@ -383,7 +385,7 @@ public:
                 Blocks.emplace_back(); 
                 Block& block = Blocks.back();
                 block.setShaderProgram(&shaderProgram);
-                block.load(win);
+                block.load(win, false);
                 block.Position = glm::vec3(-5.0f + j * 1.0f, 3.0f - i * 0.6f, 0.0f);
                 int randomTextureIndex = rand() % Textures.size();
                 block.texture = Textures[randomTextureIndex];
@@ -405,7 +407,6 @@ public:
         }
         doCollisions();
     }
-
     void draw(gl::GLWindow *win) override {
 #ifdef __EMSCRIPTEN__
         static Uint32 lastTime = emscripten_get_now();
