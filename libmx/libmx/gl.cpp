@@ -1,5 +1,10 @@
 #ifdef WITH_GL
 #include"gl.hpp"
+#ifdef __EMSCRIPTEN__
+#include<emscripten/emscripten.h>
+#include<emscripten/html5.h>
+#include<GLES3/gl3.h>
+#endif
 
 namespace gl {
 
@@ -30,25 +35,26 @@ namespace gl {
 	    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 #endif
         window = SDL_CreateWindow(title.c_str(),SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,width,height,SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
-
         if (!window) {
             throw std::runtime_error("Failed to create SDL window: " + std::string(SDL_GetError()));
         }
-
-        glContext = SDL_GL_CreateContext(window);
-        if (!glContext) {
-            throw std::runtime_error("Failed to create OpenGL context: " + std::string(SDL_GetError()));
-        }
 #ifdef __EMSCRIPTEN__
-        glewExperimental = GL_TRUE;
-        GLenum glewError = glewInit();
-        if (glewError != GLEW_OK) {
-            throw std::runtime_error("Failed to initialize GLEW: " + std::string((const char*)glewGetErrorString(glewError)));
-        }
-        if (SDL_GL_SetSwapInterval(1) < 0) {
-            throw std::runtime_error("Failed to set VSync: " + std::string(SDL_GetError()));
-        }
+    EmscriptenWebGLContextAttributes attrs;
+    emscripten_webgl_init_context_attributes(&attrs);
+    attrs.majorVersion = 2; // WebGL 2.0
+    attrs.minorVersion = 0;
+    EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context("#canvas", &attrs);
+    if (context <= 0) {
+        std::cerr << "Failed to create WebGL 2.0 context" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    emscripten_webgl_make_context_current(context);
 #else
+    glContext = SDL_GL_CreateContext(window);
+    if (!glContext) {
+        throw std::runtime_error("Failed to create OpenGL context: " + std::string(SDL_GetError()));
+    }
+
     if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress)) {
         SDL_GL_DeleteContext(glContext);
         SDL_DestroyWindow(window);
@@ -191,8 +197,8 @@ namespace gl {
         if(fragCompiled != 1) {
             mx::system_err << "Error on Fragment compile\n";
             mx::system_err.flush();
-            exit(EXIT_FAILURE);
             printShaderLog(fShader);
+            exit(EXIT_FAILURE);
             return 0;
         }
         GLuint vfProgram = glCreateProgram();
