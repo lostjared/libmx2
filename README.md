@@ -90,6 +90,7 @@ Refer to the `examples` directory for sample usage scenarios. Also various subfo
 * Triangle
 * Skeleton (Hello, World!)
 * 3D Texture Mapped Cube
+* 3D Texture Mapped Animated Cube
 * GL Pong
 
 ## How to Run the Examples
