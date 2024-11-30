@@ -301,14 +301,11 @@ public:
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
         glEnableVertexAttribArray(1);
         glBindVertexArray(0);
-        
-        glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)win->w / win->h, 0.1f, 100.0f);
+
+        float zoom = 4.0f; 
+        glm::mat4 projection = glm::ortho(-5.0f / zoom, 5.0f / zoom, -3.75f / zoom, 3.75f / zoom, -100.0f, 100.0f);
         shaderProgram.setUniform("projection", projection);
-        
-        glm::mat4 view = glm::lookAt(
-                                     glm::vec3(0.0f, 0.0f, 3.0f),
-                                     glm::vec3(0.0f, 0.0f, 0.0f),
-                                     glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::mat4 view = glm::mat4(1.0f); 
         shaderProgram.setUniform("view", view);
         ball.resetBall();
     }
@@ -322,6 +319,13 @@ public:
         float deltaTime = (currentTime - lastUpdateTime) / 1000.0f; // Convert to seconds
         lastUpdateTime = currentTime;
         update(deltaTime);
+
+        glm::mat4 modelView = glm::mat4(1.0f);
+        modelView = glm::rotate(modelView, glm::radians(gridRotation), glm::vec3(1.0f, 0.0f, 0.0f));
+        modelView = glm::rotate(modelView, glm::radians(gridYRotation), glm::vec3(0.0f, 1.0f, 0.0f));
+        shaderProgram.setUniform("view", modelView);
+
+
         paddle1.draw(shaderProgram, 15 / 1000.0f);
         paddle2.draw(shaderProgram, 15 / 1000.0f);
         ball.draw(shaderProgram);
@@ -369,10 +373,37 @@ public:
         }
     }
     
+    float gridRotation = 0.0f;
+    float gridYRotation = 0.0f;
+    float rotationSpeed = 50.0f;
+
     void update(float deltaTime) {
         ball.update(deltaTime, paddle1, paddle2, score1, score2);
         const Uint8 *state = SDL_GetKeyboardState(NULL);
         
+        if (state[SDL_SCANCODE_A]) {
+            gridRotation -= rotationSpeed * deltaTime;
+        }
+        if (state[SDL_SCANCODE_S]) {
+            gridRotation += rotationSpeed * deltaTime;
+        }
+        if (state[SDL_SCANCODE_Z]) {
+            gridYRotation -= rotationSpeed * deltaTime;
+        }
+        if (state[SDL_SCANCODE_X]) {
+            gridYRotation += rotationSpeed * deltaTime;
+        }
+        if(state[SDL_SCANCODE_Q]) {
+            gridRotation = 0;
+            gridYRotation = 0;
+        }
+
+        if (gridRotation >= 360.0f) gridRotation -= 360.0f;
+        if (gridRotation <= -360.0f) gridRotation += 360.0f;
+        if (gridYRotation >= 360.0f) gridYRotation -= 360.0f;
+        if (gridYRotation <= -360.0f) gridYRotation += 360.0f;
+
+
         if (state[SDL_SCANCODE_UP] && paddle1.position.y + paddle1.size.y / 2 < 1.0f) {
             paddle1.position.y += 0.02f;
         }
