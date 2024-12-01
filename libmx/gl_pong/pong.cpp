@@ -273,7 +273,9 @@ public:
     Paddle paddle1, paddle2;
     Ball ball;
     mx::Font font;
+    mx::Joystick stick;
     int score1 = 0, score2 = 0;
+    
     
     PongGame(gl::GLWindow *win)
     : paddle1(glm::vec3(-0.9f, 0.0f, 0.0f), glm::vec3(0.1f, 0.4f, 0.1f), win->util.getFilePath("data/paddle_texture.png")),
@@ -287,6 +289,9 @@ public:
 
     void load(gl::GLWindow *win) override {
         font.loadFont(win->util.getFilePath("data/font.ttf"), 24);
+        if(stick.open(0)) {
+            mx::system_out << "Joystick Initalized: " << stick.name() << "\n";
+        }
         shaderProgram.loadProgram(win->util.getFilePath("data/tri.vert"), win->util.getFilePath("data/tri.frag"));
         shaderProgram.useProgram();
         textShader.loadProgram(win->util.getFilePath("data/text.vert"), win->util.getFilePath("data/text.frag"));
@@ -380,38 +385,47 @@ public:
     void update(float deltaTime) {
         ball.update(deltaTime, paddle1, paddle2, score1, score2);
         const Uint8 *state = SDL_GetKeyboardState(NULL);
+        float speed = 0.02f; 
+        float analogSpeed = 0.05f;
+        float analogThreshold = 8000.0f;
+        float axisThreshold = analogThreshold;
+        float analogInput = stick.getAxis(1); 
         
-        if (state[SDL_SCANCODE_A]) {
+        if (state[SDL_SCANCODE_A] || stick.getAxis(3) < -axisThreshold) {
             gridRotation -= rotationSpeed * deltaTime;
         }
-        if (state[SDL_SCANCODE_S]) {
+        if (state[SDL_SCANCODE_D] || stick.getAxis(3) > axisThreshold) {
             gridRotation += rotationSpeed * deltaTime;
         }
-        if (state[SDL_SCANCODE_Z]) {
+
+        if (state[SDL_SCANCODE_S] || stick.getAxis(2) < -axisThreshold) {
             gridYRotation -= rotationSpeed * deltaTime;
         }
-        if (state[SDL_SCANCODE_X]) {
+        if (state[SDL_SCANCODE_W] || stick.getAxis(2) > axisThreshold) {
             gridYRotation += rotationSpeed * deltaTime;
         }
-        if(state[SDL_SCANCODE_Q]) {
+        if(state[SDL_SCANCODE_Q] || stick.getButton(1)) {
             gridRotation = 0;
             gridYRotation = 0;
         }
-
         if (gridRotation >= 360.0f) gridRotation -= 360.0f;
         if (gridRotation <= -360.0f) gridRotation += 360.0f;
         if (gridYRotation >= 360.0f) gridYRotation -= 360.0f;
         if (gridYRotation <= -360.0f) gridYRotation += 360.0f;
 
-
         if (state[SDL_SCANCODE_UP] && paddle1.position.y + paddle1.size.y / 2 < 1.0f) {
-            paddle1.position.y += 0.02f;
+            paddle1.position.y += speed;
         }
         if (state[SDL_SCANCODE_DOWN] && paddle1.position.y - paddle1.size.y / 2 > -1.0f) {
-            paddle1.position.y -= 0.02f;
+            paddle1.position.y -= speed;
         }
-        float paddleSpeed = 0.015f;
-        
+        if (analogInput < -analogThreshold && paddle1.position.y + paddle1.size.y / 2 < 1.0f) {
+            paddle1.position.y += analogSpeed * (std::abs(analogInput) / 32768.0f);
+        }
+        if (analogInput > analogThreshold && paddle1.position.y - paddle1.size.y / 2 > -1.0f) {
+            paddle1.position.y -= analogSpeed * (std::abs(analogInput) / 32768.0f);
+        } 
+        float paddleSpeed = 0.015f;    
         if (ball.position.y > paddle2.position.y + paddle2.size.y / 4 &&
             paddle2.position.y + paddle2.size.y / 2 < 1.0f) {
             paddle2.position.y += paddleSpeed;
