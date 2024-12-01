@@ -10,7 +10,6 @@
 #include <GLES3/gl3.h>
 #include "glm.hpp"
 #include "gtc/type_ptr.hpp"
-#include <GL/glew.h>
 #else
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
