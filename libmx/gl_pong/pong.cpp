@@ -10,6 +10,8 @@
 #include"gl.hpp"
 #include"loadpng.hpp"
 
+
+
 #define CHECK_GL_ERROR() \
 { GLenum err = glGetError(); \
 if (err != GL_NO_ERROR) \

@@ -16,6 +16,11 @@ public:
     ~Game() override {}
 
     void load(mx::mxWindow* win) override {
+
+        if(stick.open(0)) {
+            mx::system_out << "Initalized Joystick: " << stick.name() << "\n";
+        }
+
         the_font.loadFont(win->util.getFilePath("data/font.ttf"), 14);
         bg.loadTexture(win, win->util.getFilePath("data/bg.png"));
         resetGame();
@@ -100,6 +105,41 @@ public:
 
     
     void event(mx::mxWindow* win, SDL_Event& e) override {
+
+        if (!isGameOver) {
+            switch (e.type) {
+                case SDL_JOYBUTTONDOWN: 
+                    switch (e.jbutton.button) {
+                        case 0: 
+                            dropPiece();
+                            break;
+                        case 1: 
+                            rotatePiece();
+                            break;
+                        default:
+                            break;
+                    }
+                    break;
+
+                case SDL_JOYAXISMOTION: 
+                    if (e.jaxis.axis == 0) { 
+                        if (e.jaxis.value < -8000) { 
+                            movePieceLeft();
+                        } else if (e.jaxis.value > 8000) { 
+                            movePieceRight();
+                        }
+                    } else if (e.jaxis.axis == 1) { 
+                        if (e.jaxis.value > 8000) { 
+                            movePieceDown();
+                        }
+                    }
+                    break;
+
+                default:
+                    break;
+            }
+        }
+
         if (e.type == SDL_KEYDOWN && !isGameOver) {
             switch (e.key.keysym.sym) {
                 case SDLK_DOWN:
@@ -388,6 +428,7 @@ private:
 
     mx::Font the_font;
     mx::Texture bg;
+    mx::Joystick stick;
 };
 
 class Intro : public obj::Object {
