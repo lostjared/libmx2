@@ -201,7 +201,12 @@ public:
             resetRound();
         }
 
-        if ((is_game_over && e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_RETURN) || (e.type == SDL_JOYBUTTONDOWN && e.jbutton.button == 1)) {
+        if (is_game_over && e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_RETURN) {
+            is_game_over = false;
+            resetGame();
+        }
+
+        if( is_game_over && e.type == SDL_JOYBUTTONDOWN && e.jbutton.button == 1) {
             is_game_over = false;
             resetGame();
         }
