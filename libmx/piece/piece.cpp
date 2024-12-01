@@ -33,6 +33,8 @@ private:
     Uint32 waitTime2 = 1000;
     bool show_cursor = false;
     mx::Font the_font;
+    mx::Joystick stick;
+
     class TileMatrix {
     public:
         struct GameData {
@@ -239,6 +241,11 @@ Game::~Game() {
 }
 
 void Game::load(mx::mxWindow* win) {
+
+    if(stick.open(0)) {
+        mx::system_out << "Initalized Joystick: " << stick.name() << "\n";
+    }
+
     SDL_Renderer* ren = win->renderer;
     load_gfx(win);
     the_font.loadFont(win->util.getFilePath("mp_dat/font.ttf"), 14);
@@ -417,6 +424,47 @@ void Game::event(mx::mxWindow* win, SDL_Event& e) {
         }
         break;
     }
+
+    case SDL_JOYHATMOTION: 
+        if (cur_screen == 2 && e.jhat.hat == 0) {
+            switch (e.jhat.value) {
+                case SDL_HAT_LEFT:
+                    matrix.block.MoveLeft();
+                    break;
+                case SDL_HAT_RIGHT:
+                    matrix.block.MoveRight();
+                    break;
+                case SDL_HAT_DOWN:
+                    matrix.block.MoveDown();
+                    break;
+                case SDL_HAT_UP:
+                    matrix.block.color.shiftcolor(true);
+                    break;
+                case SDL_HAT_CENTERED:
+                    break;
+                default:
+                    break;
+            }
+        }
+        break;
+        case SDL_JOYBUTTONDOWN: {
+            switch(e.jbutton.button) { 
+                case 1:
+                if(cur_screen == 4 || cur_screen == 3) {
+                    cur_screen = 1;
+                }
+                break;
+                case 2:
+                if(cur_screen == 1) {
+                    if(cursor_pos == 0) {
+                        newGame();
+                    }
+                }
+                break;
+            }
+        }
+        break;
+
     case SDL_KEYDOWN:
         switch (e.key.keysym.sym) {
         case SDLK_UP:
