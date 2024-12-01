@@ -20,6 +20,9 @@ public:
     virtual void load(mx::mxWindow *win) override {
         the_font.loadFont(win->util.getFilePath("data/font.ttf"), 14);
         bg.loadTexture(win, win->util.getFilePath("data/spacelogo.png"));
+        if(stick.open(0)) {
+            mx::system_out << "Joystick initalized: " << stick.name() << "\n";
+        }
         resetGame();
     }
 
@@ -30,20 +33,30 @@ public:
 
         const Uint8 *keystate = SDL_GetKeyboardState(nullptr);
 
-        if (keystate[SDL_SCANCODE_LEFT]) player_rect.x -= 5;
-        if (keystate[SDL_SCANCODE_RIGHT]) player_rect.x += 5;
-        if (keystate[SDL_SCANCODE_UP]) player_rect.y -= 5;
-        if (keystate[SDL_SCANCODE_DOWN]) player_rect.y += 5;
+        int dx = 0; 
+        int dy = 0; 
 
+        if (keystate[SDL_SCANCODE_LEFT] || stick.getHat(0) & SDL_HAT_LEFT) dx -= 5;
+        if (keystate[SDL_SCANCODE_RIGHT] || stick.getHat(0) & SDL_HAT_RIGHT) dx += 5;
+        if (keystate[SDL_SCANCODE_UP] || stick.getHat(0) & SDL_HAT_UP) dy -= 5;
+        if (keystate[SDL_SCANCODE_DOWN] || stick.getHat(0) & SDL_HAT_DOWN) dy += 5;
+
+        
+        player_rect.x += dx;
+        player_rect.y += dy;
+
+        
         if (player_rect.x < 0) player_rect.x = 0;
         if (player_rect.x > tex_width - player_rect.w) player_rect.x = tex_width - player_rect.w;
         if (player_rect.y < 0) player_rect.y = 0;
         if (player_rect.y > tex_height - player_rect.h) player_rect.y = tex_height - player_rect.h;
 
-        if (keystate[SDL_SCANCODE_SPACE] && SDL_GetTicks() - last_shot_time > 300) {
+        
+        if ((keystate[SDL_SCANCODE_SPACE] || stick.getButton(0)) && (SDL_GetTicks() - last_shot_time > 300)) {
             projectiles.push_back({player_rect.x + player_rect.w / 2 - 4, player_rect.y - 20, 8, 16});
             last_shot_time = SDL_GetTicks();
         }
+
 
         for (auto it = projectiles.begin(); it != projectiles.end();) {
             it->y -= 10;
@@ -183,12 +196,12 @@ public:
     }
 
     virtual void event(mx::mxWindow *win, SDL_Event &e) override {
-        if (waiting_for_continue && e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_RETURN) {
+        if (waiting_for_continue && ((e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_RETURN) || (e.type == SDL_JOYBUTTONDOWN && e.jbutton.button == 1))) {
             waiting_for_continue = false;
             resetRound();
         }
 
-        if (is_game_over && e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_RETURN) {
+        if ((is_game_over && e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_RETURN) || (e.type == SDL_JOYBUTTONDOWN && e.jbutton.button == 1)) {
             is_game_over = false;
             resetGame();
         }
@@ -197,6 +210,7 @@ public:
 private:
     mx::Font the_font;
     mx::Texture bg;
+    mx::Joystick stick;
 
     SDL_Rect player_rect;
     std::vector<SDL_Rect> projectiles;
