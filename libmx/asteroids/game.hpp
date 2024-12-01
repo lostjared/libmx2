@@ -17,6 +17,9 @@ public:
     constexpr static int tex_width = 640, tex_height = 480;
 
     virtual void load(mx::mxWindow* win) override {
+        if(stick.open(0)) {
+            mx::system_out << "Initialized Joystick: " << stick.name() << "\n";
+        }
         std::srand(static_cast<unsigned>(std::time(0)));
         for (int i = 0; i < 5; ++i) {
             spawnAsteroid();
@@ -63,13 +66,13 @@ public:
             }
 
             const Uint8* state = SDL_GetKeyboardState(NULL);
-            if (state[SDL_SCANCODE_LEFT]) {
+            if (state[SDL_SCANCODE_LEFT] || stick.getHat(0) & SDL_HAT_LEFT) {
                 ship.angle -= 5;
             }
-            if (state[SDL_SCANCODE_RIGHT]) {
+            if (state[SDL_SCANCODE_RIGHT] || stick.getHat(0) & SDL_HAT_RIGHT) {
                 ship.angle += 5;
             }
-            if (state[SDL_SCANCODE_UP]) {
+            if (state[SDL_SCANCODE_UP] || stick.getHat(0) & SDL_HAT_UP) {
                 ship.speed += 0.1;
             }
 
@@ -77,6 +80,9 @@ public:
             static const Uint32 fireCooldown = 300;
             Uint32 currentTime = SDL_GetTicks();
             if (state[SDL_SCANCODE_SPACE] && currentTime - lastFireTime >= fireCooldown) {
+                fireBullet();
+                lastFireTime = currentTime;
+            } else if(stick.getButton(1) && currentTime - lastFireTime >= fireCooldown) {
                 fireBullet();
                 lastFireTime = currentTime;
             }
@@ -101,6 +107,7 @@ public:
 
 private:
     mx::Font the_font;
+    mx::Joystick stick;
     int score = 0;
     int lives = 3;
 
