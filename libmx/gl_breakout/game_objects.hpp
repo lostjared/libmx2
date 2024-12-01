@@ -176,16 +176,23 @@ public:
         Size = glm::vec3(2.0f, 0.5f, 1.0f);
     }
 
-    void processInput(const Uint8 *state, float deltaTime) {
+   void processInput(mx::Joystick &stick, const Uint8 *state, float deltaTime) {
         float speed = 5.0f;
+        float analogThreshold = 8000.0f; 
+        float analogInput = stick.getAxis(0); 
         if (state[SDL_SCANCODE_LEFT]) {
             Position.x -= speed * deltaTime;
         }
         if (state[SDL_SCANCODE_RIGHT]) {
             Position.x += speed * deltaTime;
         }
+        if (analogInput < -analogThreshold) {
+            Position.x -= speed * deltaTime * (std::abs(analogInput) / 32768.0f); 
+        }
+        if (analogInput > analogThreshold) {
+            Position.x += speed * deltaTime * (std::abs(analogInput) / 32768.0f); 
+        }
         Position.x = glm::clamp(Position.x, -5.0f, 5.0f);
-    
     }
 
     void startRotation() {

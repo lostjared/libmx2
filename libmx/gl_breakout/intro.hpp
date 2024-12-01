@@ -19,6 +19,7 @@ class Intro : public gl::GLObject {
     GLuint VAO, VBO;
     GLuint texture;
     gl::ShaderProgram shaderProgram; 
+    mx::Joystick stick;
 public:
     Intro() = default;
     virtual ~Intro() override {

@@ -22,6 +22,9 @@ void BreakoutGame::loadTextures(gl::GLWindow *win) {
 void BreakoutGame::load(gl::GLWindow *win) {
 
     font.loadFont(win->util.getFilePath("data/font.ttf"), 24);
+    if(stick.open(0)) {
+        mx::system_out << "Joystick initalized: " << stick.name() << "\n";
+    }
 
     loadTextures(win);
     if (!shaderProgram.loadProgram(win->util.getFilePath("data/tri.vert"), win->util.getFilePath("data/tri.frag"))) {
@@ -61,32 +64,33 @@ void BreakoutGame::load(gl::GLWindow *win) {
 
 void BreakoutGame::update(float deltaTime, gl::GLWindow *win) {
     const Uint8 *state = SDL_GetKeyboardState(NULL);
+    const float axisThreshold = 8000.0f; 
 
-    if (state[SDL_SCANCODE_A]) {
+    if (state[SDL_SCANCODE_A] || stick.getAxis(3) < -axisThreshold) {
         gridRotation -= rotationSpeed * deltaTime;
     }
-    if (state[SDL_SCANCODE_S]) {
+    if (state[SDL_SCANCODE_D] || stick.getAxis(3) > axisThreshold) {
         gridRotation += rotationSpeed * deltaTime;
     }
-    if (state[SDL_SCANCODE_Z]) {
+
+    if (state[SDL_SCANCODE_S] || stick.getAxis(2) < -axisThreshold) {
         gridYRotation -= rotationSpeed * deltaTime;
     }
-    if (state[SDL_SCANCODE_X]) {
+    if (state[SDL_SCANCODE_W] || stick.getAxis(2) > axisThreshold) {
         gridYRotation += rotationSpeed * deltaTime;
     }
-    if(state[SDL_SCANCODE_Q]) {
+    if(state[SDL_SCANCODE_Q] || stick.getButton(1)) {
         gridRotation = 0;
         gridYRotation = 0;
     }
-
     if (gridRotation >= 360.0f) gridRotation -= 360.0f;
     if (gridRotation <= -360.0f) gridRotation += 360.0f;
     if (gridYRotation >= 360.0f) gridYRotation -= 360.0f;
     if (gridYRotation <= -360.0f) gridYRotation += 360.0f;
 
-    PlayerPaddle.processInput(state, deltaTime);
+    PlayerPaddle.processInput(stick, state, deltaTime);
 
-    if (state[SDL_SCANCODE_SPACE]) {
+    if (state[SDL_SCANCODE_SPACE] || stick.getButton(0)) {
         GameBall.Stuck = false;
     }
     PlayerPaddle.update(deltaTime); 
