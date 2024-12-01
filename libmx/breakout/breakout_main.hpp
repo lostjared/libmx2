@@ -10,6 +10,9 @@ class Breakout {
 public:
     Breakout() : mode(2), endScore(0), score(0) {
         setup();
+        if(stick.open(0)) {
+            mx::system_out << "Initialized Joystick: " << stick.name() << "\n";
+        }
     }
 
     void setWindow(mx::mxWindow *win) {
@@ -57,10 +60,10 @@ public:
     }
 
     void handleEvent(const SDL_Event& e) {
-        if (e.type == SDL_KEYDOWN) {
-            if (mode == 1 && e.key.keysym.sym == SDLK_RETURN) {
+        if (e.type == SDL_KEYDOWN || e.type == SDL_JOYBUTTONDOWN) {
+            if (mode == 1 && (e.key.keysym.sym == SDLK_RETURN || e.jbutton.button == 1)) {
                 setup();
-            } else if (mode == 2 && e.key.keysym.sym == SDLK_RETURN) {
+            } else if (mode == 2 && (e.key.keysym.sym == SDLK_RETURN || e.jbutton.button == 2)) {
                 setup();
                 mode = 0;
                 ball.score = 0;
@@ -72,8 +75,8 @@ public:
     void processInput() {
         if (mode == 0) {
             const Uint8* keyStates = SDL_GetKeyboardState(nullptr);
-            if (keyStates[SDL_SCANCODE_LEFT]) paddle.moveLeft();
-            if (keyStates[SDL_SCANCODE_RIGHT]) paddle.moveRight();
+            if (keyStates[SDL_SCANCODE_LEFT] || stick.getHat(0) & SDL_HAT_LEFT) paddle.moveLeft();
+            if (keyStates[SDL_SCANCODE_RIGHT] || stick.getHat(0) & SDL_HAT_RIGHT) paddle.moveRight();
         }
     }
 
@@ -105,6 +108,7 @@ private:
     Paddle paddle;
     Grid grid{ 1280 / 32, (720 / 4) / 16 };
     Ball ball;
+    mx::Joystick stick;
 
     mx::Texture background, startImg , gameoverImg;
     mx::Font the_font;
