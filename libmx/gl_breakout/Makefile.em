@@ -8,7 +8,7 @@ ZLIB_LIB = $(LIBS_PATH)/zlib/lib/libz.a
 PNG_LIB = $(LIBS_PATH)/libpng/lib/libpng.a
 LIBMX_LIB = $(LIBS_PATH)/mx2/lib/libmx.a 
 PRELOAD = --preload-file data
-SOURCES = breakout.cpp
+SOURCES = breakout.cpp intro.cpp game.cpp
 OBJECTS = $(SOURCES:.cpp=.o)
 OUTPUT = Breakout.html
 
