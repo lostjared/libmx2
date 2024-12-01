@@ -104,42 +104,62 @@ public:
     }
 
     
-    void event(mx::mxWindow* win, SDL_Event& e) override {
-
-        if (!isGameOver) {
-            switch (e.type) {
-                case SDL_JOYBUTTONDOWN: 
-                    switch (e.jbutton.button) {
-                        case 0: 
-                            dropPiece();
-                            break;
-                        case 1: 
-                            rotatePiece();
-                            break;
-                        default:
-                            break;
-                    }
-                    break;
-
-                case SDL_JOYAXISMOTION: 
-                    if (e.jaxis.axis == 0) { 
-                        if (e.jaxis.value < -8000) { 
-                            movePieceLeft();
-                        } else if (e.jaxis.value > 8000) { 
-                            movePieceRight();
+        void event(mx::mxWindow* win, SDL_Event& e) override {
+            if (!isGameOver) {
+                switch (e.type) {
+                    case SDL_JOYBUTTONDOWN: 
+                        switch (e.jbutton.button) {
+                            case 0: 
+                                dropPiece();
+                                break;
+                            case 1: 
+                                rotatePiece();
+                                break;
+                            default:
+                                break;
                         }
-                    } else if (e.jaxis.axis == 1) { 
-                        if (e.jaxis.value > 8000) { 
-                            movePieceDown();
-                        }
-                    }
-                    break;
+                        break;
 
-                default:
-                    break;
+                    case SDL_JOYAXISMOTION: 
+                        if (e.jaxis.axis == 0) { 
+                            if (e.jaxis.value < -8000) { 
+                                movePieceLeft();
+                            } else if (e.jaxis.value > 8000) { 
+                                movePieceRight();
+                            }
+                        } else if (e.jaxis.axis == 1) { 
+                            if (e.jaxis.value > 8000) { 
+                                movePieceDown();
+                            }
+                        }
+                        break;
+                    case SDL_JOYHATMOTION: 
+                        if (e.jhat.hat == 0) {
+                            switch (e.jhat.value) {
+                                case SDL_HAT_LEFT:
+                                    movePieceLeft();
+                                    break;
+                                case SDL_HAT_RIGHT:
+                                    movePieceRight();
+                                    break;
+                                case SDL_HAT_DOWN:
+                                    movePieceDown();
+                                    break;
+                                case SDL_HAT_UP:
+                                    rotatePiece();
+                                    break;
+                                case SDL_HAT_CENTERED:
+                                    break;
+                                default:
+                                    break;
+                            }
+                        }
+                        break;
+                    default:
+                        break;
             }
-        }
-
+         }
+        
         if (e.type == SDL_KEYDOWN && !isGameOver) {
             switch (e.key.keysym.sym) {
                 case SDLK_DOWN:
@@ -160,7 +180,7 @@ public:
                 default:
                     break;
             }
-        } else if(e.type == SDL_KEYDOWN && isGameOver == true && e.key.keysym.sym == SDLK_RETURN) {
+        } else if((e.type == SDL_KEYDOWN && isGameOver == true && e.key.keysym.sym == SDLK_RETURN) || (isGameOver == true && e.type == SDL_JOYBUTTONDOWN && e.jbutton.button == 1)) {
             win->setObject(new Game());
             win->object->load(win);
             return;
