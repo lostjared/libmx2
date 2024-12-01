@@ -21,6 +21,14 @@ namespace mx {
         static int joysticks() {
             return SDL_NumJoysticks();
         }
+        int numButtons();
+        int numHats();
+        int numAxes();
+
+        bool getButton(int button);
+        Uint8 getHat(int hat);
+        Sint16 getAxis(int axis);
+
         mx::Wrapper<SDL_Joystick *> wrapper() const {
             if(stick)
                 return stick;

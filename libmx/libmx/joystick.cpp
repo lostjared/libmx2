@@ -58,4 +58,41 @@ namespace mx {
         return index;
     }
 
+    bool Joystick::getButton(int button) {
+        if(stick != nullptr && SDL_JoystickGetButton(stick, button))
+            return true;
+
+        return false;
+    }
+
+    Uint8 Joystick::getHat(int hat) {
+        if(stick) {
+            return SDL_JoystickGetHat(stick, hat);
+        }
+        return 0;
+    }
+
+    Sint16 Joystick::getAxis(int axis) {
+        if(stick) {
+            return SDL_JoystickGetAxis(stick, axis);
+        }
+        return 0;
+    }
+
+    int Joystick::numButtons() {
+        if(stick)
+            return SDL_JoystickNumButtons(stick);
+        return 0;
+    }
+
+    int Joystick::numHats() {
+        if(stick)
+            return SDL_JoystickNumHats(stick);
+        return 0;
+    }
+    int Joystick::numAxes() {
+        if(stick) 
+            return SDL_JoystickNumAxes(stick);
+        return 0;
+    }
 }
