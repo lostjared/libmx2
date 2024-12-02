@@ -450,24 +450,6 @@ public:
         }
     }
     
-    SDL_Surface* flipSurface(SDL_Surface* surface) {
-        SDL_LockSurface(surface);
-        Uint8* pixels = (Uint8*)surface->pixels;
-        int pitch = surface->pitch;
-        Uint8* tempRow = new Uint8[pitch];
-        for (int y = 0; y < surface->h / 2; ++y) {
-            Uint8* row1 = pixels + y * pitch;
-            Uint8* row2 = pixels + (surface->h - y - 1) * pitch;
-            memcpy(tempRow, row1, pitch);
-            memcpy(row1, row2, pitch);
-            memcpy(row2, tempRow, pitch);
-        }
-        
-        delete[] tempRow;
-        SDL_UnlockSurface(surface);
-        return surface;
-    }
-    
     GLuint createTextTexture(const std::string &text, TTF_Font *font, SDL_Color color, int &textWidth, int &textHeight) {
         SDL_Surface *surface = TTF_RenderText_Blended(font, text.c_str(), color);
         if (!surface) {
@@ -475,7 +457,7 @@ public:
             return 0;
         }
         
-        surface = flipSurface(surface);
+        surface = mx::Texture::flipSurface(surface);
         
         textWidth = surface->w;
         textHeight = surface->h;
