@@ -4,12 +4,12 @@
 ![libmx cube](https://github.com/user-attachments/assets/68a4a55e-98a3-4bcc-9cf6-f6bf3cbb7b86)
 ![breakout-3d](https://github.com/user-attachments/assets/bd0a7d5d-fdfb-4118-aaa5-6b5975129fd5)
 
-libmx2 is a cross-platform library designed to facilitate SDL2 development using C++20.
+libmx2 is a cross-platform library that facilitates cross-platform SDL2/OpenGL development using C++20.
 It provides a collection of utilities and abstractions to streamline the creation of multimedia applications.
 
 ## Motivation
 
-The motivation for creating this library was to give me an easy way to put together new SDL2 applications 
+The motivation for creating this library was to give me an easy way to assemble new SDL2 applications 
 while using an approach I prefer, an Object Oriented Design. I have experimented with AI in some of the example projects for this library.
 
 
