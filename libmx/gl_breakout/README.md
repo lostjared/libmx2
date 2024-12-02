@@ -7,8 +7,8 @@ Controls:
 
 * Use the arrow keys to move the paddle
 * Press Space to release the ball
-* Press A and D to rotate X-Axis
-* Press W and S to rotate Y-Axis
+* Press A and D to rotate Y-Axis
+* Press W and S to rotate X-Axis
 * Press Q to restore without rotation
 
 To Run:
