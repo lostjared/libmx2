@@ -233,7 +233,7 @@ GLuint BreakoutGame::createTextTexture(const std::string &text, TTF_Font *font, 
         return 0;
     }
     
-    surface = flipSurface(surface);
+    surface = mx::Texture::flipSurface(surface);
     
     textWidth = surface->w;
     textHeight = surface->h;

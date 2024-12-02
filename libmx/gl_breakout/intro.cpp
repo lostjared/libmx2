@@ -42,7 +42,7 @@ void Intro::load(gl::GLWindow  *win) {
     if (!surface) {
         throw std::runtime_error("Failed to load texture image");
     }
-    surface = flipSurface(surface);
+    surface = mx::Texture::flipSurface(surface);
     GLenum format = (surface->format->BytesPerPixel == 4) ? GL_RGBA : GL_RGB;
 
     glTexImage2D(GL_TEXTURE_2D, 0, format, surface->w, surface->h, 0, format, GL_UNSIGNED_BYTE, surface->pixels);

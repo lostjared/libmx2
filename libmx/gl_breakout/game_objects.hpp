@@ -16,8 +16,6 @@
 #include<memory>
 #include<vector>
 
-extern SDL_Surface* flipSurface(SDL_Surface* surface);
-
 #define CHECK_GL_ERROR() \
     { GLenum err = glGetError(); \
       if (err != GL_NO_ERROR) \
