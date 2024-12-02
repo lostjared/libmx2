@@ -61,22 +61,21 @@ void BreakoutGame::load(gl::GLWindow *win) {
     }
 }
 
-
 void BreakoutGame::update(float deltaTime, gl::GLWindow *win) {
     const Uint8 *state = SDL_GetKeyboardState(NULL);
     const float axisThreshold = 8000.0f; 
 
-    if (state[SDL_SCANCODE_A] || stick.getAxis(3) < -axisThreshold) {
+    if (state[SDL_SCANCODE_W] || stick.getAxis(3) < -axisThreshold) {
         gridRotation -= rotationSpeed * deltaTime;
     }
-    if (state[SDL_SCANCODE_D] || stick.getAxis(3) > axisThreshold) {
+    if (state[SDL_SCANCODE_S] || stick.getAxis(3) > axisThreshold) {
         gridRotation += rotationSpeed * deltaTime;
     }
 
-    if (state[SDL_SCANCODE_S] || stick.getAxis(2) < -axisThreshold) {
+    if (state[SDL_SCANCODE_A] || stick.getAxis(2) < -axisThreshold) {
         gridYRotation -= rotationSpeed * deltaTime;
     }
-    if (state[SDL_SCANCODE_W] || stick.getAxis(2) > axisThreshold) {
+    if (state[SDL_SCANCODE_D] || stick.getAxis(2) > axisThreshold) {
         gridYRotation += rotationSpeed * deltaTime;
     }
     if(state[SDL_SCANCODE_Q] || stick.getButton(1)) {
