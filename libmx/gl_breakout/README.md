@@ -1,7 +1,7 @@
 # GL Breakout
 
-![image](https://github.com/user-attachments/assets/da794e88-f8dc-4d50-9d3e-f1ad1ac24ce7)
 ![image](https://github.com/user-attachments/assets/aa766888-5679-40bd-9ecb-5da8a973cd46)
+![image](https://github.com/user-attachments/assets/879c883d-4797-4c4a-b672-3fd8bb315835)
 
 Controls:
 
