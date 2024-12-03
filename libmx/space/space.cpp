@@ -194,8 +194,65 @@ public:
             update(win);
         }
     }
+    
+    SDL_Rect player_rect = {tex_width / 2 - 16, tex_height - 40, 16, 16};  
+    float ship_x = tex_width / 2.0f;  
+    float ship_y = tex_height - player_rect.h - 20;
+    float touch_start_x = 0.0f;  
+    float touch_start_y = 0.0f;
+    bool is_touch_active = false;  
 
     virtual void event(mx::mxWindow *win, SDL_Event &e) override {
+
+        switch (e.type) {
+        case SDL_FINGERDOWN:
+
+            if(waiting_for_continue) {
+                waiting_for_continue = false;
+                resetRound();
+                return;
+            }
+            if(is_game_over) {
+                is_game_over = false;
+                resetGame();
+                return;
+            }
+
+            touch_start_x = e.tfinger.x * tex_width;
+            touch_start_y = e.tfinger.y * tex_height; 
+            is_touch_active = true;
+
+            if (SDL_GetTicks() - last_shot_time > 300) {
+                projectiles.push_back({
+                    static_cast<int>(ship_x + player_rect.w / 2 - 4),
+                    static_cast<int>(ship_y - 20),
+                    8, 16
+                });
+                last_shot_time = SDL_GetTicks();
+            }
+            break;
+
+        case SDL_FINGERMOTION:
+            if (is_touch_active) {
+                float touch_current_x = e.tfinger.x * tex_width;
+                float touch_current_y = e.tfinger.y * tex_height;
+                ship_x += (touch_current_x - touch_start_x);
+                ship_y += (touch_current_y - touch_start_y);
+                touch_start_x = touch_current_x;
+                touch_start_y = touch_current_y;
+                if (ship_x < 0) ship_x = 0;
+                if (ship_x > tex_width - player_rect.w) ship_x = tex_width - player_rect.w;
+                if (ship_y < 0) ship_y = 0;
+                if (ship_y > tex_height - player_rect.h) ship_y = tex_height - player_rect.h;
+                player_rect.x = static_cast<int>(ship_x);
+                player_rect.y = static_cast<int>(ship_y);
+            }
+            break;
+        case SDL_FINGERUP:
+            is_touch_active = false;
+            break;
+        }
+
         if (waiting_for_continue && ((e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_RETURN) || (e.type == SDL_JOYBUTTONDOWN && e.jbutton.button == 1))) {
             waiting_for_continue = false;
             resetRound();
@@ -216,8 +273,6 @@ private:
     mx::Font the_font;
     mx::Texture bg;
     mx::Joystick stick;
-
-    SDL_Rect player_rect;
     std::vector<SDL_Rect> projectiles;
     std::vector<SDL_Rect> enemies;
 
