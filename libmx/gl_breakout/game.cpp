@@ -23,7 +23,7 @@ void BreakoutGame::load(gl::GLWindow *win) {
 
     font.loadFont(win->util.getFilePath("data/font.ttf"), 24);
     if(stick.open(0)) {
-        mx::system_out << "Joystick initalized: " << stick.name() << "\n";
+        mx::system_out << "Controller initalized: " << stick.name() << "\n";
     }
 
     loadTextures(win);
@@ -65,23 +65,24 @@ void BreakoutGame::update(float deltaTime, gl::GLWindow *win) {
     const Uint8 *state = SDL_GetKeyboardState(NULL);
     const float axisThreshold = 8000.0f; 
 
-    if (state[SDL_SCANCODE_W] || stick.getAxis(3) < -axisThreshold) {
+    if (state[SDL_SCANCODE_W] || stick.getAxis(SDL_CONTROLLER_AXIS_RIGHTY) < -axisThreshold) {
         gridRotation -= rotationSpeed * deltaTime;
     }
-    if (state[SDL_SCANCODE_S] || stick.getAxis(3) > axisThreshold) {
+    if (state[SDL_SCANCODE_S] || stick.getAxis(SDL_CONTROLLER_AXIS_RIGHTY) > axisThreshold) {
         gridRotation += rotationSpeed * deltaTime;
     }
 
-    if (state[SDL_SCANCODE_A] || stick.getAxis(2) < -axisThreshold) {
+    if (state[SDL_SCANCODE_A] || stick.getAxis(SDL_CONTROLLER_AXIS_RIGHTX) < -axisThreshold) {
         gridYRotation -= rotationSpeed * deltaTime;
     }
-    if (state[SDL_SCANCODE_D] || stick.getAxis(2) > axisThreshold) {
+    if (state[SDL_SCANCODE_D] || stick.getAxis(SDL_CONTROLLER_AXIS_RIGHTX) > axisThreshold) {
         gridYRotation += rotationSpeed * deltaTime;
     }
-    if(state[SDL_SCANCODE_Q] || stick.getButton(1)) {
+    if (state[SDL_SCANCODE_Q] || stick.getButton(SDL_CONTROLLER_BUTTON_A)) {
         gridRotation = 0;
         gridYRotation = 0;
     }
+
     if (gridRotation >= 360.0f) gridRotation -= 360.0f;
     if (gridRotation <= -360.0f) gridRotation += 360.0f;
     if (gridYRotation >= 360.0f) gridYRotation -= 360.0f;
@@ -89,7 +90,7 @@ void BreakoutGame::update(float deltaTime, gl::GLWindow *win) {
 
     PlayerPaddle.processInput(stick, state, deltaTime);
 
-    if (state[SDL_SCANCODE_SPACE] || stick.getButton(0)) {
+    if (state[SDL_SCANCODE_SPACE] || stick.getButton(SDL_CONTROLLER_BUTTON_B)) {
         GameBall.Stuck = false;
     }
     PlayerPaddle.update(deltaTime); 
@@ -208,6 +209,11 @@ bool BreakoutGame::checkCollision(Ball &ball, GameObject &object) {
 }
 
 void BreakoutGame::event(gl::GLWindow *win, SDL_Event &e)  {
+    
+    if(stick.connectEvent(e)) {
+        mx::system_out << "Controller " << stick.name() <<"\n";
+    }
+    
     if (e.type == SDL_FINGERDOWN) {
         Uint32 currentTapTime = SDL_GetTicks(); 
 
@@ -223,6 +229,8 @@ void BreakoutGame::event(gl::GLWindow *win, SDL_Event &e)  {
         float gameX = (normalizedX * 10.0f) - 5.0f;
         PlayerPaddle.handleTouch(gameX);
     }
+
+
 }
 
 GLuint BreakoutGame::createTextTexture(const std::string &text, TTF_Font *font, SDL_Color color, int &textWidth, int &textHeight) {

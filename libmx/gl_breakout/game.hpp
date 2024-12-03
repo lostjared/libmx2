@@ -36,7 +36,7 @@ public:
     GLuint createTextTexture(const std::string &text, TTF_Font *font, SDL_Color color, int &textWidth, int &textHeight);
     void renderText(GLuint texture, int textWidth, int textHeight, int screenWidth, int screenHeight);
 private:
-    mx::Joystick stick;
+    mx::Controller stick;
 };
 
 

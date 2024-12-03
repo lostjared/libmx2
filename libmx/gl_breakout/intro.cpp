@@ -3,8 +3,6 @@
 
 void Intro::load(gl::GLWindow  *win) {
 
-    stick.open(0);
-
     if (!shaderProgram.loadProgram(win->util.getFilePath("data/tri.vert"), win->util.getFilePath("data/tri.frag"))) {
         throw mx::Exception("Failed to load shader program");
     }
@@ -76,14 +74,20 @@ void Intro::draw(gl::GLWindow *win) {
     glDrawArrays(GL_TRIANGLES, 0, 36);
     glBindVertexArray(0);
 
-    if(stick.getButton(0)) {
+    if(stick.getButton(SDL_CONTROLLER_BUTTON_A)) {
         win->setObject(new BreakoutGame());
         win->object->load(win);
         return;
     }
+
 }
 
 void Intro::event(gl::GLWindow *win, SDL_Event &e) {
+
+    if(stick.connectEvent(e)) {
+        mx::system_out << "Connected.\n";
+    }
+
     if((e.type == SDL_MOUSEBUTTONDOWN && e.button.button == 1) || (e.type == SDL_FINGERDOWN) || (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_RETURN)) {
         win->setObject(new BreakoutGame());
         win->object->load(win);
