@@ -38,6 +38,32 @@ namespace mx {
         SDL_Joystick *stick = nullptr;
         int index = -1;
     };
+
+    class Controller {
+    public:
+        Controller();
+        ~Controller();
+        bool open(int index);
+        std::string name() const;
+        void close();
+        std::optional<SDL_GameController*> handle();
+        SDL_GameController *unwrap() const;
+        int controllerIndex() const;
+        static int joysticks() {
+            return SDL_NumJoysticks();
+        }
+        bool getButton(SDL_GameControllerButton button);
+        Uint8 getHat(int hat);
+        Sint16 getAxis(SDL_GameControllerAxis axis);
+        mx::Wrapper<SDL_GameController *> wrapper() const {
+            if(stick)
+                return stick;
+            return std::nullopt;
+        }
+    protected:
+        SDL_GameController *stick = nullptr;
+        int index = -1;
+    };
 }
 
 #endif

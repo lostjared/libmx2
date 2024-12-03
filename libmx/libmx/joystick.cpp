@@ -95,4 +95,81 @@ namespace mx {
             return SDL_JoystickNumAxes(stick);
         return 0;
     }
+
+    Controller::Controller() : stick{nullptr}, index{-1} {}
+     
+    Controller::~Controller() {
+        close();
+    }
+    
+    bool Controller::open(int index) {
+        stick = SDL_GameControllerOpen(index);
+        if(!stick) {
+            this->index = -1;
+            stick = nullptr;
+            return false;
+        }
+        this->index = index;
+        SDL_GameControllerEventState(SDL_ENABLE);
+        return true;
+    }
+    
+    std::string Controller::name() const {
+        if(stick) {
+            return SDL_GameControllerName(stick);
+        }
+        return "Controller Not Opened.\n";
+    }
+    
+    void Controller::close() {
+        if(stick)
+            SDL_GameControllerClose(stick);
+        
+        stick = nullptr;
+        index = -1;
+    }
+    
+    std::optional<SDL_GameController *> Controller::handle() {
+        if(stick)
+            return stick; 
+
+        return std::nullopt;
+    }
+
+    SDL_GameController *Controller::unwrap() const {    
+        if(stick) {
+            return stick;
+        }
+        mx::system_err << "mx: panic Invalid Controller.\n";
+        mx::system_err.flush();
+        exit(EXIT_FAILURE);
+        return 0;
+    }
+
+    int Controller::controllerIndex() const {
+        return index;
+    }
+
+    bool Controller::getButton(SDL_GameControllerButton button) {
+        if(stick != nullptr && SDL_GameControllerGetButton(stick, button))
+            return true;
+
+        return false;
+    }
+    Uint8 Controller::getHat(int hat) {
+        if (stick) {
+            SDL_Joystick *joystick = SDL_GameControllerGetJoystick(stick);
+            if (joystick) {
+                return SDL_JoystickGetHat(joystick, hat);
+            }
+        }
+        return 0;
+    }
+
+    Sint16 Controller::getAxis(SDL_GameControllerAxis axis) {
+        if(stick) {
+            return SDL_GameControllerGetAxis(stick, axis);
+        }
+        return 0;
+    }
 }
