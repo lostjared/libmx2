@@ -39,6 +39,7 @@ namespace mx {
         int width = 0, height = 0;
         void setObject(obj::Object *o);
         SDL_Window *window = nullptr;
+        void setWindowTitle(const std::string &title);
     protected:
         void create_window(const std::string &name, int w, int h, bool full); 
         bool active = false; 

@@ -72,6 +72,10 @@ namespace gl {
         }
     }
 
+    void GLWindow::setWindowTitle(const std::string &title) {
+        SDL_SetWindowTitle(window, title.c_str());
+    }
+
     void GLWindow::setObject(gl::GLObject *o) {
         object.reset(o);
     }

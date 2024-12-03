@@ -44,6 +44,7 @@ namespace mx {
         Controller();
         ~Controller();
         bool open(int index);
+        bool connectEvent(SDL_Event &e);
         std::string name() const;
         void close();
         std::optional<SDL_GameController*> handle();
@@ -60,6 +61,7 @@ namespace mx {
                 return stick;
             return std::nullopt;
         }
+        bool active() const { if(index >= 0 && stick != nullptr) return true; return false; }
     protected:
         SDL_GameController *stick = nullptr;
         int index = -1;

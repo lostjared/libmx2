@@ -98,4 +98,8 @@ namespace mx {
         SDL_FreeSurface(ico);
     }
 
+    void mxWindow::setWindowTitle(const std::string &title) {
+        SDL_SetWindowTitle(window, title.c_str());
+    }
+
 }

@@ -172,4 +172,22 @@ namespace mx {
         }
         return 0;
     }
+
+    bool Controller::connectEvent(SDL_Event &e) {
+       if (e.type == SDL_CONTROLLERDEVICEADDED) {
+            mx::system_out << "Controller attached for Player " << e.cdevice.which << "\n";
+            if (open(e.cdevice.which)) {
+                mx::system_out << "Connected Controller " << name() << "\n";
+            } else {
+                mx::system_out << "Failed to open controller: " << SDL_GetError() << ".\n";
+            }
+            return true;
+        }
+        if (e.type == SDL_CONTROLLERDEVICEREMOVED) {
+            mx::system_out << "Controller disconnected.\n";
+            close();
+            return true;
+        }
+        return false;
+    }
 }

@@ -37,7 +37,7 @@ namespace gl {
         void loop();
         void delay();
         void setPath(const std::string &path) { util.path = path; }
-
+        void setWindowTitle(const std::string &title);
         std::unique_ptr<gl::GLObject> object;
         mx::mxUtil util;
         int w = 0, h = 0;
