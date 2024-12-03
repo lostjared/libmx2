@@ -275,7 +275,7 @@ public:
     Paddle paddle1, paddle2;
     Ball ball;
     mx::Font font;
-    mx::Joystick stick;
+    mx::Controller stick;
     int score1 = 0, score2 = 0;
     
     
@@ -291,9 +291,6 @@ public:
 
     void load(gl::GLWindow *win) override {
         font.loadFont(win->util.getFilePath("data/font.ttf"), 24);
-        if(stick.open(0)) {
-            mx::system_out << "Joystick Initalized: " << stick.name() << "\n";
-        }
         shaderProgram.loadProgram(win->util.getFilePath("data/tri.vert"), win->util.getFilePath("data/tri.frag"));
         shaderProgram.useProgram();
         textShader.loadProgram(win->util.getFilePath("data/text.vert"), win->util.getFilePath("data/text.frag"));
@@ -353,6 +350,11 @@ public:
     }
         
     void event(gl::GLWindow *win, SDL_Event &e) override {
+
+        if(stick.connectEvent(e)) {
+            mx::system_out << "Controller Event\n";
+        }
+
         switch (e.type) {
             case SDL_MOUSEMOTION: {
                 int mouseY = e.motion.y;
@@ -391,22 +393,22 @@ public:
         float analogSpeed = 0.05f;
         float analogThreshold = 8000.0f;
         float axisThreshold = analogThreshold;
-        float analogInput = stick.getAxis(1); 
+        float analogInput = stick.getAxis(SDL_CONTROLLER_AXIS_LEFTY); 
         
-        if (state[SDL_SCANCODE_A] || stick.getAxis(3) < -axisThreshold) {
+        if (state[SDL_SCANCODE_A] || stick.getAxis(SDL_CONTROLLER_AXIS_RIGHTY) < -axisThreshold) {
             gridRotation -= rotationSpeed * deltaTime;
         }
-        if (state[SDL_SCANCODE_D] || stick.getAxis(3) > axisThreshold) {
+        if (state[SDL_SCANCODE_D] || stick.getAxis(SDL_CONTROLLER_AXIS_RIGHTY) > axisThreshold) {
             gridRotation += rotationSpeed * deltaTime;
         }
 
-        if (state[SDL_SCANCODE_S] || stick.getAxis(2) < -axisThreshold) {
+        if (state[SDL_SCANCODE_S] || stick.getAxis(SDL_CONTROLLER_AXIS_RIGHTX) < -axisThreshold) {
             gridYRotation -= rotationSpeed * deltaTime;
         }
-        if (state[SDL_SCANCODE_W] || stick.getAxis(2) > axisThreshold) {
+        if (state[SDL_SCANCODE_W] || stick.getAxis(SDL_CONTROLLER_AXIS_RIGHTX) > axisThreshold) {
             gridYRotation += rotationSpeed * deltaTime;
         }
-        if(state[SDL_SCANCODE_Q] || stick.getButton(1)) {
+        if(state[SDL_SCANCODE_Q] || stick.getButton(SDL_CONTROLLER_BUTTON_A)) {
             gridRotation = 0;
             gridYRotation = 0;
         }
