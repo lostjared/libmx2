@@ -12,11 +12,7 @@ public:
     ~Intro() override {}
 
     virtual void load(mx::mxWindow *win) override {
-        if (controller.open(0)) {
-            mx::system_out << "Controller opened: " << controller.name() << "\n";
-        } else {
-            mx::system_out << "Failed to open controller: " << SDL_GetError() << ".\n";
-        }
+        
     }
 
     virtual void draw(mx::mxWindow *win) override {
