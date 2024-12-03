@@ -20,39 +20,27 @@ public:
     virtual void load(mx::mxWindow *win) override {
         the_font.loadFont(win->util.getFilePath("data/font.ttf"), 14);
         bg.loadTexture(win, win->util.getFilePath("data/spacelogo.png"));
-        if(stick.open(0)) {
-            mx::system_out << "Joystick initalized: " << stick.name() << "\n";
-        }
         resetGame();
     }
 
     void update(mx::mxWindow *win) {
         if (waiting_for_continue || is_game_over) return;
-
         updateExplosions();
-
         const Uint8 *keystate = SDL_GetKeyboardState(nullptr);
-
         int dx = 0; 
         int dy = 0; 
-
-        if (keystate[SDL_SCANCODE_LEFT] || stick.getHat(0) & SDL_HAT_LEFT) dx -= 5;
-        if (keystate[SDL_SCANCODE_RIGHT] || stick.getHat(0) & SDL_HAT_RIGHT) dx += 5;
-        if (keystate[SDL_SCANCODE_UP] || stick.getHat(0) & SDL_HAT_UP) dy -= 5;
-        if (keystate[SDL_SCANCODE_DOWN] || stick.getHat(0) & SDL_HAT_DOWN) dy += 5;
-
-        
+        static const int AXIS_THRESHOLD = 8000; 
+        if (keystate[SDL_SCANCODE_LEFT] || stick.getAxis(SDL_CONTROLLER_AXIS_LEFTX) < -AXIS_THRESHOLD) dx -= 5;
+        if (keystate[SDL_SCANCODE_RIGHT] || stick.getAxis(SDL_CONTROLLER_AXIS_LEFTX) > AXIS_THRESHOLD) dx += 5;
+        if (keystate[SDL_SCANCODE_UP] || stick.getAxis(SDL_CONTROLLER_AXIS_LEFTY) < -AXIS_THRESHOLD) dy -= 5;
+        if (keystate[SDL_SCANCODE_DOWN] || stick.getAxis(SDL_CONTROLLER_AXIS_LEFTY) > AXIS_THRESHOLD) dy += 5;
         player_rect.x += dx;
         player_rect.y += dy;
-
-        
         if (player_rect.x < 0) player_rect.x = 0;
         if (player_rect.x > tex_width - player_rect.w) player_rect.x = tex_width - player_rect.w;
         if (player_rect.y < 0) player_rect.y = 0;
         if (player_rect.y > tex_height - player_rect.h) player_rect.y = tex_height - player_rect.h;
-
-        
-        if ((keystate[SDL_SCANCODE_SPACE] || stick.getButton(0)) && (SDL_GetTicks() - last_shot_time > 300)) {
+        if ((keystate[SDL_SCANCODE_SPACE] || stick.getButton(SDL_CONTROLLER_BUTTON_A)) && (SDL_GetTicks() - last_shot_time > 300)) {
             projectiles.push_back({player_rect.x + player_rect.w / 2 - 4, player_rect.y - 20, 8, 16});
             last_shot_time = SDL_GetTicks();
         }
@@ -203,7 +191,9 @@ public:
     bool is_touch_active = false;  
 
     virtual void event(mx::mxWindow *win, SDL_Event &e) override {
-
+        if(stick.connectEvent(e)) {
+            mx::system_out << "Controller Event\n";
+        }
         switch (e.type) {
         case SDL_FINGERDOWN:
 
@@ -239,8 +229,7 @@ public:
                 ship_x += (touch_current_x - touch_start_x);
                 ship_y += (touch_current_y - touch_start_y);
                 touch_start_x = touch_current_x;
-                touch_start_y = touch_current_y;
-                if (ship_x < 0) ship_x = 0;
+                touch_start_y = touch_current_y;                if (ship_x < 0) ship_x = 0;
                 if (ship_x > tex_width - player_rect.w) ship_x = tex_width - player_rect.w;
                 if (ship_y < 0) ship_y = 0;
                 if (ship_y > tex_height - player_rect.h) ship_y = tex_height - player_rect.h;
@@ -272,7 +261,7 @@ public:
 private:
     mx::Font the_font;
     mx::Texture bg;
-    mx::Joystick stick;
+    mx::Controller stick;
     std::vector<SDL_Rect> projectiles;
     std::vector<SDL_Rect> enemies;
 
