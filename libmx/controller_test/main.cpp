@@ -1,8 +1,10 @@
 #include"mx.hpp"
 #include<algorithm>
-
-#include <unordered_map>
-#include <chrono>
+#include<unordered_map>
+#include<chrono>
+#ifdef __EMSCRIPTEN__
+#include <emscripten/emscripten.h>
+#endif
 
 class Intro : public obj::Object {
 public:
@@ -13,7 +15,7 @@ public:
         if (controller.open(0)) {
             mx::system_out << "Controller opened: " << controller.name() << "\n";
         } else {
-            mx::system_out << "Failed to open controller.\n";
+            mx::system_out << "Failed to open controller: " << SDL_GetError() << ".\n";
         }
     }
 
@@ -34,6 +36,20 @@ public:
 
     virtual void event(mx::mxWindow *win, SDL_Event &e) override {
         auto now = std::chrono::steady_clock::now();
+
+        if (e.type == SDL_CONTROLLERDEVICEADDED) {
+            mx::system_out << "Controller connected: " << e.cdevice.which << "\n";
+            if (controller.open(e.cdevice.which)) {
+                mx::system_out << "Controller opened: " << controller.name() << "\n";
+            } else {
+                mx::system_out << "Failed to open controller: " << SDL_GetError() << ".\n";
+            }
+        }
+
+        if (e.type == SDL_CONTROLLERDEVICEREMOVED) {
+            mx::system_out << "Controller disconnected.\n";
+            controller.close();
+        }
 
         if (e.type == SDL_CONTROLLERBUTTONDOWN) {
             buttonState[e.cbutton.button] = now; 
@@ -95,7 +111,19 @@ public:
     }
 };
 
+
+MainWindow *main_w = nullptr;
+
+void eventProc() {
+    main_w->proc();
+}
+
 int main(int argc, char **argv) {
+#ifdef __EMSCRIPTEN__
+    MainWindow main_window;
+    main_w =&main_window;
+    emscripten_set_main_loop(eventProc, 0, 1);
+#else
     try {
         MainWindow main_window;
         main_window.loop();
@@ -105,5 +133,7 @@ int main(int argc, char **argv) {
         mx::system_err.flush();
         exit(EXIT_FAILURE);
     }
+#endif
+
     return 0;
 }
