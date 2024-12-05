@@ -1,10 +1,10 @@
 option(BUILD_STATIC_LIB "Build libmx2 as a static library" OFF)
 
 if(BUILD_STATIC_LIB)
-    add_library(mx STATIC mx.cpp util.cpp loadpng.cpp font.cpp cfg.cpp texture.cpp exception.cpp joystick.cpp jpeg.cpp gl.cpp src/glad.c)
+    add_library(mx STATIC mx.cpp util.cpp loadpng.cpp font.cpp cfg.cpp texture.cpp exception.cpp joystick.cpp jpeg.cpp gl.cpp input.cpp src/glad.c)
     message(STATUS "Building libmx2 as a static library.")
 else()
-    add_library(mx SHARED mx.cpp util.cpp loadpng.cpp font.cpp cfg.cpp texture.cpp exception.cpp joystick.cpp jpeg.cpp gl.cpp src/glad.c)
+    add_library(mx SHARED mx.cpp util.cpp loadpng.cpp font.cpp cfg.cpp texture.cpp exception.cpp joystick.cpp jpeg.cpp gl.cpp input.cpp src/glad.c)
     message(STATUS "Building libmx2 as a shared library.")
 endif()
 

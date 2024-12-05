@@ -14,6 +14,7 @@
 #include"joystick.hpp"
 #include"wrapper.hpp"
 #include"loadpng.hpp"
+#include"input.hpp"
 #include<memory>
 
 namespace mx {
