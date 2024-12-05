@@ -92,6 +92,7 @@ Refer to the `examples` directory for sample usage scenarios. Also various subfo
 * 3D Texture Mapped Cube
 * 3D Texture Mapped Animated Cube
 * GL Pong
+* 3D Breakout
 
 ## How to Run the Examples
 
