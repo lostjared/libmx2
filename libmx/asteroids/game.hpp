@@ -93,8 +93,7 @@ public:
                     star.y -= tex_height;
                     star.x = static_cast<float>(std::rand() % tex_width);
                 }
-            }
-            
+            }  
         }
         return false;
     }

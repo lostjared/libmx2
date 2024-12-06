@@ -10,9 +10,6 @@ class Breakout {
 public:
     Breakout() : mode(2), endScore(0), score(0) {
         setup();
-        if(stick.open(0)) {
-            mx::system_out << "Initialized Joystick: " << stick.name() << "\n";
-        }
     }
 
     void setWindow(mx::mxWindow *win) {
