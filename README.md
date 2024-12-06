@@ -121,8 +121,8 @@ mingw-deploy -i gl_pong.exe -o .
 
 ## WebAssembly Makefiles
 
-To compile the WebAssembly makefiles its a little more difficult youw will first need to create a folder for libpng16 zlib and libmx to be installed to you will need to edit the Makefile and place
-te path to this folder
+To compile the WebAssembly makefiles is a little more difficult you will first need to create a folder for libpng16 zlib and libmx to be installed to you will need to edit the Makefile and place
+the path to this folder
 
 ```
 LIBS_PATH = /home/jared/emscripten-libs
