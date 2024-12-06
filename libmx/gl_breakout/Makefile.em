@@ -1,5 +1,5 @@
 CXX = em++
-CXXFLAGS = -std=c++20 -O2 -DFOR_WASM -s USE_SDL=2 -s USE_SDL_TTF=2 
+CXXFLAGS = -std=c++20 -O2 -DFOR_WASM -DWITH_MIXER -s USE_SDL=2 -s USE_SDL_TTF=2 
 LIBS_PATH = /home/jared/emscripten-libs
 ZLIB_INCLUDE = -I$(LIBS_PATH)/zlib/include
 PNG_INCLUDE = -I$(LIBS_PATH)/libpng/include
