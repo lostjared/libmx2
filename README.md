@@ -24,7 +24,7 @@ while using an approach I prefer, an Object Oriented Design. I have experimented
 ### Prerequisites
 
 - C++20 compatible compiler (e.g., GCC 10+, Clang 10+, MSVC 2019+
-- SDL2/SDL2_ttf, libpng, zlib installed
+- SDL2/SDL2_ttf/SDL2_mixer, libpng, zlib installed
 - Optional: OpenGL/GLM includes GLAD
 
 ### Installation
@@ -66,7 +66,7 @@ Current Options:
 * -DJPEG=OFF - optionally compile in support for JPEG images with jpeglib ON or OFF
 * -DBUILD_STATIC_LIB=OFF - optionally compile library as a static library ON or OFF
 * -DOPENGL=ON optionally compile OpenGL support into the library either ON or OFF
-
+* -DMIXER=ON optionally compile audio support with SDL2_mixer
 ## Usage
 
 Include the `libmx2` headers in your project and link against the compiled library.
