@@ -152,7 +152,7 @@ make -f Makefile.em
 sudo make -f Makefile.em install
 ```
 
-then you should be able to build the projects with emscripten using
+then you should be able to build the projects with emscripten after setting the path in each Makefile.em using
 
 ```bash
 make -f Makefile.em
