@@ -18,7 +18,7 @@ while using an approach I prefer, an Object Oriented Design. I have experimented
 - **SDL2 Integration**: Simplifies the setup and management of SDL2 components.
 - **Modern C++20 Design**: Utilizes C++20 features for cleaner and more efficient code.
 - **Modular Architecture**: Offers a flexible structure to accommodate various project needs.
-- **Optional OpenGL/GLEW/GLM support**: You can compile in support for these libraries with examples
+- **Optional OpenGL/GLAD/GLM support**: You can compile in support for these libraries with examples
 ## Getting Started
 
 ### Prerequisites
