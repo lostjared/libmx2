@@ -66,7 +66,7 @@ Current Options:
 * -DJPEG=OFF - optionally compile in support for JPEG images with jpeglib ON or OFF
 * -DBUILD_STATIC_LIB=OFF - optionally compile library as a static library ON or OFF
 * -DOPENGL=ON optionally compile OpenGL support into the library either ON or OFF
-* -DMIXER=ON optionally compile audio support with SDL2_mixer
+* -DMIXER=ON optionally compile audio support with SDL2_mixer either ON or OFF
 ## Usage
 
 Include the `libmx2` headers in your project and link against the compiled library.
