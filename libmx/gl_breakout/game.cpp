@@ -21,6 +21,15 @@ void BreakoutGame::loadTextures(gl::GLWindow *win) {
 
 void BreakoutGame::load(gl::GLWindow *win) {
 
+#ifdef WITH_MIXER
+    if(ping == -1)
+        ping = win->mixer.loadWav(win->util.getFilePath("data/ping.wav"));
+    if(clear == -1)
+        clear = win->mixer.loadWav(win->util.getFilePath("data/pop.wav"));
+    if(die == -1)
+        die = win->mixer.loadWav(win->util.getFilePath("data/die.wav"));
+#endif
+
     font.loadFont(win->util.getFilePath("data/font.ttf"), 24);
     if(stick.open(0)) {
         mx::system_out << "Controller initalized: " << stick.name() << "\n";
@@ -98,7 +107,7 @@ void BreakoutGame::update(float deltaTime, gl::GLWindow *win) {
     for (auto &block : Blocks) {
         block.update(deltaTime);
     }
-    doCollisions();
+    doCollisions(win);
 }
 void BreakoutGame::draw(gl::GLWindow *win) {
     bool all_gone = true;
@@ -140,7 +149,6 @@ void BreakoutGame::draw(gl::GLWindow *win) {
             block.draw(win);
         }
     }
-
     glBindVertexArray(0);
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
@@ -156,7 +164,7 @@ void BreakoutGame::draw(gl::GLWindow *win) {
     shaderProgram.useProgram();
 }
 
-void BreakoutGame::doCollisions() {
+void BreakoutGame::doCollisions(gl::GLWindow *win) {
     if (checkCollision(GameBall, PlayerPaddle)) {
         float paddleCenter = PlayerPaddle.Position.x;
         float ballCenter = GameBall.Position.x;
@@ -167,11 +175,18 @@ void BreakoutGame::doCollisions() {
         GameBall.Velocity.y = abs(GameBall.Velocity.y);
         GameBall.Position.y = PlayerPaddle.Position.y + PlayerPaddle.Size.y / 2.0f + GameBall.Radius;\
         PlayerPaddle.startRotation();
+#ifdef WITH_MIXER
+        win->mixer.playWav(ping, 0, 0);
+#endif
     }
 
     for (Block &block : Blocks) {
         if (!block.Destroyed && checkCollision(GameBall, block)) {
             block.startRotation();
+#ifdef WITH_MIXER
+            if(!win->mixer.isPlaying(clear))
+                win->mixer.playWav(clear, 0, 1);
+#endif
             score += 10;
             GameBall.Velocity.y = -GameBall.Velocity.y;
             if (GameBall.Position.y > block.Position.y) {
@@ -184,6 +199,9 @@ void BreakoutGame::doCollisions() {
 
     if (GameBall.Position.y <= -3.75f) {
         resetGame();
+#ifdef WITH_MIXER
+        win->mixer.playWav(die, 0, 2);
+#endif
     }
 }
 

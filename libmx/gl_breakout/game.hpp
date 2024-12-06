@@ -29,7 +29,7 @@ public:
     virtual void load(gl::GLWindow *win) override;
     void update(float deltaTime, gl::GLWindow *win);
     virtual void draw(gl::GLWindow *win) override;
-    void doCollisions();
+    void doCollisions(gl::GLWindow *win);
     void resetGame();
     bool checkCollision(Ball &ball, GameObject &object);
     virtual void event(gl::GLWindow *win, SDL_Event &e) override;
@@ -37,6 +37,9 @@ public:
     void renderText(GLuint texture, int textWidth, int textHeight, int screenWidth, int screenHeight);
 private:
     mx::Controller stick;
+    int ping = -1;
+    int clear = -1;
+    int die = -1;
 };
 
 

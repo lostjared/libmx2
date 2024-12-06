@@ -12,16 +12,17 @@ namespace mx {
         Mixer();
         ~Mixer();
         void init();
+        int loadWav(const std::string &filename);
         int loadMusic(const std::string &filename);
         int playMusic(int id, int value = 0);
+        int playWav(int id, int value = 0, int channel = 0);
+        bool isPlaying(int channel) const;
     private:
         bool init_ = false;
         std::vector<Mix_Music *> files;
+        std::vector<Mix_Chunk *> wav;
     };
 }
-
-
-
 
 #endif
 #endif

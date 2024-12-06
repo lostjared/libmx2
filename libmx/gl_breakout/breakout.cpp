@@ -17,6 +17,9 @@ class MainWindow : public gl::GLWindow {
 public:
     MainWindow(std::string path, int tw, int th) : gl::GLWindow("Breakout Game", tw, th) {
         setPath(path);
+#ifdef WITH_MIXER
+        mixer.init();
+#endif
         //setObject(new BreakoutGame());
         setObject(new Intro());
         object->load(this);
