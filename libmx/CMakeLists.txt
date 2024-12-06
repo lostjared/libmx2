@@ -81,6 +81,11 @@ add_subdirectory(breakout)
 add_subdirectory(frogger)
 add_subdirectory(mad)
 add_subdirectory(space)
+
+if(MIXER)
+add_subdirectory(sound_test)
+endif()
+
 if(JPEG)
 add_subdirectory(jpeg_test)
 endif()

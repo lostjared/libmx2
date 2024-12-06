@@ -28,6 +28,7 @@ namespace mx {
             if(!m) {
                 Mix_CloseAudio();
                 throw mx::Exception("Error loading music file: " + filename + ": " +std::string(Mix_GetError()));
+                exit(EXIT_FAILURE);
             }
             files.push_back(m);
             return static_cast<int>(files.size()-1);

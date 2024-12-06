@@ -70,9 +70,6 @@ namespace gl {
             mx::system_err.flush();
             exit(EXIT_FAILURE);
         }
-#ifdef WITH_MIXER
-    mixer.init();
-#endif
     }
 
     void GLWindow::setWindowTitle(const std::string &title) {

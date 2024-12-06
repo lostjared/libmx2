@@ -13,7 +13,7 @@ namespace mx {
         ~Mixer();
         void init();
         int loadMusic(const std::string &filename);
-        int playMusic(int id, int value = -1);
+        int playMusic(int id, int value = 0);
     private:
         bool init_ = false;
         std::vector<Mix_Music *> files;

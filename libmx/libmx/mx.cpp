@@ -18,9 +18,6 @@ namespace mx {
         create_window(name, w, h, full);
         text.setRenderer(renderer);
         text.setColor({255,255,255,255});
-#ifdef WITH_MIXER
-        mixer.init();
-#endif
     }
 
     void mxWindow::setObject(obj::Object *o) {
