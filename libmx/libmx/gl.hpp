@@ -15,6 +15,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glad/glad.h>
 #endif
+
 namespace gl {
 
     class GLObject;
@@ -41,6 +42,9 @@ namespace gl {
         std::unique_ptr<gl::GLObject> object;
         mx::mxUtil util;
         int w = 0, h = 0;
+#ifdef WITH_MIXER
+        mx::Mixer mixer;
+#endif
         
     private:
         SDL_GLContext glContext;

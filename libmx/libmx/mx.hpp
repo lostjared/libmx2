@@ -17,6 +17,10 @@
 #include"input.hpp"
 #include<memory>
 
+#ifdef WITH_MIXER
+#include"sound.hpp"
+#endif
+
 namespace mx {
     class mxWindow {
     public:
@@ -41,6 +45,9 @@ namespace mx {
         void setObject(obj::Object *o);
         SDL_Window *window = nullptr;
         void setWindowTitle(const std::string &title);
+#ifdef WITH_MIXER
+        Mixer mixer;
+#endif
     protected:
         void create_window(const std::string &name, int w, int h, bool full); 
         bool active = false; 
