@@ -19,6 +19,7 @@
 namespace gl {
 
     class GLObject;
+    extern std::unique_ptr<gl::GLObject> object_gl;
 
     class GLWindow {
     public:
@@ -39,7 +40,7 @@ namespace gl {
         void delay();
         void setPath(const std::string &path) { util.path = path; }
         void setWindowTitle(const std::string &title);
-        std::unique_ptr<gl::GLObject> object;
+        std::unique_ptr<gl::GLObject> &object = object_gl;
         mx::mxUtil util;
         int w = 0, h = 0;
 #ifdef WITH_MIXER

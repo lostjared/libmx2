@@ -22,8 +22,12 @@
 #endif
 
 namespace mx {
+
+    extern std::unique_ptr<obj::Object> object_ex;
+
     class mxWindow {
     public:
+        std::unique_ptr<obj::Object> &object = object_ex;
         mxWindow() = delete;
         mxWindow(const std::string &name, int w, int h, bool full = false);
         virtual ~mxWindow();
@@ -39,7 +43,6 @@ namespace mx {
         void setIcon(const std::string &icon);
         mxUtil util;
         Text text;
-        std::unique_ptr<obj::Object> object;
         SDL_Renderer *renderer = nullptr;
         int width = 0, height = 0;
         void setObject(obj::Object *o);

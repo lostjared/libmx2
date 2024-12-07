@@ -7,6 +7,7 @@
 #endif
 
 namespace gl {
+    std::unique_ptr<gl::GLObject> object_gl;
 
     GLWindow::~GLWindow() {
         
