@@ -1,8 +1,8 @@
 #ifndef __MX__H___
 #define __MX__H___
 
-#include "SDL.h"
-#include "SDL_ttf.h"
+#include"SDL.h"
+#include"SDL_ttf.h"
 #include<iostream>
 #include<string>
 #include"util.hpp"
