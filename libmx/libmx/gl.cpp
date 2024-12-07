@@ -117,7 +117,8 @@ namespace gl {
             if(e.type == SDL_QUIT || (e.type == SDL_KEYDOWN && 
 e.key.keysym.sym == SDLK_ESCAPE)) {
                 active = false;
-		return;
+                return;
+            }
 		
 
             event(e);
