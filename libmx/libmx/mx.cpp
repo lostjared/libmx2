@@ -3,8 +3,7 @@
 #include<emscripten/emscripten.h>
 #endif
 namespace mx {
-    std::unique_ptr<obj::Object> object_ex;
-
+   
     mxWindow::mxWindow(const std::string &name, int w, int h, bool full) {
         if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER | SDL_INIT_AUDIO) != 0) {
             mx::system_err << "mx: Error initalizing SDL: " << SDL_GetError() << "\n";
@@ -26,7 +25,8 @@ namespace mx {
     }
     
     mxWindow::~mxWindow() {
-        object.reset();
+        if(object)
+            object.reset();
         SDL_DestroyRenderer(renderer);
         SDL_DestroyWindow(window);
         TTF_Quit();

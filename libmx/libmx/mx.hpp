@@ -23,11 +23,9 @@
 
 namespace mx {
 
-    extern std::unique_ptr<obj::Object> object_ex;
-
     class mxWindow {
     public:
-        std::unique_ptr<obj::Object> &object = object_ex;
+        std::unique_ptr<obj::Object> object;
         mxWindow() = delete;
         mxWindow(const std::string &name, int w, int h, bool full = false);
         virtual ~mxWindow();

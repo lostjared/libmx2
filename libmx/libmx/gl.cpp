@@ -7,11 +7,11 @@
 #endif
 
 namespace gl {
-    std::unique_ptr<gl::GLObject> object_gl;
-
+   
     GLWindow::~GLWindow() {
-        
-        object.reset();
+   
+        if(object)
+            object.reset();
 
         if (glContext) {
             SDL_GL_DeleteContext(glContext);
