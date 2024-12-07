@@ -77,8 +77,7 @@ private:
 
     int pos_x = 0, pos_y = 0;
     const int square_size = 50;
-    const int movement_speed = 10;
-    const int repeat_delay = 15; 
+    const int movement_speed = 10; 
     int win_width = 640, win_height = 480;
     mx::Input controller;
     mx::Font font;

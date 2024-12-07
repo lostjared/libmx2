@@ -37,9 +37,11 @@ public:
     void renderText(GLuint texture, int textWidth, int textHeight, int screenWidth, int screenHeight);
 private:
     mx::Controller stick;
+#ifdef WITH_MIXER
     int ping = -1;
     int clear = -1;
     int die = -1;
+#endif
 };
 
 
