@@ -29,7 +29,7 @@ install(TARGETS mx
     LIBRARY DESTINATION ${INSTALL_LIB_DIR}
     INCLUDES DESTINATION ${INSTALL_INCLUDE_DIR}
 )
-install(FILES mx.hpp argz.hpp util.hpp loadpng.hpp object.hpp font.hpp cfg.hpp tee_stream.hpp texture.hpp exception.hpp joystick.hpp wrapper.hpp
+install(FILES mx.hpp gl.hpp argz.hpp util.hpp jpeg.hpp loadpng.hpp object.hpp font.hpp cfg.hpp tee_stream.hpp texture.hpp exception.hpp joystick.hpp wrapper.hpp input.hpp sound.hpp
     DESTINATION ${INSTALL_INCLUDE_DIR}
 )
 install(EXPORT libmx2Targets
