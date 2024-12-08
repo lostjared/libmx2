@@ -113,7 +113,7 @@ If you are using Windows and MSYS/MINGW64 its a requirement to copy the libmx.dl
 cp ../libmx/libmx.dll .
 ```
 
-Then I would recommend running my ldd-deploy project https://github.com/lostjared/ldd-deploy/tree/main/C%2B%2B20 mingw-deploy on the EXE to copy all the rqeuired DLL Files
+Then I would recommend running my ldd-deploy project https://github.com/lostjared/ldd-deploy/tree/main/C%2B%2B20 mingw-deploy on the EXE to copy all the required DLL Files
 
 ```bash
 mingw-deploy -i gl_pong.exe -o .
