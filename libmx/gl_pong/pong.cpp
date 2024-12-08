@@ -22,24 +22,23 @@ printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
 #endif
 
 
-// Vertices with texture coordinates (Position X, Y, Z, Texture U, V)
 GLfloat vertices[] = {
     // Front face
     -0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // Bottom-left
-    0.5f, -0.5f,  0.5f,  1.0f, 0.0f, // Bottom-right
-    0.5f,  0.5f,  0.5f,  1.0f, 1.0f, // Top-right
-    0.5f,  0.5f,  0.5f,  1.0f, 1.0f, // Top-right
+     0.5f, -0.5f,  0.5f,  1.0f, 0.0f, // Bottom-right
+     0.5f,  0.5f,  0.5f,  1.0f, 1.0f, // Top-right
+     0.5f,  0.5f,  0.5f,  1.0f, 1.0f, // Top-right
     -0.5f,  0.5f,  0.5f,  0.0f, 1.0f, // Top-left
     -0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // Bottom-left
-    
+
     // Back face
     -0.5f, -0.5f, -0.5f,  0.0f, 0.0f, // Bottom-left
     -0.5f,  0.5f, -0.5f,  0.0f, 1.0f, // Top-left
-    0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // Top-right
-    0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // Top-right
-    0.5f, -0.5f, -0.5f,  1.0f, 0.0f, // Bottom-right
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // Top-right
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // Top-right
+     0.5f, -0.5f, -0.5f,  1.0f, 0.0f, // Bottom-right
     -0.5f, -0.5f, -0.5f,  0.0f, 0.0f, // Bottom-left
-    
+
     // Left face
     -0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // Top-right
     -0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // Top-left
@@ -47,30 +46,81 @@ GLfloat vertices[] = {
     -0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // Bottom-left
     -0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // Bottom-right
     -0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // Top-right
-    
+
     // Right face
-    0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // Top-left
-    0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // Bottom-right
-    0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // Top-right
-    0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // Bottom-right
-    0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // Top-left
-    0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // Bottom-left
-    
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // Top-left
+     0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // Bottom-right
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // Top-right
+     0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // Bottom-right
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // Top-left
+     0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // Bottom-left
+
     // Bottom face
     -0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // Top-right
-    0.5f, -0.5f, -0.5f,  1.0f, 1.0f, // Top-left
-    0.5f, -0.5f,  0.5f,  1.0f, 0.0f, // Bottom-right
-    0.5f, -0.5f,  0.5f,  1.0f, 0.0f, // Bottom-right
+     0.5f, -0.5f, -0.5f,  1.0f, 1.0f, // Top-left
+     0.5f, -0.5f,  0.5f,  1.0f, 0.0f, // Bottom-right
+     0.5f, -0.5f,  0.5f,  1.0f, 0.0f, // Bottom-right
     -0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // Bottom-left
     -0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // Top-right
-    
+
     // Top face
     -0.5f,  0.5f, -0.5f,  0.0f, 1.0f, // Top-left
-    0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // Bottom-right
-    0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // Top-right
-    0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // Bottom-right
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // Bottom-right
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // Top-right
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // Bottom-right
     -0.5f,  0.5f, -0.5f,  0.0f, 1.0f, // Top-left
     -0.5f,  0.5f,  0.5f,  0.0f, 0.0f  // Bottom-left
+};
+
+
+GLfloat normals[] = {
+    // Front face
+     0.0f,  0.0f,  1.0f, // All vertices on the front face
+     0.0f,  0.0f,  1.0f,
+     0.0f,  0.0f,  1.0f,
+     0.0f,  0.0f,  1.0f,
+     0.0f,  0.0f,  1.0f,
+     0.0f,  0.0f,  1.0f,
+
+    // Back face
+     0.0f,  0.0f, -1.0f, // All vertices on the back face
+     0.0f,  0.0f, -1.0f,
+     0.0f,  0.0f, -1.0f,
+     0.0f,  0.0f, -1.0f,
+     0.0f,  0.0f, -1.0f,
+     0.0f,  0.0f, -1.0f,
+
+    // Left face
+    -1.0f,  0.0f,  0.0f, // All vertices on the left face
+    -1.0f,  0.0f,  0.0f,
+    -1.0f,  0.0f,  0.0f,
+    -1.0f,  0.0f,  0.0f,
+    -1.0f,  0.0f,  0.0f,
+    -1.0f,  0.0f,  0.0f,
+
+    // Right face
+     1.0f,  0.0f,  0.0f, // All vertices on the right face
+     1.0f,  0.0f,  0.0f,
+     1.0f,  0.0f,  0.0f,
+     1.0f,  0.0f,  0.0f,
+     1.0f,  0.0f,  0.0f,
+     1.0f,  0.0f,  0.0f,
+
+    // Bottom face
+     0.0f, -1.0f,  0.0f, // All vertices on the bottom face
+     0.0f, -1.0f,  0.0f,
+     0.0f, -1.0f,  0.0f,
+     0.0f, -1.0f,  0.0f,
+     0.0f, -1.0f,  0.0f,
+     0.0f, -1.0f,  0.0f,
+
+    // Top face
+     0.0f,  1.0f,  0.0f, // All vertices on the top face
+     0.0f,  1.0f,  0.0f,
+     0.0f,  1.0f,  0.0f,
+     0.0f,  1.0f,  0.0f,
+     0.0f,  1.0f,  0.0f,
+     0.0f,  1.0f,  0.0f
 };
 
 
@@ -271,7 +321,9 @@ private:
 class PongGame : public gl::GLObject {
 public:
     gl::ShaderProgram shaderProgram, textShader;
-    GLuint VAO, VBO;
+    GLuint VAO;
+    GLuint VBO[2]; 
+
     Paddle paddle1, paddle2;
     Ball ball;
     mx::Font font;
@@ -285,7 +337,7 @@ public:
     ball(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.5f, 0.3f, 0.0f), 0.05f, win->util.getFilePath("data/ball_texture.png")) {}
     
     virtual ~PongGame() {
-         glDeleteBuffers(1, &VBO);
+         glDeleteBuffers(2, VBO);
          glDeleteVertexArrays(1, &VAO);
     }
 
@@ -294,18 +346,22 @@ public:
         shaderProgram.loadProgram(win->util.getFilePath("data/tri.vert"), win->util.getFilePath("data/tri.frag"));
         shaderProgram.useProgram();
         textShader.loadProgram(win->util.getFilePath("data/text.vert"), win->util.getFilePath("data/text.frag"));
-        
         glGenVertexArrays(1, &VAO);
-        glGenBuffers(1, &VBO);
         glBindVertexArray(VAO);
-        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glGenBuffers(2, VBO);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
         glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (void*)0);
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+        glBindBuffer(GL_ARRAY_BUFFER, VBO[1]);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(normals), normals, GL_STATIC_DRAW);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (void*)0);
         glEnableVertexAttribArray(1);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO[0]); // same as first VBO
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (void*)(3 * sizeof(GLfloat)));
+        glEnableVertexAttribArray(2);
         glBindVertexArray(0);
-
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
         float zoom = 4.0f; 
         glm::mat4 projection = glm::ortho(-5.0f / zoom, 5.0f / zoom, -3.75f / zoom, 3.75f / zoom, -100.0f, 100.0f);
         shaderProgram.setUniform("projection", projection);
@@ -319,6 +375,7 @@ public:
     void draw(gl::GLWindow *win) override {
         shaderProgram.useProgram();
         glBindVertexArray(VAO);
+        CHECK_GL_ERROR();
         Uint32 currentTime = SDL_GetTicks();
         float deltaTime = (currentTime - lastUpdateTime) / 1000.0f; // Convert to seconds
         lastUpdateTime = currentTime;
@@ -327,11 +384,20 @@ public:
         glm::mat4 modelView = glm::mat4(1.0f);
         modelView = glm::rotate(modelView, glm::radians(gridRotation), glm::vec3(1.0f, 0.0f, 0.0f));
         modelView = glm::rotate(modelView, glm::radians(gridYRotation), glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::vec3 cameraPos(0.0f, 0.0f, 10.0f);
+        glm::vec3 lightPos(0.0f, 3.0f, 2.0f); // Positioned above and slightly forward
+        glm::vec3 viewPos = cameraPos;
+        glm::vec3 lightColor(1.5f, 1.5f, 1.5f); // Brighter white light
+
+        shaderProgram.setUniform("lightPos", lightPos);
+        shaderProgram.setUniform("viewPos", viewPos);
+        shaderProgram.setUniform("lightColor", lightColor);
         shaderProgram.setUniform("view", modelView);
-
-
+        
         paddle1.draw(shaderProgram, 15 / 1000.0f);
         paddle2.draw(shaderProgram, 15 / 1000.0f);
+
+        
         ball.draw(shaderProgram);
         glBindVertexArray(0);
         glDisable(GL_DEPTH_TEST);
@@ -477,20 +543,16 @@ public:
         
         GLuint texture;
         glGenTextures(1, &texture);
+        CHECK_GL_ERROR();
         glBindTexture(GL_TEXTURE_2D, texture);
+        CHECK_GL_ERROR();
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        
+        CHECK_GL_ERROR();
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, textWidth, textHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, surface->pixels);
-        
-        GLenum error = glGetError();
-        if (error != GL_NO_ERROR) {
-            mx::system_err << "OpenGL Error: " << error << " while creating texture." << std::endl;
-            SDL_FreeSurface(surface);
-            return 0;
-        }
+        CHECK_GL_ERROR();
         SDL_FreeSurface(surface);
         return texture;
     }
