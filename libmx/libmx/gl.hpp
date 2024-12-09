@@ -1,5 +1,10 @@
 #ifndef GL_H__
 #define GL_H__
+
+#ifdef __EMSCRIPTEN__
+#include"config.hpp"
+#endif
+
 #ifdef WITH_GL
 #include "mx.hpp"
 #include<string>
