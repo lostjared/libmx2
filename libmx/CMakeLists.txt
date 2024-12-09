@@ -24,6 +24,8 @@ option(JPEG, "Build with JPEG Support" OFF)
 option(OPENGL "Build with OpenGL Support" ON)
 option(MIXER "Build with Sound Support" ON)
 
+include_directories(${CMAKE_BINARY_DIR})
+
 if(MIXER)
 find_package(SDL2_mixer REQUIRED)
 set (MIXER_INCLUDE ${SDL2_MIXER_INCLUDE_DIRS})
@@ -31,7 +33,7 @@ set (MIXER_LIB SDL2_mixer::SDL2_mixer)
 message(STATUS "Added SDL_mixer support")
 message(STATUS "MIXER_INCLUDE: ${MIXER_INCLUDE}")
 message(STATUS "MIXER_LIB: ${MIXER_LIB}")
-add_compile_definitions(WITH_MIXER)
+#add_compile_definitions(WITH_MIXER)
 else()
 message(STATUS "SDL_mixer disabled.")
 endif()
@@ -44,7 +46,7 @@ set (GL_LIB  ${OPENGL_gl_LIBRARY})
 message (STATUS "Added OpenGL/GLM Support")
 message (STATUS "GL INCLUDE: ${GL_INCLUDE}")
 message (STATUS "GL LIB: ${GL_LIB}")
-add_compile_definitions(WITH_GL)  
+#add_compile_definitions(WITH_GL)  
 else()
 message (STATUS "OpenGL Support Disabled.")
 endif()
@@ -54,7 +56,7 @@ find_package(JPEG REQUIRED)
 message(STATUS "Added JPEG Support")
 message(STATUS "JPEG Libraries: ${JPEG_LIBRARIES}")
 message(STATUS "JPEG Include Dirs: ${JPEG_INCLUDE_DIRS}")
-add_compile_definitions(WITH_JPEG)    
+#add_compile_definitions(WITH_JPEG)    
 set(IMG_INCLUDE ${JPEG_INCLUDE_DIRS} ${ZLIB_INCLUDE_DIRS} ${PNG_INCLUDE_DIRS})
 set(IMG_LIB ${JPEG_LIBRARIES} ${PNG_LIBRARIES} ${ZLIB_LIBRARIES})
 else()
@@ -103,6 +105,31 @@ else()
 message(STATUS "Not Building Examples")
 endif()
 
+
+if(MIXER)
+set(WITH_MIXER_VAL 1)
+else()
+set(WITH_MIXER_VAL 0)
+endif()
+
+if(OPENGL)
+set(WITH_OPENGL_VAL 1)
+else()
+set(WITH_OPENGL_VAL 0)
+endif()
+
+if(JPEG)
+set(WITH_JPEG_VAL 1)
+else()
+set(WITH_JPEG_VAL 0)
+endif()
+
+configure_file(
+    ${CMAKE_SOURCE_DIR}/config.h.in
+    ${CMAKE_BINARY_DIR}/config.h
+)
+
+
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
     "${CMAKE_CURRENT_BINARY_DIR}/libmx2ConfigVersion.cmake"
@@ -121,3 +148,4 @@ install(FILES
     "${CMAKE_CURRENT_BINARY_DIR}/libmx2ConfigVersion.cmake"
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/libmx2
 )
+

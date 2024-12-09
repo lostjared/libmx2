@@ -1,5 +1,10 @@
 #ifndef __SOUND__HPP_H__
 #define __SOUND__HPP_H__
+#ifdef __EMSCRIPTEN__
+#include"config.hpp"
+#else
+#include"config.h"
+#endif
 #ifdef WITH_MIXER
 #include"SDL.h"
 #include"SDL_mixer.h"

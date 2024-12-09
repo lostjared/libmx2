@@ -1,3 +1,9 @@
+#ifdef __EMSCRIPTEN__
+#include"config.hpp"
+#else
+#include"config.h"
+#endif
+
 #ifdef WITH_JPEG
 #include <stdio.h>
 #include <jpeglib.h>

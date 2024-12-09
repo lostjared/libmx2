@@ -1,3 +1,9 @@
+#ifdef __EMSCRIPTEN__
+#include"config.hpp"
+#else
+#include"config.h"
+#endif
+
 #ifdef WITH_MIXER
 #include"sound.hpp"
 #include"mx.hpp"

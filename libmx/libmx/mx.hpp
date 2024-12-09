@@ -3,6 +3,8 @@
 
 #ifdef __EMSCRIPTEN__
 #include"config.hpp"
+#else
+#include"config.h"
 #endif
 
 #include"SDL.h"

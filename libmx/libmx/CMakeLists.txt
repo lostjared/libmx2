@@ -24,6 +24,9 @@ target_include_directories(mx PUBLIC
 )
 target_link_libraries(mx PUBLIC SDL2::SDL2 SDL2_ttf::SDL2_ttf ${IMG_LIB} ${GL_LIB} ${MIXER_LIB})
 add_library(libmx2::mx ALIAS mx)
+
+
+
 install(TARGETS mx
     EXPORT libmx2Targets
     LIBRARY DESTINATION ${INSTALL_LIB_DIR}
@@ -32,6 +35,7 @@ install(TARGETS mx
 install(FILES mx.hpp gl.hpp argz.hpp util.hpp jpeg.hpp loadpng.hpp object.hpp font.hpp cfg.hpp tee_stream.hpp texture.hpp exception.hpp joystick.hpp wrapper.hpp input.hpp sound.hpp
     DESTINATION ${INSTALL_INCLUDE_DIR}
 )
+install(FILES ${CMAKE_BINARY_DIR}/config.h DESTINATION ${INSTALL_INCLUDE_DIR})
 install(EXPORT libmx2Targets
     FILE libmx2Targets.cmake
     NAMESPACE libmx2::

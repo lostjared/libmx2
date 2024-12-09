@@ -1,5 +1,10 @@
 #ifndef __JPEG_H__
 #define __JPEG_H__
+#ifdef __EMSCRIPTEN__
+#include"config.hpp"
+#else
+#include"config.h"
+#endif
 #ifdef WITH_JPEG
 #include "SDL.h"
 namespace jpeg {
