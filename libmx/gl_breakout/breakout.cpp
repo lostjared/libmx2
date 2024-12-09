@@ -5,7 +5,6 @@
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
 #include <GLES3/gl3.h>
-#define WITH_GL
 #endif
 
 #include "gl.hpp"
