@@ -15,16 +15,18 @@
       if (err != GL_NO_ERROR) \
         printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
 
-class Pyramid : public gl::GLObject {
+class ModelViewer : public gl::GLObject {
 public:
     gl::ShaderProgram shaderProgram;
     GLuint texture;
     GLuint positionVBO, normalVBO, texCoordVBO;
     GLuint VAO;
-    mx::Model pyramid_model;
-
-    Pyramid() = default;
-    virtual ~Pyramid() override {
+    mx::Model model;
+    std::string filename;
+    ModelViewer(const std::string &filename) {
+        this->filename = filename;
+    }
+    virtual ~ModelViewer() override {
         glDeleteVertexArrays(1, &VAO);
         glDeleteBuffers(1, &positionVBO);
         glDeleteBuffers(1, &normalVBO);
@@ -32,11 +34,8 @@ public:
         glDeleteTextures(1, &texture);
     }
 
-    std::vector<GLfloat> cubeData;
-
     virtual void load(gl::GLWindow *win) override {
-
-        if(!pyramid_model.openModel(win->util.getFilePath("data/object.mxmod"))) {
+        if(!model.openModel(win->util.getFilePath(filename))) {
             mx::system_err << "Error loading model..\n";
             mx::system_err.flush();
             exit(EXIT_FAILURE);
@@ -51,7 +50,7 @@ public:
         glGenBuffers(1, &positionVBO);
         CHECK_GL_ERROR();
         glBindBuffer(GL_ARRAY_BUFFER, positionVBO);
-        glBufferData(GL_ARRAY_BUFFER,pyramid_model.vert.size() * sizeof(GLfloat),pyramid_model.vert.data(),GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER,model.vert.size() * sizeof(GLfloat),model.vert.data(),GL_STATIC_DRAW);
         CHECK_GL_ERROR();
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)0); 
         glEnableVertexAttribArray(0);
@@ -60,7 +59,7 @@ public:
         glGenBuffers(1, &normalVBO);
         CHECK_GL_ERROR();
         glBindBuffer(GL_ARRAY_BUFFER, normalVBO);
-        glBufferData(GL_ARRAY_BUFFER,pyramid_model.norm.size() * sizeof(GLfloat),pyramid_model.norm.data(),GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER,model.norm.size() * sizeof(GLfloat),model.norm.data(),GL_STATIC_DRAW);
         CHECK_GL_ERROR();
         glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)0); // Location = 1
         glEnableVertexAttribArray(1);
@@ -69,7 +68,7 @@ public:
         glGenBuffers(1, &texCoordVBO);
         CHECK_GL_ERROR();
         glBindBuffer(GL_ARRAY_BUFFER, texCoordVBO);
-        glBufferData(GL_ARRAY_BUFFER,pyramid_model.tex.size() * sizeof(GLfloat),pyramid_model.tex.data(),GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, model.tex.size() * sizeof(GLfloat),model.tex.data(),GL_STATIC_DRAW);
         CHECK_GL_ERROR();
         glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, (GLvoid*)0); // Location = 2
         glEnableVertexAttribArray(2);
@@ -164,7 +163,7 @@ public:
         shaderProgram.setUniform("lightPos", lightPos);
         shaderProgram.setUniform("viewPos", viewPos);
         shaderProgram.setUniform("lightColor", lightColor);
-        int vertexCount = static_cast<int>(pyramid_model.vert.size() / 3);
+        int vertexCount = static_cast<int>(model.vert.size() / 3);
         glDrawArrays(GL_TRIANGLES, 0, vertexCount);
         glBindVertexArray(0);
     }
@@ -176,9 +175,9 @@ private:
 
 class MainWindow : public gl::GLWindow {
 public:
-    MainWindow(std::string path, int tw, int th) : gl::GLWindow("OpenGL Example", tw, th) {
+    MainWindow(const std::string &path, const std::string &filename, int tw, int th) : gl::GLWindow("OpenGL Example", tw, th) {
         setPath(path);
-        setObject(new Pyramid());
+        setObject(new ModelViewer(filename));
 		object->load(this);
     }
     
@@ -215,11 +214,14 @@ int main(int argc, char **argv) {
           .addOptionSingleValue('p', "assets path")
           .addOptionDoubleValue('P', "path", "assets path")
           .addOptionSingleValue('r',"Resolution WidthxHeight")
-          .addOptionDoubleValue('R',"resolution", "Resolution WidthxHeight");
+          .addOptionDoubleValue('R',"resolution", "Resolution WidthxHeight")
+          .addOptionSingleValue('m',"Model file")
+          .addOptionDoubleValue('M', "model", "model file to load");
     Argument<std::string> arg;
     std::string path;
     int value = 0;
     int tw = 960, th = 720;
+    std::string model_file;
     try {
         while((value = parser.proc(arg)) != -1) {
             switch(value) {
@@ -247,6 +249,10 @@ int main(int argc, char **argv) {
                     th = atoi(right.c_str());
                 }
                 break;
+                case 'm':
+                case 'M':
+                model_file = arg.arg_value;
+                break;
             }
         }
     } catch (const ArgException<std::string>& e) {
@@ -257,7 +263,7 @@ int main(int argc, char **argv) {
         path = ".";
     }
     try {
-        MainWindow main_window(path, tw, th);
+        MainWindow main_window(path, model_file, tw, th);
         main_window.loop();
     } catch(const mx::Exception &e) {
         mx::system_err << "mx: Exception: " << e.text() << "\n";
