@@ -4,7 +4,6 @@
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 #include <GLES3/gl3.h>
-#define WITH_GL
 #endif
 
 #include"gl.hpp"
