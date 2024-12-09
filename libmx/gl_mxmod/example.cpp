@@ -23,8 +23,11 @@ public:
     GLuint VAO;
     mx::Model model;
     std::string filename;
-    ModelViewer(const std::string &filename) {
+    std::string text;
+
+    ModelViewer(const std::string &filename, const std::string &text) {
         this->filename = filename;
+        this->text = text;
     }
     virtual ~ModelViewer() override {
         glDeleteVertexArrays(1, &VAO);
@@ -35,7 +38,7 @@ public:
     }
 
     virtual void load(gl::GLWindow *win) override {
-        if(!model.openModel(win->util.getFilePath(filename))) {
+        if(!model.openModel(filename)) {
             mx::system_err << "Error loading model..\n";
             mx::system_err.flush();
             exit(EXIT_FAILURE);
@@ -105,7 +108,7 @@ public:
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         CHECK_GL_ERROR();
 
-        SDL_Surface *surface = png::LoadPNG(win->util.getFilePath("data/bg.png").c_str());
+        SDL_Surface *surface = png::LoadPNG(text.c_str());
         if (!surface) {
             mx::system_err << "Error: loading PNG.\n";
             exit(EXIT_FAILURE);
@@ -154,7 +157,7 @@ public:
         glm::mat4 projectionMatrix = glm::perspective(glm::radians(45.0f), aspectRatio, 0.1f, 100.0f);
 
         glm::vec3 lightPos(2.0f, 4.0f, 1.0f);
-        glm::vec3 viewPos = cameraPos; // Viewer position is the camera position
+        glm::vec3 viewPos = cameraPos;
         glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
 
         shaderProgram.setUniform("model", modelMatrix);
@@ -175,9 +178,9 @@ private:
 
 class MainWindow : public gl::GLWindow {
 public:
-    MainWindow(const std::string &path, const std::string &filename, int tw, int th) : gl::GLWindow("OpenGL Example", tw, th) {
+    MainWindow(const std::string &path, const std::string &filename, const std::string &text, int tw, int th) : gl::GLWindow("OpenGL Example", tw, th) {
         setPath(path);
-        setObject(new ModelViewer(filename));
+        setObject(new ModelViewer(filename, text));
 		object->load(this);
     }
     
@@ -190,7 +193,6 @@ public:
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glEnable(GL_DEPTH_TEST);
         glViewport(0, 0, w, h);
-
         object->draw(this);
         swap();
     }
@@ -216,12 +218,15 @@ int main(int argc, char **argv) {
           .addOptionSingleValue('r',"Resolution WidthxHeight")
           .addOptionDoubleValue('R',"resolution", "Resolution WidthxHeight")
           .addOptionSingleValue('m',"Model file")
-          .addOptionDoubleValue('M', "model", "model file to load");
+          .addOptionDoubleValue('M', "model", "model file to load")
+          .addOptionSingleValue('t', "texture file")
+          .addOptionDoubleValue('T', "texture", "texture file");
     Argument<std::string> arg;
     std::string path;
     int value = 0;
     int tw = 960, th = 720;
     std::string model_file;
+    std::string text_file;
     try {
         while((value = parser.proc(arg)) != -1) {
             switch(value) {
@@ -251,7 +256,11 @@ int main(int argc, char **argv) {
                 break;
                 case 'm':
                 case 'M':
-                model_file = arg.arg_value;
+                    model_file = arg.arg_value;
+                break;
+                case 't':
+                case 'T':
+                    text_file = arg.arg_value;
                 break;
             }
         }
@@ -263,7 +272,7 @@ int main(int argc, char **argv) {
         path = ".";
     }
     try {
-        MainWindow main_window(path, model_file, tw, th);
+        MainWindow main_window(path, model_file, text_file, tw, th);
         main_window.loop();
     } catch(const mx::Exception &e) {
         mx::system_err << "mx: Exception: " << e.text() << "\n";
