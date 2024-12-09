@@ -1,10 +1,7 @@
 
 # OpenGL Example
 
-Simple 3D Cube
+Model file format
 
-Run
-
-./gl_cube -p ../../gl_cube/v4
-
+Vertices, Texture Coordinates, and Normals are stored in a file for a Pyramid.
 
