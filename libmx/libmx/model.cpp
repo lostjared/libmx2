@@ -172,9 +172,9 @@ namespace mx {
         glBindVertexArray(0);
     }
 
-    void Model::drawArrays() {
+    void Model::drawArrays(const GLuint shape) {
         int vertexCount = static_cast<int>(vert.size() / 3);
-        glDrawArrays(GL_TRIANGLES, 0, vertexCount);
+        glDrawArrays(shape, 0, vertexCount);
         glBindVertexArray(0);
     }
 }

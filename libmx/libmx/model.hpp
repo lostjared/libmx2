@@ -29,7 +29,7 @@ namespace mx {
         void generateBuffers(GLuint &VAO, GLuint &positionVBO, GLuint &normalVBO, GLuint &texCoordVBO);
         void buildVertTex();
         void buildVertTexNorm();
-        void drawArrays();
+        void drawArrays(const GLuint shape = GL_TRIANGLES);
     private:
         void procLine(int type, const std::string &line);
         size_t vertIndex = 0, texIndex = 0, normIndex = 0;
