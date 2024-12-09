@@ -8,8 +8,7 @@
 
 #include"gl.hpp"
 #include"loadpng.hpp"
-
-
+#include"model.hpp"
 
 #define CHECK_GL_ERROR() \
 { GLenum err = glGetError(); \
@@ -19,109 +18,6 @@ printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
-
-
-GLfloat vertices[] = {
-    // Front face
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // Bottom-left
-     0.5f, -0.5f,  0.5f,  1.0f, 0.0f, // Bottom-right
-     0.5f,  0.5f,  0.5f,  1.0f, 1.0f, // Top-right
-     0.5f,  0.5f,  0.5f,  1.0f, 1.0f, // Top-right
-    -0.5f,  0.5f,  0.5f,  0.0f, 1.0f, // Top-left
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // Bottom-left
-
-    // Back face
-    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f, // Bottom-left
-    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f, // Top-left
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // Top-right
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // Top-right
-     0.5f, -0.5f, -0.5f,  1.0f, 0.0f, // Bottom-right
-    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f, // Bottom-left
-
-    // Left face
-    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // Top-right
-    -0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // Top-left
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // Bottom-left
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // Bottom-left
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // Bottom-right
-    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // Top-right
-
-    // Right face
-     0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // Top-left
-     0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // Bottom-right
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // Top-right
-     0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // Bottom-right
-     0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // Top-left
-     0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // Bottom-left
-
-    // Bottom face
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // Top-right
-     0.5f, -0.5f, -0.5f,  1.0f, 1.0f, // Top-left
-     0.5f, -0.5f,  0.5f,  1.0f, 0.0f, // Bottom-right
-     0.5f, -0.5f,  0.5f,  1.0f, 0.0f, // Bottom-right
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // Bottom-left
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // Top-right
-
-    // Top face
-    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f, // Top-left
-     0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // Bottom-right
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // Top-right
-     0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // Bottom-right
-    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f, // Top-left
-    -0.5f,  0.5f,  0.5f,  0.0f, 0.0f  // Bottom-left
-};
-
-
-GLfloat normals[] = {
-    // Front face
-     0.0f,  0.0f,  1.0f, // All vertices on the front face
-     0.0f,  0.0f,  1.0f,
-     0.0f,  0.0f,  1.0f,
-     0.0f,  0.0f,  1.0f,
-     0.0f,  0.0f,  1.0f,
-     0.0f,  0.0f,  1.0f,
-
-    // Back face
-     0.0f,  0.0f, -1.0f, // All vertices on the back face
-     0.0f,  0.0f, -1.0f,
-     0.0f,  0.0f, -1.0f,
-     0.0f,  0.0f, -1.0f,
-     0.0f,  0.0f, -1.0f,
-     0.0f,  0.0f, -1.0f,
-
-    // Left face
-    -1.0f,  0.0f,  0.0f, // All vertices on the left face
-    -1.0f,  0.0f,  0.0f,
-    -1.0f,  0.0f,  0.0f,
-    -1.0f,  0.0f,  0.0f,
-    -1.0f,  0.0f,  0.0f,
-    -1.0f,  0.0f,  0.0f,
-
-    // Right face
-     1.0f,  0.0f,  0.0f, // All vertices on the right face
-     1.0f,  0.0f,  0.0f,
-     1.0f,  0.0f,  0.0f,
-     1.0f,  0.0f,  0.0f,
-     1.0f,  0.0f,  0.0f,
-     1.0f,  0.0f,  0.0f,
-
-    // Bottom face
-     0.0f, -1.0f,  0.0f, // All vertices on the bottom face
-     0.0f, -1.0f,  0.0f,
-     0.0f, -1.0f,  0.0f,
-     0.0f, -1.0f,  0.0f,
-     0.0f, -1.0f,  0.0f,
-     0.0f, -1.0f,  0.0f,
-
-    // Top face
-     0.0f,  1.0f,  0.0f, // All vertices on the top face
-     0.0f,  1.0f,  0.0f,
-     0.0f,  1.0f,  0.0f,
-     0.0f,  1.0f,  0.0f,
-     0.0f,  1.0f,  0.0f,
-     0.0f,  1.0f,  0.0f
-};
-
 
 GLuint loadTexture(const std::string &path) {
     GLuint textureID;
@@ -145,7 +41,6 @@ GLuint loadTexture(const std::string &path) {
     SDL_FreeSurface(surface);
     return textureID;
 }
-
 
 class Paddle {
 public:
@@ -328,7 +223,7 @@ public:
     mx::Font font;
     mx::Controller stick;
     int score1 = 0, score2 = 0;
-    
+    mx::Model cube;
     
     PongGame(gl::GLWindow *win)
     : paddle1(glm::vec3(-0.9f, 0.0f, 0.0f), glm::vec3(0.1f, 0.4f, 0.1f), win->util.getFilePath("data/paddle_texture.png")),
@@ -341,6 +236,13 @@ public:
     }
 
     void load(gl::GLWindow *win) override {
+
+        if(!cube.openModel(win->util.getFilePath("data/cube.mxmod"))) {
+            throw mx::Exception("Error could not load cube file");
+        }
+
+        cube.buildVertTex();
+
         font.loadFont(win->util.getFilePath("data/font.ttf"), 24);
         shaderProgram.loadProgram(win->util.getFilePath("data/tri.vert"), win->util.getFilePath("data/tri.frag"));
         shaderProgram.useProgram();
@@ -349,16 +251,15 @@ public:
         glBindVertexArray(VAO);
         glGenBuffers(2, VBO);
         glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, cube.vert_tex.size() * sizeof(GLfloat), cube.vert_tex.data(), GL_STATIC_DRAW);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (void*)0);
         glEnableVertexAttribArray(0);
-        glBindBuffer(GL_ARRAY_BUFFER, VBO[1]);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(normals), normals, GL_STATIC_DRAW);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (void*)0);
-        glEnableVertexAttribArray(1);
-        glBindBuffer(GL_ARRAY_BUFFER, VBO[0]); // same as first VBO
         glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (void*)(3 * sizeof(GLfloat)));
         glEnableVertexAttribArray(2);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO[1]);
+        glBufferData(GL_ARRAY_BUFFER, cube.norm.size() * sizeof(GLfloat), cube.norm.data(), GL_STATIC_DRAW);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (void*)0);
+        glEnableVertexAttribArray(1);
         glBindVertexArray(0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         float zoom = 4.0f; 

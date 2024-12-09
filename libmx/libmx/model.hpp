@@ -19,8 +19,14 @@ namespace mx {
 
         Model() = default;
         Model(const std::string &filename);
+        Model(const Model &m);
+        Model(Model &&m);
+
+        Model &operator=(const Model &m);
+        Model &operator=(Model &&m);
 
         bool openModel(const std::string &filename);
+
         void buildVertTex();
         void buildVertTexNorm();
     private:

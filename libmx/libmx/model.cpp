@@ -3,6 +3,39 @@
 #include<fstream>
 
 namespace mx {
+    Model::Model(const Model &m) 
+        : vert{m.vert}, tex{m.tex}, norm{m.norm}, vert_tex{m.vert_tex}, vert_tex_norm{m.vert_tex_norm} {
+    }
+
+    Model::Model(Model &&m) 
+        : vert{std::move(m.vert)}, tex{std::move(m.tex)}, norm{std::move(m.norm)}, 
+        vert_tex{std::move(m.vert_tex)}, vert_tex_norm{std::move(m.vert_tex_norm)} {
+    }
+
+    Model &Model::operator=(const Model &m) {
+       if(this == &m) {
+            return *this;
+        }
+        vert = m.vert;
+        tex = m.tex;
+        norm = m.norm;
+        vert_tex = m.vert_tex;
+        vert_tex_norm = m.vert_tex_norm;
+        return *this;
+    }
+
+    Model &Model::operator=(Model &&m) {
+        if(this == &m) {
+            return *this;
+        }
+        vert = std::move(m.vert);
+        tex = std::move(m.tex);
+        norm = std::move(m.norm);
+        vert_tex = std::move(m.vert_tex);
+        vert_tex_norm = std::move(m.vert_tex_norm);
+        return *this;
+    }
+
     Model::Model(const std::string &filename) {
         if(!openModel(filename)) {
             std::ostringstream stream;
