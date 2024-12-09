@@ -314,6 +314,29 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
         glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(value));
     }
 
+    GLuint loadTexture(const std::string &filename) {
+        GLuint texture = 0;
+        glGenTextures(1, &texture);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        SDL_Surface *surface = png::LoadPNG(filename.c_str());
+        if (!surface) {
+            mx::system_err << "mx: Error: loading PNG.\n";
+            exit(EXIT_FAILURE);
+        }
+        SDL_Surface *converted = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_RGBA32, 0);
+        SDL_FreeSurface(surface);
+        surface = converted;
+        surface = mx::Texture::flipSurface(surface);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, surface->w, surface->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, surface->pixels);
+        SDL_FreeSurface(surface);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        return texture;
+    }
+
 }
 
 

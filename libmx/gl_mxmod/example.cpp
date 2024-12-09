@@ -43,43 +43,7 @@ public:
             mx::system_err.flush();
             exit(EXIT_FAILURE);
         }
-
-        glGenVertexArrays(1, &VAO);
-        CHECK_GL_ERROR();
-        glBindVertexArray(VAO);
-        CHECK_GL_ERROR();
-
-        
-        glGenBuffers(1, &positionVBO);
-        CHECK_GL_ERROR();
-        glBindBuffer(GL_ARRAY_BUFFER, positionVBO);
-        glBufferData(GL_ARRAY_BUFFER,model.vert.size() * sizeof(GLfloat),model.vert.data(),GL_STATIC_DRAW);
-        CHECK_GL_ERROR();
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)0); 
-        glEnableVertexAttribArray(0);
-        CHECK_GL_ERROR();
-
-        glGenBuffers(1, &normalVBO);
-        CHECK_GL_ERROR();
-        glBindBuffer(GL_ARRAY_BUFFER, normalVBO);
-        glBufferData(GL_ARRAY_BUFFER,model.norm.size() * sizeof(GLfloat),model.norm.data(),GL_STATIC_DRAW);
-        CHECK_GL_ERROR();
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)0); // Location = 1
-        glEnableVertexAttribArray(1);
-        CHECK_GL_ERROR();
-
-        glGenBuffers(1, &texCoordVBO);
-        CHECK_GL_ERROR();
-        glBindBuffer(GL_ARRAY_BUFFER, texCoordVBO);
-        glBufferData(GL_ARRAY_BUFFER, model.tex.size() * sizeof(GLfloat),model.tex.data(),GL_STATIC_DRAW);
-        CHECK_GL_ERROR();
-        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, (GLvoid*)0); // Location = 2
-        glEnableVertexAttribArray(2);
-        CHECK_GL_ERROR();
-
-        glBindVertexArray(0);
-        CHECK_GL_ERROR();
-
+        model.generateBuffers(VAO, positionVBO, normalVBO, texCoordVBO);
         if (!shaderProgram.loadProgram(win->util.getFilePath("data/tri.vert"), win->util.getFilePath("data/tri.frag"))) {
             throw mx::Exception("Failed to load shader program");
         }
@@ -96,32 +60,7 @@ public:
         shaderProgram.setUniform("model", model);
         shaderProgram.setUniform("view", view);
         shaderProgram.setUniform("projection", projection);
-        CHECK_GL_ERROR();
-
-        glGenTextures(1, &texture);
-        CHECK_GL_ERROR();
-        glBindTexture(GL_TEXTURE_2D, texture);
-        CHECK_GL_ERROR();
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        CHECK_GL_ERROR();
-
-        SDL_Surface *surface = png::LoadPNG(text.c_str());
-        if (!surface) {
-            mx::system_err << "Error: loading PNG.\n";
-            exit(EXIT_FAILURE);
-        }
-        SDL_Surface *converted = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_RGBA32, 0);
-        SDL_FreeSurface(surface);
-        surface = converted;
-        surface = mx::Texture::flipSurface(surface);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, surface->w, surface->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, surface->pixels);
-        CHECK_GL_ERROR();
-        SDL_FreeSurface(surface);
-        glBindTexture(GL_TEXTURE_2D, 0);
-        CHECK_GL_ERROR();
+        texture = gl::loadTexture(text);
     }
 
     virtual void draw(gl::GLWindow *win) override {
@@ -129,7 +68,6 @@ public:
         glm::vec3 cameraTarget(0.0f, 0.0f, 0.0f);
         glm::vec3 cameraUp(0.0f, 1.0f, 0.0f);
         float aspectRatio = (float)win->w / (float)win->h;
-
         static float rotationAngle = 0.0f; // Rotation angle in degrees
     #ifdef __EMSCRIPTEN__
         static Uint32 lastTime = emscripten_get_now(); 
@@ -144,31 +82,24 @@ public:
     #endif
         rotationAngle += deltaTime * 50.0f; 
         shaderProgram.useProgram();
-
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture);
         shaderProgram.setUniform("texture1", 0);
-
         glBindVertexArray(VAO);
-
         glm::mat4 modelMatrix = glm::mat4(1.0f);
         modelMatrix = glm::rotate(modelMatrix, glm::radians(rotationAngle), glm::vec3(1.0f, 1.0f, 0.0f)); // Rotate around X-axis
         glm::mat4 viewMatrix = glm::lookAt(cameraPos, cameraTarget, cameraUp);
         glm::mat4 projectionMatrix = glm::perspective(glm::radians(45.0f), aspectRatio, 0.1f, 100.0f);
-
         glm::vec3 lightPos(2.0f, 4.0f, 1.0f);
         glm::vec3 viewPos = cameraPos;
         glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
-
         shaderProgram.setUniform("model", modelMatrix);
         shaderProgram.setUniform("view", viewMatrix);
         shaderProgram.setUniform("projection", projectionMatrix);
         shaderProgram.setUniform("lightPos", lightPos);
         shaderProgram.setUniform("viewPos", viewPos);
         shaderProgram.setUniform("lightColor", lightColor);
-        int vertexCount = static_cast<int>(model.vert.size() / 3);
-        glDrawArrays(GL_TRIANGLES, 0, vertexCount);
-        glBindVertexArray(0);
+        model.drawArrays();
     }
     virtual void event(gl::GLWindow *window, SDL_Event &e) override {
     }

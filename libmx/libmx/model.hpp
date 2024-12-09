@@ -26,9 +26,10 @@ namespace mx {
         Model &operator=(Model &&m);
 
         bool openModel(const std::string &filename);
-
+        void generateBuffers(GLuint &VAO, GLuint &positionVBO, GLuint &normalVBO, GLuint &texCoordVBO);
         void buildVertTex();
         void buildVertTexNorm();
+        void drawArrays();
     private:
         void procLine(int type, const std::string &line);
         size_t vertIndex = 0, texIndex = 0, normIndex = 0;

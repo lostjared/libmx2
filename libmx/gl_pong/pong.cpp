@@ -216,7 +216,7 @@ class PongGame : public gl::GLObject {
 public:
     gl::ShaderProgram shaderProgram, textShader;
     GLuint VAO;
-    GLuint VBO[2]; 
+    GLuint posVBO, normVBO, texVBO;
 
     Paddle paddle1, paddle2;
     Ball ball;
@@ -231,7 +231,9 @@ public:
     ball(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.5f, 0.3f, 0.0f), 0.05f, win->util.getFilePath("data/ball_texture.png")) {}
     
     virtual ~PongGame() {
-         glDeleteBuffers(2, VBO);
+         glDeleteBuffers(1, &posVBO);
+         glDeleteBuffers(1, &normVBO);
+         glDeleteBuffers(1, &texVBO);
          glDeleteVertexArrays(1, &VAO);
     }
 
@@ -241,8 +243,6 @@ public:
             throw mx::Exception("Error could not load cube file");
         }
 
-        cube.buildVertTex();
-
         font.loadFont(win->util.getFilePath("data/font.ttf"), 24);
         if(!shaderProgram.loadProgram(win->util.getFilePath("data/tri.vert"), win->util.getFilePath("data/tri.frag"))) {
             throw mx::Exception("Could not load shader program tri");
@@ -251,21 +251,7 @@ public:
         if(!textShader.loadProgram(win->util.getFilePath("data/text.vert"), win->util.getFilePath("data/text.frag"))) {
             throw mx::Exception("Could not load shader program text");
         }
-        glGenVertexArrays(1, &VAO);
-        glBindVertexArray(VAO);
-        glGenBuffers(2, VBO);
-        glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
-        glBufferData(GL_ARRAY_BUFFER, cube.vert_tex.size() * sizeof(GLfloat), cube.vert_tex.data(), GL_STATIC_DRAW);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (void*)0);
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (void*)(3 * sizeof(GLfloat)));
-        glEnableVertexAttribArray(2);
-        glBindBuffer(GL_ARRAY_BUFFER, VBO[1]);
-        glBufferData(GL_ARRAY_BUFFER, cube.norm.size() * sizeof(GLfloat), cube.norm.data(), GL_STATIC_DRAW);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (void*)0);
-        glEnableVertexAttribArray(1);
-        glBindVertexArray(0);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        cube.generateBuffers(VAO, posVBO, normVBO, texVBO);
         float zoom = 4.0f; 
         glm::mat4 projection = glm::ortho(-5.0f / zoom, 5.0f / zoom, -3.75f / zoom, 3.75f / zoom, -100.0f, 100.0f);
         shaderProgram.setUniform("projection", projection);

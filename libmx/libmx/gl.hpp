@@ -96,7 +96,8 @@ namespace gl {
         GLuint shader_id;
         std::string name_;
     };
-    
+
+    GLuint loadTexture(const std::string &filename);    
 
 }
 #endif
