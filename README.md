@@ -91,7 +91,8 @@ Refer to the `examples` directory for sample usage scenarios. Also various subfo
 * Skeleton (Hello, World!)
 * 3D Texture Mapped Cube
 * 3D Texture Mapped Animated Cube
-* GL Pong
+* 3D Pyramid with Lighting
+* GL Pong with Lighting
 * 3D Breakout
 
 ## How to Run the Examples
