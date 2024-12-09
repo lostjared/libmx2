@@ -1,10 +1,10 @@
 option(BUILD_STATIC_LIB "Build libmx2 as a static library" OFF)
 
 if(BUILD_STATIC_LIB)
-    add_library(mx STATIC mx.cpp util.cpp loadpng.cpp font.cpp cfg.cpp texture.cpp exception.cpp joystick.cpp jpeg.cpp gl.cpp input.cpp sound.cpp src/glad.c)
+    add_library(mx STATIC mx.cpp util.cpp loadpng.cpp font.cpp cfg.cpp texture.cpp exception.cpp joystick.cpp jpeg.cpp gl.cpp input.cpp sound.cpp model.cpp src/glad.c)
     message(STATUS "Building libmx2 as a static library.")
 else()
-    add_library(mx SHARED mx.cpp util.cpp loadpng.cpp font.cpp cfg.cpp texture.cpp exception.cpp joystick.cpp jpeg.cpp gl.cpp input.cpp sound.cpp src/glad.c)
+    add_library(mx SHARED mx.cpp util.cpp loadpng.cpp font.cpp cfg.cpp texture.cpp exception.cpp joystick.cpp jpeg.cpp gl.cpp input.cpp sound.cpp model.cpp src/glad.c)
     message(STATUS "Building libmx2 as a shared library.")
 endif()
 
@@ -32,7 +32,7 @@ install(TARGETS mx
     LIBRARY DESTINATION ${INSTALL_LIB_DIR}
     INCLUDES DESTINATION ${INSTALL_INCLUDE_DIR}
 )
-install(FILES mx.hpp gl.hpp argz.hpp util.hpp jpeg.hpp loadpng.hpp object.hpp font.hpp cfg.hpp tee_stream.hpp texture.hpp exception.hpp joystick.hpp wrapper.hpp input.hpp sound.hpp
+install(FILES mx.hpp gl.hpp argz.hpp util.hpp jpeg.hpp loadpng.hpp object.hpp font.hpp cfg.hpp tee_stream.hpp texture.hpp exception.hpp joystick.hpp wrapper.hpp input.hpp sound.hpp model.hpp
     DESTINATION ${INSTALL_INCLUDE_DIR}
 )
 install(FILES ${CMAKE_BINARY_DIR}/config.h DESTINATION ${INSTALL_INCLUDE_DIR})
