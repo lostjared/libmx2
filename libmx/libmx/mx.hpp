@@ -1,6 +1,10 @@
 #ifndef __MX__H___
 #define __MX__H___
 
+#ifdef __EMSCRIPTEN__
+#include"config.hpp"
+#endif
+
 #include"SDL.h"
 #include"SDL_ttf.h"
 #include<iostream>
