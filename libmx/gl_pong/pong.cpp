@@ -244,9 +244,13 @@ public:
         cube.buildVertTex();
 
         font.loadFont(win->util.getFilePath("data/font.ttf"), 24);
-        shaderProgram.loadProgram(win->util.getFilePath("data/tri.vert"), win->util.getFilePath("data/tri.frag"));
+        if(!shaderProgram.loadProgram(win->util.getFilePath("data/tri.vert"), win->util.getFilePath("data/tri.frag"))) {
+            throw mx::Exception("Could not load shader program tri");
+        }
         shaderProgram.useProgram();
-        textShader.loadProgram(win->util.getFilePath("data/text.vert"), win->util.getFilePath("data/text.frag"));
+        if(!textShader.loadProgram(win->util.getFilePath("data/text.vert"), win->util.getFilePath("data/text.frag"))) {
+            throw mx::Exception("Could not load shader program text");
+        }
         glGenVertexArrays(1, &VAO);
         glBindVertexArray(VAO);
         glGenBuffers(2, VBO);
