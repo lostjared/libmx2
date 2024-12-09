@@ -9,6 +9,7 @@
 #include"gl.hpp"
 #include"loadpng.hpp"
 #include"model.hpp"
+#include<tuple>
 
 #define CHECK_GL_ERROR() \
     { GLenum err = glGetError(); \
@@ -24,10 +25,15 @@ public:
     mx::Model model;
     std::string filename;
     std::string text;
+    std::tuple<float, bool> rot_x;
+    std::tuple<float, bool> rot_y;
+    std::tuple<float, bool> rot_z;
+    
 
-    ModelViewer(const std::string &filename, const std::string &text) {
+    ModelViewer(const std::string &filename, const std::string &text) : rot_x{1.0f, true}, rot_y{1.0f, true}, rot_z{0.0f, false} {
         this->filename = filename;
         this->text = text;
+    
     }
     virtual ~ModelViewer() override {
         glDeleteVertexArrays(1, &VAO);
@@ -87,7 +93,13 @@ public:
         shaderProgram.setUniform("texture1", 0);
         glBindVertexArray(VAO);
         glm::mat4 modelMatrix = glm::mat4(1.0f);
-        modelMatrix = glm::rotate(modelMatrix, glm::radians(rotationAngle), glm::vec3(1.0f, 1.0f, 0.0f)); // Rotate around X-axis
+
+        if(std::get<0>(rot_x) == 0.0f && std::get<0>(rot_y) == 0.0f && std::get<0>(rot_z) == 0.0f) {
+            std::get<0>(rot_x) = 1.0f;
+            std::get<1>(rot_x) = true;
+        }
+
+        modelMatrix = glm::rotate(modelMatrix, glm::radians(rotationAngle), glm::vec3(std::get<0>(rot_x), std::get<0>(rot_y), std::get<0>(rot_z))); // Rotate around X-axis
         glm::mat4 viewMatrix = glm::lookAt(cameraPos, cameraTarget, cameraUp);
         glm::mat4 projectionMatrix = glm::perspective(glm::radians(45.0f), aspectRatio, 0.1f, 100.0f);
         glm::vec3 lightPos(2.0f, 4.0f, 1.0f);
@@ -101,7 +113,37 @@ public:
         shaderProgram.setUniform("lightColor", lightColor);
         model.drawArrays();
     }
+
+    void toggle(std::tuple<float, bool> &rot) {
+        if(std::get<1>(rot) == true) {
+            std::get<1>(rot) = false;
+            std::get<0>(rot) = 0.0f;
+        } else {
+            std::get<1>(rot) = true;
+            std::get<0>(rot) = 1.0f;
+        }
+    }
+
     virtual void event(gl::GLWindow *window, SDL_Event &e) override {
+        switch(e.type) {
+            case SDL_KEYDOWN: {
+                switch(e.key.keysym.sym) {
+                    case SDLK_LEFT:
+                        toggle(rot_x);
+                    break;
+                    case SDLK_RIGHT:
+                        toggle(rot_x);
+                    break;
+                    case SDLK_DOWN:
+                        toggle(rot_z);
+                    break;
+                    case SDLK_UP:
+                        toggle(rot_y);
+                    break;
+                }
+            }
+            break;
+        }
     }
 private:
     
