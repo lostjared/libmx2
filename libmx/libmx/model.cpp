@@ -3,199 +3,238 @@
 #include<fstream>
 
 namespace mx {
-    Model::Model(const Model &m) 
-        : vert{m.vert}, tex{m.tex}, norm{m.norm}, vert_tex{m.vert_tex}, vert_tex_norm{m.vert_tex_norm} {
-    }
 
-    Model::Model(Model &&m) 
-        : vert{std::move(m.vert)}, tex{std::move(m.tex)}, norm{std::move(m.norm)}, 
-        vert_tex{std::move(m.vert_tex)}, vert_tex_norm{std::move(m.vert_tex_norm)} {
-    }
-
-    Model &Model::operator=(const Model &m) {
-       if(this == &m) {
-            return *this;
-        }
-        vert = m.vert;
-        tex = m.tex;
-        norm = m.norm;
-        vert_tex = m.vert_tex;
-        vert_tex_norm = m.vert_tex_norm;
-        return *this;
-    }
-
-    Model &Model::operator=(Model &&m) {
-        if(this == &m) {
-            return *this;
-        }
+Mesh::Mesh(Mesh &&m)
+    : vert(std::move(m.vert)),
+      tex(std::move(m.tex)),
+      norm(std::move(m.norm)),
+      shape_type(m.shape_type),
+      VAO(m.VAO),
+      positionVBO(m.positionVBO),
+      normalVBO(m.normalVBO),
+      texCoordVBO(m.texCoordVBO),
+      vertIndex(m.vertIndex),
+      texIndex(m.texIndex),
+      normIndex(m.normIndex) {
+          m.VAO = m.positionVBO = m.normalVBO = m.texCoordVBO = 0;
+          m.vertIndex = m.texIndex = m.normIndex = 0;
+}
+    
+    Mesh &Mesh::operator=(Mesh &&m) {
         vert = std::move(m.vert);
         tex = std::move(m.tex);
         norm = std::move(m.norm);
-        vert_tex = std::move(m.vert_tex);
-        vert_tex_norm = std::move(m.vert_tex_norm);
+        VAO = m.VAO;
+        positionVBO = m.positionVBO;
+        normalVBO = m.normalVBO;
+        texCoordVBO = m.texCoordVBO;
+        shape_type = m.shape_type;
+        vertIndex = m.vertIndex;
+        texIndex = m.texIndex;
+        normIndex = m.normIndex;
         return *this;
     }
 
-    Model::Model(const std::string &filename) {
-        if(!openModel(filename)) {
-            std::ostringstream stream;
-            stream << "Error could not open mode: " << filename << "\n";
-            throw mx::Exception(stream.str());
+    Mesh::~Mesh() {
+        cleanup();
+    }
+
+    void Mesh::cleanup() {
+        if (VAO) {
+            glDeleteVertexArrays(1, &VAO);
+            VAO = 0;
+        }
+        if (positionVBO) {
+            glDeleteBuffers(1, &positionVBO);
+            positionVBO = 0;
+        }
+        if (normalVBO) {
+            glDeleteBuffers(1, &normalVBO);
+            normalVBO = 0;
+        }
+        if (texCoordVBO) {
+            glDeleteBuffers(1, &texCoordVBO);
+            texCoordVBO = 0;
         }
     }
 
-    bool Model::openModel(const std::string &filename) {
-        std::fstream file(filename, std::ios::in);
-        if (!file.is_open()) {
-            return false;
-        }
-
-        int type = -1;
-        size_t count = 0;
-
-        vertIndex = 0;
-        texIndex = 0;
-        normIndex = 0;
-
-        while (!file.eof()) {
-            std::string line;
-            std::getline(file, line);
-            if (file) {
-                std::istringstream stream(line);
-                if(line.rfind("tri", 0) == 0) {
-                    GLuint shape_t = 0;
-                    stream.ignore(4);
-                    stream >> shape_t;
-                    switch(shape_t) {
-                        case 0:
-                        shape_type = GL_TRIANGLES;
-                        break;
-                        case 1:
-                        shape_type = GL_TRIANGLE_FAN;
-                        break;
-                        case 2:
-                        shape_type = GL_TRIANGLE_STRIP;
-                        break;
-                    }
-                } else if (line.rfind("vert", 0) == 0) {
-                    type = 0;
-                    stream.ignore(5); 
-                    stream >> count;
-                    vert.resize(count * 3); 
-                    continue;
-                } else if (line.rfind("tex", 0) == 0) {
-                    type = 1;
-                    stream.ignore(4); 
-                    stream >> count;
-                    tex.resize(count * 2); 
-                    continue;
-                } else if (line.rfind("norm", 0) == 0) {
-                    type = 2;
-                    stream.ignore(5); 
-                    stream >> count;
-                    norm.resize(count * 3);
-                    continue;
-                } else {
-                    procLine(type, line);
-                }
-            }
-        }
-
-        file.close();
-        return true;
-    }
-
-
-    void Model::procLine(int type, const std::string &line) {
-        
-        std::istringstream stream(line);
-        switch (type) {
-            case 0: { 
-                stream >> vert[vertIndex] >> vert[vertIndex + 1] >> vert[vertIndex + 2];
-                vertIndex += 3;
-            } break;
-            case 1: { 
-                stream >> tex[texIndex] >> tex[texIndex + 1];
-                texIndex += 2;
-            } break;
-            case 2: { 
-                stream >> norm[normIndex] >> norm[normIndex + 1] >> norm[normIndex + 2];
-                normIndex += 3;
-            } break;
-            default:
-                throw Exception("Unknown data type");
-        }
-    }
-
-    void Model::buildVertTex() {
-        if (!vert.empty() && !tex.empty()) {
-            if (vert.size() % 3 != 0 || tex.size() % 2 != 0) {
-                throw Exception("Invalid vertex or texture data size");
-            }
-            size_t vertexCount = vert.size() / 3; 
-            vert_tex.resize(vertexCount * 5);   
-            for (size_t i = 0, x = 0, index = 0; i < vert.size() && x < tex.size(); i += 3, x += 2, index += 5) {
-                vert_tex[index]     = vert[i];
-                vert_tex[index + 1] = vert[i + 1];
-                vert_tex[index + 2] = vert[i + 2];
-                vert_tex[index + 3] = tex[x];
-                vert_tex[index + 4] = tex[x + 1];
-            }
-        }
-    }
-
-    void Model::buildVertTexNorm() {
-        if (!vert.empty() && !tex.empty() && !norm.empty()) {
-            if (vert.size() % 3 != 0 || tex.size() % 2 != 0 || norm.size() % 3 != 0) {
-                throw Exception("Invalid vertex, texture, or normal data size");
-            }
-
-            size_t vertexCount = vert.size() / 3;
-            vert_tex_norm.resize(vertexCount * 8); 
-
-            for (size_t i = 0, x = 0, index = 0; i < vert.size() && x < tex.size(); i += 3, x += 2, index += 8) {
-                vert_tex_norm[index]     = vert[i];
-                vert_tex_norm[index + 1] = vert[i + 1];
-                vert_tex_norm[index + 2] = vert[i + 2];
-                vert_tex_norm[index + 3] = tex[x];
-                vert_tex_norm[index + 4] = tex[x + 1];
-                vert_tex_norm[index + 5] = norm[i];
-                vert_tex_norm[index + 6] = norm[i + 1];
-                vert_tex_norm[index + 7] = norm[i + 2];
-            }
-        }
-    }
-
-    void Model::generateBuffers(GLuint &VAO, GLuint &positionVBO, GLuint &normalVBO, GLuint &texCoordVBO) {
+    void Mesh::generateBuffers() {
         glGenVertexArrays(1, &VAO);
         glBindVertexArray(VAO);
         glGenBuffers(1, &positionVBO);
         glBindBuffer(GL_ARRAY_BUFFER, positionVBO);
-        glBufferData(GL_ARRAY_BUFFER,vert.size() * sizeof(GLfloat),vert.data(),GL_STATIC_DRAW);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)0); 
+        glBufferData(GL_ARRAY_BUFFER, vert.size() * sizeof(GLfloat), vert.data(), GL_STATIC_DRAW);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)0);
         glEnableVertexAttribArray(0);
-        glGenBuffers(1, &normalVBO);
-        glBindBuffer(GL_ARRAY_BUFFER, normalVBO);
-        glBufferData(GL_ARRAY_BUFFER,norm.size() * sizeof(GLfloat),norm.data(),GL_STATIC_DRAW);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)0); 
-        glEnableVertexAttribArray(1);
-        glGenBuffers(1, &texCoordVBO);
-        glBindBuffer(GL_ARRAY_BUFFER, texCoordVBO);
-        glBufferData(GL_ARRAY_BUFFER, tex.size() * sizeof(GLfloat),tex.data(),GL_STATIC_DRAW);
-        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, (GLvoid*)0); 
-        glEnableVertexAttribArray(2);
+        if (!norm.empty()) {
+            glGenBuffers(1, &normalVBO);
+            glBindBuffer(GL_ARRAY_BUFFER, normalVBO);
+            glBufferData(GL_ARRAY_BUFFER, norm.size() * sizeof(GLfloat), norm.data(), GL_STATIC_DRAW);
+            glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)0);
+            glEnableVertexAttribArray(1);
+        }
+        if (!tex.empty()) {
+            glGenBuffers(1, &texCoordVBO);
+            glBindBuffer(GL_ARRAY_BUFFER, texCoordVBO);
+            glBufferData(GL_ARRAY_BUFFER, tex.size() * sizeof(GLfloat), tex.data(), GL_STATIC_DRAW);
+            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, (GLvoid*)0);
+            glEnableVertexAttribArray(2);
+        }
         glBindVertexArray(0);
     }
 
-    void Model::drawArrays(const GLuint shape) {
-        int vertexCount = static_cast<int>(vert.size() / 3);
-        glDrawArrays(shape, 0, vertexCount);
+    void Mesh::draw() {
+        glBindVertexArray(VAO);
+        glDrawArrays(shape_type, 0, static_cast<GLsizei>(vert.size() / 3));
         glBindVertexArray(0);
+    }
+
+    void Mesh::setShapeType(GLuint type) {
+        switch(type) {
+            case 0:
+                shape_type = GL_TRIANGLES;
+                break;
+            case 1:
+                shape_type = GL_TRIANGLE_STRIP;
+                break;
+            case 2:
+                shape_type = GL_TRIANGLE_FAN;
+                break;
+        }
+    }
+
+
+    Model::Model(const std::string &filename) {
+        if (!openModel(filename)) {
+            throw mx::Exception("Error: Could not load model");
+        }
+    }
+
+    bool Model::openModel(const std::string &filename) {
+        std::ifstream file(filename);
+        if (!file.is_open()) {
+            return false;
+        }
+
+        Mesh currentMesh;
+        int type = -1;
+        size_t count = 0;
+
+        while (!file.eof()) {
+            std::string line;
+            std::getline(file, line);
+            if (!line.empty()) {
+                if (line.rfind("tri", 0) == 0) {
+                    if (!currentMesh.vert.empty()) {
+                        currentMesh.generateBuffers();
+                        meshes.push_back(std::move(currentMesh));
+                        currentMesh = Mesh();
+                    }
+                    std::istringstream stream(line);
+                    std::string dummy;
+                    GLuint shapeType = 0;
+                    stream >> dummy >> shapeType;
+                    currentMesh.setShapeType(shapeType);
+                    type = -1;
+
+                } else {
+                    parseLine(line, currentMesh, type, count);
+                }
+            }
+        }
+        if (!currentMesh.vert.empty()) {
+            meshes.push_back(std::move(currentMesh));
+        }
+
+        for(auto &m : meshes) {
+            m.generateBuffers();
+        }
+        
+        return true;
+    }
+
+    void Model::parseLine(const std::string &line, Mesh &currentMesh, int &type, size_t &count) {
+        if (line.empty()) return;
+
+        if (line.rfind("vert", 0) == 0) {
+            std::istringstream stream(line);
+            std::string dummy;
+            stream >> dummy >> count;
+            currentMesh.vert.resize(count * 3);
+            currentMesh.vertIndex = 0;
+            type = 0;
+            return;
+        }
+
+        if (line.rfind("tex", 0) == 0) {
+            std::istringstream stream(line);
+            std::string dummy;
+            stream >> dummy >> count;
+            currentMesh.tex.resize(count * 2);
+            currentMesh.texIndex = 0;
+            type = 1;
+            return;
+        }
+
+        if (line.rfind("norm", 0) == 0) {
+            std::istringstream stream(line);
+            std::string dummy;
+            stream >> dummy >> count;
+            currentMesh.norm.resize(count * 3);
+            currentMesh.normIndex = 0;
+            type = 2;
+            return;
+        }
+
+        std::istringstream stream(line);
+        switch (type) {
+            case 0: {
+                float x, y, z;
+                if (stream >> x >> y >> z) {
+                    currentMesh.vert[currentMesh.vertIndex++] = x;
+                    currentMesh.vert[currentMesh.vertIndex++] = y;
+                    currentMesh.vert[currentMesh.vertIndex++] = z;
+                }
+            } break;
+            case 1: {
+                float u, v;
+                if (stream >> u >> v) {
+                    currentMesh.tex[currentMesh.texIndex++] = u;
+                    currentMesh.tex[currentMesh.texIndex++] = v;
+                }
+            } break;
+            case 2: {
+                float nx, ny, nz;
+                if (stream >> nx >> ny >> nz) {
+                    currentMesh.norm[currentMesh.normIndex++] = nx;
+                    currentMesh.norm[currentMesh.normIndex++] = ny;
+                    currentMesh.norm[currentMesh.normIndex++] = nz;
+                }
+            } break;
+            default:
+                break;
+        }
     }
 
     void Model::drawArrays() {
-        int vertexCount = static_cast<int>(vert.size() / 3);
-        glDrawArrays(shape_type, 0, vertexCount);
-        glBindVertexArray(0);
+        for (auto &mesh : meshes) {
+            mesh.draw();
+        }
+    }
+
+    void Model::printData() {
+        
+        for(auto &m : meshes) {
+            for(auto &v : m.vert) {
+                std::cout << "V: " << v << "\n";
+            }
+            for(auto &t : m.tex) {
+                std::cout << "T: " << t << "\n";
+            }
+            for(auto &n : m.norm) {
+                std::cout << "N: " << n << "\n";
+            }
+        }
+    
     }
 }

@@ -59,7 +59,7 @@ public:
         glDeleteTextures(1, &texture);
     }
     
-    void draw(gl::ShaderProgram &shader, float deltaTime) {
+    void draw(gl::ShaderProgram &shader, mx::Model &m, float deltaTime) {
         if (isRotating) {
             rotationAngle += rotationSpeed * deltaTime;
             if (rotationAngle >= 360.0f) {
@@ -76,8 +76,7 @@ public:
         model = glm::rotate(model, glm::radians(rotationAngle), glm::vec3(0.0f, 1.0f, 0.0f));
         model = glm::scale(model, size);
         shader.setUniform("model", model);
-        
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        m.drawArrays();
     }
     
     void startRotation(float speed) {
@@ -106,7 +105,7 @@ public:
         glDeleteTextures(1, &texture);
     }
 
-    void draw(gl::ShaderProgram &shader) {
+    void draw(gl::ShaderProgram &shader, mx::Model &m) {
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture);
         shader.setUniform("texture1", 0);
@@ -115,7 +114,7 @@ public:
         model = glm::scale(model, glm::vec3(radius));
         shader.setUniform("model", model);
         
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        m.drawArrays();
     }
     
     void resetBall() {
@@ -242,7 +241,7 @@ public:
         if(!cube.openModel(win->util.getFilePath("data/cube.mxmod"))) {
             throw mx::Exception("Error could not load cube file");
         }
-
+        
         font.loadFont(win->util.getFilePath("data/font.ttf"), 24);
         if(!shaderProgram.loadProgram(win->util.getFilePath("data/tri.vert"), win->util.getFilePath("data/tri.frag"))) {
             throw mx::Exception("Could not load shader program tri");
@@ -251,7 +250,7 @@ public:
         if(!textShader.loadProgram(win->util.getFilePath("data/text.vert"), win->util.getFilePath("data/text.frag"))) {
             throw mx::Exception("Could not load shader program text");
         }
-        cube.generateBuffers(VAO, posVBO, normVBO, texVBO);
+        //cube.generateBuffers(VAO, posVBO, normVBO, texVBO);
         float zoom = 4.0f; 
         glm::mat4 projection = glm::ortho(-5.0f / zoom, 5.0f / zoom, -3.75f / zoom, 3.75f / zoom, -100.0f, 100.0f);
         shaderProgram.setUniform("projection", projection);
@@ -284,11 +283,11 @@ public:
         shaderProgram.setUniform("lightColor", lightColor);
         shaderProgram.setUniform("view", modelView);
         
-        paddle1.draw(shaderProgram, 15 / 1000.0f);
-        paddle2.draw(shaderProgram, 15 / 1000.0f);
+        paddle1.draw(shaderProgram, cube, 15 / 1000.0f);
+        paddle2.draw(shaderProgram, cube, 15 / 1000.0f);
 
         
-        ball.draw(shaderProgram);
+        ball.draw(shaderProgram, cube);
         glBindVertexArray(0);
         glDisable(GL_DEPTH_TEST);
         glEnable(GL_BLEND);

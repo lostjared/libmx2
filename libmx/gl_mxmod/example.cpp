@@ -51,7 +51,7 @@ public:
             mx::system_err.flush();
             exit(EXIT_FAILURE);
         }
-        model.generateBuffers(VAO, positionVBO, normalVBO, texCoordVBO);
+        
         if (!shaderProgram.loadProgram(win->util.getFilePath("data/tri.vert"), win->util.getFilePath("data/tri.frag"))) {
             throw mx::Exception("Failed to load shader program");
         }
@@ -77,32 +77,29 @@ public:
         glm::vec3 cameraTarget(0.0f, 0.0f, 0.0f);
         glm::vec3 cameraUp(0.0f, 1.0f, 0.0f);
         float aspectRatio = (float)win->w / (float)win->h;
-        static float rotationAngle = 0.0f; // Rotation angle in degrees
+        static float rotationAngle = 0.0f;
     #ifdef __EMSCRIPTEN__
-        static Uint32 lastTime = emscripten_get_now(); 
+        static Uint32 lastTime = emscripten_get_now();
         float currentTime = emscripten_get_now();
         float deltaTime = (currentTime - lastTime) / 1000.0f;
         lastTime = currentTime;
     #else
-        static Uint32 lastTime = SDL_GetTicks(); 
+        static Uint32 lastTime = SDL_GetTicks();
         Uint32 currentTime = SDL_GetTicks();
         float deltaTime = (currentTime - lastTime) / 1000.0f;
         lastTime = currentTime;
     #endif
-        rotationAngle += deltaTime * 50.0f; 
+        rotationAngle += deltaTime * 50.0f;
         shaderProgram.useProgram();
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture);
         shaderProgram.setUniform("texture1", 0);
-        glBindVertexArray(VAO);
         glm::mat4 modelMatrix = glm::mat4(1.0f);
-
-        if(std::get<0>(rot_x) == 0.0f && std::get<0>(rot_y) == 0.0f && std::get<0>(rot_z) == 0.0f) {
+        if (std::get<0>(rot_x) == 0.0f && std::get<0>(rot_y) == 0.0f && std::get<0>(rot_z) == 0.0f) {
             std::get<0>(rot_x) = 1.0f;
             std::get<1>(rot_x) = true;
         }
-
-        modelMatrix = glm::rotate(modelMatrix, glm::radians(rotationAngle), glm::vec3(std::get<0>(rot_x), std::get<0>(rot_y), std::get<0>(rot_z))); // Rotate around X-axis
+        modelMatrix = glm::rotate(modelMatrix, glm::radians(rotationAngle), glm::vec3(std::get<0>(rot_x), std::get<0>(rot_y), std::get<0>(rot_z)));
         glm::mat4 viewMatrix = glm::lookAt(cameraPos, cameraTarget, cameraUp);
         glm::mat4 projectionMatrix = glm::perspective(glm::radians(zoom), aspectRatio, 0.1f, 100.0f);
         glm::vec3 lightPos(2.0f, 4.0f, 1.0f);
@@ -114,7 +111,10 @@ public:
         shaderProgram.setUniform("lightPos", lightPos);
         shaderProgram.setUniform("viewPos", viewPos);
         shaderProgram.setUniform("lightColor", lightColor);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texture);
         model.drawArrays();
+        glBindVertexArray(0);
     }
 
     void toggle(std::tuple<float, bool> &rot) {
