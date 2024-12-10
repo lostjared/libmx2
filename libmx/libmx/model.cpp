@@ -103,6 +103,12 @@ Mesh::Mesh(Mesh &&m)
         }
     }
 
+    Model::Model(Model &&m) : meshes{std::move(m.meshes)} {}
+
+    Model &Model::operator=(Model &&m) {
+        meshes = std::move(m.meshes);
+        return *this;
+    }
 
     Model::Model(const std::string &filename) {
         if (!openModel(filename)) {

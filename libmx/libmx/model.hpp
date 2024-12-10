@@ -39,7 +39,10 @@ namespace mx {
 
        Model() = default;
        Model(const std::string &filename);
-
+       Model(const Model &m) = delete;
+       Model(Model &&m);
+       Model &operator=(const Model &m) = delete;
+       Model &operator=(Model &&m);
        bool openModel(const std::string &filename);
        void drawArrays();
        void printData();
