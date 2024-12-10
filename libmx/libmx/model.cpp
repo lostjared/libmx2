@@ -62,7 +62,22 @@ namespace mx {
             std::getline(file, line);
             if (file) {
                 std::istringstream stream(line);
-                if (line.rfind("vert", 0) == 0) {
+                if(line.rfind("tri", 0) == 0) {
+                    GLuint shape_t = 0;
+                    stream.ignore(4);
+                    stream >> shape_t;
+                    switch(shape_t) {
+                        case 0:
+                        shape_type = GL_TRIANGLES;
+                        break;
+                        case 1:
+                        shape_type = GL_TRIANGLE_FAN;
+                        break;
+                        case 2:
+                        shape_type = GL_TRIANGLE_STRIP;
+                        break;
+                    }
+                } else if (line.rfind("vert", 0) == 0) {
                     type = 0;
                     stream.ignore(5); 
                     stream >> count;
@@ -175,6 +190,12 @@ namespace mx {
     void Model::drawArrays(const GLuint shape) {
         int vertexCount = static_cast<int>(vert.size() / 3);
         glDrawArrays(shape, 0, vertexCount);
+        glBindVertexArray(0);
+    }
+
+    void Model::drawArrays() {
+        int vertexCount = static_cast<int>(vert.size() / 3);
+        glDrawArrays(shape_type, 0, vertexCount);
         glBindVertexArray(0);
     }
 }

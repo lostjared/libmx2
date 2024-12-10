@@ -43,6 +43,8 @@ public:
         glDeleteTextures(1, &texture);
     }
 
+    float zoom = 45.0f;
+
     virtual void load(gl::GLWindow *win) override {
         if(!model.openModel(filename)) {
             mx::system_err << "Error loading model..\n";
@@ -62,7 +64,8 @@ public:
             glm::vec3(0.0f, 0.0f, 0.0f),  // Look at origin
             glm::vec3(0.0f, 1.0f, 0.0f)   // Up vector
         );
-        glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)win->w / win->h, 0.1f, 100.0f);
+
+        glm::mat4 projection = glm::perspective(glm::radians(zoom), (float)win->w / win->h, 0.1f, 100.0f);
         shaderProgram.setUniform("model", model);
         shaderProgram.setUniform("view", view);
         shaderProgram.setUniform("projection", projection);
@@ -101,7 +104,7 @@ public:
 
         modelMatrix = glm::rotate(modelMatrix, glm::radians(rotationAngle), glm::vec3(std::get<0>(rot_x), std::get<0>(rot_y), std::get<0>(rot_z))); // Rotate around X-axis
         glm::mat4 viewMatrix = glm::lookAt(cameraPos, cameraTarget, cameraUp);
-        glm::mat4 projectionMatrix = glm::perspective(glm::radians(45.0f), aspectRatio, 0.1f, 100.0f);
+        glm::mat4 projectionMatrix = glm::perspective(glm::radians(zoom), aspectRatio, 0.1f, 100.0f);
         glm::vec3 lightPos(2.0f, 4.0f, 1.0f);
         glm::vec3 viewPos = cameraPos;
         glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
@@ -139,6 +142,15 @@ public:
                     break;
                     case SDLK_UP:
                         toggle(rot_y);
+                    break;
+                    case SDLK_a:
+                       zoom -= 1.0f;
+                       if (zoom < 10.0f) zoom = 10.0f; 
+                    break;
+                    case SDLK_s:
+                       zoom += 1.0f;
+                        if (zoom > 90.0f) zoom = 90.0f; 
+            
                     break;
                 }
             }
