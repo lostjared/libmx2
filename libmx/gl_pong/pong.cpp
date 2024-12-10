@@ -293,7 +293,6 @@ public:
         glDisable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
         shaderProgram.useProgram();
-        glBindVertexArray(VAO);
     }
         
     void event(gl::GLWindow *win, SDL_Event &e) override {
