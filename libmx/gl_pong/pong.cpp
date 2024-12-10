@@ -214,9 +214,6 @@ private:
 class PongGame : public gl::GLObject {
 public:
     gl::ShaderProgram shaderProgram, textShader;
-    GLuint VAO;
-    GLuint posVBO, normVBO, texVBO;
-
     Paddle paddle1, paddle2;
     Ball ball;
     mx::Font font;
@@ -230,10 +227,6 @@ public:
     ball(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.5f, 0.3f, 0.0f), 0.05f, win->util.getFilePath("data/ball_texture.png")) {}
     
     virtual ~PongGame() {
-         glDeleteBuffers(1, &posVBO);
-         glDeleteBuffers(1, &normVBO);
-         glDeleteBuffers(1, &texVBO);
-         glDeleteVertexArrays(1, &VAO);
     }
 
     void load(gl::GLWindow *win) override {
@@ -263,7 +256,6 @@ public:
     
     void draw(gl::GLWindow *win) override {
         shaderProgram.useProgram();
-        glBindVertexArray(VAO);
         CHECK_GL_ERROR();
         Uint32 currentTime = SDL_GetTicks();
         float deltaTime = (currentTime - lastUpdateTime) / 1000.0f; // Convert to seconds
