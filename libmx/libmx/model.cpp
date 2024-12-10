@@ -124,9 +124,23 @@ Mesh::Mesh(Mesh &&m)
             std::string line;
             std::getline(file, line);
             if (!line.empty()) {
-                if (line.rfind("tri", 0) == 0) {
+                auto pos = line.find('#');                
+                if(pos != std::string::npos) {
+                    line = line.substr(0, pos);
+                    if(line.empty())
+                        continue;
+                }
+                if (line.find("tri") == 0) {
                     if (!currentMesh.vert.empty()) {
-                        currentMesh.generateBuffers();
+                        if (count * 3 != currentMesh.vert.size()) {
+                            throw mx::Exception("mx: Model :" + filename + " invalid vertex alignment.\n");
+                        }              
+                        if (count * 2 != currentMesh.tex.size()) {
+                            throw mx::Exception("mx: Model :" + filename + " invalid texture coordinates alignment.\n");
+                        }
+                        if (count * 3 != currentMesh.norm.size()) {
+                            throw mx::Exception("mx: Model :" + filename + " invalid normals alignment.\n");
+                        }
                         meshes.push_back(std::move(currentMesh));
                         currentMesh = Mesh();
                     }
@@ -136,13 +150,22 @@ Mesh::Mesh(Mesh &&m)
                     stream >> dummy >> shapeType;
                     currentMesh.setShapeType(shapeType);
                     type = -1;
-
+                    
                 } else {
                     parseLine(line, currentMesh, type, count);
                 }
             }
         }
         if (!currentMesh.vert.empty()) {
+            if (count * 3 != currentMesh.vert.size()) {
+                throw mx::Exception("mx: Model :" + filename + " invalid vertex alignment.\n");
+            }              
+            if (count * 2 != currentMesh.tex.size()) {
+                throw mx::Exception("mx: Model :" + filename + " invalid texture coordinates alignment.\n");
+            }
+            if (count * 3 != currentMesh.norm.size()) {
+                throw mx::Exception("mx: Model :" + filename + " invalid normals alignment.\n");
+            }
             meshes.push_back(std::move(currentMesh));
         }
 
@@ -156,7 +179,7 @@ Mesh::Mesh(Mesh &&m)
     void Model::parseLine(const std::string &line, Mesh &currentMesh, int &type, size_t &count) {
         if (line.empty()) return;
 
-        if (line.rfind("vert", 0) == 0) {
+        if (line.find("vert") == 0) {
             std::istringstream stream(line);
             std::string dummy;
             stream >> dummy >> count;
@@ -166,7 +189,7 @@ Mesh::Mesh(Mesh &&m)
             return;
         }
 
-        if (line.rfind("tex", 0) == 0) {
+        if (line.find("tex") == 0) {
             std::istringstream stream(line);
             std::string dummy;
             stream >> dummy >> count;
@@ -176,7 +199,7 @@ Mesh::Mesh(Mesh &&m)
             return;
         }
 
-        if (line.rfind("norm", 0) == 0) {
+        if (line.find("norm") == 0) {
             std::istringstream stream(line);
             std::string dummy;
             stream >> dummy >> count;
@@ -189,6 +212,9 @@ Mesh::Mesh(Mesh &&m)
         std::istringstream stream(line);
         switch (type) {
             case 0: {
+                if(currentMesh.vertIndex+3 > (count * 3)) {
+                    throw mx::Exception("mx: Model loader: Vertex overflow");
+                }
                 float x, y, z;
                 if (stream >> x >> y >> z) {
                     currentMesh.vert[currentMesh.vertIndex++] = x;
@@ -197,6 +223,9 @@ Mesh::Mesh(Mesh &&m)
                 }
             } break;
             case 1: {
+                if(currentMesh.texIndex+2 > (count * 2)) {
+                    throw mx::Exception("mx: Model loader: Texture pos overflow");
+                }
                 float u, v;
                 if (stream >> u >> v) {
                     currentMesh.tex[currentMesh.texIndex++] = u;
@@ -204,6 +233,9 @@ Mesh::Mesh(Mesh &&m)
                 }
             } break;
             case 2: {
+                if(currentMesh.normIndex+3 > (count * 3)) {
+                    throw mx::Exception("mx: Model loader: Noram overflow");
+                }
                 float nx, ny, nz;
                 if (stream >> nx >> ny >> nz) {
                     currentMesh.norm[currentMesh.normIndex++] = nx;

@@ -73,6 +73,7 @@ public:
     }
 
     virtual void draw(gl::GLWindow *win) override {
+        glDisable(GL_CULL_FACE);
         glm::vec3 cameraPos(0.0f, 0.0f, 5.0f);
         glm::vec3 cameraTarget(0.0f, 0.0f, 0.0f);
         glm::vec3 cameraUp(0.0f, 1.0f, 0.0f);
