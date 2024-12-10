@@ -163,7 +163,7 @@ private:
 
 class MainWindow : public gl::GLWindow {
 public:
-    MainWindow(const std::string &path, const std::string &filename, const std::string &text, int tw, int th) : gl::GLWindow("OpenGL Example", tw, th) {
+    MainWindow(const std::string &path, const std::string &filename, const std::string &text, int tw, int th) : gl::GLWindow("Model Viewer", tw, th) {
         setPath(path);
         setObject(new ModelViewer(filename, text));
 		object->load(this);
