@@ -31,7 +31,6 @@ public:
     ModelViewer(const std::string &filename, const std::string &text) : rot_x{1.0f, true}, rot_y{1.0f, true}, rot_z{0.0f, false} {
         this->filename = filename;
         this->text = text;
-    
     }
     virtual ~ModelViewer() override {
         glDeleteTextures(1, &texture);
@@ -72,7 +71,6 @@ public:
         glm::vec3 cameraTarget(0.0f, 0.0f, 0.0f);
         glm::vec3 cameraUp(0.0f, 1.0f, 0.0f);
         float aspectRatio = (float)win->w / (float)win->h;
-        static float rotationAngle = 0.0f;
     #ifdef __EMSCRIPTEN__
         static Uint32 lastTime = emscripten_get_now();
         float currentTime = emscripten_get_now();
@@ -84,17 +82,32 @@ public:
         float deltaTime = (currentTime - lastTime) / 1000.0f;
         lastTime = currentTime;
     #endif
-        rotationAngle += deltaTime * 50.0f;
         shaderProgram.useProgram();
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture);
         shaderProgram.setUniform("texture1", 0);
-        glm::mat4 modelMatrix = glm::mat4(1.0f);
-        if (std::get<0>(rot_x) == 0.0f && std::get<0>(rot_y) == 0.0f && std::get<0>(rot_z) == 0.0f) {
-            std::get<0>(rot_x) = 1.0f;
-            std::get<1>(rot_x) = true;
+     
+        if (std::get<1>(rot_x)) {
+            std::get<0>(rot_x) += 50.0f * deltaTime;
+            if (std::get<0>(rot_x) >= 360.0f) {
+                std::get<0>(rot_x) -= 360.0f;
+            }
+        }if (std::get<1>(rot_y)) {
+            std::get<0>(rot_y) += 50.0f * deltaTime;
+            if (std::get<0>(rot_y) >= 360.0f) {
+                std::get<0>(rot_y) -= 360.0f;
+            }
+        }if (std::get<1>(rot_z)) {
+            std::get<0>(rot_z) += 50.0f * deltaTime;
+            if (std::get<0>(rot_z) >= 360.0f) {
+                std::get<0>(rot_z) -= 360.0f;
+            }
         }
-        modelMatrix = glm::rotate(modelMatrix, glm::radians(rotationAngle), glm::vec3(std::get<0>(rot_x), std::get<0>(rot_y), std::get<0>(rot_z)));
+        
+        glm::mat4 modelMatrix = glm::mat4(1.0f);
+        modelMatrix = glm::rotate(modelMatrix, glm::radians(std::get<0>(rot_x)), glm::vec3(1.0f, 0.0f, 0.0f));
+        modelMatrix = glm::rotate(modelMatrix, glm::radians(std::get<0>(rot_y)), glm::vec3(0.0f, 1.0f, 0.0f));
+        modelMatrix = glm::rotate(modelMatrix, glm::radians(std::get<0>(rot_z)), glm::vec3(0.0f, 0.0f, 1.0f));
         glm::mat4 viewMatrix = glm::lookAt(cameraPos, cameraTarget, cameraUp);
         glm::mat4 projectionMatrix = glm::perspective(glm::radians(zoom), aspectRatio, 0.1f, 100.0f);
         glm::vec3 lightPos(2.0f, 4.0f, 1.0f);
