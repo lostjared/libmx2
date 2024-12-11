@@ -13,6 +13,11 @@ Controls:
 * Press A and D to rotate Y-Axis
 * Press W and S to rotate X-Axis
 * Press Q to restore without rotation
+* Press 1 to set rotation to view #1
+* Press 2 to set rotation to view #2
+* Press 3 to set rotation to view #3
+
+* Controllers supported
 
 To Run:
 ```bash
