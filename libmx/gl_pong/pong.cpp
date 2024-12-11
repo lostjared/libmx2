@@ -51,12 +51,12 @@ public:
     float rotationSpeed;
     bool isRotating;
     
-    Paddle(glm::vec3 pos, glm::vec3 sz, const std::string &texturePath)
+    Paddle(glm::vec3 pos, glm::vec3 sz)
     : position(pos), size(sz), rotationAngle(0.0f), rotationSpeed(0.0f), isRotating(false) {
-        texture = loadTexture(texturePath);
+        //texture = loadTexture(texturePath);
     }
     ~Paddle() {
-        glDeleteTextures(1, &texture);
+       
     }
     
     void draw(gl::ShaderProgram &shader, mx::Model &m, float deltaTime) {
@@ -96,13 +96,13 @@ public:
     float speed;
     GLuint texture;
     
-    Ball(glm::vec3 pos, glm::vec3 vel, float r, const std::string &texturePath)
+    Ball(glm::vec3 pos, glm::vec3 vel, float r)
     : position(pos), velocity(vel), radius(r), speed(glm::length(vel)) {
-        texture = loadTexture(texturePath);
+        //texture = loadTexture(texturePath);
     }
     
     ~Ball() {
-        glDeleteTextures(1, &texture);
+       
     }
 
     void draw(gl::ShaderProgram &shader, mx::Model &m) {
@@ -220,11 +220,18 @@ public:
     mx::Controller stick;
     int score1 = 0, score2 = 0;
     mx::Model cube;
-    
+    GLuint texture;
+
     PongGame(gl::GLWindow *win)
-    : paddle1(glm::vec3(-0.9f, 0.0f, 0.0f), glm::vec3(0.1f, 0.4f, 0.1f), win->util.getFilePath("data/paddle_texture.png")),
-    paddle2(glm::vec3(0.9f, 0.0f, 0.0f), glm::vec3(0.1f, 0.4f, 0.1f), win->util.getFilePath("data/paddle_texture.png")),
-    ball(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.5f, 0.3f, 0.0f), 0.05f, win->util.getFilePath("data/ball_texture.png")) {}
+    : paddle1(glm::vec3(-0.9f, 0.0f, 0.0f), glm::vec3(0.1f, 0.4f, 0.1f)),
+    paddle2(glm::vec3(0.9f, 0.0f, 0.0f), glm::vec3(0.1f, 0.4f, 0.1f)),
+    ball(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.5f, 0.3f, 0.0f), 0.05f) {
+
+        texture = loadTexture(win->util.getFilePath("data/paddle_texture.png"));
+        paddle1.texture = texture;
+        paddle2.texture = texture;
+        ball.texture = texture;
+    }
     
     virtual ~PongGame() {
     }
@@ -240,10 +247,14 @@ public:
             throw mx::Exception("Could not load shader program tri");
         }
         shaderProgram.useProgram();
+        cube.setShaderProgram(&shaderProgram, "texture1");
+        std::vector<GLuint> textures {texture};
+        cube.setTextures(textures);
+        
         if(!textShader.loadProgram(win->util.getFilePath("data/text.vert"), win->util.getFilePath("data/text.frag"))) {
             throw mx::Exception("Could not load shader program text");
         }
-        //cube.generateBuffers(VAO, posVBO, normVBO, texVBO);
+        cube.setShaderProgram(&shaderProgram, "texture1");
         float zoom = 4.0f; 
         glm::mat4 projection = glm::ortho(-5.0f / zoom, 5.0f / zoom, -3.75f / zoom, 3.75f / zoom, -100.0f, 100.0f);
         shaderProgram.setUniform("projection", projection);

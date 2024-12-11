@@ -9,6 +9,7 @@ namespace mx {
           tex(std::move(m.tex)),
           norm(std::move(m.norm)),
           shape_type(m.shape_type),
+          texture{m.texture},
           VAO(m.VAO),
           positionVBO(m.positionVBO),
           normalVBO(m.normalVBO),
@@ -19,6 +20,7 @@ namespace mx {
           m.VAO = m.positionVBO = m.normalVBO = m.texCoordVBO = 0;
           m.vertIndex = m.texIndex = m.normIndex = 0;
           m.shape_type = 0;
+          m.texture = 0;
     }
 
     Mesh &Mesh::operator=(Mesh &&m) noexcept {
@@ -34,6 +36,7 @@ namespace mx {
             vertIndex = m.vertIndex;
             texIndex = m.texIndex;
             normIndex = m.normIndex;
+            texture = m.texture;
             m.VAO = 0;
             m.positionVBO = 0;
             m.normalVBO = 0;
@@ -66,6 +69,9 @@ namespace mx {
         if (texCoordVBO) {
             glDeleteBuffers(1, &texCoordVBO);
             texCoordVBO = 0;
+        }
+        if(texture) {
+             glDeleteTextures(1, &texture);
         }
     }
 
@@ -112,6 +118,12 @@ namespace mx {
                 shape_type = GL_TRIANGLE_FAN;
                 break;
         }
+    }
+
+    void Mesh::bindTexture(gl::ShaderProgram &shader, const std::string texture_name) {
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        shader.setUniform(texture_name, 0);
     }
 
     Model::Model(Model &&m) : meshes{std::move(m.meshes)} {}
@@ -265,8 +277,18 @@ namespace mx {
         }
     }
 
+    void Model::setShaderProgram(gl::ShaderProgram *shader_program, const std::string texture_name) {
+        program = shader_program;
+        tex_name = texture_name;
+    }
+
+
     void Model::drawArrays() {
+        if(program == nullptr)
+            throw mx::Exception("Shader program mut be set in Model before call to drawArrays");
+
         for (auto &mesh : meshes) {
+            mesh.bindTexture(*program, tex_name);
             mesh.draw();
         }
     }
@@ -285,5 +307,14 @@ namespace mx {
             }
         }
     
+    }
+
+    void Model::setTextures(const std::vector<GLuint> &textures) {
+        if(meshes.size() != textures.size()) {
+            throw mx::Exception("Texture and Mesh not aligned should contain same amount of elements.");
+        }
+        for(size_t i = 0; i < textures.size(); ++i) {
+            meshes[i].texture = textures[i];
+        }
     }
 }
