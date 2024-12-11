@@ -30,7 +30,7 @@ namespace mx {
         Mesh(const Mesh &m) = delete;
         Mesh &operator=(const Mesh &m) = delete;
         Mesh(Mesh &&m);
-        Mesh &operator=(Mesh &&m);
+        Mesh &operator=(Mesh &&m) noexcept;
     };
 
    class Model {

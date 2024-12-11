@@ -4,34 +4,45 @@
 
 namespace mx {
 
-Mesh::Mesh(Mesh &&m)
-    : vert(std::move(m.vert)),
-      tex(std::move(m.tex)),
-      norm(std::move(m.norm)),
-      shape_type(m.shape_type),
-      VAO(m.VAO),
-      positionVBO(m.positionVBO),
-      normalVBO(m.normalVBO),
-      texCoordVBO(m.texCoordVBO),
-      vertIndex(m.vertIndex),
-      texIndex(m.texIndex),
-      normIndex(m.normIndex) {
+    Mesh::Mesh(Mesh &&m)
+        : vert(std::move(m.vert)),
+          tex(std::move(m.tex)),
+          norm(std::move(m.norm)),
+          shape_type(m.shape_type),
+          VAO(m.VAO),
+          positionVBO(m.positionVBO),
+          normalVBO(m.normalVBO),
+          texCoordVBO(m.texCoordVBO),
+          vertIndex(m.vertIndex),
+          texIndex(m.texIndex),
+          normIndex(m.normIndex) {
           m.VAO = m.positionVBO = m.normalVBO = m.texCoordVBO = 0;
           m.vertIndex = m.texIndex = m.normIndex = 0;
-}
-    
-    Mesh &Mesh::operator=(Mesh &&m) {
-        vert = std::move(m.vert);
-        tex = std::move(m.tex);
-        norm = std::move(m.norm);
-        VAO = m.VAO;
-        positionVBO = m.positionVBO;
-        normalVBO = m.normalVBO;
-        texCoordVBO = m.texCoordVBO;
-        shape_type = m.shape_type;
-        vertIndex = m.vertIndex;
-        texIndex = m.texIndex;
-        normIndex = m.normIndex;
+          m.shape_type = 0;
+    }
+
+    Mesh &Mesh::operator=(Mesh &&m) noexcept {
+        if(this != &m) {
+            vert = std::move(m.vert);
+            tex = std::move(m.tex);
+            norm = std::move(m.norm);
+            VAO = m.VAO;
+            positionVBO = m.positionVBO;
+            normalVBO = m.normalVBO;
+            texCoordVBO = m.texCoordVBO;
+            shape_type = m.shape_type;
+            vertIndex = m.vertIndex;
+            texIndex = m.texIndex;
+            normIndex = m.normIndex;
+            m.VAO = 0;
+            m.positionVBO = 0;
+            m.normalVBO = 0;
+            m.texCoordVBO = 0;
+            m.shape_type = 0;
+            m.vertIndex = 0;
+            m.texIndex = 0;
+            m.normIndex = 0;
+        }
         return *this;
     }
 
