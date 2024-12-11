@@ -20,7 +20,7 @@ class ModelViewer : public gl::GLObject {
 public:
     gl::ShaderProgram shaderProgram;
     GLuint texture;
-    mx::Model model;
+    mx::Model obj_model;
     std::string filename;
     std::string text;
     std::tuple<float, bool> rot_x;
@@ -39,7 +39,7 @@ public:
     float zoom = 45.0f;
 
     virtual void load(gl::GLWindow *win) override {
-        if(!model.openModel(filename)) {
+        if(!obj_model.openModel(filename)) {
             mx::system_err << "Error loading model..\n";
             mx::system_err.flush();
             exit(EXIT_FAILURE);
@@ -50,6 +50,8 @@ public:
         }
         shaderProgram.useProgram();
         CHECK_GL_ERROR();
+
+        obj_model.setShaderProgram(&shaderProgram, "texture1");
 
         glm::mat4 model = glm::mat4(1.0f); // Identity matrix
         glm::mat4 view = glm::lookAt(
@@ -63,6 +65,8 @@ public:
         shaderProgram.setUniform("view", view);
         shaderProgram.setUniform("projection", projection);
         texture = gl::loadTexture(text);
+        std::vector<GLuint> textures {texture};
+        obj_model.setTextures(textures);
     }
 
     virtual void draw(gl::GLWindow *win) override {
@@ -119,9 +123,7 @@ public:
         shaderProgram.setUniform("lightPos", lightPos);
         shaderProgram.setUniform("viewPos", viewPos);
         shaderProgram.setUniform("lightColor", lightColor);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texture);
-        model.drawArrays();
+        obj_model.drawArrays();
         glBindVertexArray(0);
     }
 
