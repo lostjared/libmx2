@@ -8,9 +8,9 @@ ZLIB_LIB = $(LIBS_PATH)/zlib/lib/libz.a
 PNG_LIB = $(LIBS_PATH)/libpng/lib/libpng.a
 LIBMX_LIB = $(LIBS_PATH)/mx2/lib/libmx.a 
 PRELOAD = --preload-file data
-SOURCES = example.cpp
+SOURCES = viewer.cpp
 OBJECTS = $(SOURCES:.cpp=.o)
-OUTPUT = Pyramid.html
+OUTPUT = Viewer.html
 
 .PHONY: all clean install
 

@@ -20,8 +20,6 @@ class ModelViewer : public gl::GLObject {
 public:
     gl::ShaderProgram shaderProgram;
     GLuint texture;
-    GLuint positionVBO, normalVBO, texCoordVBO;
-    GLuint VAO;
     mx::Model model;
     std::string filename;
     std::string text;
@@ -36,10 +34,6 @@ public:
     
     }
     virtual ~ModelViewer() override {
-        glDeleteVertexArrays(1, &VAO);
-        glDeleteBuffers(1, &positionVBO);
-        glDeleteBuffers(1, &normalVBO);
-        glDeleteBuffers(1, &texCoordVBO);
         glDeleteTextures(1, &texture);
     }
 

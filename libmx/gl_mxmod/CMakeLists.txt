@@ -1,4 +1,4 @@
-add_executable(gl_mxmod example.cpp)
+add_executable(gl_mxmod viewer.cpp)
 target_include_directories(gl_mxmod PRIVATE 
     ${CMAKE_SOURCE_DIR}/libmx 
     ${SDL2_INCLUDE_DIRS} 
