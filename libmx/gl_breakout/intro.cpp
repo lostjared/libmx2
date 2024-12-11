@@ -2,23 +2,18 @@
 #include"game.hpp"
 
 void Intro::load(gl::GLWindow  *win) {
-
     if (!shaderProgram.loadProgram(win->util.getFilePath("data/tri.vert"), win->util.getFilePath("data/tri.frag"))) {
         throw mx::Exception("Failed to load shader program");
     }
-  
     if(!cube.openModel(win->util.getFilePath("data/cube.mxmod"))) {
         throw mx::Exception("Error loading cube model in intro");
     }
-
+    cube.setShaderProgram(&shaderProgram, "texture1");
     shaderProgram.useProgram();
-        
     float fov = 10.0f;
     float aspectRatio = static_cast<float>(win->w) / static_cast<float>(win->h);
     glm::mat4 projection = glm::perspective(glm::radians(fov), aspectRatio, 0.1f, 100.0f);
     shaderProgram.setUniform("projection", projection);
-
-    
     glm::mat4 view = glm::lookAt(
         glm::vec3(0.0f, 0.0f, 10.0f), 
         glm::vec3(0.0f, 0.0f, 0.0f),  
@@ -43,14 +38,12 @@ void Intro::load(gl::GLWindow  *win) {
     glGenerateMipmap(GL_TEXTURE_2D);
     SDL_FreeSurface(surface);
     shaderProgram.setUniform("texture1", 0);
+    std::vector<GLuint> textures{texture};
+    cube.setTextures(textures);
 }
 
 void Intro::draw(gl::GLWindow *win) {
     shaderProgram.useProgram();
-    CHECK_GL_ERROR();
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, texture);
-    
     CHECK_GL_ERROR();
 #ifdef __EMSCRIPTEN__
     static Uint32 lastTime = emscripten_get_now(); 

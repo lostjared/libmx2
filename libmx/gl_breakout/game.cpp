@@ -67,6 +67,8 @@ void BreakoutGame::load(gl::GLWindow *win) {
             block.Position = glm::vec3(-5.0f + j * 1.0f, 3.0f - i * 0.6f, 0.0f);
             int randomTextureIndex = rand() % Textures.size();
             block.texture = Textures[randomTextureIndex];
+            std::vector<GLuint> textures{block.texture};
+            block.cube.setTextures(textures);
         }
     }
 }

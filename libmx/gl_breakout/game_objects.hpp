@@ -21,56 +21,6 @@
       if (err != GL_NO_ERROR) \
         printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
 
-/*
-static GLfloat cubeVertices[] =  {
-    // Front face
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // Bottom-left
-    0.5f, -0.5f,  0.5f,  1.0f, 0.0f, // Bottom-right
-    0.5f,  0.5f,  0.5f,  1.0f, 1.0f, // Top-right
-    0.5f,  0.5f,  0.5f,  1.0f, 1.0f, // Top-right
-    -0.5f,  0.5f,  0.5f,  0.0f, 1.0f, // Top-left
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // Bottom-left
-    
-    // Back face
-    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f, // Bottom-left
-    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f, // Top-left
-    0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // Top-right
-    0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // Top-right
-    0.5f, -0.5f, -0.5f,  1.0f, 0.0f, // Bottom-right
-    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f, // Bottom-left
-    
-    // Left face
-    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // Top-right
-    -0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // Top-left
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // Bottom-left
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // Bottom-left
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // Bottom-right
-    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // Top-right
-    
-    // Right face
-    0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // Top-left
-    0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // Bottom-right
-    0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // Top-right
-    0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // Bottom-right
-    0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // Top-left
-    0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // Bottom-left
-    
-    // Bottom face
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // Top-right
-    0.5f, -0.5f, -0.5f,  1.0f, 1.0f, // Top-left
-    0.5f, -0.5f,  0.5f,  1.0f, 0.0f, // Bottom-right
-    0.5f, -0.5f,  0.5f,  1.0f, 0.0f, // Bottom-right
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // Bottom-left
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // Top-right
-    
-    // Top face
-    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f, // Top-left
-    0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // Bottom-right
-    0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // Top-right
-    0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // Bottom-right
-    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f, // Top-left
-    -0.5f,  0.5f,  0.5f,  0.0f, 0.0f  // Bottom-left
-};*/
 
 class GameObject {
 public:
@@ -90,11 +40,7 @@ public:
 
 
     GameObject() : Position(0, 0, 0), Size(1, 1, 1), Velocity(0), Rotation(0), shaderProgram(nullptr) {}
-    virtual ~GameObject() {
-        if(owner == true) {
-            glDeleteTextures(1, &texture);
-        }
-    }
+    virtual ~GameObject() {}
 
     void setShaderProgram(gl::ShaderProgram* shaderProgram) {
         this->shaderProgram = shaderProgram;
@@ -109,7 +55,10 @@ public:
         }
 
         shaderProgram->useProgram();
+        cube.setShaderProgram(shaderProgram, "texture1");
         glBindVertexArray(0);
+
+
 
         if(gen_texture) {    
             glGenTextures(1, &texture);
@@ -124,6 +73,8 @@ public:
             glGenerateMipmap(GL_TEXTURE_2D);
             SDL_FreeSurface(surface);
             owner = true;
+            std::vector<GLuint> textures{texture};
+            cube.setTextures(textures);
         }
     }
 
@@ -139,9 +90,6 @@ public:
         model = glm::rotate(model, glm::radians(Rotation), glm::vec3(0.0f, 0.0f, 1.0f));
         model = glm::scale(model, Size);
         shaderProgram->setUniform("model", model);
-        shaderProgram->setUniform("texture1", 0);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texture);
         cube.drawArrays();
     }
 
@@ -217,10 +165,6 @@ public:
         model = glm::rotate(model, glm::radians(CurrentRotation), glm::vec3(1.0f, 0.0f, 0.0f)); // Rotate along X-axis
         model = glm::scale(model, Size);
         shaderProgram->setUniform("model", model);
-
-        shaderProgram->setUniform("texture1", 0);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texture);
         cube.drawArrays();
         glBindVertexArray(0);
     }
@@ -307,9 +251,6 @@ public:
         model = glm::rotate(model, glm::radians(CurrentRotation), glm::vec3(1.0f, 0.0f, 0.0f)); // Rotate along X-axis
         model = glm::scale(model, Size);
         shaderProgram->setUniform("model", model);
-        shaderProgram->setUniform("texture1", 0);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texture);
         cube.drawArrays();
         glBindVertexArray(0);
     }

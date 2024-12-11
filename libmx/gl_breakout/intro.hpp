@@ -16,15 +16,13 @@
 #include<memory>
 
 class Intro : public gl::GLObject {
-    GLuint texture;
     gl::ShaderProgram shaderProgram;
     mx::Controller stick;
     mx::Model cube;
+    GLuint texture;
 public:
     Intro() = default;
-    virtual ~Intro() override {
-        glDeleteTextures(1, &texture);
-    }
+    virtual ~Intro() override {}
     virtual void load(gl::GLWindow  *win) override;
     virtual void draw(gl::GLWindow *win) override;
     virtual void event(gl::GLWindow *win, SDL_Event &e) override;
