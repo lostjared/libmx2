@@ -93,6 +93,23 @@ void BreakoutGame::update(float deltaTime, gl::GLWindow *win) {
         gridRotation = 0;
         gridYRotation = 0;
     }
+/*
+    if(state[SDL_SCANCODE_SPACE]) {
+        mx::system_out << "X: " << gridRotation << " Y: " << gridYRotation << "\n";
+    }
+*/
+    if(state[SDL_SCANCODE_1]) {
+        gridRotation = -33.4;
+        gridYRotation = -18.4;
+    }
+    if(state[SDL_SCANCODE_2]) {
+        gridRotation = -21.4;
+        gridYRotation = 31.15;
+    }
+    if(state[SDL_SCANCODE_3]) {
+        gridRotation = -47.25;
+        gridYRotation = 0.848669;        
+    }
 
     if (gridRotation >= 360.0f) gridRotation -= 360.0f;
     if (gridRotation <= -360.0f) gridRotation += 360.0f;
