@@ -36,7 +36,6 @@ namespace mx {
    class Model {
    public:
        std::vector<Mesh> meshes;
-
        Model() = default;
        Model(const std::string &filename);
        Model(const Model &m) = delete;

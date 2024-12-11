@@ -10,8 +10,9 @@
 #include <GLES3/gl3.h>
 #endif
 
-#include "gl.hpp"
-#include "loadpng.hpp"
+#include"gl.hpp"
+#include"loadpng.hpp"
+#include"model.hpp"
 #include<memory>
 #include<vector>
 
@@ -20,7 +21,7 @@
       if (err != GL_NO_ERROR) \
         printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
 
-
+/*
 static GLfloat cubeVertices[] =  {
     // Front face
     -0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // Bottom-left
@@ -69,28 +70,27 @@ static GLfloat cubeVertices[] =  {
     0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // Bottom-right
     -0.5f,  0.5f, -0.5f,  0.0f, 1.0f, // Top-left
     -0.5f,  0.5f,  0.5f,  0.0f, 0.0f  // Bottom-left
-};
+};*/
 
 class GameObject {
 public:
     glm::vec3 Position, Size;
     glm::vec3 Velocity;
     GLfloat Rotation;
-    GLuint VAO, VBO;
     GLuint texture;
     bool owner = false;
     gl::ShaderProgram* shaderProgram; 
-
+    mx::Model cube;
     GameObject(const GameObject&) = delete;
     GameObject& operator=(const GameObject&) = delete;
     GameObject(GameObject&&) = default;
     GameObject& operator=(GameObject&&) = default;
 
 
+
+
     GameObject() : Position(0, 0, 0), Size(1, 1, 1), Velocity(0), Rotation(0), shaderProgram(nullptr) {}
     virtual ~GameObject() {
-        glDeleteVertexArrays(1, &VAO);
-        glDeleteBuffers(1, &VBO);
         if(owner == true) {
             glDeleteTextures(1, &texture);
         }
@@ -104,17 +104,11 @@ public:
         if (!shaderProgram) {
             throw mx::Exception("Shader program not set for GameObject");
         }
+        if(!cube.openModel(win->util.getFilePath("data/cube.mxmod"))) {
+            throw mx::Exception("Could not load model cube.mxmod");
+        }
 
         shaderProgram->useProgram();
-        glGenVertexArrays(1, &VAO);
-        glGenBuffers(1, &VBO);
-        glBindVertexArray(VAO);
-        glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVertices), cubeVertices, GL_STATIC_DRAW);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-        glEnableVertexAttribArray(1);
         glBindVertexArray(0);
 
         if(gen_texture) {    
@@ -148,9 +142,7 @@ public:
         shaderProgram->setUniform("texture1", 0);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture);
-        glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-        glBindVertexArray(0);
+        cube.drawArrays();
     }
 
     virtual void update(float deltaTime) {
@@ -229,9 +221,7 @@ public:
         shaderProgram->setUniform("texture1", 0);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture);
-
-        glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        cube.drawArrays();
         glBindVertexArray(0);
     }
 
@@ -269,7 +259,6 @@ public:
             }
         }
     }
-
 };
 
 class Block : public GameObject {
@@ -318,13 +307,10 @@ public:
         model = glm::rotate(model, glm::radians(CurrentRotation), glm::vec3(1.0f, 0.0f, 0.0f)); // Rotate along X-axis
         model = glm::scale(model, Size);
         shaderProgram->setUniform("model", model);
-
         shaderProgram->setUniform("texture1", 0);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture);
-
-        glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        cube.drawArrays();
         glBindVertexArray(0);
     }
 };

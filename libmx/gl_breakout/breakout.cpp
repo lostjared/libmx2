@@ -12,6 +12,7 @@
 #include<memory>
 #include"intro.hpp"
 
+
 class MainWindow : public gl::GLWindow {
 public:
     MainWindow(std::string path, int tw, int th) : gl::GLWindow("Breakout Game", tw, th) {

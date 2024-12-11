@@ -6,30 +6,26 @@ void Intro::load(gl::GLWindow  *win) {
     if (!shaderProgram.loadProgram(win->util.getFilePath("data/tri.vert"), win->util.getFilePath("data/tri.frag"))) {
         throw mx::Exception("Failed to load shader program");
     }
+  
+    if(!cube.openModel(win->util.getFilePath("data/cube.mxmod"))) {
+        throw mx::Exception("Error loading cube model in intro");
+    }
+
     shaderProgram.useProgram();
-    glm::mat4 model = glm::mat4(1.0f); 
+        
+    float fov = 10.0f;
+    float aspectRatio = static_cast<float>(win->w) / static_cast<float>(win->h);
+    glm::mat4 projection = glm::perspective(glm::radians(fov), aspectRatio, 0.1f, 100.0f);
+    shaderProgram.setUniform("projection", projection);
+
+    
     glm::mat4 view = glm::lookAt(
-        glm::vec3(0.0f, 0.0f, 2.0f),  
+        glm::vec3(0.0f, 0.0f, 10.0f), 
         glm::vec3(0.0f, 0.0f, 0.0f),  
         glm::vec3(0.0f, 1.0f, 0.0f)   
     );
-    glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)win->w / win->h, 0.1f, 100.0f);
-
-    shaderProgram.setUniform("model", model);
-    shaderProgram.setUniform("view", view);
-    shaderProgram.setUniform("projection", projection);
-    
-    
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    glBindVertexArray(VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVertices), cubeVertices, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-    glBindVertexArray(0);
+    shaderProgram.setUniform("view", view);    
+    glEnable(GL_DEPTH_TEST);
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -46,6 +42,7 @@ void Intro::load(gl::GLWindow  *win) {
     glTexImage2D(GL_TEXTURE_2D, 0, format, surface->w, surface->h, 0, format, GL_UNSIGNED_BYTE, surface->pixels);
     glGenerateMipmap(GL_TEXTURE_2D);
     SDL_FreeSurface(surface);
+    shaderProgram.setUniform("texture1", 0);
 }
 
 void Intro::draw(gl::GLWindow *win) {
@@ -53,7 +50,7 @@ void Intro::draw(gl::GLWindow *win) {
     CHECK_GL_ERROR();
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture);
-    glBindVertexArray(VAO);
+    
     CHECK_GL_ERROR();
 #ifdef __EMSCRIPTEN__
     static Uint32 lastTime = emscripten_get_now(); 
@@ -67,11 +64,17 @@ void Intro::draw(gl::GLWindow *win) {
     lastTime = currentTime;
 #endif
     static float rotationAngle = 0.0f;
-    rotationAngle += deltaTime * 50.0f; 
-    glm::mat4 model = glm::rotate(glm::mat4(1.0f), glm::radians(rotationAngle), glm::vec3(1.0f, 0.0f, 0.0f));
-    shaderProgram.setUniform("model", model);      
-    glBindVertexArray(VAO);
-    glDrawArrays(GL_TRIANGLES, 0, 36);
+    rotationAngle += 50.0f * deltaTime;
+    glm::mat4 model = glm::mat4(1.0f);
+    model = glm::rotate(model, glm::radians(rotationAngle), glm::vec3(1.0f, 0.0f, 0.0f));
+    shaderProgram.setUniform("model", model);
+    glm::vec3 lightPos(0.0f, 3.0f, 2.0f); 
+    glm::vec3 viewPos(0.0f, 0.0f, 10.0f);
+    glm::vec3 lightColor(1.5f, 1.5f, 1.5f); 
+    shaderProgram.setUniform("lightPos", lightPos);
+    shaderProgram.setUniform("viewPos", viewPos);
+    shaderProgram.setUniform("lightColor", lightColor);
+    cube.drawArrays();
     glBindVertexArray(0);
 
     if(stick.getButton(SDL_CONTROLLER_BUTTON_A)) {

@@ -44,7 +44,8 @@ void BreakoutGame::load(gl::GLWindow *win) {
     }
 
     shaderProgram.useProgram();
-    projection = glm::ortho(-5.0f, 5.0f, -3.75f, 3.75f, -100.0f, 100.0f); // Adjust near and far planes
+    float zoom = 0.8f; 
+    glm::mat4 projection = glm::ortho(-5.0f / zoom, 5.0f / zoom, -3.75f / zoom, 3.75f / zoom, -100.0f, 100.0f);
     shaderProgram.setUniform("projection", projection);
     glm::mat4 view = glm::mat4(1.0f); 
     shaderProgram.setUniform("view", view);
@@ -80,6 +81,7 @@ void BreakoutGame::update(float deltaTime, gl::GLWindow *win) {
     if (state[SDL_SCANCODE_S] || stick.getAxis(SDL_CONTROLLER_AXIS_RIGHTY) > axisThreshold) {
         gridRotation += rotationSpeed * deltaTime;
     }
+    
 
     if (state[SDL_SCANCODE_A] || stick.getAxis(SDL_CONTROLLER_AXIS_RIGHTX) < -axisThreshold) {
         gridYRotation -= rotationSpeed * deltaTime;
@@ -134,14 +136,20 @@ void BreakoutGame::draw(gl::GLWindow *win) {
     if (deltaTime > 0.05f) deltaTime = 0.05f; 
     lastTime = currentTime;
     update(deltaTime, win);
+    glEnable(GL_DEPTH_TEST);
     shaderProgram.useProgram();
-
     glm::mat4 modelView = glm::mat4(1.0f);
     modelView = glm::rotate(modelView, glm::radians(gridRotation), glm::vec3(1.0f, 0.0f, 0.0f));
     modelView = glm::rotate(modelView, glm::radians(gridYRotation), glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::vec3 cameraPos(0.0f, 0.0f, 10.0f); 
+    glm::vec3 lightPos(0.0f, 12.0f, 10.0f); 
+    glm::vec3 viewPos = cameraPos;
+    glm::vec3 lightColor(1.1f, 1.1f, 1.1f); 
+    shaderProgram.setUniform("lightPos", lightPos);
+    shaderProgram.setUniform("viewPos", viewPos);
+    shaderProgram.setUniform("lightColor", lightColor);
     shaderProgram.setUniform("view", modelView);
-
-
+       
     PlayerPaddle.draw(win);
     GameBall.draw(win);
     for (auto &block : Blocks) {
