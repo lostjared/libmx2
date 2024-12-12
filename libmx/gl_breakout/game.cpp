@@ -163,7 +163,7 @@ void BreakoutGame::draw(gl::GLWindow *win) {
     glm::vec3 cameraPos(0.0f, 0.0f, 10.0f); 
     glm::vec3 lightPos(0.0f, 12.0f, 10.0f); 
     glm::vec3 viewPos = cameraPos;
-    glm::vec3 lightColor(1.1f, 1.1f, 1.1f); 
+    glm::vec3 lightColor(1.65f, 1.65f, 1.65f); 
     shaderProgram.setUniform("lightPos", lightPos);
     shaderProgram.setUniform("viewPos", viewPos);
     shaderProgram.setUniform("lightColor", lightColor);

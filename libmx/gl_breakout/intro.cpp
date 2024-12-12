@@ -33,7 +33,6 @@ void Intro::load(gl::GLWindow  *win) {
     }
     surface = mx::Texture::flipSurface(surface);
     GLenum format = (surface->format->BytesPerPixel == 4) ? GL_RGBA : GL_RGB;
-
     glTexImage2D(GL_TEXTURE_2D, 0, format, surface->w, surface->h, 0, format, GL_UNSIGNED_BYTE, surface->pixels);
     glGenerateMipmap(GL_TEXTURE_2D);
     SDL_FreeSurface(surface);
@@ -63,7 +62,7 @@ void Intro::draw(gl::GLWindow *win) {
     shaderProgram.setUniform("model", model);
     glm::vec3 lightPos(0.0f, 3.0f, 2.0f); 
     glm::vec3 viewPos(0.0f, 0.0f, 10.0f);
-    glm::vec3 lightColor(1.5f, 1.5f, 1.5f); 
+    glm::vec3 lightColor(1.2f, 1.2f, 1.2f); 
     shaderProgram.setUniform("lightPos", lightPos);
     shaderProgram.setUniform("viewPos", viewPos);
     shaderProgram.setUniform("lightColor", lightColor);
