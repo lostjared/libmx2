@@ -94,6 +94,7 @@ Refer to the `examples` directory for sample usage scenarios. Also various subfo
 * 3D Pyramid with Lighting
 * GL Pong with Lighting
 * 3D Breakout
+* MXMOD 3D Model Viewer
 
 ## How to Run the Examples
 
