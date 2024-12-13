@@ -327,6 +327,7 @@ namespace mx {
             for(auto &n : m.norm) {
                 out << "\tN: " << n << "\n";
             }
+            out << "\n}\n";
             index++;
         }
     }
