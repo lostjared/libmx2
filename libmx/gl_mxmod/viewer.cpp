@@ -168,6 +168,17 @@ public:
                         if (zoom > 90.0f) zoom = 90.0f; 
             
                     break;
+                    case SDLK_p: {
+                        static bool poly = false;
+                        if(poly == false) {
+                            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+                            poly = true;
+                        } else {
+                            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+                            poly = false;
+                        }
+                    }
+                    break;
                 }
             }
             break;
