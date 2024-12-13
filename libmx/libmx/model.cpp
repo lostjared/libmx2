@@ -161,16 +161,20 @@ namespace mx {
                 }
                 if (line.find("tri") == 0) {
                     if (!currentMesh.vert.empty()) {
-                        std::ostringstream stream;
                         if (count * 3 != currentMesh.vert.size()) {
-                            stream << "mx: Model :" << filename << " invalid vertex alignment expected: " << (count * 3) << " found: " << currentMesh.vert.size();
+                            std::ostringstream stream;
+                            stream << "mx: Model :" << filename << " invalid vertex count unaligned expected: " << (count) << " found: " << currentMesh.vert.size()/3;
                             throw mx::Exception(stream.str());
                         }              
                         if (count * 2 != currentMesh.tex.size()) {
-                            throw mx::Exception("mx: Model :" + filename + " invalid texture coordinates alignment.\n");
+                            std::ostringstream stream;
+                            stream << "mx: Model :" << filename << " invalid texture count unaligned expected: " << (count) << " found: " << currentMesh.tex.size()/3;
+                            throw mx::Exception(stream.str());
                         }
                         if (count * 3 != currentMesh.norm.size()) {
-                            throw mx::Exception("mx: Model :" + filename + " invalid normals alignment.\n");
+                            std::ostringstream stream;
+                            stream << "mx: Model :" << filename << " invalid normal count unaligned expected: " << (count) << " found: " << currentMesh.norm.size()/3;
+                            throw mx::Exception(stream.str());
                         }
                         meshes.push_back(std::move(currentMesh));
                         currentMesh = Mesh();
@@ -194,16 +198,20 @@ namespace mx {
             }
         }
         if (!currentMesh.vert.empty()) {
-            std::ostringstream stream;
             if (count * 3 != currentMesh.vert.size()) {
-                stream << "mx: Model :" << filename << " invalid vertex alignment expected: " << (count) << " found: " << currentMesh.vert.size()/3;
+                std::ostringstream stream;
+                stream << "mx: Model :" << filename << " invalid vertex count unaligned expected: " << (count) << " found: " << currentMesh.vert.size()/3;
                 throw mx::Exception(stream.str());
             }              
             if (count * 2 != currentMesh.tex.size()) {
-                throw mx::Exception("mx: Model :" + filename + " invalid texture coordinates alignment.\n");
+                std::ostringstream stream;
+                stream << "mx: Model :" << filename << " invalid texture count unaligned expected: " << (count) << " found: " << currentMesh.tex.size()/3;
+                throw mx::Exception(stream.str());
             }
             if (count * 3 != currentMesh.norm.size()) {
-                throw mx::Exception("mx: Model :" + filename + " invalid normals alignment.\n");
+                std::ostringstream stream;
+                stream << "mx: Model :" << filename << " invalid normal count unaligned expected: " << (count) << " found: " << currentMesh.norm.size()/3;
+                throw mx::Exception(stream.str());
             }
             meshes.push_back(std::move(currentMesh));
         }
@@ -253,7 +261,7 @@ namespace mx {
             case 0: {
                 if(currentMesh.vertIndex != count * 3) {
                     if(currentMesh.vertIndex+3 > (count * 3)) {
-                        throw mx::Exception("mx: Model loader: Vertex overflow");
+                        throw mx::Exception("mx: Model loader: Vertex coordinate index overflow: " + std::to_string(count * 3) + "/" + std::to_string(currentMesh.vertIndex+3));
                     }
                 }
                 float x, y, z;
@@ -266,7 +274,7 @@ namespace mx {
             case 1: {
                 if(currentMesh.texIndex != count * 2) {
                     if(currentMesh.texIndex+2 > (count * 2)) {
-                        throw mx::Exception("mx: Model loader: Texture pos overflow");
+                        throw mx::Exception("mx: Model loader: Texture coordinate index overflow: " + std::to_string(count * 3) + "/" + std::to_string(currentMesh.texIndex+2));
                     }
                 }
                 float u, v;
@@ -279,7 +287,7 @@ namespace mx {
             case 2: {
                 if(currentMesh.normIndex != count * 3) {
                     if(currentMesh.normIndex+3 > (count * 3)) {
-                        throw mx::Exception("mx: Model loader: Norm overflow: " + std::to_string(count * 3) + "/" + std::to_string(currentMesh.normIndex+3));
+                        throw mx::Exception("mx: Model loader: Norm coordinate index overflow: " + std::to_string(count * 3) + "/" + std::to_string(currentMesh.normIndex+3));
                     }
                 }
                 float nx, ny, nz;
