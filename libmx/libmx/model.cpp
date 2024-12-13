@@ -347,7 +347,7 @@ namespace mx {
         std::fstream file;
         file.open(filename, std::ios::in);
         if(!file.is_open()) {
-            throw mx::Exception("Error could not open file: " + filename + "for texture");
+            throw mx::Exception("Error could not open file: " + filename + " for texture");
         }
         std::vector<GLuint> text;
         while(!file.eof()) {
