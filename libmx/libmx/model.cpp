@@ -176,8 +176,10 @@ namespace mx {
                     std::istringstream stream(line);
                     std::string dummy;
                     GLuint shapeType = 0;
-                    stream >> dummy >> shapeType;
+                    GLuint texture_index = 0;
+                    stream >> dummy >> shapeType >> texture_index;
                     currentMesh.setShapeType(shapeType);
+                    currentMesh.texture = texture_index;
                     type = -1;
                     
                 } else {
@@ -314,7 +316,11 @@ namespace mx {
             throw mx::Exception("Texture and Mesh not aligned should contain same amount of elements.");
         }
         for(size_t i = 0; i < textures.size(); ++i) {
-            meshes[i].texture = textures[i];
+            GLuint pos = meshes.at(i).texture;
+            if(pos < textures.size())
+                meshes.at(i).texture = textures[meshes.at(i).texture];
+            else
+                throw mx::Exception("Texture index in file on tri statement out of range not enough defined textures");
         }
     }
 }
