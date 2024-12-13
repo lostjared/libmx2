@@ -183,14 +183,11 @@ namespace mx {
                     std::string dummy;
                     GLuint shapeType = 0;
                     GLuint texture_index = 0;
-                    stream >> dummy >> shapeType;
-                    if(stream >> texture_index) {
-                        currentMesh.texture = texture_index;
-                    } else {
-                        currentMesh.texture = 0;
-                    }
+                    stream >> dummy >> shapeType>> texture_index;
+                    currentMesh.texture = texture_index;
                     currentMesh.setShapeType(shapeType);
                     type = -1;
+                    std::cout << "Mesh: " << texture_index << "\n";
                     
                 } else {
                     parseLine(line, currentMesh, type, count);
@@ -214,6 +211,7 @@ namespace mx {
                 throw mx::Exception(stream.str());
             }
             meshes.push_back(std::move(currentMesh));
+
         }
 
         for(auto &m : meshes) {
@@ -345,5 +343,26 @@ namespace mx {
             else
                 throw mx::Exception("Texture index in file on tri statement out of range not enough defined textures");
         }
+    }
+
+    void Model::setTextures(gl::GLWindow *win, const std::string &filename, const std::string prefix) {
+        std::fstream file;
+        file.open(filename, std::ios::in);
+        if(!file.is_open()) {
+            throw mx::Exception("Error could not open file: " + filename + "for texture");
+        }
+        std::vector<GLuint> text;
+        while(!file.eof()) {
+            std::string line;
+            std::getline(file, line);
+            if(file) {
+                std::string final_path = prefix+"/"+line;
+                GLuint tex = gl::loadTexture(final_path);
+                text.push_back(tex);
+                mx::system_out << "mx: Loaded Texture: " << tex << " -> " << final_path << "\n";
+            }
+        }
+        file.close();
+        setTextures(text);
     }
 }

@@ -45,6 +45,8 @@ public:
             exit(EXIT_FAILURE);
         }
         
+        mx::system_out << "Meshes:  " << obj_model.meshes.size() << "\n";
+
         if (!shaderProgram.loadProgram(win->util.getFilePath("data/tri.vert"), win->util.getFilePath("data/tri.frag"))) {
             throw mx::Exception("Failed to load shader program");
         }
@@ -64,14 +66,18 @@ public:
         shaderProgram.setUniform("model", model);
         shaderProgram.setUniform("view", view);
         shaderProgram.setUniform("projection", projection);
-        texture = gl::loadTexture(text);
-        std::vector<GLuint> textures {texture};
-        obj_model.setTextures(textures);
+
+        if(text.find(".png") != std::string::npos) {
+            texture = gl::loadTexture(text);
+            std::vector<GLuint> textures {texture};
+            obj_model.setTextures(textures);
+        } else {
+            obj_model.setTextures(win, win->util.getFilePath("data/"+text), win->util.getFilePath("data"));
+        }
     }
 
     virtual void draw(gl::GLWindow *win) override {
         glDisable(GL_CULL_FACE);
-        //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         glm::vec3 cameraPos(0.0f, 0.0f, 5.0f);
         glm::vec3 cameraTarget(0.0f, 0.0f, 0.0f);
         glm::vec3 cameraUp(0.0f, 1.0f, 0.0f);

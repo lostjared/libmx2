@@ -49,7 +49,7 @@ namespace mx {
        void printData();
        void setShaderProgram(gl::ShaderProgram *shader_program, const std::string texture_name = "texture1");
        void setTextures(const std::vector<GLuint> &textures); 
-
+       void setTextures(gl::GLWindow *win, const std::string &filename, std::string prefix);
    private:
        void parseLine(const std::string &line, Mesh &currentMesh, int &type, size_t &count);
        gl::ShaderProgram *program = nullptr;
