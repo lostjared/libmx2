@@ -177,9 +177,13 @@ namespace mx {
                     std::string dummy;
                     GLuint shapeType = 0;
                     GLuint texture_index = 0;
-                    stream >> dummy >> shapeType >> texture_index;
+                    stream >> dummy >> shapeType;
+                    if(stream >> texture_index) {
+                        currentMesh.texture = texture_index;
+                    } else {
+                        currentMesh.texture = 0;
+                    }
                     currentMesh.setShapeType(shapeType);
-                    currentMesh.texture = texture_index;
                     type = -1;
                     
                 } else {
