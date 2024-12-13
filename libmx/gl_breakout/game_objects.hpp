@@ -73,9 +73,8 @@ public:
             glGenerateMipmap(GL_TEXTURE_2D);
             SDL_FreeSurface(surface);
             owner = true;
-            std::vector<GLuint> textures{texture};
-            cube.setTextures(textures);
         }
+        
     }
 
     virtual void draw(gl::GLWindow *win) {
