@@ -314,20 +314,21 @@ namespace mx {
         }
     }
 
-    void Model::printData() {
-        
+    void Model::printData(std::ostream &out) {
+        size_t index = 0;
         for(auto &m : meshes) {
+            out << "Mesh Index: " << index << " -> {\n";
             for(auto &v : m.vert) {
-                std::cout << "V: " << v << "\n";
+                out << "\tV: " << v << "\n";
             }
             for(auto &t : m.tex) {
-                std::cout << "T: " << t << "\n";
+                out << "\tT: " << t << "\n";
             }
             for(auto &n : m.norm) {
-                std::cout << "N: " << n << "\n";
+                out << "\tN: " << n << "\n";
             }
+            index++;
         }
-    
     }
 
     void Model::setTextures(const std::vector<GLuint> &textures) {

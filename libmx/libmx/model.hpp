@@ -46,7 +46,7 @@ namespace mx {
        Model &operator=(Model &&m);
        bool openModel(const std::string &filename);
        void drawArrays();
-       void printData();
+       void printData(std::ostream &out);
        void setShaderProgram(gl::ShaderProgram *shader_program, const std::string texture_name = "texture1");
        void setTextures(const std::vector<GLuint> &textures); 
        void setTextures(gl::GLWindow *win, const std::string &filename, std::string prefix);
