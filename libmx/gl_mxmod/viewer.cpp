@@ -207,6 +207,7 @@ void eventProc() {
 }
 
 int main(int argc, char **argv) {
+    
 #ifdef __EMSCRIPTEN__
     MainWindow main_window("/", 960, 720);
     main_w =&main_window;

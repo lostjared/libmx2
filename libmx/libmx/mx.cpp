@@ -32,8 +32,6 @@ namespace mx {
         SDL_DestroyWindow(window);
         TTF_Quit();
         SDL_Quit();
-        log_file.close();
-        error_file.close();
     }
     SDL_Texture *mxWindow::createTexture(int w, int h) {
         SDL_Texture *tex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, w, h);
@@ -63,7 +61,6 @@ namespace mx {
             SDL_Quit();
             exit(EXIT_FAILURE);
         }
-
     }
 
     void mxWindow::loop() {

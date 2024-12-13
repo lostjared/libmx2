@@ -4,32 +4,46 @@
 #include <iostream>
 #include <fstream>
 #include <streambuf>
-#include <chrono>
-#include <iomanip>
-#include <sstream>
+#include <stdexcept>
+#include <memory>
 
 namespace mx {
 
     class TeeBuf : public std::streambuf {
     public:
         TeeBuf(std::streambuf* buf1, std::streambuf* buf2) : buf1(buf1), buf2(buf2) {}
+
     protected:
         virtual int overflow(int c) override {
-            if (c == EOF) {
-                return !EOF;
-            } else {
-                if (buf1->sputc(c) == EOF || buf2->sputc(c) == EOF) {
-                    return EOF;
+            if (buf1 == nullptr || buf2 == nullptr) {
+                return traits_type::eof();
+            }
+
+            if (traits_type::eq_int_type(c, traits_type::eof())) {
+                if (this->sync() == -1) {
+                    return traits_type::eof();
                 }
-                return c;
+                return traits_type::not_eof(c);
             }
+
+            const auto ch = traits_type::to_char_type(c);
+            if (traits_type::eq_int_type(buf1->sputc(ch), traits_type::eof()) ||
+                traits_type::eq_int_type(buf2->sputc(ch), traits_type::eof())) {
+                return traits_type::eof();
+            }
+
+            return c;
         }
+
         virtual int sync() override {
-            if (buf1->pubsync() == 0 && buf2->pubsync() == 0) {
-                return 0;
+            if (buf1 == nullptr || buf2 == nullptr) {
+                return -1;
             }
-            return -1;
+            int res1 = buf1->pubsync();
+            int res2 = buf2->pubsync();
+            return (res1 == 0 && res2 == 0) ? 0 : -1;
         }
+
     private:
         std::streambuf* buf1 = nullptr;
         std::streambuf* buf2 = nullptr;
@@ -39,21 +53,14 @@ namespace mx {
     public:
         TeeStream(std::ostream& stream1, std::ostream& stream2)
             : std::ostream(&tbuf), tbuf(stream1.rdbuf(), stream2.rdbuf()) {}
+
     private:
         TeeBuf tbuf;
     };
-
-    inline std::ofstream log_file("system.log.txt", std::ios::out);
-    inline std::ofstream error_file("error.log.txt", std::ios::out);
-    inline TeeStream system_out(std::cout, log_file);
-    inline TeeStream system_err(std::cerr, error_file);
-
-    inline void redirect() {
-        static TeeStream out_stream(std::cout, log_file);
-        static TeeStream err_stream(std::cerr, error_file);
-        std::cout.rdbuf(out_stream.rdbuf());
-        std::cerr.rdbuf(err_stream.rdbuf());
-    }
+    
+    extern TeeStream system_out;
+    extern TeeStream system_err;
+    void redirect();
 } 
 
 #endif 

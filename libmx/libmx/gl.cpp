@@ -27,12 +27,9 @@ namespace gl {
 
         TTF_Quit();
         SDL_Quit();
-        mx::log_file.close();
-        mx::error_file.close();
     }
 
     void GLWindow::initGL(const std::string &title, int width, int height) {
-        mx::redirect();
         if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER | SDL_INIT_AUDIO) < 0) {
             mx::system_err << "Error initalizing SDL.\n";
             mx::system_err.flush();
@@ -70,7 +67,7 @@ namespace gl {
         SDL_Quit();
         exit(EXIT_FAILURE);
     }
-    std::cout << "OpenGL Version: " << glGetString(GL_VERSION) << "\n";
+    mx::system_out << "OpenGL Version: [" << glGetString(GL_VERSION) << "]\n";
 #endif
         w = width;
         h = height;

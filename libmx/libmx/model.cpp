@@ -357,7 +357,8 @@ namespace mx {
                 std::string final_path = prefix+"/"+line;
                 GLuint tex = gl::loadTexture(final_path);
                 text.push_back(tex);
-                mx::system_out << "mx: Loaded Texture: " << tex << " -> " << final_path << "\n";
+                mx::system_out << "mx: Loaded Texture: " << tex << " -> " << final_path << std::endl;
+                mx::system_out.flush();
             }
         }
         file.close();
