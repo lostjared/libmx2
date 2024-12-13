@@ -5,6 +5,7 @@
 namespace mx {
    
     mxWindow::mxWindow(const std::string &name, int w, int h, bool full) {
+        redirect();
         if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER | SDL_INIT_AUDIO) != 0) {
             mx::system_err << "mx: Error initalizing SDL: " << SDL_GetError() << "\n";
             mx::system_err.flush();
@@ -31,6 +32,8 @@ namespace mx {
         SDL_DestroyWindow(window);
         TTF_Quit();
         SDL_Quit();
+        log_file.close();
+        error_file.close();
     }
     SDL_Texture *mxWindow::createTexture(int w, int h) {
         SDL_Texture *tex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, w, h);

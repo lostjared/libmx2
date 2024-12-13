@@ -48,6 +48,12 @@ namespace mx {
     inline TeeStream system_out(std::cout, log_file);
     inline TeeStream system_err(std::cerr, error_file);
 
+    inline void redirect() {
+        static TeeStream out_stream(std::cout, log_file);
+        static TeeStream err_stream(std::cerr, error_file);
+        std::cout.rdbuf(out_stream.rdbuf());
+        std::cerr.rdbuf(err_stream.rdbuf());
+    }
 } 
 
 #endif 
