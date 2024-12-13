@@ -161,8 +161,10 @@ namespace mx {
                 }
                 if (line.find("tri") == 0) {
                     if (!currentMesh.vert.empty()) {
+                        std::ostringstream stream;
                         if (count * 3 != currentMesh.vert.size()) {
-                            throw mx::Exception("mx: Model :" + filename + " invalid vertex alignment.\n");
+                            stream << "mx: Model :" << filename << " invalid vertex alignment expected: " << (count * 3) << " found: " << currentMesh.vert.size();
+                            throw mx::Exception(stream.str());
                         }              
                         if (count * 2 != currentMesh.tex.size()) {
                             throw mx::Exception("mx: Model :" + filename + " invalid texture coordinates alignment.\n");
@@ -192,8 +194,10 @@ namespace mx {
             }
         }
         if (!currentMesh.vert.empty()) {
+            std::ostringstream stream;
             if (count * 3 != currentMesh.vert.size()) {
-                throw mx::Exception("mx: Model :" + filename + " invalid vertex alignment.\n");
+                stream << "mx: Model :" << filename << " invalid vertex alignment expected: " << (count) << " found: " << currentMesh.vert.size()/3;
+                throw mx::Exception(stream.str());
             }              
             if (count * 2 != currentMesh.tex.size()) {
                 throw mx::Exception("mx: Model :" + filename + " invalid texture coordinates alignment.\n");
@@ -247,8 +251,10 @@ namespace mx {
         std::istringstream stream(line);
         switch (type) {
             case 0: {
-                if(currentMesh.vertIndex+3 > (count * 3)) {
-                    throw mx::Exception("mx: Model loader: Vertex overflow");
+                if(currentMesh.vertIndex != count * 3) {
+                    if(currentMesh.vertIndex+3 > (count * 3)) {
+                        throw mx::Exception("mx: Model loader: Vertex overflow");
+                    }
                 }
                 float x, y, z;
                 if (stream >> x >> y >> z) {
@@ -258,18 +264,23 @@ namespace mx {
                 }
             } break;
             case 1: {
-                if(currentMesh.texIndex+2 > (count * 2)) {
-                    throw mx::Exception("mx: Model loader: Texture pos overflow");
+                if(currentMesh.texIndex != count * 2) {
+                    if(currentMesh.texIndex+2 > (count * 2)) {
+                        throw mx::Exception("mx: Model loader: Texture pos overflow");
+                    }
                 }
                 float u, v;
                 if (stream >> u >> v) {
                     currentMesh.tex[currentMesh.texIndex++] = u;
                     currentMesh.tex[currentMesh.texIndex++] = v;
                 }
+                
             } break;
             case 2: {
-                if(currentMesh.normIndex+3 > (count * 3)) {
-                    throw mx::Exception("mx: Model loader: Noram overflow");
+                if(currentMesh.normIndex != count * 3) {
+                    if(currentMesh.normIndex+3 > (count * 3)) {
+                        throw mx::Exception("mx: Model loader: Norm overflow: " + std::to_string(count * 3) + "/" + std::to_string(currentMesh.normIndex+3));
+                    }
                 }
                 float nx, ny, nz;
                 if (stream >> nx >> ny >> nz) {
@@ -316,10 +327,10 @@ namespace mx {
     }
 
     void Model::setTextures(const std::vector<GLuint> &textures) {
-        if(meshes.size() != textures.size()) {
-            throw mx::Exception("Texture and Mesh not aligned should contain same amount of elements.");
+        if(textures.empty()) {
+            throw mx::Exception("At least one texture is required");
         }
-        for(size_t i = 0; i < textures.size(); ++i) {
+        for(size_t i = 0; i < meshes.size(); ++i) {
             GLuint pos = meshes.at(i).texture;
             if(pos < textures.size())
                 meshes.at(i).texture = textures[meshes.at(i).texture];
