@@ -58,8 +58,6 @@ public:
         cube.setShaderProgram(shaderProgram, "texture1");
         glBindVertexArray(0);
 
-
-
         if(gen_texture) {    
             glGenTextures(1, &texture);
             glBindTexture(GL_TEXTURE_2D, texture);
@@ -73,6 +71,8 @@ public:
             glGenerateMipmap(GL_TEXTURE_2D);
             SDL_FreeSurface(surface);
             owner = true;
+            std::vector<GLuint> textures{texture};
+            cube.setTextures(textures);
         }
         
     }
