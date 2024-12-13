@@ -39,13 +39,12 @@ public:
     float zoom = 45.0f;
 
     virtual void load(gl::GLWindow *win) override {
-        if(!obj_model.openModel(filename)) {
-            mx::system_err << "Error loading model..\n";
-            mx::system_err.flush();
-            exit(EXIT_FAILURE);
+        mx::system_out << "Viewer: Loading files in path: " << win->util.getFilePath("data") << "\n";
+        if(!obj_model.openModel(win->util.getFilePath("data/" + filename))) {
+            throw mx::Exception("Error loading model...");
         }
-        
-        mx::system_out << "Meshes:  " << obj_model.meshes.size() << "\n";
+        mx::system_out << "Viewer: Loaded Model: " << filename << "\n";
+        mx::system_out << "mx: Loaded Meshes:  " << obj_model.meshes.size() << "\n";
 
         if (!shaderProgram.loadProgram(win->util.getFilePath("data/tri.vert"), win->util.getFilePath("data/tri.frag"))) {
             throw mx::Exception("Failed to load shader program");
