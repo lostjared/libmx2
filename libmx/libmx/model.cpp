@@ -187,8 +187,6 @@ namespace mx {
                     currentMesh.texture = texture_index;
                     currentMesh.setShapeType(shapeType);
                     type = -1;
-                    std::cout << "Mesh: " << texture_index << "\n";
-                    
                 } else {
                     parseLine(line, currentMesh, type, count);
                 }
