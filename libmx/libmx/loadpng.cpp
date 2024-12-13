@@ -6,6 +6,7 @@
 #include<cctype>
 #include<string>
 #include<iostream>
+#include"tee_stream.hpp"
 
 #if defined(_MSC_VER)
     #if _MSC_VER >= 1930
@@ -32,13 +33,13 @@ namespace png {
         FILE* fp = NULL;
         errno_t err = fopen_s(&fp, file, "rb");
         if (!(err == 0 && file != NULL)) {
-            printf("Failed to open png file: %s\n", file);
+            mx::system_err << "Failed to open png file: " << file << "\n";
             return nullptr;
         }
         #else
         FILE* fp = fopen(file, "rb");
         if (!fp) {
-            printf("Failed to open file: %s\n", file);
+            mx::system_err << "Failed to open file: " << file << "\n";
             return nullptr;
         }
         #endif
@@ -145,7 +146,7 @@ namespace png {
         SDL_QueryTexture(texture, nullptr, nullptr, &width, &height);
         SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormat(0, width, height, 32, SDL_PIXELFORMAT_RGBA32);
         if (!surface) {
-            std::cerr << "mx: Failed to create SDL_Surface: " << SDL_GetError() << "\n";
+            mx::system_err << "mx: Failed to create SDL_Surface: " << SDL_GetError() << "\n";
             return false;
         }
 
@@ -160,14 +161,14 @@ namespace png {
         SDL_SetRenderTarget(renderer, nullptr); 
         FILE* fp = fopen(filename, "wb");
         if (!fp) {
-            std::cerr << "mx: Failed to open file for writing: " << filename << "\n";
+            mx::system_err << "mx: Failed to open file for writing: " << filename << "\n";
             SDL_FreeSurface(surface);
             return false;
         }
 
         png_structp png = png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
         if (!png) {
-            std::cerr << "mx: Failed to create PNG write struct." << "\n";
+            mx::system_err << "mx: Failed to create PNG write struct." << "\n";
             fclose(fp);
             SDL_FreeSurface(surface);
             return false;
@@ -175,7 +176,7 @@ namespace png {
 
         png_infop info = png_create_info_struct(png);
         if (!info) {
-            std::cerr << "mx: Failed to create PNG info struct." << "\n";
+            mx::system_err << "mx: Failed to create PNG info struct." << "\n";
             png_destroy_write_struct(&png, nullptr);
             fclose(fp);
             SDL_FreeSurface(surface);
@@ -183,7 +184,7 @@ namespace png {
         }
 
         if (setjmp(png_jmpbuf(png))) {
-            std::cerr << "mx: Error during PNG creation." << "\n";
+            mx::system_err << "mx: Error during PNG creation." << "\n";
             png_destroy_write_struct(&png, &info);
             fclose(fp);
             SDL_FreeSurface(surface);

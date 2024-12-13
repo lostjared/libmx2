@@ -4,6 +4,8 @@
 #ifdef WITH_JPEG
 #include"jpeg.hpp"
 #endif
+#include<sstream>
+
 namespace mx {
     
    // Texture::Texture(const Texture &tex) : texture{tex.texture}, width_{tex.width_}, height_{tex.height_} {}
@@ -31,9 +33,9 @@ namespace mx {
     void Texture::createTexture(mxWindow *window, int width, int height) {
         SDL_Texture *tex = SDL_CreateTexture(window->renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, width, height);
         if(!tex) {
-            mx::system_err << "mx: Error creating texture: " << SDL_GetError() << "\n";
-            mx::system_err.flush();
-            exit(EXIT_FAILURE);
+            std::ostringstream stream;
+            stream << "Error creating texture: " << SDL_GetError() << "\n";
+            throw Exception(stream.str());
         }
         texture = tex;
     }
@@ -56,23 +58,23 @@ namespace mx {
             #ifdef WITH_JPEG
             surface = jpeg::LoadJPEG(filename.c_str());
             #else
-            mx::system_err << "mx: JPEG for file not suported: " << filename << "\n";
-            mx::system_err.flush();
-            exit(EXIT_FAILURE);
+            std::ostringstream stream;
+            stream << "mx: JPEG for file not suported: " << filename << "\n";
+            throw Exception(stream.str());
             #endif
         } else if(type == 2) {
             surface = png::LoadPNG(filename.c_str());
         } else if(type == 3) {
             surface = SDL_LoadBMP(filename.c_str());
         } else {
-            mx::system_err << "mx: Image format not suported for: " << filename << "\n";
-            mx::system_err.flush();
-            exit(EXIT_FAILURE);
+            std::ostringstream stream;
+            stream << "mx: Image format not suported for: " << filename << "\n";
+            throw Exception(stream.str());
         }
         if(!surface) {
-            mx::system_err << "mx: Error could not open file: " << filename << "\n";
-            mx::system_err.flush();
-            exit(EXIT_FAILURE);
+            std::ostringstream stream;
+            stream << "mx: Error could not open file: " << filename << "\n";
+            throw Exception(stream.str());
         }
         if(color)
             SDL_SetColorKey(surface, SDL_TRUE, SDL_MapRGB(surface->format, key.r, key.g, key.b));
@@ -83,9 +85,9 @@ namespace mx {
         height_ = h;
         SDL_Texture *tex = SDL_CreateTextureFromSurface(window->renderer, surface);
         if(!tex) {
-            mx::system_err << "mx: Error creating texture from surface..\n";
-            mx::system_err.flush();
-            exit(EXIT_FAILURE);
+            std::ostringstream stream;
+            stream << "mx: Error creating texture from surface..\n";
+            throw Exception(stream.str());
         }
         if(surface)
             SDL_FreeSurface(surface);
@@ -100,18 +102,15 @@ namespace mx {
 #if WITH_JPEG
                 return jpeg::SaveJPEG(window->renderer, texture, filename.c_str());
 #else
-                mx::system_err << "mx: No JPEG Support..\n";
-                mx::system_err.flush();
-                exit(EXIT_FAILURE);
+
+                throw Exception("No JPEG  Support use -DJPEG=ON");
 #endif
             case 2:
                 return png::SavePNG(texture, window->renderer, filename.c_str());
             case 3:
                 return this->saveBMP(texture, window->renderer, filename);
             default:
-                mx::system_err << "mx: Invalid image type..\n";
-                mx::system_err.flush();
-                exit(EXIT_FAILURE);
+                throw Exception("Image type not supported");
                 return false;
         }
     }

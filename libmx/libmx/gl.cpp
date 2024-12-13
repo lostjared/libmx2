@@ -30,6 +30,7 @@ namespace gl {
     }
 
     void GLWindow::initGL(const std::string &title, int width, int height) {
+        mx::redirect();
         if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER | SDL_INIT_AUDIO) < 0) {
             mx::system_err << "Error initalizing SDL.\n";
             mx::system_err.flush();
@@ -323,8 +324,7 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         SDL_Surface *surface = png::LoadPNG(filename.c_str());
         if (!surface) {
-            mx::system_err << "mx: Error: loading PNG.\n";
-            exit(EXIT_FAILURE);
+            throw mx::Exception("Error loading PNG file.");
         }
         SDL_Surface *converted = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_RGBA32, 0);
         SDL_FreeSurface(surface);

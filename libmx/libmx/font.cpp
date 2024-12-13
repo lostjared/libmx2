@@ -42,7 +42,7 @@ namespace mx {
         
         void Font::loadFont(const std::string &fname, int size) {
             if(!tryLoadFont(fname, size))
-                exit(EXIT_FAILURE);
+                throw mx::Exception("Error loading font..");
 
         }
 

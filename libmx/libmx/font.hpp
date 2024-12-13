@@ -34,9 +34,7 @@ namespace mx {
             if(the_font) {
                 return the_font;
             }
-            mx::system_err << "mx: panic Invalid Font.\n";
-            mx::system_err.flush();
-            exit(EXIT_FAILURE);
+            throw Exception("unwrap: Invalid Font");
             return 0;
         }
 

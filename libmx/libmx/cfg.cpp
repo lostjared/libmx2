@@ -1,15 +1,16 @@
 #include"cfg.hpp"
-#include <algorithm>
-#include"tee_stream.hpp"
+#include<algorithm>
+#include"mx.hpp"
+#include<sstream>
+
 
 namespace mx {
     void ConfigFile::loadFile(const std::string &f) {
         std::ifstream in(f);
         if (!in.is_open()) {
-            mx::system_err << "mx: Could not open configuration file: " <<  f << "\n";
-            mx::system_err.flush();
-            exit(EXIT_FAILURE);
-            return;
+            std::ostringstream stream;
+            stream << "mx: Could not open configuration file: " <<  f << "\n";
+            throw mx::Exception(stream.str());
         }
 
         std::string line, currentSection;
@@ -71,9 +72,9 @@ namespace mx {
 
     Item ConfigFile::itemAtKey(const std::string &section, const std::string &key) {
         if(values[section].find(key) == values[section].end()) {
-            mx::system_err << "mx: Could not find Key: " << key << " in config file.\n";;
-            mx::system_err.flush();
-            exit(EXIT_FAILURE);
+            std::ostringstream stream;
+            stream << "mx: Could not find Key: " << key << " in config file.\n";;
+            throw mx::Exception(stream.str());
         }
         return values[section][key];
     }

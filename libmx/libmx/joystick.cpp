@@ -48,9 +48,7 @@ namespace mx {
         if(stick) {
             return stick;
         }
-        mx::system_err << "mx: panic Invalid Joystick.\n";
-        mx::system_err.flush();
-        exit(EXIT_FAILURE);
+        throw mx::Exception("Invalid Joystick");
         return 0;
     }
 
@@ -140,9 +138,7 @@ namespace mx {
         if(stick) {
             return stick;
         }
-        mx::system_err << "mx: panic Invalid Controller.\n";
-        mx::system_err.flush();
-        exit(EXIT_FAILURE);
+        throw Exception("unwrap: Invalid Controller");
         return 0;
     }
 
