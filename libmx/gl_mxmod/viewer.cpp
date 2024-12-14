@@ -26,9 +26,9 @@ public:
     std::tuple<float, bool> rot_x;
     std::tuple<float, bool> rot_y;
     std::tuple<float, bool> rot_z;
-    
+    std::tuple<float, float, float> light;    
 
-    ModelViewer(const std::string &filename, const std::string &text) : rot_x{1.0f, true}, rot_y{1.0f, true}, rot_z{0.0f, false} {
+    ModelViewer(const std::string &filename, const std::string &text) : rot_x{1.0f, true}, rot_y{1.0f, true}, rot_z{0.0f, false}, light(0.0, 10.0, 5.0) {
         this->filename = filename;
         this->text = text;
     }
@@ -75,6 +75,7 @@ public:
         }
     }
 
+
     virtual void draw(gl::GLWindow *win) override {
         glDisable(GL_CULL_FACE);
         glm::vec3 cameraPos(0.0f, 0.0f, 5.0f);
@@ -120,14 +121,13 @@ public:
         modelMatrix = glm::rotate(modelMatrix, glm::radians(std::get<0>(rot_z)), glm::vec3(0.0f, 0.0f, 1.0f));
         glm::mat4 viewMatrix = glm::lookAt(cameraPos, cameraTarget, cameraUp);
         glm::mat4 projectionMatrix = glm::perspective(glm::radians(zoom), aspectRatio, 0.1f, 100.0f);
-        glm::vec3 lightPos(2.0f, 4.0f, 1.0f);
-        glm::vec3 viewPos = cameraPos;
+        glm::vec3 lightPos(std::get<0>(light), std::get<1>(light), std::get<2>(light));
+        glm::vec4 lightPosView = viewMatrix * glm::vec4(lightPos, 1.0f);
+        shaderProgram.setUniform("lightPos", glm::vec3(lightPosView));
         glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
         shaderProgram.setUniform("model", modelMatrix);
         shaderProgram.setUniform("view", viewMatrix);
         shaderProgram.setUniform("projection", projectionMatrix);
-        shaderProgram.setUniform("lightPos", lightPos);
-        shaderProgram.setUniform("viewPos", viewPos);
         shaderProgram.setUniform("lightColor", lightColor);
         obj_model.drawArrays();
         glBindVertexArray(0);
@@ -144,7 +144,8 @@ public:
     }
 
     virtual void event(gl::GLWindow *window, SDL_Event &e) override {
-        switch(e.type) {
+        float stepSize = 1.0;
+           switch(e.type) {
             case SDL_KEYDOWN: {
                 switch(e.key.keysym.sym) {
                     case SDLK_LEFT:
@@ -166,8 +167,19 @@ public:
                     case SDLK_s:
                        zoom += 1.0f;
                         if (zoom > 90.0f) zoom = 90.0f; 
-            
                     break;
+                    case SDLK_k:
+                        std::get<0>(light) += stepSize; 
+                        break;
+                    case SDLK_l:
+                        std::get<0>(light) -= stepSize;
+                        break;
+                    case SDLK_i:
+                        std::get<1>(light) += stepSize;
+                        break;
+                    case SDLK_o:
+                        std::get<1>(light) -= stepSize; 
+                        break;
                     case SDLK_p: {
                         static bool poly = false;
                         if(poly == false) {

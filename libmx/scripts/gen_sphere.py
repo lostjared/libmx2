@@ -175,6 +175,6 @@ if __name__ == "__main__":
     # Adjust M and N for smoother spheres if desired.
     # M - number of segments around (longitudes)
     # N - number of segments from top to bottom (latitudes)
-    M = 24
-    N = 12
+    M = 64
+    N = 48
     print_sphere(M, N)
