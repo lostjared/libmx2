@@ -181,6 +181,7 @@ public:
                         std::get<1>(light) -= stepSize; 
                         break;
                     case SDLK_p: {
+#ifndef __EMSCRIPTEN__
                         static bool poly = false;
                         if(poly == false) {
                             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -189,6 +190,7 @@ public:
                             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
                             poly = false;
                         }
+#endif
                     }
                     break;
                 }
@@ -232,7 +234,7 @@ void eventProc() {
 int main(int argc, char **argv) {
     
 #ifdef __EMSCRIPTEN__
-    MainWindow main_window("/", 960, 720);
+    MainWindow main_window("/", "globe.mxmod", "metal.tex", 1440, 1080);
     main_w =&main_window;
     emscripten_set_main_loop(eventProc, 0, 1);
 #else
@@ -249,7 +251,7 @@ int main(int argc, char **argv) {
     Argument<std::string> arg;
     std::string path;
     int value = 0;
-    int tw = 960, th = 720;
+    int tw = 1440, th = 1080;
     std::string model_file;
     std::string text_file;
     try {
