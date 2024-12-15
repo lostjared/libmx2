@@ -31,6 +31,16 @@ float getRandomFloat(float min, float max) {
     return dis(gen);
 }
 
+bool isColliding(const glm::vec3 &posA, float radiusA, const glm::vec3 &posB, float radiusB) {
+    float dx = posA.x - posB.x;
+    float dy = posA.y - posB.y;
+    float dz = posA.z - posB.z;
+    float distSq = dx * dx + dy * dy + dz * dz;
+    float radiusSum = radiusA + radiusB;
+    float radiusSumSq = radiusSum * radiusSum;
+    return distSq <= radiusSumSq;
+}
+
 enum class EnemyType { SHIP=1, SAUCER, TRIANGLE };
 
 class Enemy {
@@ -38,6 +48,7 @@ public:
     mx::Model *object = nullptr;
     gl::ShaderProgram *shader = nullptr;
     glm::vec3 object_pos;
+    bool ready = false;
     Enemy(mx::Model *m, EnemyType type, gl::ShaderProgram *shaderv) : object{m}, shader{shaderv}, etype{type} {}
     virtual ~Enemy() = default;
     Enemy(const Enemy &e) = delete;
@@ -97,6 +108,7 @@ public:
 
 class SpaceGame : public gl::GLObject {
 public:
+    bool launch_ship = true;
     gl::ShaderProgram shaderProgram, textShader, starsShader;
     mx::Font font;
     mx::Input stick;
@@ -108,7 +120,7 @@ public:
     mx::Model projectile;
     mx::Model enemy_ship, saucer, triangle;
     glm::vec3 ship_pos;
-    std::vector<glm::vec3> projectiles;
+    std::vector<std::tuple<glm::vec3, glm::vec3>> projectiles;
     std::vector<std::unique_ptr<Enemy>> enemies;
     
     float shipRotation = 0.0f;        
@@ -122,7 +134,7 @@ public:
     float projectileLifetime = 50.0f;     
     float projectileRotation = 0.0f;
     float enemyReleaseTimer = 0.0f;
-    float enemyReleaseInterval = 2.0f; 
+    float enemyReleaseInterval = 1.5f; 
     float enemySpeed = 20.0f;
     float enemyLifetime = 50.0f;
 
@@ -189,11 +201,9 @@ public:
         enemy_ship.setShaderProgram(&shaderProgram, "texture1");
         enemy_ship.setTextures(win, win->util.getFilePath("data/objects/textures.tex"), win->util.getFilePath("data/objects"));
         saucer.setShaderProgram(&shaderProgram, "texture1");
-        saucer.setTextures(win, win->util.getFilePath("data/objects/textures.tex"), win->util.getFilePath("data/objects"));
+        saucer.setTextures(win, win->util.getFilePath("data/objects/metal.tex"), win->util.getFilePath("data/objects"));
         triangle.setShaderProgram(&shaderProgram, "texture1");
-        triangle.setTextures(win, win->util.getFilePath("data/objects/bird.tex"), win->util.getFilePath("data/objects"));
-        
-        releaseEnemy();
+        triangle.setTextures(win, win->util.getFilePath("data/objects/proj.tex"), win->util.getFilePath("data/objects"));
 
         starsShader.useProgram();
         starsShader.setUniform("starColor", glm::vec3(1.0f, 1.0f, 1.0f));
@@ -255,13 +265,17 @@ public:
 
         if(!projectiles.empty()) {
             for (auto &pos : projectiles) {
-                glm::mat4 projModel = glm::translate(glm::mat4(1.0f), pos);
-                projModel = glm::rotate(projModel, glm::radians(-90.0f), glm::vec3(1.0f,0.0f,0.0f));
-                projModel = glm::rotate(projModel, glm::radians(-180.0f), glm::vec3(0.0f,0.0f,1.0f));
-                projModel = glm::rotate(projModel, glm::radians(projectileRotation), glm::vec3(1.0f,0.0f,1.0f));
-                projModel = glm::scale(projModel, glm::vec3(0.5, 0.5, 0.5));
-                shaderProgram.setUniform("model", projModel);
-                projectile.drawArrays();
+                auto setPos = [&](glm::vec3 &posx) -> void {
+                    glm::mat4 projModel = glm::translate(glm::mat4(1.0f), posx);
+                    projModel = glm::rotate(projModel, glm::radians(-90.0f), glm::vec3(1.0f,0.0f,0.0f));
+                    projModel = glm::rotate(projModel, glm::radians(-180.0f), glm::vec3(0.0f,0.0f,1.0f));
+                    projModel = glm::rotate(projModel, glm::radians(projectileRotation), glm::vec3(1.0f,0.0f,1.0f));
+                    projModel = glm::scale(projModel, glm::vec3(0.5, 0.5, 0.5));
+                    shaderProgram.setUniform("model", projModel);
+                    projectile.drawArrays();
+                };
+                setPos(std::get<0>(pos));
+                setPos(std::get<1>(pos));
             }
         }
 
@@ -275,11 +289,12 @@ public:
                         projModel = glm::scale(projModel, glm::vec3(1.2f, 1.2f, 1.2f));
                     break;
                     case EnemyType::SAUCER:
+                        projModel = glm::rotate(projModel, glm::radians(projectileRotation), glm::vec3(0.0f, 0.0f, 1.0f));
                         projModel = glm::scale(projModel, glm::vec3(1.5f, 1.5f, 1.5f));
                     break;
                     case EnemyType::TRIANGLE:
-                        projModel = glm::rotate(projModel, glm::radians(180.0f), glm::vec3(0.0f,1.0f,0.0f));
-                        //projModel = glm::rotate(projModel, glm::radians(-180.0f), glm::vec3(1.0f,0.0f,0.0f));
+                        projModel = glm::rotate(projModel, glm::radians(69.0f), glm::vec3(1.0f,0.0f,0.0f));
+                        projModel = glm::rotate(projModel, glm::radians(projectileRotation), glm::vec3(0.0f, 0.0f, 1.0f));
                     break;
                 }    
                 shaderProgram.setUniform("model", projModel);
@@ -293,7 +308,12 @@ public:
         textShader.useProgram();
         SDL_Color white = {255, 255, 255, 255};
         int textWidth = 0, textHeight = 0;
-        GLuint textTexture = createTextTexture("Score: " + std::to_string(score), font.wrapper().unwrap(), white, textWidth, textHeight);
+        GLuint textTexture;
+        if(launch_ship == true) {
+            textTexture = createTextTexture("Press Button X or Key Z to Launch Ship", font.wrapper().unwrap(), white, textWidth, textHeight);
+        } else {
+            textTexture = createTextTexture("Score: " + std::to_string(score), font.wrapper().unwrap(), white, textWidth, textHeight);
+        }
         renderText(textTexture, textWidth, textHeight, win->w, win->h);
         glDeleteTextures(1, &textTexture);
         glDisable(GL_BLEND);
@@ -310,21 +330,27 @@ public:
 
     Uint32 lastActionTime = SDL_GetTicks();
     Uint32 fireTime = SDL_GetTicks();
-
     void checkInput(float deltaTime) {
-        
+    
+        if(launch_ship == true) {
+            if(stick.getButton(mx::Input_Button::BTN_X)) {
+                launch_ship = false;
+            }
+            return;
+        }
+
         Uint32 currentTime = SDL_GetTicks();
 
         if(currentTime - fireTime >= 175) {
             if(stick.getButton(mx::Input_Button::BTN_A)) {
-                glm::vec3 pos = ship_pos;
-                pos.x -= 1.5f;
-                pos.y += 1.0f;
-                projectiles.push_back(pos);
-                pos = ship_pos;
-                pos.x += 1.5f;
-                pos.y += 1.0f;
-                projectiles.push_back(pos);
+                std::tuple<glm::vec3, glm::vec3> shots;
+                std::get<0>(shots) = ship_pos;
+                std::get<0>(shots).x -= 1.5f;
+                std::get<0>(shots).y += 1.0f;
+                std::get<1>(shots) = ship_pos;
+                std::get<1>(shots).x += 1.5f;
+                std::get<1>(shots).y += 1.0f;
+                projectiles.push_back(shots);
             }
             fireTime = currentTime;
         }
@@ -377,21 +403,19 @@ public:
     }
 
 
+    void die() {
+        enemies.clear();
+        projectiles.clear();
+        launch_ship = true;
+        ship_pos = glm::vec3(0.0f, -20.0f, -70.0f);
+        barrelRollAngle = 0.0f;
+        isBarrelRolling = false;
+        shipRotation = 0.0f;
+    }
+
     void update(float deltaTime) {
         checkInput(deltaTime);
-         if (isBarrelRolling) {
-           barrelRollAngle += barrelRollSpeed * deltaTime;
-            if (barrelRollAngle >= 360.0f) {
-                barrelRollAngle = 0.0f;
-                isBarrelRolling = false;
-            }
-        }
 
-        projectileRotation += 50.0f * deltaTime;
-        if(projectileRotation >= 360.0f) {
-            projectileRotation -= 360.0f;
-        }
-        
         for (int i = 0; i < numStars; ++i) {
             stars[i].y -= deltaTime * 10.0f; 
             if (stars[i].y < -75.0f) {
@@ -404,10 +428,26 @@ public:
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         CHECK_GL_ERROR();
 
+        if(launch_ship == true) return;
+
+         if (isBarrelRolling) {
+           barrelRollAngle += barrelRollSpeed * deltaTime;
+            if (barrelRollAngle >= 360.0f) {
+                barrelRollAngle = 0.0f;
+                isBarrelRolling = false;
+            }
+        }
+
+        projectileRotation += 50.0f * deltaTime;
+        if(projectileRotation >= 360.0f) {
+            projectileRotation -= 360.0f;
+        }
+
         if(!projectiles.empty()) {
             for (int i = (int)projectiles.size() - 1; i >= 0; i--) {
-                projectiles[i].y += projectileSpeed * deltaTime;
-                if (projectiles[i].y > (std::get<3>(screenx) + projectileLifetime)) {
+                std::get<0>(projectiles[i]).y += projectileSpeed * deltaTime;
+                std::get<1>(projectiles[i]).y += projectileSpeed * deltaTime;
+                if ((std::get<0>(projectiles[i]).y > (std::get<3>(screenx) + projectileLifetime)) || (std::get<1>(projectiles[i]).y > (std::get<3>(screenx) + projectileLifetime))) {
                     projectiles.erase(projectiles.begin() + i);
                 }
             }
@@ -421,9 +461,77 @@ public:
             for(int i = (int)enemies.size() -1; i >= 0; i--) {
                 enemies[i]->object_pos.y -= enemySpeed * deltaTime;
                 if (enemies[i]->object_pos.y < (std::get<2>(screenx))) {
-                    enemies.erase(enemies.begin() + i);
-                    std::cout << "Bottom\n";
+                    //enemies.erase(enemies.begin() + i);
+                    // life lost clear
+                    die();
+                    return;
                 }    
+            }
+        }
+
+        for (int i = (int)enemies.size() - 1; i >= 0; i--) {
+            enemies[i]->update(deltaTime);
+            if (enemies[i]->ready) {
+                enemies.erase(enemies.begin() + i);
+            }
+        }
+
+        if (!projectiles.empty() && !enemies.empty()) {
+            float projectileRadius = 0.5f;  
+            float shipRadius = 1.2f;
+            float saucerRadius = 1.5f;
+            float triangleRadius = 1.0f; 
+
+            for (int pi = (int)projectiles.size() - 1; pi >= 0; pi--) {
+                bool projectileDestroyed = false;
+                for (int ei = (int)enemies.size() - 1; ei >= 0; ei--) {
+                    float enemyRadius = 1.0f; // default
+                    switch (enemies[ei]->getType()) {
+                        case EnemyType::SHIP:
+                            enemyRadius = shipRadius;
+                            break;
+                        case EnemyType::SAUCER:
+                            enemyRadius = saucerRadius;
+                            break;
+                        case EnemyType::TRIANGLE:
+                            enemyRadius = triangleRadius;
+                            break;
+                    }
+
+                    if (isColliding(std::get<0>(projectiles[pi]), projectileRadius, enemies[ei]->object_pos, enemyRadius) || isColliding(std::get<1>(projectiles[pi]), projectileRadius, enemies[ei]->object_pos, enemyRadius)) {
+                        enemies.erase(enemies.begin() + ei);
+                        projectiles.erase(projectiles.begin() + pi);
+                        score += 10; 
+                        projectileDestroyed = true;
+                        break; 
+                    }
+                }
+                if (projectileDestroyed) {
+                    continue;
+                }
+            }
+        }
+
+        float playerRadius = 2.0f; 
+        if (!enemies.empty()) {
+            for (auto &enemy : enemies) {
+                float enemyRadius = 1.0f;
+                switch (enemy->getType()) {
+                    case EnemyType::SHIP:
+                        enemyRadius = 1.2f;
+                        break;
+                    case EnemyType::SAUCER:
+                        enemyRadius = 1.5f;
+                        break;
+                    case EnemyType::TRIANGLE:
+                        enemyRadius = 1.0f;
+                        break;
+                }
+
+                if (isColliding(ship_pos, playerRadius, enemy->object_pos, enemyRadius)) {
+                    die();
+                    return;
+                }
             }
         }
     }
@@ -527,7 +635,7 @@ private:
                 enemies.push_back(std::make_unique<EnemyTriangle>(&triangle, &shaderProgram));
             break;
         }
-        enemies.back()->object_pos = glm::vec3(getRandomFloat(std::get<0>(screenx)+2.0f, std::get<1>(screenx))-2.0f, std::get<3>(screenx)-1.0f, -60.0f);
+        enemies.back()->object_pos = glm::vec3(getRandomFloat(std::get<0>(screenx)+6.0f, std::get<1>(screenx))-6.0f, std::get<3>(screenx)-1.0f, -70.0f);
     }
 };
 
