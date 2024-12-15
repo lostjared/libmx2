@@ -34,7 +34,11 @@ public:
     const int numStars = 1000;
     glm::vec3 stars[1000];
     mx::Model ship;
+    mx::Model projectile;
     glm::vec3 ship_pos;
+
+    std::vector<glm::vec3> projectiles;
+
     float shipRotation = 0.0f;        
     float rotationSpeed = 90.0f;      
     float maxTiltAngle = 10.0f;       
@@ -42,6 +46,9 @@ public:
     float barrelRollAngle = 0.0f;      
     bool isBarrelRolling = false;      
     float barrelRollSpeed = 360.0f; 
+    float projectileSpeed = 100.0f;       
+    float projectileLifetime = 50.0f;     
+    float projectileRotation = 0.0f;
 
     SpaceGame(gl::GLWindow *win) : score{0}, ship_pos(0.0f, -20.0f, -70.0f) {
 
@@ -60,13 +67,14 @@ public:
         if(!textShader.loadProgram(win->util.getFilePath("data/text.vert"), win->util.getFilePath("data/text.frag"))) {
             throw mx::Exception("Could not load shader program text");
         }
-        
         if(!starsShader.loadProgram(win->util.getFilePath("data/stars.vert"), win->util.getFilePath("data/stars.frag"))) {
             throw mx::Exception("Could not load shader program text");
         }
-
         if(!ship.openModel(win->util.getFilePath("data/objects/bird.mxmod"))) {
             throw mx::Exception("Could not open model bird.mxmod");
+        }
+        if(!projectile.openModel(win->util.getFilePath("data/objects/sphere.mxmod"))) {
+            throw mx::Exception("Could not open sphere.mxmod");
         }
 
         shaderProgram.useProgram();
@@ -89,7 +97,8 @@ public:
         shaderProgram.setUniform("view", view);   
         ship.setShaderProgram(&shaderProgram, "texture1");
         ship.setTextures(win, win->util.getFilePath("data/objects/bird.tex"), win->util.getFilePath("data/objects"));
-        
+        projectile.setShaderProgram(&shaderProgram, "texture1");
+        projectile.setTextures(win, win->util.getFilePath("data/objects/proj.tex"), win->util.getFilePath("data/objects"));
         starsShader.useProgram();
         starsShader.setUniform("starColor", glm::vec3(1.0f, 1.0f, 1.0f));
         glm::mat4 star_projection = glm::ortho(-100.0f, 100.0f, -75.0f, 75.0f, -100.0f, 100.0f);
@@ -148,6 +157,18 @@ public:
         shaderProgram.setUniform("model", model);
         ship.drawArrays();
 
+        if(!projectiles.empty()) {
+            for (auto &pos : projectiles) {
+                glm::mat4 projModel = glm::translate(glm::mat4(1.0f), pos);
+                projModel = glm::rotate(projModel, glm::radians(-90.0f), glm::vec3(1.0f,0.0f,0.0f));
+                projModel = glm::rotate(projModel, glm::radians(-180.0f), glm::vec3(0.0f,0.0f,1.0f));
+                projModel = glm::rotate(projModel, glm::radians(projectileRotation), glm::vec3(1.0f,0.0f,1.0f));
+                
+                shaderProgram.setUniform("model", projModel);
+                projectile.drawArrays();
+            }
+        }
+
         glDisable(GL_DEPTH_TEST);
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -170,9 +191,27 @@ public:
     }
 
     Uint32 lastActionTime = SDL_GetTicks();
-        
+    Uint32 fireTime = SDL_GetTicks();
+
     void checkInput(float deltaTime) {
+        
         Uint32 currentTime = SDL_GetTicks();
+
+        if(currentTime - fireTime >= 175) {
+            if(stick.getButton(mx::Input_Button::BTN_A)) {
+                glm::vec3 pos = ship_pos;
+                pos.x -= 1.5f;
+                pos.y += 1.0f;
+                projectiles.push_back(pos);
+                pos = ship_pos;
+                pos.x += 1.5f;
+                pos.y += 1.0f;
+                projectiles.push_back(pos);
+            }
+            fireTime = currentTime;
+        }
+
+
         if (currentTime - lastActionTime >= 15) {
             float moveX = 0.0f; 
             float moveY = 0.0f; 
@@ -212,8 +251,11 @@ public:
             }
             ship_pos.x = glm::clamp(ship_pos.x, std::get<0>(screenx) + 2.0f, std::get<1>(screenx) - 2.0f);
             ship_pos.y = glm::clamp(ship_pos.y, std::get<2>(screenx) + 4.5f, std::get<3>(screenx) - 4.5f);
+
+       
             lastActionTime = currentTime;
         }
+
     }
 
 
@@ -225,6 +267,11 @@ public:
                 barrelRollAngle = 0.0f;
                 isBarrelRolling = false;
             }
+        }
+
+        projectileRotation += 50.0f * deltaTime;
+        if(projectileRotation >= 360.0f) {
+            projectileRotation -= 360.0f;
         }
         
         for (int i = 0; i < numStars; ++i) {
@@ -238,6 +285,15 @@ public:
         glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(stars), stars);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         CHECK_GL_ERROR();
+
+        if(!projectiles.empty()) {
+            for (int i = (int)projectiles.size() - 1; i >= 0; i--) {
+                projectiles[i].y += projectileSpeed * deltaTime;
+                if (projectiles[i].y > (std::get<3>(screenx) + projectileLifetime)) {
+                    projectiles.erase(projectiles.begin() + i);
+                }
+            }
+        }
     }
     
     GLuint createTextTexture(const std::string &text, TTF_Font *font, SDL_Color color, int &textWidth, int &textHeight) {
@@ -361,7 +417,7 @@ void eventProc() {
 
 int main(int argc, char **argv) {
 #ifdef __EMSCRIPTEN__
-    MainWindow main_window("/", 960, 720);
+    MainWindow main_window("/", 1280, 720);
     main_w =&main_window;
     emscripten_set_main_loop(eventProc, 0, 1);
 #else
@@ -374,7 +430,7 @@ int main(int argc, char **argv) {
     Argument<std::string> arg;
     std::string path;
     int value = 0;
-    int tw = 960, th = 720;
+    int tw = 1280, th = 720;
     try {
         while((value = parser.proc(arg)) != -1) {
             switch(value) {
