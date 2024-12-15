@@ -49,6 +49,7 @@ public:
     gl::ShaderProgram *shader = nullptr;
     glm::vec3 object_pos;
     bool ready = false;
+    float initial_x = 0.0f;
     Enemy(mx::Model *m, EnemyType type, gl::ShaderProgram *shaderv) : object{m}, shader{shaderv}, etype{type} {}
     virtual ~Enemy() = default;
     Enemy(const Enemy &e) = delete;
@@ -77,24 +78,47 @@ public:
         object->drawArrays();
     }
     virtual void update(float deltaTime) = 0;
+    virtual void move(float deltatime, float speed) = 0;
+    virtual void reverseDirection(float screenTop, float screenBottom) {}
     EnemyType getType() const { return etype; }
+
 protected:
     EnemyType etype;    
 };
 
 class EnemyShip : public Enemy {
 public:
+
     EnemyShip(mx::Model *m, gl::ShaderProgram *shadev) : Enemy(m, EnemyType::SHIP, shadev) {}
     virtual void update(float deltatime) override {
 
     }
+    
+    virtual void move(float deltaTime, float speed) override {
+        angleOffset += 0.05f;
+        object_pos.x = initial_x + 5.0f * cos(angleOffset);
+        object_pos.y += verticalDirection * 0.25f;
+    }
+    virtual void reverseDirection(float screenTop, float screenBottom) override {
+        if (object_pos.y > screenBottom) {
+            verticalDirection = -1; 
+        } else if (object_pos.y < screenTop) {
+            verticalDirection = 1;  
+        }
+    }
+protected:
+    float angleOffset = 0.0f;
+    int verticalDirection = 1;
 };
 
 class EnemySaucer : public Enemy {
 public:
     EnemySaucer(mx::Model *m, gl::ShaderProgram *shadev) : Enemy(m, EnemyType::SAUCER, shadev) {}
     virtual void update(float deltatime) override {
-        
+    
+    }
+    virtual void move(float deltaTime, float speed) override {
+        object_pos.y -= speed * deltaTime;
     }
 };
 
@@ -103,6 +127,9 @@ public:
     EnemyTriangle(mx::Model *m, gl::ShaderProgram *shadev) : Enemy(m, EnemyType::TRIANGLE, shadev) {}
     virtual void update(float deltatime) override {
         
+    }
+    virtual void move(float deltaTime, float speed) override {
+        object_pos.y -= speed * deltaTime;
     }
 };
 
@@ -122,7 +149,6 @@ public:
     glm::vec3 ship_pos;
     std::vector<std::tuple<glm::vec3, glm::vec3>> projectiles;
     std::vector<std::unique_ptr<Enemy>> enemies;
-    
     float shipRotation = 0.0f;        
     float rotationSpeed = 90.0f;      
     float maxTiltAngle = 10.0f;       
@@ -393,10 +419,8 @@ public:
                     shipRotation = glm::min(shipRotation + rotationSpeed * deltaTime, 0.0f);
                 }
             }
-            ship_pos.x = glm::clamp(ship_pos.x, std::get<0>(screenx), std::get<1>(screenx) );
+            ship_pos.x = glm::clamp(ship_pos.x, std::get<0>(screenx), std::get<1>(screenx));
             ship_pos.y = glm::clamp(ship_pos.y, std::get<2>(screenx)+1.0f, std::get<3>(screenx) - 1.0f);
-
-       
             lastActionTime = currentTime;
         }
 
@@ -459,13 +483,15 @@ public:
         }
         if(!enemies.empty()) {
             for(int i = (int)enemies.size() -1; i >= 0; i--) {
-                enemies[i]->object_pos.y -= enemySpeed * deltaTime;
-                if (enemies[i]->object_pos.y < (std::get<2>(screenx))) {
+                enemies[i]->move(deltaTime, enemySpeed);
+                if (enemies[i]->getType() != EnemyType::SHIP && enemies[i]->object_pos.y < (std::get<2>(screenx))) {
                     //enemies.erase(enemies.begin() + i);
                     // life lost clear
                     die();
                     return;
-                }    
+                } else {
+                    enemies[i]->reverseDirection(std::get<2>(screenx), std::get<3>(screenx));
+                } 
             }
         }
 
@@ -636,6 +662,7 @@ private:
             break;
         }
         enemies.back()->object_pos = glm::vec3(getRandomFloat(std::get<0>(screenx)+6.0f, std::get<1>(screenx))-6.0f, std::get<3>(screenx)-1.0f, -70.0f);
+        enemies.back()->initial_x = enemies.back()->object_pos.x;
     }
 };
 
