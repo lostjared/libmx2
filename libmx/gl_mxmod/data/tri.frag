@@ -1,5 +1,6 @@
 #version 300 es
-precision mediump float; 
+precision highp float;
+
 
 in vec3 fragPos;       
 in vec3 fragNormal;    
