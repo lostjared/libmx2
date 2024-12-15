@@ -13,6 +13,7 @@
 #include"gl.hpp"
 #include"loadpng.hpp"
 #include"model.hpp"
+#include<random>
 
 #define CHECK_GL_ERROR() \
 { GLenum err = glGetError(); \
@@ -23,6 +24,76 @@ printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
 #define M_PI 3.14159265358979323846
 #endif
 
+float getRandomFloat(float min, float max) {
+    static std::random_device rd;  
+    static std::mt19937 gen(rd()); 
+    std::uniform_real_distribution<float> dis(min, max);
+    return dis(gen);
+}
+
+enum class EnemyType { SHIP=1, SAUCER, TRIANGLE };
+
+class Enemy {
+public:
+    mx::Model *object = nullptr;
+    gl::ShaderProgram *shader = nullptr;
+    glm::vec3 object_pos;
+    Enemy(mx::Model *m, EnemyType type, gl::ShaderProgram *shaderv) : object{m}, shader{shaderv}, etype{type} {}
+    virtual ~Enemy() = default;
+    Enemy(const Enemy &e) = delete;
+    Enemy &operator=(const Enemy &e) = delete;
+    Enemy(Enemy &&e) : object{e.object}, shader{e.shader}, object_pos{e.object_pos}, etype{e.etype} {
+        e.object = nullptr;
+        e.shader = nullptr;
+    }
+    Enemy &operator=(Enemy &&e) {
+        if(this != &e) {
+            object = e.object;
+            object_pos = e.object_pos;
+            etype = e.etype;
+            e.object = nullptr;
+            e.shader = nullptr;
+        }
+        return *this;
+    }
+    void load(gl::GLWindow *win, mx::Model *m) {
+        object = m;
+    }
+    void setEnemyType(EnemyType e) {
+        etype = e;
+    }
+    void draw() {
+        object->drawArrays();
+    }
+    virtual void update(float deltaTime) = 0;
+    EnemyType getType() const { return etype; }
+protected:
+    EnemyType etype;    
+};
+
+class EnemyShip : public Enemy {
+public:
+    EnemyShip(mx::Model *m, gl::ShaderProgram *shadev) : Enemy(m, EnemyType::SHIP, shadev) {}
+    virtual void update(float deltatime) override {
+
+    }
+};
+
+class EnemySaucer : public Enemy {
+public:
+    EnemySaucer(mx::Model *m, gl::ShaderProgram *shadev) : Enemy(m, EnemyType::SAUCER, shadev) {}
+    virtual void update(float deltatime) override {
+        
+    }
+};
+
+class EnemyTriangle : public Enemy {
+public:
+    EnemyTriangle(mx::Model *m, gl::ShaderProgram *shadev) : Enemy(m, EnemyType::TRIANGLE, shadev) {}
+    virtual void update(float deltatime) override {
+        
+    }
+};
 
 class SpaceGame : public gl::GLObject {
 public:
@@ -35,10 +106,11 @@ public:
     glm::vec3 stars[1000];
     mx::Model ship;
     mx::Model projectile;
+    mx::Model enemy_ship, saucer, triangle;
     glm::vec3 ship_pos;
-
     std::vector<glm::vec3> projectiles;
-
+    std::vector<std::unique_ptr<Enemy>> enemies;
+    
     float shipRotation = 0.0f;        
     float rotationSpeed = 90.0f;      
     float maxTiltAngle = 10.0f;       
@@ -49,9 +121,13 @@ public:
     float projectileSpeed = 100.0f;       
     float projectileLifetime = 50.0f;     
     float projectileRotation = 0.0f;
+    float enemyReleaseTimer = 0.0f;
+    float enemyReleaseInterval = 2.0f; 
+    float enemySpeed = 20.0f;
+    float enemyLifetime = 50.0f;
 
     SpaceGame(gl::GLWindow *win) : score{0}, ship_pos(0.0f, -20.0f, -70.0f) {
-
+           
     }
     
     virtual ~SpaceGame() {
@@ -77,6 +153,17 @@ public:
             throw mx::Exception("Could not open sphere.mxmod");
         }
 
+        if(!enemy_ship.openModel(win->util.getFilePath("data/objects/ship1.mxmod"))) {
+            throw mx::Exception("Could not open ship1.mxmod");
+        }
+        if(!saucer.openModel(win->util.getFilePath("data/objects/ufox.mxmod"))) {
+            throw mx::Exception("Could not open sphere.mxmod");
+        }
+        if(!triangle.openModel(win->util.getFilePath("data/objects/shipshooter.mxmod"))) {
+            throw mx::Exception("Could not open sphere.mxmod");
+        }
+        
+
         shaderProgram.useProgram();
         float aspectRatio = (float)win->w / (float)win->h;
         float fov = glm::radians(45.0f); 
@@ -99,6 +186,15 @@ public:
         ship.setTextures(win, win->util.getFilePath("data/objects/bird.tex"), win->util.getFilePath("data/objects"));
         projectile.setShaderProgram(&shaderProgram, "texture1");
         projectile.setTextures(win, win->util.getFilePath("data/objects/proj.tex"), win->util.getFilePath("data/objects"));
+        enemy_ship.setShaderProgram(&shaderProgram, "texture1");
+        enemy_ship.setTextures(win, win->util.getFilePath("data/objects/textures.tex"), win->util.getFilePath("data/objects"));
+        saucer.setShaderProgram(&shaderProgram, "texture1");
+        saucer.setTextures(win, win->util.getFilePath("data/objects/textures.tex"), win->util.getFilePath("data/objects"));
+        triangle.setShaderProgram(&shaderProgram, "texture1");
+        triangle.setTextures(win, win->util.getFilePath("data/objects/bird.tex"), win->util.getFilePath("data/objects"));
+        
+        releaseEnemy();
+
         starsShader.useProgram();
         starsShader.setUniform("starColor", glm::vec3(1.0f, 1.0f, 1.0f));
         glm::mat4 star_projection = glm::ortho(-100.0f, 100.0f, -75.0f, 75.0f, -100.0f, 100.0f);
@@ -122,7 +218,7 @@ public:
         shaderProgram.useProgram();
         CHECK_GL_ERROR();
         Uint32 currentTime = SDL_GetTicks();
-        float deltaTime = (currentTime - lastUpdateTime) / 1000.0f; // Convert to seconds
+        float deltaTime = (currentTime - lastUpdateTime) / 1000.0f; 
         lastUpdateTime = currentTime;
         update(deltaTime);
 
@@ -163,9 +259,31 @@ public:
                 projModel = glm::rotate(projModel, glm::radians(-90.0f), glm::vec3(1.0f,0.0f,0.0f));
                 projModel = glm::rotate(projModel, glm::radians(-180.0f), glm::vec3(0.0f,0.0f,1.0f));
                 projModel = glm::rotate(projModel, glm::radians(projectileRotation), glm::vec3(1.0f,0.0f,1.0f));
-                
+                projModel = glm::scale(projModel, glm::vec3(0.5, 0.5, 0.5));
                 shaderProgram.setUniform("model", projModel);
                 projectile.drawArrays();
+            }
+        }
+
+        if(!enemies.empty()) {
+            for(auto &e : enemies) {
+                glm::mat4 projModel = glm::translate(glm::mat4(1.0f), e->object_pos);
+                switch(e->getType()) {
+                    case EnemyType::SHIP:
+                        projModel = glm::rotate(projModel, glm::radians(-90.0f), glm::vec3(1.0f,0.0f,0.0f));
+                        projModel = glm::rotate(projModel, glm::radians(projectileRotation), glm::vec3(0.0f,1.0f,0.0f));
+                        projModel = glm::scale(projModel, glm::vec3(1.2f, 1.2f, 1.2f));
+                    break;
+                    case EnemyType::SAUCER:
+                        projModel = glm::scale(projModel, glm::vec3(1.5f, 1.5f, 1.5f));
+                    break;
+                    case EnemyType::TRIANGLE:
+                        projModel = glm::rotate(projModel, glm::radians(180.0f), glm::vec3(0.0f,1.0f,0.0f));
+                        //projModel = glm::rotate(projModel, glm::radians(-180.0f), glm::vec3(1.0f,0.0f,0.0f));
+                    break;
+                }    
+                shaderProgram.setUniform("model", projModel);
+                e->draw();
             }
         }
 
@@ -249,8 +367,8 @@ public:
                     shipRotation = glm::min(shipRotation + rotationSpeed * deltaTime, 0.0f);
                 }
             }
-            ship_pos.x = glm::clamp(ship_pos.x, std::get<0>(screenx) + 2.0f, std::get<1>(screenx) - 2.0f);
-            ship_pos.y = glm::clamp(ship_pos.y, std::get<2>(screenx) + 4.5f, std::get<3>(screenx) - 4.5f);
+            ship_pos.x = glm::clamp(ship_pos.x, std::get<0>(screenx), std::get<1>(screenx) );
+            ship_pos.y = glm::clamp(ship_pos.y, std::get<2>(screenx)+1.0f, std::get<3>(screenx) - 1.0f);
 
        
             lastActionTime = currentTime;
@@ -292,6 +410,20 @@ public:
                 if (projectiles[i].y > (std::get<3>(screenx) + projectileLifetime)) {
                     projectiles.erase(projectiles.begin() + i);
                 }
+            }
+        }
+        enemyReleaseTimer += deltaTime;
+        if (enemyReleaseTimer >= enemyReleaseInterval) {
+            releaseEnemy();             
+            enemyReleaseTimer = 0.0f;   
+        }
+        if(!enemies.empty()) {
+            for(int i = (int)enemies.size() -1; i >= 0; i--) {
+                enemies[i]->object_pos.y -= enemySpeed * deltaTime;
+                if (enemies[i]->object_pos.y < (std::get<2>(screenx))) {
+                    enemies.erase(enemies.begin() + i);
+                    std::cout << "Bottom\n";
+                }    
             }
         }
     }
@@ -380,6 +512,22 @@ private:
         for (int i = 0; i < numStars; ++i) {
             stars[i] = glm::vec3(rand() % 200 - 100, rand() % 150 - 75, rand() % 100 + 1.0f);
         }
+    }
+
+    void releaseEnemy() {
+        int r = rand()%3;
+        switch(r) {
+            case 0:
+                enemies.push_back(std::make_unique<EnemyShip>(&enemy_ship, &shaderProgram));
+            break;
+            case 1:
+                enemies.push_back(std::make_unique<EnemySaucer>(&saucer, &shaderProgram));
+            break;
+            case 2:
+                enemies.push_back(std::make_unique<EnemyTriangle>(&triangle, &shaderProgram));
+            break;
+        }
+        enemies.back()->object_pos = glm::vec3(getRandomFloat(std::get<0>(screenx)+2.0f, std::get<1>(screenx))-2.0f, std::get<3>(screenx)-1.0f, -60.0f);
     }
 };
 
