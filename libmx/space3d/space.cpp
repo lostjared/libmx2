@@ -43,7 +43,7 @@ public:
     bool isBarrelRolling = false;      
     float barrelRollSpeed = 360.0f; 
 
-    SpaceGame(gl::GLWindow *win) : score{0}, ship_pos(0.0f, -20.0f, -60.0f) {
+    SpaceGame(gl::GLWindow *win) : score{0}, ship_pos(0.0f, -20.0f, -70.0f) {
 
     }
     
@@ -72,7 +72,7 @@ public:
         shaderProgram.useProgram();
         float aspectRatio = (float)win->w / (float)win->h;
         float fov = glm::radians(45.0f); 
-        float z = -60.0f; 
+        float z = ship_pos.z; 
         float height = 2.0f * glm::tan(fov / 2.0f) * std::abs(z);
         float width = height * aspectRatio;
         std::get<0>(screenx) = -width / 2.0f;
@@ -142,7 +142,9 @@ public:
             model = glm::rotate(model, glm::radians(barrelRollAngle), glm::vec3(0.0f, 1.0f, 0.0f));
         }
         model = glm::rotate(model, glm::radians(shipRotation), glm::vec3(0.0f, 0.0f, 1.0f)); 
-        model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));        
+        model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));  
+        model = glm::rotate(model, glm::radians(-180.0f), glm::vec3(0.0f, 0.0f, 1.0f));  
+        
         shaderProgram.setUniform("model", model);
         ship.drawArrays();
 
