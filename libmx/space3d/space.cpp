@@ -50,6 +50,13 @@ public:
     glm::vec3 object_pos;
     bool ready = false;
     float initial_x = 0.0f;
+    int verticalDirection = 1;
+    bool isSpinning = false;
+    float spinAngle = 0.0f;
+    float spinSpeed = 360.0f; 
+    float spinDuration = 0.6f;
+    float elapsedSpinTime = 0.0f;
+
     Enemy(mx::Model *m, EnemyType type, gl::ShaderProgram *shaderv) : object{m}, shader{shaderv}, etype{type} {}
     virtual ~Enemy() = default;
     Enemy(const Enemy &e) = delete;
@@ -77,10 +84,23 @@ public:
     void draw() {
         object->drawArrays();
     }
+
     virtual void update(float deltaTime) = 0;
     virtual void move(float deltatime, float speed) = 0;
     virtual void reverseDirection(float screenTop, float screenBottom) {}
     EnemyType getType() const { return etype; }
+
+    void updateSpin(float deltaTime) {
+        if (isSpinning) {
+            elapsedSpinTime += deltaTime;
+            spinAngle += spinSpeed * deltaTime;
+
+            if (elapsedSpinTime >= spinDuration) {
+                isSpinning = false; 
+                ready = true;
+            }
+        }
+    }
 
 protected:
     EnemyType etype;    
@@ -108,7 +128,6 @@ public:
     }
 protected:
     float angleOffset = 0.0f;
-    int verticalDirection = 1;
 };
 
 class EnemySaucer : public Enemy {
@@ -129,7 +148,15 @@ public:
         
     }
     virtual void move(float deltaTime, float speed) override {
-        object_pos.y -= speed * deltaTime;
+        object_pos.y += verticalDirection * speed * deltaTime;
+    }
+
+    virtual void reverseDirection(float screenTop, float screenBottom) override {
+        if (object_pos.y > screenBottom) {
+            verticalDirection = -1; 
+        } else if (object_pos.y < screenTop) {
+            verticalDirection = 1;  
+        }
     }
 };
 
@@ -139,7 +166,7 @@ public:
     gl::ShaderProgram shaderProgram, textShader, starsShader;
     mx::Font font;
     mx::Input stick;
-    int score;
+    int score = 0, lives = 5;
     GLuint starsVBO, starsVAO;
     const int numStars = 1000;
     glm::vec3 stars[1000];
@@ -161,10 +188,11 @@ public:
     float projectileRotation = 0.0f;
     float enemyReleaseTimer = 0.0f;
     float enemyReleaseInterval = 1.5f; 
-    float enemySpeed = 20.0f;
+    float enemySpeed = 15.0f;
     float enemyLifetime = 50.0f;
+    bool game_over = false;
 
-    SpaceGame(gl::GLWindow *win) : score{0}, ship_pos(0.0f, -20.0f, -70.0f) {
+    SpaceGame(gl::GLWindow *win) : score{0}, lives{5}, ship_pos(0.0f, -20.0f, -70.0f) {
            
     }
     
@@ -229,7 +257,7 @@ public:
         saucer.setShaderProgram(&shaderProgram, "texture1");
         saucer.setTextures(win, win->util.getFilePath("data/objects/metal.tex"), win->util.getFilePath("data/objects"));
         triangle.setShaderProgram(&shaderProgram, "texture1");
-        triangle.setTextures(win, win->util.getFilePath("data/objects/proj.tex"), win->util.getFilePath("data/objects"));
+        triangle.setTextures(win, win->util.getFilePath("data/objects/metal_ship.tex"), win->util.getFilePath("data/objects"));
 
         starsShader.useProgram();
         starsShader.setUniform("starColor", glm::vec3(1.0f, 1.0f, 1.0f));
@@ -319,10 +347,16 @@ public:
                         projModel = glm::scale(projModel, glm::vec3(1.5f, 1.5f, 1.5f));
                     break;
                     case EnemyType::TRIANGLE:
-                        projModel = glm::rotate(projModel, glm::radians(69.0f), glm::vec3(1.0f,0.0f,0.0f));
+                        if(e->verticalDirection == -1)
+                            projModel = glm::rotate(projModel, glm::radians(69.0f), glm::vec3(1.0f,0.0f,0.0f));
+                        else
+                            projModel = glm::rotate(projModel, glm::radians(-69.0f), glm::vec3(1.0f,0.0f,0.0f));
                         projModel = glm::rotate(projModel, glm::radians(projectileRotation), glm::vec3(0.0f, 0.0f, 1.0f));
                     break;
                 }    
+                if(e->isSpinning)
+                    projModel = glm::rotate(projModel, glm::radians(e->spinAngle), glm::vec3(1.0f, 0.0f, 0.0f));
+
                 shaderProgram.setUniform("model", projModel);
                 e->draw();
             }
@@ -335,10 +369,12 @@ public:
         SDL_Color white = {255, 255, 255, 255};
         int textWidth = 0, textHeight = 0;
         GLuint textTexture;
-        if(launch_ship == true) {
-            textTexture = createTextTexture("Press Button X or Key Z to Launch Ship", font.wrapper().unwrap(), white, textWidth, textHeight);
+        if(game_over == true) {
+            textTexture = createTextTexture("Press Button Start or Enter Key to Start New Game Your Score: " + std::to_string(score), font.wrapper().unwrap(), white, textWidth, textHeight);
+        } else if(launch_ship == true) {
+            textTexture = createTextTexture("Press X Button or Z Key to Launch Ship", font.wrapper().unwrap(), white, textWidth, textHeight);
         } else {
-            textTexture = createTextTexture("Score: " + std::to_string(score), font.wrapper().unwrap(), white, textWidth, textHeight);
+            textTexture = createTextTexture("Lives: " + std::to_string(lives) + " Score: " + std::to_string(score), font.wrapper().unwrap(), white, textWidth, textHeight);
         }
         renderText(textTexture, textWidth, textHeight, win->w, win->h);
         glDeleteTextures(1, &textTexture);
@@ -358,6 +394,16 @@ public:
     Uint32 fireTime = SDL_GetTicks();
     void checkInput(float deltaTime) {
     
+        if(game_over == true) {
+            if(stick.getButton(mx::Input_Button::BTN_START)) {
+                game_over = false;
+                lives = 5;
+                score = 0;
+                launch_ship = true;
+            }
+            return;
+        }
+
         if(launch_ship == true) {
             if(stick.getButton(mx::Input_Button::BTN_X)) {
                 launch_ship = false;
@@ -435,6 +481,11 @@ public:
         barrelRollAngle = 0.0f;
         isBarrelRolling = false;
         shipRotation = 0.0f;
+        lives--;
+        if(lives < 0) {
+            game_over = true;
+            launch_ship = false;
+        }
     }
 
     void update(float deltaTime) {
@@ -452,7 +503,7 @@ public:
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         CHECK_GL_ERROR();
 
-        if(launch_ship == true) return;
+        if(launch_ship == true || game_over == true) return;
 
          if (isBarrelRolling) {
            barrelRollAngle += barrelRollSpeed * deltaTime;
@@ -484,9 +535,7 @@ public:
         if(!enemies.empty()) {
             for(int i = (int)enemies.size() -1; i >= 0; i--) {
                 enemies[i]->move(deltaTime, enemySpeed);
-                if (enemies[i]->getType() != EnemyType::SHIP && enemies[i]->object_pos.y < (std::get<2>(screenx))) {
-                    //enemies.erase(enemies.begin() + i);
-                    // life lost clear
+                if (enemies[i]->getType() != EnemyType::SHIP && enemies[i]->getType() != EnemyType::TRIANGLE && enemies[i]->object_pos.y < (std::get<2>(screenx))) {
                     die();
                     return;
                 } else {
@@ -496,7 +545,7 @@ public:
         }
 
         for (int i = (int)enemies.size() - 1; i >= 0; i--) {
-            enemies[i]->update(deltaTime);
+            enemies[i]->updateSpin(deltaTime);
             if (enemies[i]->ready) {
                 enemies.erase(enemies.begin() + i);
             }
@@ -511,6 +560,9 @@ public:
             for (int pi = (int)projectiles.size() - 1; pi >= 0; pi--) {
                 bool projectileDestroyed = false;
                 for (int ei = (int)enemies.size() - 1; ei >= 0; ei--) {
+
+                    if(enemies[ei]->isSpinning == true) break;
+
                     float enemyRadius = 1.0f; // default
                     switch (enemies[ei]->getType()) {
                         case EnemyType::SHIP:
@@ -523,12 +575,12 @@ public:
                             enemyRadius = triangleRadius;
                             break;
                     }
-
                     if (isColliding(std::get<0>(projectiles[pi]), projectileRadius, enemies[ei]->object_pos, enemyRadius) || isColliding(std::get<1>(projectiles[pi]), projectileRadius, enemies[ei]->object_pos, enemyRadius)) {
-                        enemies.erase(enemies.begin() + ei);
                         projectiles.erase(projectiles.begin() + pi);
                         score += 10; 
                         projectileDestroyed = true;
+                        enemies[ei]->isSpinning = true;
+                        // setEnemy texture
                         break; 
                     }
                 }
@@ -553,7 +605,6 @@ public:
                         enemyRadius = 1.0f;
                         break;
                 }
-
                 if (isColliding(ship_pos, playerRadius, enemy->object_pos, enemyRadius)) {
                     die();
                     return;
