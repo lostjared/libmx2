@@ -403,9 +403,9 @@ public:
         int textWidth = 0, textHeight = 0;
         GLuint textTexture;
         if(game_over == true) {
-            textTexture = createTextTexture("Press Button Start or Enter Key to Start New Game Your Score: " + std::to_string(score), font.wrapper().unwrap(), white, textWidth, textHeight);
+            textTexture = createTextTexture("Double Tap or Press Button Start or Enter Key to Start New Game Your Score: " + std::to_string(score), font.wrapper().unwrap(), white, textWidth, textHeight);
         } else if(launch_ship == true) {
-            textTexture = createTextTexture("Press X Button or Z Key to Launch Ship", font.wrapper().unwrap(), white, textWidth, textHeight);
+            textTexture = createTextTexture("Double Tap or Press X Button or Z Key to Launch Ship", font.wrapper().unwrap(), white, textWidth, textHeight);
         } else {
             textTexture = createTextTexture("Lives: " + std::to_string(lives) + " Score: " + std::to_string(score), font.wrapper().unwrap(), white, textWidth, textHeight);
         }
@@ -416,10 +416,9 @@ public:
         shaderProgram.useProgram();
     }
 
-    float touchX = 0.0f, touchY = 0.0f;
-    Uint32 lastTouchTime = 0;
-    bool isDoubleTap = false;
-    bool isTouchActive = false;
+    float touch_start_x = 0.0f, touch_start_y = 0.0f;
+    bool is_touch_active = false;
+    Uint32 last_shot_time = 0;
 
     void event(gl::GLWindow *win, SDL_Event &e) override {
 
@@ -428,49 +427,67 @@ public:
             return;
         }
 
-        if(e.type == SDL_FINGERUP) {
-            isTouchActive = false;
-        }
 
-        if (e.type == SDL_FINGERDOWN) {
-            float x = e.tfinger.x * win->w;
-            float y = e.tfinger.y * win->h;
+        switch(e.type) {
+            case SDL_FINGERDOWN: {
 
-            touchX = std::get<0>(screenx) + x / win->w * (std::get<1>(screenx) - std::get<0>(screenx));
-            touchY = std::get<3>(screenx) - y / win->h * (std::get<3>(screenx) - std::get<2>(screenx));
-            isTouchActive = true;
+                if(game_over == true) { 
+                    game_over = false;
+                    lives = 5;
+                    score = 0;
+                    launch_ship = true;
+                    return;
+                }
+
+                if(launch_ship == true) {
+                    launch_ship = false;
+                    lives = 5;
+                    score = 0;
+                    win->mixer.playWav(snd_takeoff, 0, 0);
+                    return;
+                }
+            
+                touch_start_x = e.tfinger.x * win->w;
+                touch_start_y = e.tfinger.y * win->h;
+                is_touch_active = true;
 
 #ifndef __EMSCRIPTEN__
-            Uint32 currentTime = SDL_GetTicks();
+                Uint32 ticks = SDL_GetTicks();
 #else
-            double currentTime = emscripten_get_now();
+                double ticks = emscripten_get_now();
 #endif
-            if (currentTime - lastTouchTime <= 300) { 
-                isDoubleTap = true;
-            } else {
-                isDoubleTap = false;
-            }
-            lastTouchTime = currentTime;
-            if (!isDoubleTap) {
-                std::tuple<glm::vec3, glm::vec3> shots;
-                std::get<0>(shots) = ship_pos;
-                std::get<0>(shots).x -= 1.5f;
-                std::get<0>(shots).y += 1.0f;
-                std::get<1>(shots) = ship_pos;
-                std::get<1>(shots).x += 1.5f;
-                std::get<1>(shots).y += 1.0f;
-                projectiles.push_back(shots);
-                win->mixer.playWav(snd_fire, 0, 1);
-            }
+                if (ticks - last_shot_time > 300) {
+                    std::tuple<glm::vec3, glm::vec3> shots;
+                    std::get<0>(shots) = ship_pos;
+                    std::get<0>(shots).x -= 1.5f;
+                    std::get<0>(shots).y += 1.0f;
+                    std::get<1>(shots) = ship_pos;
+                    std::get<1>(shots).x += 1.5f;
+                    std::get<1>(shots).y += 1.0f;
+                    projectiles.push_back(shots);
+                    win->mixer.playWav(snd_fire, 0, 1);
+                    last_shot_time = SDL_GetTicks();
+                }
         }
+        break;
 
-        if (e.type == SDL_FINGERMOTION) {
-            float x = e.tfinger.x * win->w;
-            float y = e.tfinger.y * win->h;
-            touchX = std::get<0>(screenx) + x / win->w * (std::get<1>(screenx) - std::get<0>(screenx));
-            touchY = std::get<3>(screenx) - y / win->h * (std::get<3>(screenx) - std::get<2>(screenx));
+        case SDL_FINGERMOTION:
+            if (is_touch_active) {
+                float touch_current_x = e.tfinger.x * win->w;
+                float touch_current_y = e.tfinger.y * win->h;
+                ship_pos.x += (touch_current_x - touch_start_x) / win->w * (std::get<1>(screenx) - std::get<0>(screenx));
+                ship_pos.y -= (touch_current_y - touch_start_y) / win->h * (std::get<3>(screenx) - std::get<2>(screenx));
+                touch_start_x = touch_current_x;
+                touch_start_y = touch_current_y;
+                ship_pos.x = glm::clamp(ship_pos.x, std::get<0>(screenx), std::get<1>(screenx));
+                ship_pos.y = glm::clamp(ship_pos.y, std::get<2>(screenx) + 1.0f, std::get<3>(screenx) - 1.0f);
+            }
+            break;
+
+        case SDL_FINGERUP:
+            is_touch_active = false;
+            break;
         }
-
     }
 #ifndef __EMSCRIPTEN__
     Uint32 lastActionTime = SDL_GetTicks();
@@ -483,7 +500,7 @@ public:
 
     
     void checkInput(gl::GLWindow *win, float deltaTime) {
-    
+
         if(game_over == true) {
             if(stick.getButton(mx::Input_Button::BTN_START)) {
                 game_over = false;
@@ -567,23 +584,6 @@ public:
             ship_pos.x = glm::clamp(ship_pos.x, std::get<0>(screenx), std::get<1>(screenx));
             ship_pos.y = glm::clamp(ship_pos.y, std::get<2>(screenx)+1.0f, std::get<3>(screenx) - 1.0f);
             lastActionTime = currentTime;
-        }
-
-        if (isDoubleTap) {
-            isDoubleTap = false; 
-            if (!isBarrelRolling) {
-                isBarrelRolling = true;
-                barrelRollAngle = 0.0f;
-            }
-        }
-
-        if(isTouchActive) {
-
-            ship_pos.x += (touchX - ship_pos.x) * 10.0f * deltaTime;
-            ship_pos.y += (touchY - ship_pos.y) * 10.0f * deltaTime;
-
-            ship_pos.x = glm::clamp(ship_pos.x, std::get<0>(screenx), std::get<1>(screenx));
-            ship_pos.y = glm::clamp(ship_pos.y, std::get<2>(screenx) + 1.0f, std::get<3>(screenx) - 1.0f);
         }
     }
 
