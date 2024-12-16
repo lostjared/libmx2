@@ -167,6 +167,7 @@ public:
 class SpaceGame : public gl::GLObject {
 public:
     GLuint fire = 0;
+    int snd_fire = 0, snd_crash = 0, snd_takeoff = 0;
     bool launch_ship = true;
     gl::ShaderProgram shaderProgram, textShader, starsShader;
     mx::Font font;
@@ -235,6 +236,10 @@ public:
             throw mx::Exception("Could not open sphere.mxmod");
         }
 
+        snd_fire = win->mixer.loadWav(win->util.getFilePath("data/sound/shoot.wav"));
+        snd_crash = win->mixer.loadWav(win->util.getFilePath("data/sound/crash.wav"));
+        snd_takeoff = win->mixer.loadWav(win->util.getFilePath("data/sound/takeoff.wav"));
+
         shaderProgram.useProgram();
         float aspectRatio = (float)win->w / (float)win->h;
         float fov = glm::radians(45.0f); 
@@ -289,7 +294,7 @@ public:
         Uint32 currentTime = SDL_GetTicks();
         float deltaTime = (currentTime - lastUpdateTime) / 1000.0f; 
         lastUpdateTime = currentTime;
-        update(deltaTime);
+        update(win, deltaTime);
 
       
         /// draw objects
@@ -397,7 +402,7 @@ public:
 
     Uint32 lastActionTime = SDL_GetTicks();
     Uint32 fireTime = SDL_GetTicks();
-    void checkInput(float deltaTime) {
+    void checkInput(gl::GLWindow *win, float deltaTime) {
     
         if(game_over == true) {
             if(stick.getButton(mx::Input_Button::BTN_START)) {
@@ -412,6 +417,11 @@ public:
         if(launch_ship == true) {
             if(stick.getButton(mx::Input_Button::BTN_X)) {
                 launch_ship = false;
+
+                if(!win->mixer.isPlaying(0))
+                    Mix_HaltChannel(0);
+
+                win->mixer.playWav(snd_takeoff, 0, 0);
             }
             return;
         }
@@ -428,6 +438,8 @@ public:
                 std::get<1>(shots).x += 1.5f;
                 std::get<1>(shots).y += 1.0f;
                 projectiles.push_back(shots);
+                win->mixer.playWav(snd_fire, 0, 1);
+                
             }
             fireTime = currentTime;
         }
@@ -491,10 +503,11 @@ public:
             game_over = true;
             launch_ship = false;
         }
+        Mix_HaltChannel(0);
     }
 
-    void update(float deltaTime) {
-        checkInput(deltaTime);
+    void update(gl::GLWindow *win, float deltaTime) {
+        checkInput(win, deltaTime);
 
         for (int i = 0; i < numStars; ++i) {
             stars[i].y -= deltaTime * 10.0f; 
@@ -542,6 +555,11 @@ public:
                 enemies[i]->move(deltaTime, enemySpeed);
                 if (enemies[i]->getType() != EnemyType::SHIP && enemies[i]->getType() != EnemyType::TRIANGLE && enemies[i]->object_pos.y < (std::get<2>(screenx))) {
                     die();
+                    if(!win->mixer.isPlaying(2)) {
+                        Mix_HaltChannel(1);
+                        win->mixer.playWav(snd_crash, 0, 2);
+
+                    }
                     return;
                 } else {
                     enemies[i]->reverseDirection(std::get<2>(screenx), std::get<3>(screenx));
@@ -585,7 +603,10 @@ public:
                         score += 10; 
                         projectileDestroyed = true;
                         enemies[ei]->isSpinning = true;
-                        // setEnemy texture
+                        if(!win->mixer.isPlaying(2)) {
+                            Mix_HaltChannel(1);
+                            win->mixer.playWav(snd_crash, 0, 2);
+                        }
                         break; 
                     }
                 }
@@ -727,6 +748,7 @@ class MainWindow : public gl::GLWindow {
 public:
     MainWindow(std::string path, int tw, int th) : gl::GLWindow("Space3D", tw, th) {
         setPath(path);
+        mixer.init();
         setObject(new SpaceGame(this));
         object->load(this);
     }
