@@ -283,16 +283,26 @@ public:
         glEnableVertexAttribArray(0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindVertexArray(0);
+#ifndef __EMSCRIPTEN__
         glEnable(GL_PROGRAM_POINT_SIZE);
+#endif
     }
-    
+#ifndef __EMSCRIPTEN__
     Uint32 lastUpdateTime = SDL_GetTicks();
-    
+#else
+    double lastUpdateTime = emscripten_get_now();
+#endif
     void draw(gl::GLWindow *win) override {
         shaderProgram.useProgram();
         CHECK_GL_ERROR();
+#ifndef __EMSCRIPTEN__
         Uint32 currentTime = SDL_GetTicks();
+#else
+        double currentTime = emscripten_get_now();
+#endif
         float deltaTime = (currentTime - lastUpdateTime) / 1000.0f; 
+        if (deltaTime > 0.1f) 
+            deltaTime = 0.1f;
         lastUpdateTime = currentTime;
         update(win, deltaTime);
 
@@ -399,9 +409,16 @@ public:
             mx::system_out << "Controller Event\n";
         }
     }
-
+#ifndef __EMSCRIPTEN__
     Uint32 lastActionTime = SDL_GetTicks();
     Uint32 fireTime = SDL_GetTicks();
+#else
+    double lastActionTime = emscripten_get_now();
+    double fireTime = emscripten_get_now();
+#endif
+
+
+    
     void checkInput(gl::GLWindow *win, float deltaTime) {
     
         if(game_over == true) {
@@ -425,9 +442,11 @@ public:
             }
             return;
         }
-
+#ifndef __EMSCRIPTEN__
         Uint32 currentTime = SDL_GetTicks();
-
+#else
+        double currentTime = emscripten_get_now();
+#endif
         if(currentTime - fireTime >= 175) {
             if(stick.getButton(mx::Input_Button::BTN_A)) {
                 std::tuple<glm::vec3, glm::vec3> shots;
