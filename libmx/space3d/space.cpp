@@ -197,6 +197,14 @@ public:
     float enemySpeed = 15.0f;
     float enemyLifetime = 50.0f;
     bool game_over = false;
+    float initial_x = 0.0f;
+    int verticalDirection = 1;
+    bool isSpinning = false;
+    float spinAngle = 0.0f;
+    float spinSpeed = 360.0f; 
+    float spinDuration = 0.6f;
+    float elapsedSpinTime = 0.0f;
+    bool ready = false;
 
     SpaceGame(gl::GLWindow *win) : score{0}, lives{5}, ship_pos(0.0f, -20.0f, -70.0f) {
            
@@ -333,9 +341,14 @@ public:
         model = glm::rotate(model, glm::radians(shipRotation), glm::vec3(0.0f, 0.0f, 1.0f)); 
         model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));  
         model = glm::rotate(model, glm::radians(-180.0f), glm::vec3(0.0f, 0.0f, 1.0f));  
-        
+        if(isSpinning)
+            model = glm::rotate(model, glm::radians(spinAngle), glm::vec3(1.0f, 1.0f, 1.0f));
+
         shaderProgram.setUniform("model", model);
-        ship.drawArrays();
+        if(!isSpinning)
+            ship.drawArrays();
+        else
+            ship.drawArraysWithTexture(fire, "texture1");
 
         if(!projectiles.empty()) {
             for (auto &pos : projectiles) {
@@ -402,12 +415,62 @@ public:
         glEnable(GL_DEPTH_TEST);
         shaderProgram.useProgram();
     }
-        
+
+    float touchX = 0.0f, touchY = 0.0f;
+    Uint32 lastTouchTime = 0;
+    bool isDoubleTap = false;
+    bool isTouchActive = false;
+
     void event(gl::GLWindow *win, SDL_Event &e) override {
 
         if(stick.connectEvent(e)) {
             mx::system_out << "Controller Event\n";
+            return;
         }
+
+        if(e.type == SDL_FINGERUP) {
+            isTouchActive = false;
+        }
+
+        if (e.type == SDL_FINGERDOWN) {
+            float x = e.tfinger.x * win->w;
+            float y = e.tfinger.y * win->h;
+
+            touchX = std::get<0>(screenx) + x / win->w * (std::get<1>(screenx) - std::get<0>(screenx));
+            touchY = std::get<3>(screenx) - y / win->h * (std::get<3>(screenx) - std::get<2>(screenx));
+            isTouchActive = true;
+
+#ifndef __EMSCRIPTEN__
+            Uint32 currentTime = SDL_GetTicks();
+#else
+            double currentTime = emscripten_get_now();
+#endif
+            if (currentTime - lastTouchTime <= 300) { 
+                isDoubleTap = true;
+            } else {
+                isDoubleTap = false;
+            }
+            lastTouchTime = currentTime;
+            if (!isDoubleTap) {
+                std::tuple<glm::vec3, glm::vec3> shots;
+                std::get<0>(shots) = ship_pos;
+                std::get<0>(shots).x -= 1.5f;
+                std::get<0>(shots).y += 1.0f;
+                std::get<1>(shots) = ship_pos;
+                std::get<1>(shots).x += 1.5f;
+                std::get<1>(shots).y += 1.0f;
+                projectiles.push_back(shots);
+                win->mixer.playWav(snd_fire, 0, 1);
+            }
+        }
+
+        if (e.type == SDL_FINGERMOTION) {
+            float x = e.tfinger.x * win->w;
+            float y = e.tfinger.y * win->h;
+            touchX = std::get<0>(screenx) + x / win->w * (std::get<1>(screenx) - std::get<0>(screenx));
+            touchY = std::get<3>(screenx) - y / win->h * (std::get<3>(screenx) - std::get<2>(screenx));
+        }
+
     }
 #ifndef __EMSCRIPTEN__
     Uint32 lastActionTime = SDL_GetTicks();
@@ -506,6 +569,22 @@ public:
             lastActionTime = currentTime;
         }
 
+        if (isDoubleTap) {
+            isDoubleTap = false; 
+            if (!isBarrelRolling) {
+                isBarrelRolling = true;
+                barrelRollAngle = 0.0f;
+            }
+        }
+
+        if(isTouchActive) {
+
+            ship_pos.x += (touchX - ship_pos.x) * 10.0f * deltaTime;
+            ship_pos.y += (touchY - ship_pos.y) * 10.0f * deltaTime;
+
+            ship_pos.x = glm::clamp(ship_pos.x, std::get<0>(screenx), std::get<1>(screenx));
+            ship_pos.y = glm::clamp(ship_pos.y, std::get<2>(screenx) + 1.0f, std::get<3>(screenx) - 1.0f);
+        }
     }
 
 
@@ -527,6 +606,13 @@ public:
 
     void update(gl::GLWindow *win, float deltaTime) {
         checkInput(win, deltaTime);
+        updateSpin(deltaTime);
+
+        if(ready == true) {
+            die();
+            ready = false;
+            return;
+        }
 
         for (int i = 0; i < numStars; ++i) {
             stars[i].y -= deltaTime * 10.0f; 
@@ -573,11 +659,10 @@ public:
             for(int i = (int)enemies.size() -1; i >= 0; i--) {
                 enemies[i]->move(deltaTime, enemySpeed);
                 if (enemies[i]->getType() != EnemyType::SHIP && enemies[i]->getType() != EnemyType::TRIANGLE && enemies[i]->object_pos.y < (std::get<2>(screenx))) {
-                    die();
+                    isSpinning = true;
                     if(!win->mixer.isPlaying(2)) {
                         Mix_HaltChannel(1);
                         win->mixer.playWav(snd_crash, 0, 2);
-
                     }
                     return;
                 } else {
@@ -650,8 +735,8 @@ public:
                         enemyRadius = 1.0f;
                         break;
                 }
-                if (isColliding(ship_pos, playerRadius, enemy->object_pos, enemyRadius)) {
-                    die();
+                if (isSpinning == false && isColliding(ship_pos, playerRadius, enemy->object_pos, enemyRadius)) {
+                    isSpinning = true;
                     return;
                 }
             }
@@ -760,6 +845,19 @@ private:
         enemies.back()->fire = fire;
         enemies.back()->object_pos = glm::vec3(getRandomFloat(std::get<0>(screenx)+6.0f, std::get<1>(screenx))-6.0f, std::get<3>(screenx)-1.0f, -70.0f);
         enemies.back()->initial_x = enemies.back()->object_pos.x;
+    }
+
+    void updateSpin(float deltaTime) {
+        if (isSpinning) {
+            elapsedSpinTime += deltaTime;
+            spinAngle += spinSpeed * deltaTime;
+
+            if (elapsedSpinTime >= spinDuration) {
+                isSpinning = false; 
+                ready = true;
+                elapsedSpinTime = 0.0f;
+            }
+        }
     }
 };
 
