@@ -900,7 +900,7 @@ void eventProc() {
 }
 
 int main(int argc, char **argv) {
-    mx::system_out << "Space3D v1.0\nhttps://lostsidedead.biz\n";
+    mx::system_out << "Space3D v" << PROJECT_VERSION_MAJOR << "." << PROJECT_VERSION_MINOR << "\nhttps://lostsidedead.biz\n";
 #ifdef __EMSCRIPTEN__
     MainWindow main_window("/", 1280, 720);
     main_w =&main_window;
