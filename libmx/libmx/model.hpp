@@ -18,6 +18,7 @@ namespace mx {
         void generateBuffers();
         void cleanup();
         void draw();
+        void drawWithForcedTexture(gl::ShaderProgram &shader, GLuint texture, const std::string texture_name);
         void setShapeType(GLuint type);
         void bindTexture(gl::ShaderProgram &shader, const std::string texture_name);
         GLuint VAO, positionVBO, normalVBO, texCoordVBO;
@@ -46,6 +47,7 @@ namespace mx {
        Model &operator=(Model &&m);
        bool openModel(const std::string &filename);
        void drawArrays();
+       void drawArraysWithTexture(GLuint texture, const std::string texture_name);
        void printData(std::ostream &out);
        void setShaderProgram(gl::ShaderProgram *shader_program, const std::string texture_name = "texture1");
        void setTextures(const std::vector<GLuint> &textures); 

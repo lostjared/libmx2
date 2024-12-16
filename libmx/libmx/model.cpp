@@ -106,6 +106,15 @@ namespace mx {
         glBindVertexArray(0);
     }
 
+    void Mesh::drawWithForcedTexture(gl::ShaderProgram &shader, GLuint texture, const std::string texture_name) {
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        shader.setUniform(texture_name, 0);
+        glBindVertexArray(VAO);
+        glDrawArrays(shape_type, 0, static_cast<GLsizei>(vert.size() / 3));
+        glBindVertexArray(0);
+    }
+
     void Mesh::setShapeType(GLuint type) {
         switch(type) {
             case 0:
@@ -311,6 +320,14 @@ namespace mx {
         for (auto &mesh : meshes) {
             mesh.bindTexture(*program, tex_name);
             mesh.draw();
+        }
+    }
+
+    void Model::drawArraysWithTexture(GLuint texture, const std::string texture_name = "texture1") {
+        if(program == nullptr)
+            throw mx::Exception("Shader program must be set in model before call to drawArraysWithTexture");
+        for(auto &mesh: meshes) {
+            mesh.drawWithForcedTexture(*program, texture, texture_name);
         }
     }
 
