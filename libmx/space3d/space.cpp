@@ -56,7 +56,7 @@ public:
     float spinSpeed = 360.0f; 
     float spinDuration = 0.6f;
     float elapsedSpinTime = 0.0f;
-
+    GLuint fire = 0;
     Enemy(mx::Model *m, EnemyType type, gl::ShaderProgram *shaderv) : object{m}, shader{shaderv}, etype{type} {}
     virtual ~Enemy() = default;
     Enemy(const Enemy &e) = delete;
@@ -82,7 +82,11 @@ public:
         etype = e;
     }
     void draw() {
-        object->drawArrays();
+        if(!isSpinning)
+             object->drawArrays();
+        else {
+            object->drawArraysWithTexture(fire, "texture1");
+        }
     }
 
     virtual void update(float deltaTime) = 0;
@@ -162,6 +166,7 @@ public:
 
 class SpaceGame : public gl::GLObject {
 public:
+    GLuint fire = 0;
     bool launch_ship = true;
     gl::ShaderProgram shaderProgram, textShader, starsShader;
     mx::Font font;
@@ -199,6 +204,7 @@ public:
     virtual ~SpaceGame() {
         glDeleteBuffers(1, &starsVBO);
         glDeleteVertexArrays(1, &starsVAO);
+        glDeleteTextures(1, &fire);
     }
 
     void load(gl::GLWindow *win) override {
@@ -228,7 +234,6 @@ public:
         if(!triangle.openModel(win->util.getFilePath("data/objects/shipshooter.mxmod"))) {
             throw mx::Exception("Could not open sphere.mxmod");
         }
-        
 
         shaderProgram.useProgram();
         float aspectRatio = (float)win->w / (float)win->h;
@@ -258,7 +263,7 @@ public:
         saucer.setTextures(win, win->util.getFilePath("data/objects/metal.tex"), win->util.getFilePath("data/objects"));
         triangle.setShaderProgram(&shaderProgram, "texture1");
         triangle.setTextures(win, win->util.getFilePath("data/objects/metal_ship.tex"), win->util.getFilePath("data/objects"));
-
+        fire = gl::loadTexture(win->util.getFilePath("data/objects/flametex.png"));
         starsShader.useProgram();
         starsShader.setUniform("starColor", glm::vec3(1.0f, 1.0f, 1.0f));
         glm::mat4 star_projection = glm::ortho(-100.0f, 100.0f, -75.0f, 75.0f, -100.0f, 100.0f);
@@ -712,6 +717,7 @@ private:
                 enemies.push_back(std::make_unique<EnemyTriangle>(&triangle, &shaderProgram));
             break;
         }
+        enemies.back()->fire = fire;
         enemies.back()->object_pos = glm::vec3(getRandomFloat(std::get<0>(screenx)+6.0f, std::get<1>(screenx))-6.0f, std::get<3>(screenx)-1.0f, -70.0f);
         enemies.back()->initial_x = enemies.back()->object_pos.x;
     }
