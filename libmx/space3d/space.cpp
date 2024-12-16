@@ -436,6 +436,7 @@ public:
                     lives = 5;
                     score = 0;
                     launch_ship = true;
+                    
                     return;
                 }
 
@@ -443,6 +444,9 @@ public:
                     launch_ship = false;
                     lives = 5;
                     score = 0;
+                     if(!win->mixer.isPlaying(0))
+                        Mix_HaltChannel(0);
+
                     win->mixer.playWav(snd_takeoff, 0, 0);
                     return;
                 }
@@ -479,7 +483,7 @@ public:
                 ship_pos.y -= (touch_current_y - touch_start_y) / win->h * (std::get<3>(screenx) - std::get<2>(screenx));
                 touch_start_x = touch_current_x;
                 touch_start_y = touch_current_y;
-                ship_pos.x = glm::clamp(ship_pos.x, std::get<0>(screenx), std::get<1>(screenx));
+                ship_pos.x = glm::clamp(ship_pos.x, std::get<0>(screenx) + 1.0f, std::get<1>(screenx) - 1.0f);
                 ship_pos.y = glm::clamp(ship_pos.y, std::get<2>(screenx) + 1.0f, std::get<3>(screenx) - 1.0f);
             }
             break;
@@ -601,7 +605,6 @@ public:
             game_over = true;
             launch_ship = false;
         }
-        Mix_HaltChannel(0);
     }
 
     void update(gl::GLWindow *win, float deltaTime) {
@@ -609,6 +612,8 @@ public:
         updateSpin(deltaTime);
 
         if(ready == true) {
+            if(win->mixer.isPlaying(0))
+                Mix_HaltChannel(0);
             die();
             ready = false;
             return;
@@ -895,6 +900,7 @@ void eventProc() {
 }
 
 int main(int argc, char **argv) {
+    mx::system_out << "Space3D v1.0\nhttps://lostsidedead.biz\n";
 #ifdef __EMSCRIPTEN__
     MainWindow main_window("/", 1280, 720);
     main_w =&main_window;
