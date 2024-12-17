@@ -172,6 +172,8 @@ public:
     int hit = 0;
     bool active = false;
     bool hit_flash = false;
+    int max_hits = 25;
+
     EnemyBoss(mx::Model *m, gl::ShaderProgram *shadev) : Enemy(m, EnemyType::BOSS, shadev) {}
     ~EnemyBoss() override {}
     virtual void update(float deltatime) override {
@@ -187,9 +189,10 @@ public:
     void hitBoss() {
         if(isSpinning == false) {
             ++hit;
-            if(hit > 25) {
+            if(hit > max_hits) {
                 isSpinning = true;
                 hit = 0;
+                max_hits += 10;
             }
         }
     }
@@ -262,6 +265,8 @@ public:
     bool ready = false;
     int enemies_crashed = 0, max_crashed = 20;
     float bossRadius = 9.2f;
+    int level = 1;
+
     SpaceGame(gl::GLWindow *win) : score{0}, lives{5}, ship_pos(0.0f, -20.0f, -70.0f), boss(&enemy_ship, &shaderProgram) {
            
     }
@@ -482,7 +487,13 @@ public:
         } else if(launch_ship == true) {
             textTexture = createTextTexture("Double Tap or Press X Button or Z Key to Launch Ship", font.wrapper().unwrap(), white, textWidth, textHeight);
         } else {
-            textTexture = createTextTexture("Lives: " + std::to_string(lives) + " Score: " + std::to_string(score) + " Cleared: " + std::to_string(enemies_crashed) + "/" + std::to_string(max_crashed), font.wrapper().unwrap(), white, textWidth, textHeight);
+            std::string text;
+            if(boss.active == false)
+                text = "Level: " + std::to_string(level) + " Lives: " + std::to_string(lives) + " Score: " + std::to_string(score) + " Cleared: " + std::to_string(enemies_crashed) + "/" + std::to_string(max_crashed);
+            else
+                text = "Level: " + std::to_string(level) + " Lives: " + std::to_string(lives) + " Score: " + std::to_string(score) + " Mothership: " + std::to_string(boss.hit) + "/" + std::to_string(boss.max_hits);
+
+            textTexture = createTextTexture(text, font.wrapper().unwrap(), white, textWidth, textHeight);
         }
         renderText(textTexture, textWidth, textHeight, win->w, win->h);
         glDeleteTextures(1, &textTexture);
@@ -494,6 +505,16 @@ public:
         }
 #endif
         shaderProgram.useProgram();
+    }
+
+    void newGame() {
+        game_over = false;
+        lives = 5;
+        score = 0;
+        launch_ship = true;
+        max_crashed = 20;
+        level = 1;
+        boss.max_hits = 20;    
     }
 
     float touch_start_x = 0.0f, touch_start_y = 0.0f;
@@ -528,19 +549,12 @@ public:
             case SDL_FINGERDOWN: {
 
                 if(game_over == true) { 
-                    game_over = false;
-                    lives = 5;
-                    score = 0;
-                    launch_ship = true;
-                    max_crashed = 20;
+                    newGame();
                     return;
                 }
 
                 if(launch_ship == true) {
                     launch_ship = false;
-                    lives = 5;
-                    score = 0;
-                    max_crashed = 20;
                      if(!win->mixer.isPlaying(0))
                         Mix_HaltChannel(0);
 
@@ -604,10 +618,7 @@ public:
 
         if(game_over == true) {
             if(stick.getButton(mx::Input_Button::BTN_START)) {
-                game_over = false;
-                lives = 5;
-                score = 0;
-                max_crashed = 20;
+                newGame();
                 launch_ship = true;
             }
             return;
@@ -798,6 +809,7 @@ public:
             boss.ready = false;
             enemies_crashed = 0;
             max_crashed += 5;
+            level++;
         }
 
         if (!projectiles.empty() && (!enemies.empty()||boss.active == true)) {
