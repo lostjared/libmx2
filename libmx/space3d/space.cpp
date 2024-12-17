@@ -260,7 +260,7 @@ public:
     float spinDuration = 0.6f;
     float elapsedSpinTime = 0.0f;
     bool ready = false;
-    int enemies_crashed = 0;
+    int enemies_crashed = 0, max_crashed = 20;
     float bossRadius = 9.2f;
     SpaceGame(gl::GLWindow *win) : score{0}, lives{5}, ship_pos(0.0f, -20.0f, -70.0f), boss(&enemy_ship, &shaderProgram) {
            
@@ -482,7 +482,7 @@ public:
         } else if(launch_ship == true) {
             textTexture = createTextTexture("Double Tap or Press X Button or Z Key to Launch Ship", font.wrapper().unwrap(), white, textWidth, textHeight);
         } else {
-            textTexture = createTextTexture("Lives: " + std::to_string(lives) + " Score: " + std::to_string(score) + " Cleared: " + std::to_string(enemies_crashed) + "/20", font.wrapper().unwrap(), white, textWidth, textHeight);
+            textTexture = createTextTexture("Lives: " + std::to_string(lives) + " Score: " + std::to_string(score) + " Cleared: " + std::to_string(enemies_crashed) + "/" + std::to_string(max_crashed), font.wrapper().unwrap(), white, textWidth, textHeight);
         }
         renderText(textTexture, textWidth, textHeight, win->w, win->h);
         glDeleteTextures(1, &textTexture);
@@ -532,7 +532,7 @@ public:
                     lives = 5;
                     score = 0;
                     launch_ship = true;
-                    
+                    max_crashed = 20;
                     return;
                 }
 
@@ -540,6 +540,7 @@ public:
                     launch_ship = false;
                     lives = 5;
                     score = 0;
+                    max_crashed = 20;
                      if(!win->mixer.isPlaying(0))
                         Mix_HaltChannel(0);
 
@@ -606,6 +607,7 @@ public:
                 game_over = false;
                 lives = 5;
                 score = 0;
+                max_crashed = 20;
                 launch_ship = true;
             }
             return;
@@ -784,7 +786,7 @@ public:
             enemies[i]->updateSpin(deltaTime);
             if (enemies[i]->ready) {
                 enemies.erase(enemies.begin() + i);
-                enemies_crashed ++;
+                if(boss.active == false) enemies_crashed ++;
             }
         }
         if(boss.active) {
@@ -793,7 +795,9 @@ public:
         if(boss.ready) {
             boss.active = false;
             boss.reset();
+            boss.ready = false;
             enemies_crashed = 0;
+            max_crashed += 5;
         }
 
         if (!projectiles.empty() && (!enemies.empty()||boss.active == true)) {
@@ -970,7 +974,7 @@ private:
     }
 
     void releaseEnemy() {
-        if(enemies_crashed < 20) {
+        if(enemies_crashed < max_crashed) {
             int r = rand()%3;
             switch(r) {
                 case 0:
@@ -1050,7 +1054,7 @@ void eventProc() {
 int main(int argc, char **argv) {
     mx::system_out << "Space3D v" << PROJECT_VERSION_MAJOR << "." << PROJECT_VERSION_MINOR << "\nhttps://lostsidedead.biz\n";
 #ifdef __EMSCRIPTEN__
-    MainWindow main_window("/", 1280, 720);
+    MainWindow main_window("/", 1920, 1080);
     main_w =&main_window;
     emscripten_set_main_loop(eventProc, 0, 1);
 #else
