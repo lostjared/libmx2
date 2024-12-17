@@ -41,7 +41,7 @@ bool isColliding(const glm::vec3 &posA, float radiusA, const glm::vec3 &posB, fl
     return distSq <= radiusSumSq;
 }
 
-enum class EnemyType { SHIP=1, SAUCER, TRIANGLE };
+enum class EnemyType { SHIP=1, SAUCER, TRIANGLE, BOSS };
 
 class Enemy {
 public:
@@ -49,7 +49,7 @@ public:
     gl::ShaderProgram *shader = nullptr;
     glm::vec3 object_pos;
     bool ready = false;
-    float initial_x = 0.0f;
+    float initial_x = 0.0f, initial_y = 0.0f;
     int verticalDirection = 1;
     bool isSpinning = false;
     float spinAngle = 0.0f;
@@ -81,7 +81,7 @@ public:
     void setEnemyType(EnemyType e) {
         etype = e;
     }
-    void draw() {
+    virtual void draw() {
         if(!isSpinning)
              object->drawArrays();
         else {
@@ -114,6 +114,7 @@ class EnemyShip : public Enemy {
 public:
 
     EnemyShip(mx::Model *m, gl::ShaderProgram *shadev) : Enemy(m, EnemyType::SHIP, shadev) {}
+    ~EnemyShip() override {}
     virtual void update(float deltatime) override {
 
     }
@@ -137,6 +138,7 @@ protected:
 class EnemySaucer : public Enemy {
 public:
     EnemySaucer(mx::Model *m, gl::ShaderProgram *shadev) : Enemy(m, EnemyType::SAUCER, shadev) {}
+    ~EnemySaucer() override {}
     virtual void update(float deltatime) override {
     
     }
@@ -148,6 +150,7 @@ public:
 class EnemyTriangle : public Enemy {
 public:
     EnemyTriangle(mx::Model *m, gl::ShaderProgram *shadev) : Enemy(m, EnemyType::TRIANGLE, shadev) {}
+    ~EnemyTriangle() override {}
     virtual void update(float deltatime) override {
         
     }
@@ -162,6 +165,56 @@ public:
             verticalDirection = 1;  
         }
     }
+};
+
+class EnemyBoss : public Enemy {
+public:
+    int hit = 0;
+    bool active = false;
+    bool hit_flash = false;
+    EnemyBoss(mx::Model *m, gl::ShaderProgram *shadev) : Enemy(m, EnemyType::BOSS, shadev) {}
+    ~EnemyBoss() override {}
+    virtual void update(float deltatime) override {
+        
+    }
+
+    void reset() {
+        hit = 0;
+        active = false;
+        angleOffset = 0.0f;
+    }
+
+    void hitBoss() {
+        if(isSpinning == false) {
+            ++hit;
+            if(hit > 25) {
+                isSpinning = true;
+                hit = 0;
+            }
+        }
+    }
+    
+    virtual void move(float deltaTime, float speed) override {
+        if (active) {
+            angleOffset += 0.4 * deltaTime;
+            float radius = 35.0f;
+            object_pos.x = initial_x + radius * cos(angleOffset);
+            object_pos.y += verticalDirection * speed * 0.5f * deltaTime; 
+       }
+    }
+    virtual void reverseDirection(float screenTop, float screenBottom) override {
+        if(active) {
+            if (object_pos.y > screenBottom) {
+                verticalDirection = -1; 
+            } else if (object_pos.y < screenTop) {
+                verticalDirection = 1;  
+            }
+        }
+    }
+    
+private:
+    float angleOffset = 0.0f;
+    
 };
 
 class SpaceGame : public gl::GLObject {
@@ -182,6 +235,7 @@ public:
     glm::vec3 ship_pos;
     std::vector<std::tuple<glm::vec3, glm::vec3>> projectiles;
     std::vector<std::unique_ptr<Enemy>> enemies;
+    EnemyBoss boss;
     float shipRotation = 0.0f;        
     float rotationSpeed = 90.0f;      
     float maxTiltAngle = 10.0f;       
@@ -205,8 +259,9 @@ public:
     float spinDuration = 0.6f;
     float elapsedSpinTime = 0.0f;
     bool ready = false;
-
-    SpaceGame(gl::GLWindow *win) : score{0}, lives{5}, ship_pos(0.0f, -20.0f, -70.0f) {
+    int enemies_crashed = 0;
+    float bossRadius = 9.2f;
+    SpaceGame(gl::GLWindow *win) : score{0}, lives{5}, ship_pos(0.0f, -20.0f, -70.0f), boss(&enemy_ship, &shaderProgram) {
            
     }
     
@@ -386,6 +441,8 @@ public:
                             projModel = glm::rotate(projModel, glm::radians(-69.0f), glm::vec3(1.0f,0.0f,0.0f));
                         projModel = glm::rotate(projModel, glm::radians(projectileRotation), glm::vec3(0.0f, 0.0f, 1.0f));
                     break;
+                    default:
+                    break;
                 }    
                 if(e->isSpinning)
                     projModel = glm::rotate(projModel, glm::radians(e->spinAngle), glm::vec3(1.0f, 0.0f, 0.0f));
@@ -394,6 +451,16 @@ public:
                 e->draw();
             }
         }
+
+        if(boss.active) {
+            glm::mat4 projModel = glm::translate(glm::mat4(1.0f), boss.object_pos);
+            projModel = glm::rotate(projModel, glm::radians(-90.0f), glm::vec3(1.0f,0.0f,0.0f));
+            projModel = glm::rotate(projModel, glm::radians(projectileRotation), glm::vec3(0.0f,1.0f,0.0f));
+            projModel = glm::scale(projModel, glm::vec3(9.2f, 9.2f, 9.2f));
+            shaderProgram.setUniform("model", projModel);
+            boss.draw();
+        }
+             
 
         glDisable(GL_DEPTH_TEST);
         glEnable(GL_BLEND);
@@ -407,7 +474,7 @@ public:
         } else if(launch_ship == true) {
             textTexture = createTextTexture("Double Tap or Press X Button or Z Key to Launch Ship", font.wrapper().unwrap(), white, textWidth, textHeight);
         } else {
-            textTexture = createTextTexture("Lives: " + std::to_string(lives) + " Score: " + std::to_string(score), font.wrapper().unwrap(), white, textWidth, textHeight);
+            textTexture = createTextTexture("Lives: " + std::to_string(lives) + " Score: " + std::to_string(score) + " Cleared: " + std::to_string(enemies_crashed) + "/20", font.wrapper().unwrap(), white, textWidth, textHeight);
         }
         renderText(textTexture, textWidth, textHeight, win->w, win->h);
         glDeleteTextures(1, &textTexture);
@@ -426,7 +493,6 @@ public:
             mx::system_out << "Controller Event\n";
             return;
         }
-
 
         switch(e.type) {
             case SDL_FINGERDOWN: {
@@ -600,11 +666,14 @@ public:
         barrelRollAngle = 0.0f;
         isBarrelRolling = false;
         shipRotation = 0.0f;
+        enemies_crashed = 0;
         lives--;
         if(lives < 0) {
             game_over = true;
             launch_ship = false;
         }
+        boss.active = false;
+        boss.reset();
     }
 
     void update(gl::GLWindow *win, float deltaTime) {
@@ -676,25 +745,51 @@ public:
             }
         }
 
+        if(boss.active) {
+            boss.move(deltaTime, enemySpeed);
+            boss.reverseDirection(std::get<2>(screenx), std::get<3>(screenx));
+        }
+
         for (int i = (int)enemies.size() - 1; i >= 0; i--) {
             enemies[i]->updateSpin(deltaTime);
             if (enemies[i]->ready) {
                 enemies.erase(enemies.begin() + i);
+                enemies_crashed ++;
             }
         }
+        if(boss.active) {
+            boss.updateSpin(deltaTime);
+        }
+        if(boss.ready) {
+            boss.active = false;
+            boss.reset();
+            enemies_crashed = 0;
+        }
 
-        if (!projectiles.empty() && !enemies.empty()) {
+        if (!projectiles.empty() && (!enemies.empty()||boss.active == true)) {
             float projectileRadius = 0.5f;  
             float shipRadius = 1.2f;
             float saucerRadius = 1.5f;
             float triangleRadius = 1.0f; 
-
+            
             for (int pi = (int)projectiles.size() - 1; pi >= 0; pi--) {
                 bool projectileDestroyed = false;
+                if(boss.active) {
+                    if (isColliding(std::get<0>(projectiles[pi]), projectileRadius, boss.object_pos, bossRadius) || isColliding(std::get<1>(projectiles[pi]), projectileRadius, boss.object_pos, bossRadius)) {
+                        projectiles.erase(projectiles.begin() + pi);
+                        score += 25; 
+                        projectileDestroyed = true;
+                        boss.hitBoss();
+                        if(!win->mixer.isPlaying(2)) {
+                            Mix_HaltChannel(1);
+                            win->mixer.playWav(snd_crash, 0, 2);
+                        }
+                        break; 
+                    }
+                }
+
                 for (int ei = (int)enemies.size() - 1; ei >= 0; ei--) {
-
                     if(enemies[ei]->isSpinning == true) break;
-
                     float enemyRadius = 1.0f; // default
                     switch (enemies[ei]->getType()) {
                         case EnemyType::SHIP:
@@ -705,6 +800,8 @@ public:
                             break;
                         case EnemyType::TRIANGLE:
                             enemyRadius = triangleRadius;
+                            break;
+                        default:
                             break;
                     }
                     if (isColliding(std::get<0>(projectiles[pi]), projectileRadius, enemies[ei]->object_pos, enemyRadius) || isColliding(std::get<1>(projectiles[pi]), projectileRadius, enemies[ei]->object_pos, enemyRadius)) {
@@ -739,12 +836,20 @@ public:
                     case EnemyType::TRIANGLE:
                         enemyRadius = 1.0f;
                         break;
+                    default:
+                        break;
                 }
                 if (isSpinning == false && isColliding(ship_pos, playerRadius, enemy->object_pos, enemyRadius)) {
                     isSpinning = true;
                     return;
                 }
             }
+        }
+
+        
+        if (boss.active == true && isSpinning == false && isColliding(ship_pos, playerRadius, boss.object_pos, bossRadius)) {
+            isSpinning = true;
+            return;
         }
     }
     
@@ -835,21 +940,34 @@ private:
     }
 
     void releaseEnemy() {
-        int r = rand()%3;
-        switch(r) {
-            case 0:
-                enemies.push_back(std::make_unique<EnemyShip>(&enemy_ship, &shaderProgram));
-            break;
-            case 1:
-                enemies.push_back(std::make_unique<EnemySaucer>(&saucer, &shaderProgram));
-            break;
-            case 2:
-                enemies.push_back(std::make_unique<EnemyTriangle>(&triangle, &shaderProgram));
-            break;
+        if(enemies_crashed < 20) {
+            int r = rand()%3;
+            switch(r) {
+                case 0:
+                    enemies.push_back(std::make_unique<EnemyShip>(&enemy_ship, &shaderProgram));
+                break;
+                case 1:
+                    if(boss.active)
+                        return;
+                    enemies.push_back(std::make_unique<EnemySaucer>(&saucer, &shaderProgram));
+                break;
+                case 2:
+                    enemies.push_back(std::make_unique<EnemyTriangle>(&triangle, &shaderProgram));
+                break;
+            }
+            enemies.back()->fire = fire;
+            enemies.back()->object_pos = glm::vec3(getRandomFloat(std::get<0>(screenx)+6.0f, std::get<1>(screenx))-6.0f, std::get<3>(screenx)-1.0f, -70.0f);
+            enemies.back()->initial_x = enemies.back()->object_pos.x;
+        } else {
+            if(boss.active == false) {
+                boss.active = true;
+                boss.fire = fire;
+                boss.object_pos = glm::vec3(getRandomFloat(std::get<0>(screenx)+6.0f, std::get<1>(screenx))-6.0f, std::get<3>(screenx)-1.0f, -70.0f);
+                boss.initial_x = boss.object_pos.x;
+                boss.initial_y = boss.object_pos.y;
+            }
+            enemies_crashed = 0;
         }
-        enemies.back()->fire = fire;
-        enemies.back()->object_pos = glm::vec3(getRandomFloat(std::get<0>(screenx)+6.0f, std::get<1>(screenx))-6.0f, std::get<3>(screenx)-1.0f, -70.0f);
-        enemies.back()->initial_x = enemies.back()->object_pos.x;
     }
 
     void updateSpin(float deltaTime) {
