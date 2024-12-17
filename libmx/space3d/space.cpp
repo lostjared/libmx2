@@ -219,6 +219,7 @@ private:
 
 class SpaceGame : public gl::GLObject {
 public:
+    bool fill = true;   
     GLuint fire = 0;
     int snd_fire = 0, snd_crash = 0, snd_takeoff = 0;
     bool launch_ship = true;
@@ -469,6 +470,13 @@ public:
         SDL_Color white = {255, 255, 255, 255};
         int textWidth = 0, textHeight = 0;
         GLuint textTexture;
+
+#ifndef __EMSCRIPTEN__
+        if(fill == false) {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);        
+        }
+#endif
+
         if(game_over == true) {
             textTexture = createTextTexture("Double Tap or Press Button Start or Enter Key to Start New Game Your Score: " + std::to_string(score), font.wrapper().unwrap(), white, textWidth, textHeight);
         } else if(launch_ship == true) {
@@ -480,6 +488,11 @@ public:
         glDeleteTextures(1, &textTexture);
         glDisable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
+#ifndef __EMSCRIPTEN__
+        if(fill == false) {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);        
+        }
+#endif
         shaderProgram.useProgram();
     }
 
@@ -495,6 +508,23 @@ public:
         }
 
         switch(e.type) {
+            case SDL_KEYDOWN:
+            switch(e.key.keysym.sym) {
+                case SDLK_p: {
+#ifndef __EMSCRIPTEN__
+                    if(fill == true) {
+                        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+                        fill = false;
+                    } else {
+                        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+                        fill = true;
+                    }
+#endif
+                }
+                break;
+            }
+
+            break;
             case SDL_FINGERDOWN: {
 
                 if(game_over == true) { 
@@ -767,7 +797,7 @@ public:
         }
 
         if (!projectiles.empty() && (!enemies.empty()||boss.active == true)) {
-            float projectileRadius = 0.5f;  
+            float projectileRadius = 0.7f;  
             float shipRadius = 1.2f;
             float saucerRadius = 1.5f;
             float triangleRadius = 1.0f; 
@@ -996,7 +1026,7 @@ public:
     ~MainWindow() override {}
     
     virtual void event(SDL_Event &e) override {
-        object->event(this, e);
+        
     }
     
     virtual void draw() override {
