@@ -965,8 +965,8 @@ private:
                 boss.object_pos = glm::vec3(getRandomFloat(std::get<0>(screenx)+6.0f, std::get<1>(screenx))-6.0f, std::get<3>(screenx)-1.0f, -70.0f);
                 boss.initial_x = boss.object_pos.x;
                 boss.initial_y = boss.object_pos.y;
+                enemies_crashed = 0;
             }
-            enemies_crashed = 0;
         }
     }
 
