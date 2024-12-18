@@ -184,6 +184,7 @@ public:
         hit = 0;
         active = false;
         angleOffset = 0.0f;
+        isSpinning = false;
     }
 
     void hitBoss() {
@@ -235,7 +236,7 @@ public:
     glm::vec3 stars[1000];
     mx::Model ship;
     mx::Model projectile;
-    mx::Model enemy_ship, saucer, triangle;
+    mx::Model enemy_ship, saucer, triangle, ufo_boss;
     glm::vec3 ship_pos;
     std::vector<std::tuple<glm::vec3, glm::vec3>> projectiles;
     std::vector<std::unique_ptr<Enemy>> enemies;
@@ -263,8 +264,9 @@ public:
     float spinDuration = 0.6f;
     float elapsedSpinTime = 0.0f;
     bool ready = false;
-    int enemies_crashed = 0, max_crashed = 20;
+    int enemies_crashed = 0, max_crashed = 20; 
     float bossRadius = 9.2f;
+    float bossSize = 9.2f;
     int level = 1;
 
     SpaceGame(gl::GLWindow *win) : score{0}, lives{5}, ship_pos(0.0f, -20.0f, -70.0f), boss(&enemy_ship, &shaderProgram) {
@@ -304,6 +306,9 @@ public:
         if(!triangle.openModel(win->util.getFilePath("data/objects/shipshooter.mxmod"))) {
             throw mx::Exception("Could not open sphere.mxmod");
         }
+        if(!ufo_boss.openModel(win->util.getFilePath("data/objects/g_ufo.mxmod"))) {
+            throw mx::Exception("Could not open g_ufo.mxmod");
+        }
 
         snd_fire = win->mixer.loadWav(win->util.getFilePath("data/sound/shoot.wav"));
         snd_crash = win->mixer.loadWav(win->util.getFilePath("data/sound/crash.wav"));
@@ -337,6 +342,8 @@ public:
         saucer.setTextures(win, win->util.getFilePath("data/objects/metal.tex"), win->util.getFilePath("data/objects"));
         triangle.setShaderProgram(&shaderProgram, "texture1");
         triangle.setTextures(win, win->util.getFilePath("data/objects/metal_ship.tex"), win->util.getFilePath("data/objects"));
+        ufo_boss.setShaderProgram(&shaderProgram, "texture1");
+        ufo_boss.setTextures(win, win->util.getFilePath("data/objects/metal.tex"),  win->util.getFilePath("data/objects"));
         fire = gl::loadTexture(win->util.getFilePath("data/objects/flametex.png"));
         starsShader.useProgram();
         starsShader.setUniform("starColor", glm::vec3(1.0f, 1.0f, 1.0f));
@@ -462,7 +469,7 @@ public:
             glm::mat4 projModel = glm::translate(glm::mat4(1.0f), boss.object_pos);
             projModel = glm::rotate(projModel, glm::radians(-90.0f), glm::vec3(1.0f,0.0f,0.0f));
             projModel = glm::rotate(projModel, glm::radians(projectileRotation), glm::vec3(0.0f,1.0f,0.0f));
-            projModel = glm::scale(projModel, glm::vec3(9.2f, 9.2f, 9.2f));
+            projModel = glm::scale(projModel, glm::vec3(bossSize, bossSize, bossSize));
             shaderProgram.setUniform("model", projModel);
             boss.draw();
         }
@@ -514,7 +521,10 @@ public:
         launch_ship = true;
         max_crashed = 20;
         level = 1;
-        boss.max_hits = 20;    
+        boss.max_hits = 20; 
+        boss.object = &enemy_ship;   
+        bossRadius = 9.2f;
+        bossSize = 9.2f;
     }
 
     float touch_start_x = 0.0f, touch_start_y = 0.0f;
@@ -709,7 +719,7 @@ public:
         barrelRollAngle = 0.0f;
         isBarrelRolling = false;
         shipRotation = 0.0f;
-        enemies_crashed = 0;
+        enemies_crashed = 0; 
         lives--;
         if(lives < 0) {
             game_over = true;
@@ -810,7 +820,24 @@ public:
             enemies_crashed = 0;
             max_crashed += 5;
             level++;
-        }
+            if(level == 2) {
+                boss.object = &ufo_boss;
+                bossRadius = 10.0;
+                bossSize = 25.0f;
+            } else if(level == 3) {
+                boss.object = &saucer;
+                bossRadius = 12.0f;
+                bossSize = 15.0f;
+            } else if(level == 4) {
+                boss.object = &ufo_boss;
+                bossRadius = 8.0f * 2;
+                bossSize = 25.0f * 2;
+            } else if (level >= 5) {
+                boss.object = &enemy_ship;
+                bossRadius = 9.2f;
+                bossSize = 9.2f;
+            }
+       }
 
         if (!projectiles.empty() && (!enemies.empty()||boss.active == true)) {
             float projectileRadius = 0.7f;  
