@@ -1,5 +1,11 @@
 #ifndef __MODEL__H__
 #define __MODEL__H__
+#ifdef __EMSCRIPTEN__
+#include"config.hpp"
+#else
+#include"config.h"
+#endif
+#ifdef WITH_GL
 
 #include"mx.hpp"
 #include"gl.hpp"
@@ -59,4 +65,5 @@ namespace mx {
    };
 
 }
+#endif
 #endif

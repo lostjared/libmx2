@@ -1,3 +1,9 @@
+#ifdef __EMSCRIPTEN__
+#include"config.hpp"
+#else
+#include"config.h"
+#endif
+#ifdef WITH_GL
 #include"model.hpp"
 #include<sstream>
 #include<fstream>
@@ -384,3 +390,4 @@ namespace mx {
         setTextures(text);
     }
 }
+#endif
