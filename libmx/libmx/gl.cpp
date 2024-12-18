@@ -77,6 +77,7 @@ namespace gl {
             mx::system_err.flush();
             exit(EXIT_FAILURE);
         }
+        text.init(this->w, this->h);
     }
 
     void GLWindow::setWindowTitle(const std::string &title) {
@@ -260,6 +261,13 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
             return true;
         return false;
     }
+
+    bool ShaderProgram::loadProgramFromText(const std::string &v, const std::string &f) {
+        shader_id = createProgram(v.c_str(), f.c_str());
+        if(shader_id)
+            return true;
+        return false;
+    }
     
     void ShaderProgram::setName(const std::string &n) {
         name_ = n;
@@ -335,6 +343,136 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
         glBindTexture(GL_TEXTURE_2D, 0);
         return texture;
     }
+#ifdef __EMSCRIPTEN__
+    const char *vSource = R"(#version 300 es
+            precision mediump float;
+            layout (location = 0) in vec3 aPos;
+            layout (location = 1) in vec2 aTexCoord;
+
+            out vec2 TexCoord;
+
+            void main() {
+                gl_Position = vec4(aPos, 1.0); 
+                TexCoord = aTexCoord;         
+            }
+    )";
+    const char *fSource = R"(#version 300 es
+        precision mediump float;
+        in vec2 TexCoord;
+        out vec4 FragColor;
+        uniform sampler2D textTexture; 
+        void main() {
+            FragColor = texture(textTexture, TexCoord);
+        }
+    )";
+#else
+    const char *vSource = R"(#version 330 core
+        layout (location = 0) in vec3 aPos;
+        layout (location = 1) in vec2 aTexCoord;
+        out vec2 TexCoord;
+        void main() {
+            gl_Position = vec4(aPos, 1.0); 
+            TexCoord = aTexCoord;        
+        }
+    )";
+    const char *fSource = R"(#version 330 core
+        in vec2 TexCoord;
+        out vec4 FragColor;
+        uniform sampler2D textTexture; 
+        void main() {
+            FragColor = texture(textTexture, TexCoord);
+        }
+    )";
+#endif
+    GLText::GLText() {}
+
+    void GLText::init(int width, int height) {
+        if(!textShader.loadProgramFromText(vSource, fSource)) {
+            throw mx::Exception("Could not load Text Shader ");
+        }
+        w = width;
+        h = height;
+    }
+
+    void GLText::setColor(SDL_Color col) {
+        color = col;
+    }
+
+    GLuint GLText::createText(const std::string &text, TTF_Font *font, SDL_Color color, int &textWidth, int &textHeight) {
+        SDL_Surface *surface = TTF_RenderText_Blended(font, text.c_str(), color);
+        if (!surface) {
+            mx::system_err << "Failed to create text surface: " << TTF_GetError() << std::endl;
+            return 0;
+        }
+        surface = mx::Texture::flipSurface(surface);
+        textWidth = surface->w;
+        textHeight = surface->h;
+        if (surface->format->format != SDL_PIXELFORMAT_RGBA32) {
+            SDL_Surface *converted = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_RGBA32, 0);
+            if (!converted) {
+                mx::system_err << "Failed to convert surface format: " << SDL_GetError() << std::endl;
+                SDL_FreeSurface(surface);
+                return 0;
+            }
+            SDL_FreeSurface(surface);
+            surface = converted;
+        } 
+        GLuint texture;
+        glGenTextures(1, &texture);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, textWidth, textHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, surface->pixels);
+        SDL_FreeSurface(surface);
+        return texture;
+    }
+    
+    void GLText::renderText(GLuint texture, float x, float y, int textWidth, int textHeight, int screenWidth, int screenHeight) {
+        float ndcX = (x / screenWidth) * 2.0f - 1.0f;       
+        float ndcY = 1.0f - (y / screenHeight) * 2.0f;      
+        float w = (float)textWidth / screenWidth * 2.0f;    
+        float h = (float)textHeight / screenHeight * 2.0f;  
+        GLfloat vertices[] = {
+            ndcX,       ndcY,       0.0f, 0.0f, 1.0f,  
+            ndcX + w,   ndcY,       0.0f, 1.0f, 1.0f,  
+            ndcX,       ndcY - h,   0.0f, 0.0f, 0.0f,  
+            ndcX + w,   ndcY - h,   0.0f, 1.0f, 0.0f   
+        };
+        GLuint VBO, VAO;
+        glGenVertexArrays(1, &VAO);
+        glGenBuffers(1, &VBO);
+        glBindVertexArray(VAO);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+        glEnableVertexAttribArray(1);
+        textShader.useProgram();
+        textShader.setUniform("textTexture", 0);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        glBindVertexArray(0);
+        glDeleteBuffers(1, &VBO);
+        glDeleteVertexArrays(1, &VAO);
+    }
+
+    void GLText::printText_Solid(const mx::Font &f, float x, float y, const std::string &text) {
+        glDisable(GL_DEPTH_TEST);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        textShader.useProgram();
+        int textWidth = 0, textHeight = 0;
+        GLuint textTexture= createText(text, f.wrapper().unwrap(), color, textWidth, textHeight);
+        renderText(textTexture, x, y, textWidth, textHeight, w,h);
+        glDeleteTextures(1, &textTexture);
+        glDisable(GL_BLEND);
+        glEnable(GL_DEPTH_TEST);
+    }
+
 
 }
 

@@ -49,7 +49,7 @@ public:
     virtual ~Game() override {}
 
     void load(gl::GLWindow *win) override {
-    
+        font.loadFont(win->util.getFilePath("data/font.ttf"), 16);
     }
 
     void draw(gl::GLWindow *win) override {
@@ -57,6 +57,8 @@ public:
         float deltaTime = (currentTime - lastUpdateTime) / 1000.0f; // Convert to seconds
         lastUpdateTime = currentTime;
         update(deltaTime);
+        win->text.printText_Solid(font, 5.0f, 5.0f, "Hello, World!");
+        win->text.printText_Solid(font, 250.0f, 250.0f, "OpenGL Text");
     }
     
     void event(gl::GLWindow *win, SDL_Event &e) override {}
@@ -64,6 +66,7 @@ public:
 
 private:
     Uint32 lastUpdateTime = SDL_GetTicks();
+    mx::Font font;
 };
 
 class MainWindow : public gl::GLWindow {
