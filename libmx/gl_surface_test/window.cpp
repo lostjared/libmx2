@@ -18,7 +18,6 @@ printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
 #define M_PI 3.14159265358979323846
 #endif
 
-
 class Game : public gl::GLObject {
 public:
     
@@ -74,11 +73,100 @@ private:
     gl::ShaderProgram shader;
 };
 
+#ifdef __EMSCRIPTEN__
+    const char *vSource = R"(#version 300 es
+            precision mediump float;
+            layout (location = 0) in vec3 aPos;
+            layout (location = 1) in vec2 aTexCoord;
+
+            out vec2 TexCoord;
+
+            void main() {
+                gl_Position = vec4(aPos, 1.0); 
+                TexCoord = aTexCoord;         
+            }
+    )";
+    const char *fSource = R"(#version 300 es
+        precision mediump float;
+        in vec2 TexCoord;
+        out vec4 FragColor;
+        uniform sampler2D textTexture; 
+        uniform float alpha;
+        void main() {
+            vec4 fcolor = texture(textTexture, TexCoord);
+            FragColor = mix(fcolor, vec4(0.0, 0.0, 0.0, fcolor.a), alpha);
+        }
+    )";
+#else
+    const char *vSource = R"(#version 330 core
+        layout (location = 0) in vec3 aPos;
+        layout (location = 1) in vec2 aTexCoord;
+        out vec2 TexCoord;
+        void main() {
+            gl_Position = vec4(aPos, 1.0); 
+            TexCoord = aTexCoord;        
+        }
+    )";
+    const char *fSource = R"(#version 330 core
+        in vec2 TexCoord;
+        out vec4 FragColor;
+        uniform sampler2D textTexture; 
+        uniform float alpha;
+        void main() {
+            vec4 fcolor = texture(textTexture, TexCoord);
+            FragColor = mix(fcolor, vec4(0.0, 0.0, 0.0, fcolor.a), alpha);
+        }
+    )";
+#endif
+
+class IntroScreen : public gl::GLObject {
+    float fade = 0.0f;
+public:
+    IntroScreen() = default;
+    ~IntroScreen() override {
+
+    }
+
+    virtual void load(gl::GLWindow *win) override {
+        if(!program.loadProgramFromText(vSource, fSource)) {
+            throw mx::Exception("Error loading shader program");
+        }
+        logo.initSize(win->w, win->h);
+        logo.loadTexture(&program, win->util.getFilePath("data/logo.png"), 0, 0, win->w, win->h);
+    }
+
+    void draw(gl::GLWindow *win) override {
+#ifndef __EMSCRIPTEN__
+        Uint32 currentTime = SDL_GetTicks();
+#else
+        double currentTime = emscripten_get_now();
+#endif
+        program.useProgram();
+        program.setUniform("alpha", fade);
+        logo.draw();
+        if((currentTime - lastUpdateTime) > 25) {
+            lastUpdateTime = currentTime;
+            fade += 0.01;
+        }
+        if(fade >= 1.0) {
+            win->setObject(new Game());
+            win->object->load(win);
+            return;
+        }
+    }
+    void event(gl::GLWindow *win, SDL_Event &e) override {}
+
+private:
+    Uint32 lastUpdateTime;
+    gl::GLSprite logo;
+    gl::ShaderProgram program;
+};
+
 class MainWindow : public gl::GLWindow {
 public:
     MainWindow(std::string path, int tw, int th) : gl::GLWindow("GL Window", tw, th) {
         setPath(path);
-        setObject(new Game());
+        setObject(new IntroScreen());
         object->load(this);
     }
     
