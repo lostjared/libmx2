@@ -76,13 +76,15 @@ namespace gl {
         GLSprite();
         ~GLSprite();
         void initSize(float w, float h);
+        void initWithTexture(ShaderProgram *program, GLuint texture, float x, float y, int textWidth, int textHeight);
         void loadTexture(ShaderProgram *shader, const std::string &tex, float x, float  y, int textWidth, int textHeight);
         void draw();
         void draw(GLuint texture_id, float x, float y, int w, int h);
+        void updateTexture(SDL_Surface *surf);
     private:
         ShaderProgram *shader;
-        GLuint texture;
-        GLuint VBO, VAO;
+        GLuint texture = 0;
+        GLuint VBO = 0, VAO = 0;
         std::vector<float> vertices;
         float screenWidth = 0.0f, screenHeight = 0.0f;
     };
@@ -131,7 +133,10 @@ namespace gl {
         virtual void event(GLWindow *window, SDL_Event &e) = 0;
     };
 
-    GLuint loadTexture(const std::string &filename);    
+    GLuint loadTexture(const std::string &filename);
+    void updateTexture(GLuint texture, SDL_Surface *surface, bool flip);    
+    GLuint createTexture(SDL_Surface *surface, bool flip);
+    SDL_Surface *createSurface(int w, int h);
 }
 #endif
 #endif

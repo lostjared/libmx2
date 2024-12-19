@@ -343,6 +343,56 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
         glBindTexture(GL_TEXTURE_2D, 0);
         return texture;
     }
+
+    GLuint createTexture(SDL_Surface *surface, bool flip) {
+        if (!surface) {
+            throw mx::Exception("Surface is null: Unable to load PNG file.");
+        }
+        GLuint texture = 0;
+        glGenTextures(1, &texture);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        if(flip) {
+            SDL_Surface *flipped = mx::Texture::flipSurface(surface);
+            if (!flipped) {
+                glBindTexture(GL_TEXTURE_2D, 0);
+                throw mx::Exception("Failed to flip surface.");
+            }
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, flipped->w, flipped->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, flipped->pixels);
+        } else {
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, surface->w, surface->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, surface->pixels);
+        }
+        glBindTexture(GL_TEXTURE_2D, 0);
+        return texture;
+    }
+    
+    void updateTexture(GLuint texture, SDL_Surface *surface, bool flip) {
+        if (!surface || !surface->pixels) {
+            throw mx::Exception("Invalid surface provided to updateTexture");
+        }
+        if (surface->w <= 0 || surface->h <= 0) {
+            throw mx::Exception("Surface dimensions are invalid in updateTexture");
+        }
+
+        surface = mx::Texture::flipSurface(surface);
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, surface->w, surface->h, GL_RGBA, GL_UNSIGNED_BYTE, surface->pixels);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
+
+    SDL_Surface *createSurface(int w, int h) {
+        SDL_Surface *surf = SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_RGBA32);
+        if(!surf) {
+            throw mx::Exception("Error creating surface gl::createSurface");
+        }
+        return surf;
+    }
+
 #ifdef __EMSCRIPTEN__
     const char *vSource = R"(#version 300 es
             precision mediump float;
@@ -481,16 +531,62 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
     }
 
     GLSprite::~GLSprite() {
-       if(texture != 0) {
+        if (texture != 0) {
             glDeleteTextures(1, &texture);
-       }
-       if(VBO)
+            texture = 0;
+        }
+        if (VBO != 0) {
             glDeleteBuffers(1, &VBO);
-        if(VAO)
+            VBO = 0;
+        }
+        if (VAO != 0) {
             glDeleteVertexArrays(1, &VAO);
+            VAO = 0;
+        }
     }
+
+    void GLSprite::initWithTexture(ShaderProgram *program, GLuint text, float x, float y, int textWidth, int textHeight) {
+        if (!program) {
+            throw mx::Exception("Shader program is null in GLSprite::initWithTexture");
+        }
+        if (screenWidth <= 0 || screenHeight <= 0) {
+            throw mx::Exception("Invalid screen dimensions in GLSprite::initWithTexture");
+        }
+        this->shader = program;
+        if(this->texture != 0) {
+            glDeleteTextures(1, &texture);
+        }
+        this->texture = text;
+        float ndcX = (x / screenWidth) * 2.0f - 1.0f;       
+        float ndcY = 1.0f - (y / screenHeight) * 2.0f;      
+        float w = (float)textWidth / screenWidth * 2.0f;    
+        float h = (float)textHeight / screenHeight * 2.0f;  
+        vertices = {
+            ndcX,       ndcY,       0.0f, 0.0f, 1.0f,  
+            ndcX + w,   ndcY,       0.0f, 1.0f, 1.0f,  
+            ndcX,       ndcY - h,   0.0f, 0.0f, 0.0f,  
+            ndcX + w,   ndcY - h,   0.0f, 1.0f, 0.0f   
+        };
+        glGenVertexArrays(1, &VAO);
+        glGenBuffers(1, &VBO);
+        glBindVertexArray(VAO);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+        glEnableVertexAttribArray(1);
+        this->shader->useProgram();
+        this->shader->setUniform("textTexture", 0);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+    }
+
     void GLSprite::loadTexture(ShaderProgram *shader, const std::string &tex, float x, float y, int textWidth, int textHeight) {
         this->shader = shader;
+        if (texture != 0) {
+           glDeleteTextures(1, &texture);
+}
         texture = gl::loadTexture(tex); 
         if (!texture) {
             throw mx::Exception("Failed to load texture: " + tex);
@@ -499,30 +595,48 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
         float ndcY = 1.0f - (y / screenHeight) * 2.0f;      
         float w = (float)textWidth / screenWidth * 2.0f;    
         float h = (float)textHeight / screenHeight * 2.0f;  
-
         vertices = {
             ndcX,       ndcY,       0.0f, 0.0f, 1.0f,  
             ndcX + w,   ndcY,       0.0f, 1.0f, 1.0f,  
             ndcX,       ndcY - h,   0.0f, 0.0f, 0.0f,  
             ndcX + w,   ndcY - h,   0.0f, 1.0f, 0.0f   
         };
-
         glGenVertexArrays(1, &VAO);
         glGenBuffers(1, &VBO);
         glBindVertexArray(VAO);
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
         glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
-
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
         glEnableVertexAttribArray(1);
-
         this->shader->useProgram();
         this->shader->setUniform("textTexture", 0);
-
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindVertexArray(0);
+    }
+
+    void GLSprite::updateTexture(SDL_Surface *surf) {
+        if (!surf || !surf->pixels) {
+            throw mx::Exception("Invalid surface provided to updateTexture");
+        }
+        if (surf->w <= 0 || surf->h <= 0) {
+            throw mx::Exception("Surface dimensions are invalid in updateTexture");
+        }
+        SDL_Surface *converted = surf;
+        if (surf->format->format != SDL_PIXELFORMAT_RGBA32) {
+            converted = SDL_ConvertSurfaceFormat(surf, SDL_PIXELFORMAT_RGBA32, 0);
+            if (!converted) {
+                throw mx::Exception("Failed to convert surface to RGBA32 format");
+            }
+        }
+
+        glBindTexture(GL_TEXTURE_2D, this->texture);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, converted->w, converted->h, GL_RGBA, GL_UNSIGNED_BYTE, converted->pixels);
+        if (converted != surf) {
+            SDL_FreeSurface(converted);
+        }
+        glBindTexture(GL_TEXTURE_2D, 0);
     }
 
     void GLSprite::draw() {
@@ -531,10 +645,9 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         this->shader->useProgram();
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texture);
+        glBindTexture(GL_TEXTURE_2D, this->texture);
         glBindVertexArray(VAO);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
         glBindVertexArray(0);
         glBindTexture(GL_TEXTURE_2D, 0);
         glDisable(GL_BLEND);
