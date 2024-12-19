@@ -473,9 +473,101 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
         glEnable(GL_DEPTH_TEST);
     }
 
+    GLSprite::GLSprite() : texture{0} {}
 
+    void GLSprite::initSize(float w, float h) {
+        screenWidth = w;
+        screenHeight = h;
+    }
+
+    GLSprite::~GLSprite() {
+       if(texture != 0) {
+            glDeleteTextures(1, &texture);
+       }
+       if(VBO)
+            glDeleteBuffers(1, &VBO);
+        if(VAO)
+            glDeleteVertexArrays(1, &VAO);
+    }
+    void GLSprite::loadTexture(ShaderProgram *shader, const std::string &tex, float x, float y, int textWidth, int textHeight) {
+        this->shader = shader;
+        texture = gl::loadTexture(tex); 
+        if (!texture) {
+            throw mx::Exception("Failed to load texture: " + tex);
+        }
+        float ndcX = (x / screenWidth) * 2.0f - 1.0f;       
+        float ndcY = 1.0f - (y / screenHeight) * 2.0f;      
+        float w = (float)textWidth / screenWidth * 2.0f;    
+        float h = (float)textHeight / screenHeight * 2.0f;  
+
+        vertices = {
+            ndcX,       ndcY,       0.0f, 0.0f, 1.0f,  
+            ndcX + w,   ndcY,       0.0f, 1.0f, 1.0f,  
+            ndcX,       ndcY - h,   0.0f, 0.0f, 0.0f,  
+            ndcX + w,   ndcY - h,   0.0f, 1.0f, 0.0f   
+        };
+
+        glGenVertexArrays(1, &VAO);
+        glGenBuffers(1, &VBO);
+        glBindVertexArray(VAO);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
+
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+        glEnableVertexAttribArray(1);
+
+        this->shader->useProgram();
+        this->shader->setUniform("textTexture", 0);
+
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+    }
+
+    void GLSprite::draw() {
+        glDisable(GL_DEPTH_TEST);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        this->shader->useProgram();
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glBindVertexArray(VAO);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+        glBindVertexArray(0);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glDisable(GL_BLEND);
+        glEnable(GL_DEPTH_TEST);
+    }
+
+    void GLSprite::draw(GLuint texture_id, float x, float y, int w, int h) {
+        float ndcX = (x / screenWidth) * 2.0f - 1.0f;
+        float ndcY = 1.0f - (y / screenHeight) * 2.0f;
+        float width = (float)w / screenWidth * 2.0f;
+        float height = (float)h / screenHeight * 2.0f;
+        vertices = {
+            ndcX,       ndcY,       0.0f, 0.0f, 1.0f,  
+            ndcX + width, ndcY,     0.0f, 1.0f, 1.0f,  
+            ndcX,       ndcY - height, 0.0f, 0.0f, 0.0f,  
+            ndcX + width, ndcY - height, 0.0f, 1.0f, 0.0f   
+        };
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, vertices.size() * sizeof(float), vertices.data());
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glDisable(GL_DEPTH_TEST);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        this->shader->useProgram();
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texture_id);
+        glBindVertexArray(VAO);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        glBindVertexArray(0);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glDisable(GL_BLEND);
+        glEnable(GL_DEPTH_TEST);
+    }
 }
-
-
 
 #endif

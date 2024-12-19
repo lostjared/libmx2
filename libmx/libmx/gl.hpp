@@ -26,6 +26,8 @@
 
 namespace gl {
 
+    extern const char *vSource;
+    extern const char *fSource;
 
     class ShaderProgram {
     public:
@@ -67,6 +69,22 @@ namespace gl {
         ShaderProgram textShader;
         SDL_Color color = {255,255,255,255};
         int w = 0, h = 0;
+    };
+
+    class GLSprite {
+    public:
+        GLSprite();
+        ~GLSprite();
+        void initSize(float w, float h);
+        void loadTexture(ShaderProgram *shader, const std::string &tex, float x, float  y, int textWidth, int textHeight);
+        void draw();
+        void draw(GLuint texture_id, float x, float y, int w, int h);
+    private:
+        ShaderProgram *shader;
+        GLuint texture;
+        GLuint VBO, VAO;
+        std::vector<float> vertices;
+        float screenWidth = 0.0f, screenHeight = 0.0f;
     };
 
     class GLObject;
