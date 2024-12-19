@@ -94,7 +94,7 @@ Refer to the `examples` directory for sample usage scenarios. Also various subfo
 * GL Pong with Lighting
 * 3D Breakout
 * MXMOD Format/3D Model Viewer
-* Space3D: Attack of the Drones ( https://lostosidedead.biz/game/Space3D )
+* Space3D: Attack of the Drones ( https://lostsidedead.biz/game/Space3D )
 
 ## How to Run the Examples
 
