@@ -47,26 +47,30 @@ public:
     
     Game() = default;
     virtual ~Game() override {}
-
     void load(gl::GLWindow *win) override {
         font.loadFont(win->util.getFilePath("data/font.ttf"), 16);
+        if(!shader.loadProgramFromText(gl::vSource, gl::fSource)) {
+            throw mx::Exception("Could not load shader");
+        }
+        sprite.initSize(960, 720);
+        sprite.loadTexture(&shader, win->util.getFilePath("data/bg.png"), 0, 0, win->w, win->h);
     }
-
     void draw(gl::GLWindow *win) override {
         Uint32 currentTime = SDL_GetTicks();
         float deltaTime = (currentTime - lastUpdateTime) / 1000.0f; // Convert to seconds
         lastUpdateTime = currentTime;
         update(deltaTime);
+        sprite.draw();
         win->text.printText_Solid(font, 5.0f, 5.0f, "Hello, World!");
         win->text.printText_Solid(font, 250.0f, 250.0f, "OpenGL Text");
     }
-    
     void event(gl::GLWindow *win, SDL_Event &e) override {}
     void update(float deltaTime) {}
-
 private:
     Uint32 lastUpdateTime = SDL_GetTicks();
     mx::Font font;
+    gl::GLSprite sprite;
+    gl::ShaderProgram shader;
 };
 
 class MainWindow : public gl::GLWindow {
