@@ -8,7 +8,7 @@ ZLIB_LIB = $(LIBS_PATH)/zlib/lib/libz.a
 PNG_LIB = $(LIBS_PATH)/libpng/lib/libpng.a
 LIBMX_LIB = $(LIBS_PATH)/mx2/lib/libmx.a 
 PRELOAD = --preload-file data
-SOURCES = space.cpp
+SOURCES = space.cpp intro.cpp
 OBJECTS = $(SOURCES:.cpp=.o)
 OUTPUT = space3D.html
 
