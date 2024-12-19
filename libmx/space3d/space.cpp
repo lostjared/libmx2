@@ -14,6 +14,7 @@
 #include"loadpng.hpp"
 #include"model.hpp"
 #include<random>
+#include"intro.hpp"
 
 #define CHECK_GL_ERROR() \
 { GLenum err = glGetError(); \
@@ -23,6 +24,8 @@ printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
+
+
 
 float getRandomFloat(float min, float max) {
     static std::random_device rd;  
@@ -1057,12 +1060,32 @@ private:
     }
 };
 
+void IntroScreen::draw(gl::GLWindow *win) {
+#ifndef __EMSCRIPTEN__
+    Uint32 currentTime = SDL_GetTicks();
+#else
+    double currentTime = emscripten_get_now();
+#endif
+    program.useProgram();
+    program.setUniform("alpha", fade);
+    logo.draw();
+    if((currentTime - lastUpdateTime) > 25) {
+        lastUpdateTime = currentTime;
+        fade += 0.01;
+    }
+    if(fade >= 1.0) {
+        win->setObject(new SpaceGame(win));
+        win->object->load(win);
+        return;
+    }
+}
+
 class MainWindow : public gl::GLWindow {
 public:
     MainWindow(std::string path, int tw, int th) : gl::GLWindow("Space3D", tw, th) {
         setPath(path);
         mixer.init();
-        setObject(new SpaceGame(this));
+        setObject(new IntroScreen());
         object->load(this);
     }
     
@@ -1083,6 +1106,8 @@ public:
     }
 private:
 };
+
+
 
 MainWindow *main_w = nullptr;
 
