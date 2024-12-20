@@ -5,6 +5,7 @@
 #include <emscripten/emscripten.h>
 #include <GLES3/gl3.h>
 #endif
+#include"animation.hpp"
 
 #include"gl.hpp"
 #include"loadpng.hpp"
@@ -20,7 +21,7 @@ printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
 
 #ifdef __EMSCRIPTEN__
 const char *vSource = R"(#version 300 es
-            precision mediump float;
+            precision highp float;
             layout (location = 0) in vec3 aPos;
             layout (location = 1) in vec2 aTexCoord;
 
@@ -32,7 +33,7 @@ const char *vSource = R"(#version 300 es
             }
     )";
 const char *fSource = R"(#version 300 es
-        precision mediump float;
+        precision highp float;
         in vec2 TexCoord;
         out vec4 FragColor;
         uniform sampler2D textTexture; 
@@ -45,7 +46,7 @@ const char *fSource = R"(#version 300 es
 
 
 const char *anifSource = R"(#version 300 es
-        precision mediump float;
+        precision highp float;
         out vec4 FragColor;
         in vec2 TexCoord;
         uniform sampler2D textTexture;
@@ -81,7 +82,7 @@ const char *anifSource = R"(#version 300 es
 )";
 
 const char *anifSource2 = R"(#version 300 es
-    precision mediump float;
+    precision highp float;
     out vec4 FragColor;
     in vec2 TexCoord;
 
@@ -114,7 +115,7 @@ const char *anifSource2 = R"(#version 300 es
     )";
 
 const char *anifSource3 = R"(#version 300 es
-    precision mediump float;
+    precision highp float;
     in vec2 TexCoord;
     out vec4 FragColor;
     uniform sampler2D textTexture;
@@ -264,71 +265,10 @@ const char *anifSource3 = R"(#version 330
 
 #endif
 
-class Animation : public gl::GLObject {
-public:
-    
-     Animation() = default;
-    ~Animation() override {}
-
-    void load(gl::GLWindow *win) override {
-        font.loadFont(win->util.getFilePath("data/font.ttf"), 24);
-        if(!shader[0].loadProgramFromText(vSource, anifSource)) {
-            throw mx::Exception("Could not load shader");
-        }
-        if(!shader[1].loadProgramFromText(vSource, anifSource2)) {
-            throw mx::Exception("Could not load shader");
-        }
-        if(!shader[2].loadProgramFromText(vSource, anifSource3)) {
-            throw mx::Exception("Could not load shader");
-        }
-        for(int i = 0; i < MAX_SHADER; ++i) {
-            shader[i].useProgram();
-            shader[i].setUniform("iResolution", glm::vec2(win->w, win->h));
-            shader[i].setUniform("time_f", static_cast<float>(SDL_GetTicks()));
-        }
-        sprite.initSize(win->w, win->h);
-        sprite.loadTexture(&shader[0], win->util.getFilePath("data/bg.png"), 0, 0, win->w, win->h);
-    }
-
-    void draw(gl::GLWindow *win) override {
-        Uint32 currentTime = SDL_GetTicks();
-        float deltaTime = (currentTime - lastUpdateTime) / 1000.0f; // Convert to seconds
-        lastUpdateTime = currentTime;
-        update(deltaTime);
-        sprite.setShader(&shader[index]);
-        shader[index].useProgram();
-        shader[index].setUniform("time_f", static_cast<float>(currentTime / 1000.0f));
-        sprite.draw();
-        win->text.setColor({255,255,255,255});
-        win->text.printText_Solid(font, 25, 25, "Press Up and Down Arrows Or Tap to Switch Shaders");
-    }
-    void event(gl::GLWindow *win, SDL_Event &e) override {
-        if(e.type == SDL_KEYDOWN) {
-            switch(e.key.keysym.sym) {
-                case SDLK_UP:
-                if(index > 0) index--;
-                break;
-                case SDLK_DOWN:
-                if(index < MAX_SHADER-1) index++;
-                break;
-            }
-        } else if(e.type == SDL_FINGERUP || e.type == SDL_MOUSEBUTTONUP) {
-            index ++;
-            if(index > MAX_SHADER-1)
-                index = 0;
-        }
-    }
-    void update(float deltaTime) {}
-private:
-    Uint32 lastUpdateTime = SDL_GetTicks();
-    mx::Font font;
-    gl::GLSprite sprite;
-    static constexpr int MAX_SHADER = 3;
-    gl::ShaderProgram shader[MAX_SHADER];
-    size_t index = 0;
-};
-
-
+bool done = false;
+float the_time = 1.0f;
+size_t shader_index = 0;
+bool playing = false;
 
 class IntroScreen : public gl::GLObject {
     float fade = 0.0f;
@@ -362,6 +302,7 @@ public:
         if(fade >= 1.0) {
             win->setObject(new Animation());
             win->object->load(win);
+            done = true;
             return;
         }
     }
@@ -375,7 +316,7 @@ private:
 
 class MainWindow : public gl::GLWindow {
 public:
-    MainWindow(std::string path, int tw, int th) : gl::GLWindow("GL Shader Animation", tw, th) {
+    MainWindow(std::string path, int tw, int th) : gl::GLWindow("Acid Cam Shader Animation", tw, th) {
         setPath(path);
         setObject(new IntroScreen());
         object->load(this);
@@ -395,9 +336,60 @@ public:
         swap();
         delay();
     }
+
+    void setTime(float time) {
+        if(done == true) {
+            the_time = time;
+        }
+    }
+    bool checkDone() { return done; }
+    void inc() {
+        if(shader_index < MAX_SHADER-1)
+            shader_index ++;
+    }
+    void dec() {
+        if(shader_index > 0) 
+            shader_index --;
+    }
+    void play() {
+        playing = true;
+    }
+    void stop() {
+        playing = false;
+    }
 };
 
 MainWindow *main_w = nullptr;
+gl::GLSprite sprite;
+gl::ShaderProgram shader[MAX_SHADER];
+
+#ifdef __EMSCRIPTEN__
+EMSCRIPTEN_BINDINGS(main_window_bindings) {
+    class_<MainWindow>("MainWindow")
+        .constructor<std::string, int, int>()
+        .function("checkDone", &MainWindow::checkDone)
+        .function("setTime", &MainWindow::setTime)
+        .function("inc", &MainWindow::inc)
+        .function("dec", &MainWindow::dec)
+        .function("play", &MainWindow::play)
+        .function("stop", &MainWindow::stop);
+}
+void loadImage(const std::vector<uint8_t>& imageData) {
+    std::cout << "Received image data of size: " << imageData.size() << " bytes\n";
+    std::ofstream outFile("image.png", std::ios::binary);
+    outFile.write(reinterpret_cast<const char*>(imageData.data()), imageData.size());
+    outFile.close();
+    std::cout << "Saved image as 'image.png'.\n";
+    sprite.loadTexture(&shader[0], "image.png", 0, 0, 1920, 1080);
+}
+
+
+EMSCRIPTEN_BINDINGS(image_loader) {
+    emscripten::function("loadImage", &loadImage);
+    emscripten::register_vector<uint8_t>("VectorU8");
+}
+#endif
+
 
 void eventProc() {
     main_w->proc();

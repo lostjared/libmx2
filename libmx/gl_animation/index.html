@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GL Shader Animation</title>
+    <script src="Animation.js?v=1.0"></script>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            background-color: #000;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 10px;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #time-slider {
+            width: 90%;
+            max-width: 400px;
+            margin: 10px 0;
+            background: #ddd;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .button-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        button, input[type="file"] {
+            padding: 8px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: white;
+            width: 150px;
+            text-align: center;
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        #canvas {
+            max-width: 100%;
+            height: auto;
+            aspect-ratio: 16/9;
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .button-container {
+                gap: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <input id="time-slider" type="range" min="0" max="5000" step="1" value="0" style="display: none;">
+    <canvas id="canvas" width="1920" height="1080"></canvas>
+    <div class="button-container" style="display: none;">
+        <div>
+            <button id="shader-up">Shader Up</button>
+            <button id="shader-down">Shader Down</button>
+        </div>
+        <div>
+            <button id="step-back">Step Back</button>
+            <button id="step-forward">Step Forward</button>
+        </div>
+        <div>
+            <button id="step-play">Play</button>
+            <button id="step-stop">Stop</button>
+        </div>
+        <button id="download-button">Download</button>
+        <input type="file" id="file-input" accept="image/png">
+    </div>
+
+    <script>
+        let mainWindow;
+        let loaded = false;
+
+        Module.onRuntimeInitialized = () => {
+            mainWindow = new Module.MainWindow("", 1920, 1080);
+
+            const slider = document.getElementById('time-slider');
+            const canvas = document.getElementById('canvas');
+            const buttonContainer = document.querySelector('.button-container');
+            const stepBackButton = document.getElementById('step-back');
+            const stepForwardButton = document.getElementById('step-forward');
+            const downloadButton = document.getElementById('download-button');
+            const shaderUp = document.getElementById('shader-up');
+            const shaderDown = document.getElementById('shader-down');
+            const fileInput = document.getElementById('file-input');
+            const playShader = document.getElementById('step-play');
+            const stopShader = document.getElementById('step-stop');
+            const gl = canvas.getContext('webgl2', { preserveDrawingBuffer: true });
+            if (!gl) {
+                console.error("WebGL2 context could not be initialized.");
+            }
+
+            slider.addEventListener('input', (event) => {
+                if (loaded) {
+                    const time = parseFloat(event.target.value);
+                    mainWindow.setTime(time);
+                }
+                updateButtonState();
+            });
+
+            function checkIntroComplete() {
+                if (mainWindow.checkDone()) {
+                    slider.style.display = 'block';
+                    buttonContainer.style.display = 'flex';
+                    loaded = true;
+                    return;
+                }
+                setTimeout(checkIntroComplete, 100);
+            }
+            checkIntroComplete();
+
+            function resizeSlider() {
+                slider.style.width = `${Math.min(canvas.clientWidth, 400)}px`;
+            }
+
+            window.addEventListener('resize', resizeSlider);
+            resizeSlider();
+
+            stepForwardButton.addEventListener('click', () => {
+                const currentValue = parseInt(slider.value, 10);
+                const maxValue = parseInt(slider.max, 10);
+                if (currentValue < maxValue) {
+                    slider.value = currentValue + 1;
+                    slider.dispatchEvent(new Event('input'));
+                }
+            });
+
+            shaderUp.addEventListener('click', () => {
+                mainWindow.dec();
+            });
+
+            shaderDown.addEventListener('click', () => {
+                mainWindow.inc();
+            });
+
+            
+            stepBackButton.addEventListener('click', () => {
+                const currentValue = parseInt(slider.value, 10);
+                const minValue = parseInt(slider.min, 10);
+                if (currentValue > minValue) {
+                    slider.value = currentValue - 1;
+                    slider.dispatchEvent(new Event('input'));
+                }
+            });
+
+            downloadButton.addEventListener('click', () => {
+                gl.finish();
+                requestAnimationFrame(() => {
+                    const image = canvas.toDataURL("image/png");
+                    const link = document.createElement('a');
+                    link.href = image;
+                    link.download = 'canvas_image.png';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                });
+            });
+
+            playShader.addEventListener('click', () => {
+                mainWindow.play();
+                downloadButton.disabled = true;
+            });
+
+            stopShader.addEventListener('click', () => {
+                mainWindow.stop();
+                downloadButton.disabled = false;
+            });
+
+
+            fileInput.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (!file) {
+                    console.log("No file selected.");
+                    return;
+                }
+
+                console.log(`Selected file: ${file.name}`);
+
+                const reader = new FileReader();
+
+                reader.onload = (e) => {
+                    const arrayBuffer = e.target.result;
+                    const byteArray = new Uint8Array(arrayBuffer);
+
+                    console.log(`File size: ${byteArray.length} bytes`);
+
+                    const dataVector = new Module['VectorU8']();
+
+                    for (let i = 0; i < byteArray.length; i++) {
+                        dataVector.push_back(byteArray[i]);
+                    }
+
+                    Module.loadImage(dataVector);
+
+                    dataVector.delete();
+                };
+
+                reader.onerror = (e) => {
+                    console.error("Error reading file:", e);
+                };
+
+                reader.readAsArrayBuffer(file);
+            });
+
+            function updateButtonState() {
+                const currentValue = parseInt(slider.value, 10);
+                const minValue = parseInt(slider.min, 10);
+                const maxValue = parseInt(slider.max, 10);
+
+                stepBackButton.disabled = currentValue <= minValue;
+                stepForwardButton.disabled = currentValue >= maxValue;
+            }
+
+            slider.dispatchEvent(new Event('input'));
+        };
+    </script>
+</body>
+</html>
