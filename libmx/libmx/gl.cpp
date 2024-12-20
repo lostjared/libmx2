@@ -295,6 +295,15 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
         glUniform1f(location, value);
     }
 
+    void ShaderProgram::setUniform(const std::string &name, const glm::vec2 &value) {
+        GLint location = glGetUniformLocation(shader_id, name.c_str());
+        if (location == -1) {
+            mx::system_err << "Uniform '" << name << "' not found or not used in shader.\n";
+            return;
+        }
+        glUniform2fv(location, 1, glm::value_ptr(value));
+    }
+
     void ShaderProgram::setUniform(const std::string &name, const glm::vec3 &value) {
         GLint location = glGetUniformLocation(shader_id, name.c_str());
         if (location == -1) {
@@ -530,6 +539,10 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
         screenHeight = h;
     }
 
+    void GLSprite::setShader(ShaderProgram *program) {
+        shader = program;
+    }
+    
     GLSprite::~GLSprite() {
         if (texture != 0) {
             glDeleteTextures(1, &texture);

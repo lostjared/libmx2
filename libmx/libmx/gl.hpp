@@ -48,6 +48,7 @@ namespace gl {
 
         void setUniform(const std::string &name, int value);
         void setUniform(const std::string &name, float value);
+        void setUniform(const std::string &name, const glm::vec2 &value);
         void setUniform(const std::string &name, const glm::vec3 &value);
         void setUniform(const std::string &name, const glm::vec4 &value);
         void setUniform(const std::string &name, const glm::mat4 &value);
@@ -76,6 +77,7 @@ namespace gl {
         GLSprite();
         ~GLSprite();
         void initSize(float w, float h);
+        void setShader(ShaderProgram *program);
         void initWithTexture(ShaderProgram *program, GLuint texture, float x, float y, int textWidth, int textHeight);
         void loadTexture(ShaderProgram *shader, const std::string &tex, float x, float  y, int textWidth, int textHeight);
         void draw();
