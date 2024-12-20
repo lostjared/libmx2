@@ -300,7 +300,7 @@ public:
         shader[index].setUniform("time_f", static_cast<float>(currentTime / 1000.0f));
         sprite.draw();
         win->text.setColor({255,255,255,255});
-        win->text.printText_Solid(font, 25, 25, "Press Up and Down Arrows to Switch Shaders");
+        win->text.printText_Solid(font, 25, 25, "Press Up and Down Arrows Or Tap to Switch Shaders");
     }
     void event(gl::GLWindow *win, SDL_Event &e) override {
         if(e.type == SDL_KEYDOWN) {
@@ -312,6 +312,10 @@ public:
                 if(index < MAX_SHADER-1) index++;
                 break;
             }
+        } else if(e.type == SDL_FINGERUP || e.type == SDL_MOUSEBUTTONUP) {
+            index ++;
+            if(index > MAX_SHADER-1)
+                index = 0;
         }
     }
     void update(float deltaTime) {}
@@ -371,7 +375,7 @@ private:
 
 class MainWindow : public gl::GLWindow {
 public:
-    MainWindow(std::string path, int tw, int th) : gl::GLWindow("GL Window", tw, th) {
+    MainWindow(std::string path, int tw, int th) : gl::GLWindow("GL Shader Animation", tw, th) {
         setPath(path);
         setObject(new IntroScreen());
         object->load(this);
