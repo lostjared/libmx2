@@ -51,7 +51,7 @@ public:
             shader[i].setUniform("time_f", static_cast<float>(SDL_GetTicks()));
         }
         sprite.initSize(win->w, win->h);
-        sprite.loadTexture(&shader[0], win->util.getFilePath("data/bg.png"), 0, 0, win->w, win->h);
+        sprite.loadTexture(&shader[shader_index], win->util.getFilePath("data/bg.png"), 0, 0, win->w, win->h);
     }
 
     void draw(gl::GLWindow *win) override {

@@ -17,7 +17,6 @@
             margin: 0;
             padding: 10px;
             height: 100vh;
-            overflow: hidden;
         }
 
         #time-slider {
@@ -55,15 +54,7 @@
             cursor: not-allowed;
         }
 
-        #canvas {
-            max-width: 100%;
-            height: auto;
-            aspect-ratio: 16/9;
-            background: #111;
-            border: 1px solid #333;
-            border-radius: 8px;
-            margin-top: 10px;
-        }
+
 
         @media (max-width: 768px) {
             .button-container {
@@ -89,7 +80,7 @@
             <button id="step-stop">Stop</button>
         </div>
         <button id="download-button">Download</button>
-        <input type="file" id="file-input" accept="image/png">
+        <input type="file" id="file-input" accept="image/*">
     </div>
 
     <script>
@@ -201,6 +192,16 @@
 
                 console.log(`Selected file: ${file.name}`);
 
+                // Determine file extension
+                const fileName = file.name.toLowerCase();
+                const isPNG = fileName.endsWith('.png');
+                const isJPG = fileName.endsWith('.jpg') || fileName.endsWith('.jpeg');
+
+                if (!isPNG && !isJPG) {
+                    console.error("Unsupported file format. Please select a PNG or JPG file.");
+                    return;
+                }
+
                 const reader = new FileReader();
 
                 reader.onload = (e) => {
@@ -215,7 +216,12 @@
                         dataVector.push_back(byteArray[i]);
                     }
 
-                    Module.loadImage(dataVector);
+                    // Call appropriate function based on file type
+                    if (isPNG) {
+                        Module.loadImage(dataVector);
+                    } else if (isJPG) {
+                        Module.loadImageJPG(dataVector);
+                    }
 
                     dataVector.delete();
                 };

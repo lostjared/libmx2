@@ -15,6 +15,7 @@
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 #include <GLES3/gl3.h>
+#include<emscripten/html5.h>
 #include "glm.hpp"
 #include "gtc/type_ptr.hpp"
 #else
@@ -80,6 +81,7 @@ namespace gl {
         void setShader(ShaderProgram *program);
         void initWithTexture(ShaderProgram *program, GLuint texture, float x, float y, int textWidth, int textHeight);
         void loadTexture(ShaderProgram *shader, const std::string &tex, float x, float  y, int textWidth, int textHeight);
+        void loadTexture(ShaderProgram *shader, const std::string &tex, float x, float y);
         void draw();
         void draw(GLuint texture_id, float x, float y, int w, int h);
         void updateTexture(SDL_Surface *surf);
@@ -89,6 +91,7 @@ namespace gl {
         GLuint VBO = 0, VAO = 0;
         std::vector<float> vertices;
         float screenWidth = 0.0f, screenHeight = 0.0f;
+        int width = 0, height = 0;
     };
 
     class GLObject;
@@ -112,6 +115,7 @@ namespace gl {
         void delay();
         void setPath(const std::string &path) { util.path = path; }
         void setWindowTitle(const std::string &title);
+        void setWindowSize(int w, int h);
         std::unique_ptr<gl::GLObject> object;
         mx::mxUtil util;
         int w = 0, h = 0;
@@ -136,6 +140,7 @@ namespace gl {
     };
 
     GLuint loadTexture(const std::string &filename);
+    GLuint loadTexture(const std::string &filename, int &w, int &h);
     void updateTexture(GLuint texture, SDL_Surface *surface, bool flip);    
     GLuint createTexture(SDL_Surface *surface, bool flip);
     SDL_Surface *createSurface(int w, int h);

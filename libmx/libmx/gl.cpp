@@ -80,6 +80,21 @@ namespace gl {
         text.init(this->w, this->h);
     }
 
+    void GLWindow::setWindowSize(int w, int h) {
+#ifdef __EMSCRIPTEN
+        SDL_SetWindowSize(window, w, h);
+        width = w;
+        height = h;
+        this->w = w;
+        this->h = h;
+        emscripten_webgl_make_context_current(context);
+        emscripten_set_canvas_element_size("#canvas", w, h);
+#else
+        SDL_SetWindowSize(window, w, h);
+#endif
+        glViewport(0, 0, w, h); 
+    }
+
     void GLWindow::setWindowTitle(const std::string &title) {
         SDL_SetWindowTitle(window, title.c_str());
     }
@@ -353,6 +368,30 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
         return texture;
     }
 
+    GLuint loadTexture(const std::string &filename, int &w, int &h) {
+            GLuint texture = 0;
+        glGenTextures(1, &texture);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        SDL_Surface *surface = png::LoadPNG(filename.c_str());
+        if (!surface) {
+            throw mx::Exception("Error loading PNG file.");
+        }
+        SDL_Surface *converted = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_RGBA32, 0);
+        SDL_FreeSurface(surface);
+        surface = converted;
+        surface = mx::Texture::flipSurface(surface);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, surface->w, surface->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, surface->pixels);
+        w = surface->w;
+        h = surface->h;
+        SDL_FreeSurface(surface);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        return texture;
+    }
+
     GLuint createTexture(SDL_Surface *surface, bool flip) {
         if (!surface) {
             throw mx::Exception("Surface is null: Unable to load PNG file.");
@@ -364,17 +403,22 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        SDL_Surface *converted = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_RGBA32, 0);
+      
         if(flip) {
-            SDL_Surface *flipped = mx::Texture::flipSurface(surface);
+            SDL_Surface *flipped = mx::Texture::flipSurface(converted);
             if (!flipped) {
+                SDL_FreeSurface(converted);
                 glBindTexture(GL_TEXTURE_2D, 0);
                 throw mx::Exception("Failed to flip surface.");
             }
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, flipped->w, flipped->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, flipped->pixels);
         } else {
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, surface->w, surface->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, surface->pixels);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, converted->w, converted->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, converted->pixels);
         }
         glBindTexture(GL_TEXTURE_2D, 0);
+        SDL_FreeSurface(converted);
         return texture;
     }
     
@@ -567,7 +611,7 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
         }
         this->shader = program;
         if(this->texture != 0) {
-            glDeleteTextures(1, &texture);
+            glDeleteTextures(1, &this->texture);
         }
         this->texture = text;
         float ndcX = (x / screenWidth) * 2.0f - 1.0f;       
@@ -629,6 +673,44 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
         glBindVertexArray(0);
     }
 
+      void GLSprite::loadTexture(ShaderProgram *shader, const std::string &tex, float x, float y) {
+        this->shader = shader;
+        if (texture != 0) {
+           glDeleteTextures(1, &texture);
+}
+        texture = gl::loadTexture(tex, width, height); 
+        int textWidth = width;
+        int textHeight = height;
+
+        if (!texture) {
+            throw mx::Exception("Failed to load texture: " + tex);
+        }
+        float ndcX = (x / screenWidth) * 2.0f - 1.0f;       
+        float ndcY = 1.0f - (y / screenHeight) * 2.0f;      
+        float w = (float)textWidth / screenWidth * 2.0f;    
+        float h = (float)textHeight / screenHeight * 2.0f;  
+        vertices = {
+            ndcX,       ndcY,       0.0f, 0.0f, 1.0f,  
+            ndcX + w,   ndcY,       0.0f, 1.0f, 1.0f,  
+            ndcX,       ndcY - h,   0.0f, 0.0f, 0.0f,  
+            ndcX + w,   ndcY - h,   0.0f, 1.0f, 0.0f   
+        };
+        glGenVertexArrays(1, &VAO);
+        glGenBuffers(1, &VBO);
+        glBindVertexArray(VAO);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+        glEnableVertexAttribArray(1);
+        this->shader->useProgram();
+        this->shader->setUniform("textTexture", 0);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+    }
+
+
     void GLSprite::updateTexture(SDL_Surface *surf) {
         if (!surf || !surf->pixels) {
             throw mx::Exception("Invalid surface provided to updateTexture");
@@ -677,7 +759,7 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
             ndcX + width, ndcY,     0.0f, 1.0f, 1.0f,  
             ndcX,       ndcY - height, 0.0f, 0.0f, 0.0f,  
             ndcX + width, ndcY - height, 0.0f, 1.0f, 0.0f   
-        };
+        };  
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
         glBufferSubData(GL_ARRAY_BUFFER, 0, vertices.size() * sizeof(float), vertices.data());
         glBindBuffer(GL_ARRAY_BUFFER, 0);

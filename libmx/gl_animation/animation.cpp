@@ -1,7 +1,7 @@
 #include"mx.hpp"
 #include"argz.hpp"
-
 #ifdef __EMSCRIPTEN__
+#include"SDL_image.h"
 #include <emscripten/emscripten.h>
 #include <GLES3/gl3.h>
 #endif
@@ -314,6 +314,8 @@ private:
     gl::ShaderProgram program;
 };
 
+int new_width = 1920, new_height = 1080;
+
 class MainWindow : public gl::GLWindow {
 public:
     MainWindow(std::string path, int tw, int th) : gl::GLWindow("Acid Cam Shader Animation", tw, th) {
@@ -331,7 +333,7 @@ public:
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glEnable(GL_DEPTH_TEST);
-        glViewport(0, 0, w, h);
+        glViewport(0, 0, new_width, new_height);
         object->draw(this);
         swap();
         delay();
@@ -364,32 +366,64 @@ gl::GLSprite sprite;
 gl::ShaderProgram shader[MAX_SHADER];
 
 #ifdef __EMSCRIPTEN__
-EMSCRIPTEN_BINDINGS(main_window_bindings) {
-    class_<MainWindow>("MainWindow")
-        .constructor<std::string, int, int>()
-        .function("checkDone", &MainWindow::checkDone)
-        .function("setTime", &MainWindow::setTime)
-        .function("inc", &MainWindow::inc)
-        .function("dec", &MainWindow::dec)
-        .function("play", &MainWindow::play)
-        .function("stop", &MainWindow::stop);
-}
-void loadImage(const std::vector<uint8_t>& imageData) {
-    std::cout << "Received image data of size: " << imageData.size() << " bytes\n";
-    std::ofstream outFile("image.png", std::ios::binary);
-    outFile.write(reinterpret_cast<const char*>(imageData.data()), imageData.size());
-    outFile.close();
-    std::cout << "Saved image as 'image.png'.\n";
-    sprite.loadTexture(&shader[0], "image.png", 0, 0, 1920, 1080);
-}
+    EMSCRIPTEN_BINDINGS(main_window_bindings) {
+        class_<MainWindow>("MainWindow")
+            .constructor<std::string, int, int>()
+            .function("checkDone", &MainWindow::checkDone)
+            .function("setTime", &MainWindow::setTime)
+            .function("inc", &MainWindow::inc)
+            .function("dec", &MainWindow::dec)
+            .function("play", &MainWindow::play)
+            .function("stop", &MainWindow::stop);
+    }
 
+    void loadImage(const std::vector<uint8_t>& imageData) {
+        std::cout << "Received image data of size: " << imageData.size() << " bytes\n";
+        std::ofstream outFile("image.png", std::ios::binary);
+        outFile.write(reinterpret_cast<const char*>(imageData.data()), imageData.size());
+        outFile.close();
+        std::cout << "Saved image as 'image.png'.\n";
+        SDL_Surface *surface = png::LoadPNG("image.png");
+        int imgWidth = surface->w;
+        int imgHeight = surface->h;
+        main_w->setWindowSize(imgWidth, imgHeight);
+        emscripten_set_canvas_element_size("#canvas", imgWidth, imgHeight);
+        int canvasWidth = imgWidth, canvasHeight = imgHeight;
+        emscripten_get_canvas_element_size("#canvas", &canvasWidth, &canvasHeight);
+        new_width = canvasWidth;
+        new_height = canvasHeight;
+        sprite.initSize(canvasWidth, canvasHeight);
+        main_w->text.init(canvasWidth, canvasHeight);
+        sprite.loadTexture(&shader[shader_index], "image.png", 0, 0, canvasWidth, canvasHeight);
+        SDL_FreeSurface(surface);
+    }
+
+    void loadImageJPG(const std::vector<uint8_t>& imageData) {
+        std::ofstream outFile("image.jpg", std::ios::binary);
+        outFile.write(reinterpret_cast<const char*>(imageData.data()), imageData.size());
+        outFile.close();
+        SDL_Surface *surface = IMG_Load("image.jpg");
+        int imgWidth = surface->w;
+        int imgHeight = surface->h;
+        main_w->setWindowSize(imgWidth, imgHeight);
+        emscripten_set_canvas_element_size("#canvas", imgWidth, imgHeight);
+        int canvasWidth = imgWidth, canvasHeight = imgHeight;
+        emscripten_get_canvas_element_size("#canvas", &canvasWidth, &canvasHeight);
+        new_width = canvasWidth;
+        new_height = canvasHeight;
+        sprite.initSize(canvasWidth, canvasHeight);
+        main_w->text.init(canvasWidth, canvasHeight);
+        GLuint text = gl::createTexture(surface, true);
+        sprite.initWithTexture(&shader[shader_index], text, 0, 0, canvasWidth, canvasHeight);
+        SDL_FreeSurface(surface);
+    }
 
 EMSCRIPTEN_BINDINGS(image_loader) {
     emscripten::function("loadImage", &loadImage);
+    emscripten::function("loadImageJPG",  &loadImageJPG);
     emscripten::register_vector<uint8_t>("VectorU8");
 }
 #endif
-
 
 void eventProc() {
     main_w->proc();
@@ -397,6 +431,7 @@ void eventProc() {
 
 int main(int argc, char **argv) {
 #ifdef __EMSCRIPTEN__
+    IMG_Init(IMG_INIT_JPG);
     MainWindow main_window("", 1920, 1080);
     main_w =&main_window;
     emscripten_set_main_loop(eventProc, 0, 1);
