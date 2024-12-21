@@ -143,6 +143,302 @@ const char *anifSource3 = R"(#version 300 es
         FragColor = twistedRippleColor;
 }
 )";
+
+const char *anifSource4 = R"(#version 300 es
+precision highp float;
+in vec2 TexCoord;
+out vec4 FragColor;
+uniform sampler2D textTexture;
+uniform float time_f;
+uniform vec2 iResolution;
+float alpha = 1.0f;
+
+
+
+float pingPong(float x, float length) {
+    float modVal = mod(x, length * 2.0);
+    return modVal <= length ? modVal : length * 2.0 - modVal;
+}
+
+void main(void) {
+    vec2 tc = TexCoord;
+    vec2 uv = (tc * iResolution - 0.5 * iResolution) / iResolution.y;
+    
+    float t = time_f * 0.5;
+    
+    float radius = length(uv);
+    float angle = atan(uv.y, uv.x);
+    angle += t;
+
+    float radMod = pingPong(radius + t * 0.5, 0.5);
+    float wave = sin(radius * 10.0 - t * 5.0) * 0.5 + 0.5;
+    
+    float r = sin(angle * 3.0 + radMod * 10.0 + wave * 6.2831);
+    float g = sin(angle * 4.0 - radMod * 8.0  + wave * 4.1230);
+    float b = sin(angle * 5.0 + radMod * 12.0 - wave * 3.4560);
+    
+    vec3 col = vec3(r, g, b) * 0.5 + 0.5;
+    vec3 texColor = texture(textTexture, TexCoord).rgb;
+    col = mix(col, texColor, 0.3);
+    FragColor = vec4(sin(col * pingPong(time_f, 8.0) + 2.0), alpha);
+})";
+
+const char *anifSource5 = R"(#version 300 es
+precision highp float;
+out vec4 FragColor;
+in vec2 TexCoord;
+uniform sampler2D textTexture;
+uniform vec2 iResolution;
+uniform float time_f;
+
+vec2 rotate(vec2 pos, float angle) {
+    float s = sin(angle);
+    float c = cos(angle);
+    pos -= vec2(0.5);
+    pos = mat2(c, -s, s, c) * pos;
+    pos += vec2(0.5);
+    return pos;
+}
+
+void main(void) {
+    vec2 tc = TexCoord;
+    vec2 pos = tc;
+    float aspectRatio = iResolution.x / iResolution.y;
+    pos.x *= aspectRatio;
+
+    float spinSpeed = time_f * 0.5;
+    pos = rotate(pos, spinSpeed);
+    float dist = distance(pos, vec2(0.5 * aspectRatio, 0.5));
+    float scale = 1.0 + 0.2 * sin(dist * 15.0 - time_f * 2.0);
+    pos = (pos - vec2(0.5)) * scale + vec2(0.5);
+    FragColor = texture(textTexture, pos);
+}
+)";
+
+const char *anifSource6 = R"(#version 300 es
+precision highp float;
+in vec2 TexCoord;
+out vec4 FragColor;
+
+uniform sampler2D textTexture;
+uniform float time_f;
+uniform vec2 iResolution;
+
+float pingPong(float x, float length) {
+    float modVal = mod(x, length * 2.0);
+    return modVal <= length ? modVal : length * 2.0 - modVal;
+}
+
+
+vec4 adjustHue(vec4 color, float angle) {
+    float U = cos(angle);
+    float W = sin(angle);
+    mat3 rotationMatrix = mat3(
+        0.299, 0.587, 0.114,
+        0.299, 0.587, 0.114,
+        0.299, 0.587, 0.114
+    ) + mat3(
+        0.701, -0.587, -0.114,
+        -0.299, 0.413, -0.114,
+        -0.3, -0.588, 0.886
+    ) * U + mat3(
+        0.168, 0.330, -0.497,
+        -0.328, 0.035, 0.292,
+        1.25, -1.05, -0.203
+    ) * W;
+    return vec4(rotationMatrix * color.rgb, color.a);
+}
+
+void main() {
+    vec2 tc = TexCoord;
+    vec4 color = FragColor;
+    vec2 uv = (tc - 0.5) * iResolution / min(iResolution.x, iResolution.y);
+    float dist = length(uv);
+    float ripple = sin(dist * 12.0 - pingPong(time_f, 10.0) * 10.0) * exp(-dist * 4.0);
+    vec4 sampledColor = texture(textTexture, tc + ripple * 0.01);
+    float hueShift = pingPong(time_f, 10.0) * ripple * 2.0;
+    color = adjustHue(sampledColor, hueShift);
+    FragColor = color;
+}
+
+)";
+
+const char *anifSource7 = R"(#version 300 es
+precision highp float;
+out vec4 FragColor;
+in vec2 TexCoord;
+
+uniform sampler2D textTexture;
+uniform float time_f;
+uniform vec2 iResolution;
+
+mat3 rotationMatrixX(float angle) {
+    return mat3(
+        1.0, 0.0, 0.0,
+        0.0, cos(angle), -sin(angle),
+        0.0, sin(angle), cos(angle)
+    );
+}
+
+mat3 rotationMatrixY(float angle) {
+    return mat3(
+        cos(angle), 0.0, sin(angle),
+        0.0,       1.0, 0.0,
+       -sin(angle), 0.0, cos(angle)
+    );
+}
+
+mat2 rotationMatrixZ(float angle) {
+    return mat2(
+        cos(angle), -sin(angle),
+        sin(angle),  cos(angle)
+    );
+}
+
+vec2 vortexDistortion(vec2 uv, float time) {
+    vec2 center = vec2(0.5, 0.5);
+    vec2 offset = uv - center;
+    float distance = length(offset);
+    float angle = atan(offset.y, offset.x) + sin(time + distance * 10.0) * 0.5;
+    return center + vec2(cos(angle), sin(angle)) * distance;
+}
+
+void main(void) {
+    vec2 tc = TexCoord;
+    vec4 color = FragColor;
+    vec2 uv = tc;
+    float phase = mod(time_f, 3.0);
+
+    if (phase < 1.0) {
+        float angle = time_f * 2.0;
+        mat3 rotation = rotationMatrixX(angle);
+        uv = (rotation * vec3(uv - 0.5, 1.0)).xy + 0.5;
+    } else if (phase < 2.0) {
+        float angle = time_f * 2.0;
+        mat3 rotation = rotationMatrixY(angle);
+        uv = (rotation * vec3(uv - 0.5, 1.0)).xy + 0.5;
+    } else {
+        float angle = time_f * 2.0;
+        mat2 rotation = rotationMatrixZ(angle);
+        uv = (rotation * (uv - 0.5)) + 0.5;
+    }
+
+    uv.x = mod(uv.x + sin(time_f) * 0.2, 1.0);
+    uv.y = mod(uv.y + cos(time_f) * 0.2, 1.0);
+
+    uv = vortexDistortion(uv, time_f);
+    vec4 texColor = texture(textTexture, uv);
+    color = texColor;
+    FragColor = color;
+})";
+
+const char *anifSource8 = R"(#version 300 es
+precision highp float;
+uniform sampler2D textTexture;
+uniform vec2 iResolution;
+uniform float time_f;
+in vec2 TexCoord;
+out vec4 FragColor;
+
+void main() {
+    vec4 color = FragColor;
+    vec2 tc = TexCoord;
+    vec2 uv = gl_FragCoord.xy / iResolution;
+    vec2 centeredUV = uv * 2.0 - 1.0;
+    float angle = time_f * 0.5;
+    mat2 rotation = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
+    if (centeredUV.x < 0.0) {
+        centeredUV.x = -centeredUV.x;
+        centeredUV = rotation * centeredUV;
+    } else {
+        centeredUV = rotation * centeredUV;
+    }
+    centeredUV = mod(centeredUV, 1.0);
+    vec2 mirroredUV = centeredUV * 0.5 + 0.5;
+    vec4 texColor = texture(textTexture, mirroredUV);
+    color = texColor;
+    FragColor = color;
+})";
+
+const char *anifSource9 = R"(#version 300 es
+precision highp float;
+in vec2 TexCoord;
+out vec4 FragColor;
+uniform sampler2D textTexture;
+uniform float time_f;
+uniform vec2 iResolution;
+
+void main() {
+    vec4 color = FragColor;
+    vec2 tc = TexCoord;
+    vec2 uv = tc * 2.0 - 1.0;
+    uv *= iResolution.y / iResolution.x;
+
+    vec2 center = vec2(0.0, 0.0);
+    vec2 offset = uv - center;
+    float dist = length(offset);
+    float angle = atan(offset.y, offset.x);
+
+    float pulse = sin(time_f * 2.0 + dist * 10.0) * 0.15;
+    float spiral = sin(angle * 5.0 + time_f * 2.0) * 0.15;
+    float stretch = cos(time_f * 3.0 - dist * 15.0) * 0.2;
+
+    vec2 spiralOffset = vec2(cos(angle), sin(angle)) * spiral;
+    vec2 stretchOffset = normalize(offset) * (pulse + stretch);
+    vec2 morphUV = uv + spiralOffset + stretchOffset;
+
+    vec4 texColor = texture(textTexture, morphUV * 0.5 + 0.5);
+
+    vec3 blended = vec3(0.0);
+    float weight = 0.0;
+
+    for (float x = -2.0; x <= 2.0; x++) {
+        for (float y = -2.0; y <= 2.0; y++) {
+            vec2 sampleUV = morphUV + vec2(x, y) * 0.005;
+            vec4 sampleColor = texture(textTexture, sampleUV * 0.5 + 0.5);
+            blended += sampleColor.rgb;
+            weight += 1.0;
+        }
+    }
+    blended /= weight;
+    blended = mix(texColor.rgb, blended, 0.5);
+    float shimmer = sin(dist * 20.0 - time_f * 5.0) * 0.1 + 1.0;
+    color = vec4(blended * shimmer, texColor.a);
+    FragColor = color;
+})";
+
+const char *anifSource10 = R"(#version 300 es
+precision highp float;
+out vec4 FragColor;
+in vec2 TexCoord;
+
+uniform sampler2D textTexture;
+uniform float time_f;
+uniform vec2 iResolution;
+
+float pingPong(float x, float length) {
+    float modVal = mod(x, length * 2.0);
+    return modVal <= length ? modVal : length * 2.0 - modVal;
+}
+
+void main(void) {
+    vec4 color = FragColor;
+    vec2 tc = TexCoord;
+    vec2 center = vec2(0.5, 0.5);
+    vec2 tc_centered = tc - center;
+    float dist = length(tc_centered);
+   vec2 dir = tc_centered / max(dist, 1e-6);
+    float waveLength = 0.05;
+    float amplitude = 0.02;
+    float speed = 2.0;
+
+    float ripple = sin((dist / waveLength - time_f * speed) * 6.2831853); // 2 * PI
+    vec2 tc_displaced = tc + dir * ripple * amplitude;
+    vec4 texColor = texture(textTexture, tc_displaced);
+    color = texColor;
+    FragColor = color;
+})";
+
 #else
 const char *vSource = R"(#version 330 core
         layout (location = 0) in vec3 aPos;
@@ -263,6 +559,13 @@ const char *anifSource3 = R"(#version 330
 }
 )";
 
+const char *aniSource4 = "";
+const char *anifSource5 = "";
+const char *anifSource6 = "";
+const char *anifSource7 = "";
+const char *anifSource8 = "";
+const char *anifSource9 = "";
+const char *anifSource10 = "";
 #endif
 
 bool done = false;
