@@ -33,6 +33,7 @@ namespace gl {
     class ShaderProgram {
     public:
         ShaderProgram();
+        ~ShaderProgram();
         ShaderProgram(GLuint id);
         ShaderProgram &operator=(const ShaderProgram &p);        
         int printShaderLog(GLuint err);

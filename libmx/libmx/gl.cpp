@@ -149,7 +149,7 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
         draw();
     }
 
-       ShaderProgram::ShaderProgram() : shader_id{0} {
+    ShaderProgram::ShaderProgram() : shader_id{0} {
         
     }
     
@@ -157,6 +157,10 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
         
     }
     
+    ShaderProgram::~ShaderProgram() {
+        if(shader_id)
+            glDeleteProgram(shader_id);
+    }
     ShaderProgram &ShaderProgram::operator=(const ShaderProgram &p) {
         shader_id = p.shader_id;
         name_ = p.name_;
