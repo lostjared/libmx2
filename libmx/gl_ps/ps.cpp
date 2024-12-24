@@ -59,7 +59,6 @@ public:
     };
 
     static constexpr int NUM_PARTICLES = 2500;
-    gl::ShaderProgram textShader;
     gl::ShaderProgram program;
     std::vector<Particle> particles;
     GLuint VAO, VBO[3];
@@ -74,7 +73,6 @@ public:
 
     void load(gl::GLWindow *win) override {
         font.loadFont(win->util.getFilePath("data/font.ttf"), 36);
-        textShader.loadProgram(win->util.getFilePath("data/text.vert"), win->util.getFilePath("data/text.frag"));
         if(!program.loadProgramFromText(vertSource, fragSource)) {
             throw mx::Exception("Error loading shader");
         }
@@ -180,9 +178,7 @@ public:
     
     ~MainWindow() override {}
     
-    virtual void event(SDL_Event &e) override {
-        object->event(this, e);
-    }
+    virtual void event(SDL_Event &e) override {}
     
     virtual void draw() override {
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);

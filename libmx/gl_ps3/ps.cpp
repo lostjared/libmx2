@@ -197,10 +197,7 @@ public:
     }
     
     ~MainWindow() override {}
-    
-    virtual void event(SDL_Event &e) override {
-        object->event(this, e);
-    }
+    virtual void event(SDL_Event &e) override {}
     
     virtual void draw() override {
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
