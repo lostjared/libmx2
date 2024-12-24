@@ -95,7 +95,7 @@ Refer to the `examples` directory for sample usage scenarios. Also various subfo
 * 3D Breakout
 * MXMOD Format/3D Model Viewer
 * Space3D: Attack of the Drones ( https://lostsidedead.biz/game/Space3D )
-* Four Point Sprite Examples (gl_ps, gl_ps2, gl_ps3, gl_ps4)
+* Four Point Sprite Examples ( gl_ps, gl_ps2, gl_ps3, gl_ps4 https://lostsidedead.biz/point-sprites )
 
 ## How to Run the Examples
 
