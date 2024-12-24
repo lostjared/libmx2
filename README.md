@@ -71,7 +71,7 @@ Current Options:
 Include the `libmx2` headers in your project and link against the compiled library.
 Refer to the `examples` directory for sample usage scenarios. Also various subfolders for example projects
 
-## Examples Included
+## 2D Examples Included
 
 * asteroids
 * blocks
@@ -84,7 +84,7 @@ Refer to the `examples` directory for sample usage scenarios. Also various subfo
 * pong
 * space shooter
 
-## GL Examples
+## OpenGL Examples
 * Basic GL Window
 * Triangle
 * Skeleton (Hello, World!)
