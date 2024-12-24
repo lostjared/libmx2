@@ -62,10 +62,10 @@ class Game : public gl::GLObject {
 public:
 
     struct Particle {
-        float x, y, vx, vy, life;
+        float x, y, vx, vy, life, angle;
     };
 
-    static constexpr int NUM_PARTICLES = 3000;
+    static constexpr int NUM_PARTICLES = 10000;
     gl::ShaderProgram textShader;
     gl::ShaderProgram program;
     std::vector<Particle> particles;
@@ -89,8 +89,9 @@ public:
             p.x = (rand() % 200 - 100) / 100.0f; 
             p.y = (rand() % 200 - 100) / 100.0f;
             p.vx = 0.0;
-            p.vy = generateRandomFloat(-0.01, -0.2);
+            p.vy = generateRandomFloat(-0.01f, -0.2f);
             p.life = 1.0f;
+            p.angle = generateRandomFloat(0.0f, 1.0f);
         }
 
         glGenVertexArrays(1, &VAO);
@@ -127,7 +128,7 @@ public:
         glDrawArrays(GL_POINTS, 0, NUM_PARTICLES);
         CHECK_GL_ERROR();
         win->text.setColor({255, 0, 0, 255});
-        win->text.printText_Solid(font, 25.0f, 25.0f, "Merry Christmas - Paritcle Count: " + std::to_string(NUM_PARTICLES)); 
+        win->text.printText_Solid(font, 25.0f, 25.0f, "Paritcle Count: " + std::to_string(NUM_PARTICLES)); 
       
     }   
     
@@ -137,30 +138,42 @@ public:
         if(deltaTime > 0.1f)
             deltaTime = 0.1f;
         std::vector<float> positions, sizes, colors;
+
+        float circularSpeed = 0.1f; 
+        float descentSpeed = -0.5f; 
+        float radius = 0.1f;        
+
         for (auto& p : particles) {
-            p.x += p.vx * deltaTime;
-            p.y += p.vy * deltaTime;
-            if(p.y < -0.75) {
-                p.life -= 0.01f;
+            p.angle += circularSpeed * deltaTime;
+            p.x += radius * cos(p.angle);
+            p.y += descentSpeed * deltaTime;
+
+            p.life -= 0.05f;
+            if(p.life <= 0) {
+                p.life = 1.0f;
+            }
+            if(p.x < -1.0f || p.x > -1.0f) {
+                p.x  = generateRandomFloat(-1.0f, 1.0f);
+                p.angle = generateRandomFloat(0.0f, 1.0f);
             }
             if (p.y < -1.0f) {
-                p.y = 1.1f;
-                p.x = generateRandomFloat(-1.0f, 1.0f); 
-                p.life = 1.0f;
+                p.y = 1.0f; 
+                p.x = generateRandomFloat(-1.0f, 1.0f);  
             }
             positions.push_back(p.x);
             positions.push_back(p.y);
-            float size = 10.0f * p.life;
+
+            float size = 50.0f * p.life;
             sizes.push_back(size);
-            float white = 0.95f;
+
             float particleAlpha = p.life;
-            colors.push_back(white);
-            colors.push_back(white);
-            colors.push_back(white);
+            colors.push_back(generateRandomFloat(0.0f, 1.0f));
+            colors.push_back(generateRandomFloat(0.0f, 1.0f));
+            colors.push_back(generateRandomFloat(0.0f, 1.0f));
             colors.push_back(particleAlpha);
         }
 
-        // Update buffers
+
         glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
         glBufferSubData(GL_ARRAY_BUFFER, 0, positions.size() * sizeof(float), positions.data());
 
@@ -179,7 +192,7 @@ private:
 
 class MainWindow : public gl::GLWindow {
 public:
-    MainWindow(std::string path, int tw, int th) : gl::GLWindow("Happy Holidays -[Particle Effect]-", tw, th) {
+    MainWindow(std::string path, int tw, int th) : gl::GLWindow("-[Particle Effect]-", tw, th) {
         setPath(path);
         setObject(new Game());
         object->load(this);
