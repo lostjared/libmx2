@@ -10,7 +10,7 @@ LIBMX_LIB = $(LIBS_PATH)/mx2/lib/libmx.a
 PRELOAD = --preload-file data
 SOURCES = ps.cpp
 OBJECTS = $(SOURCES:.cpp=.o)
-OUTPUT = ps.html
+OUTPUT = ps1.html
 
 .PHONY: all clean install
 

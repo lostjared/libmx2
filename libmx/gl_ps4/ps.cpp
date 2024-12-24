@@ -19,6 +19,7 @@ printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
 #define M_PI 3.14159265358979323846
 #endif
 
+#ifndef __EMSCRIPTEN__
 const char* vertSource = R"(#version 330 core
 
 layout (location = 0) in vec2 inPosition; 
@@ -48,6 +49,38 @@ void main() {
     FragColor = texColor * fragColor;
 }
 )";
+#else
+const char* vertSource = R"(#version 300 es
+precision highp float;
+layout (location = 0) in vec2 inPosition; 
+layout (location = 1) in float inSize;    
+layout (location = 2) in vec4 inColor;    
+
+out vec4 fragColor; 
+
+void main() {
+    gl_Position = vec4(inPosition, 0.0, 1.0); 
+    gl_PointSize = inSize;                   
+    fragColor = inColor;                     
+}
+)";
+
+const char* fragSource = R"(#version 300 es
+precision highp float;
+in vec4 fragColor;           
+in vec2 texCoord;            
+out vec4 FragColor;          
+uniform sampler2D spriteTexture; 
+void main() {
+    float dist = length(gl_PointCoord - vec2(0.5)); 
+    if (dist > 0.5) {
+        discard; 
+    }
+    vec4 texColor = texture(spriteTexture, gl_PointCoord); 
+    FragColor = texColor * fragColor;
+}
+)";
+#endif
 
 float generateRandomFloat(float min, float max) {
     std::random_device rd; 
@@ -151,7 +184,9 @@ public:
     float radius = 0.2f;
 
     void draw(gl::GLWindow *win) override {  
+#ifndef __EMSCRIPTEN__
         glEnable(GL_PROGRAM_POINT_SIZE);
+#endif
         glDisable(GL_DEPTH_TEST);
         Uint32 currentTime = SDL_GetTicks();
         float deltaTime = (currentTime - lastUpdateTime) / 1000.0f; // Convert to seconds

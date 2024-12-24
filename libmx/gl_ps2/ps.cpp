@@ -19,6 +19,7 @@ printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
 #define M_PI 3.14159265358979323846
 #endif
 
+#ifndef __EMSCRIPTEN__
 const char* vertSource = R"(#version 330 core
 
 layout (location = 0) in vec2 inPosition; 
@@ -48,6 +49,39 @@ void main() {
     FragColor = texColor * fragColor;
 }
 )";
+#else
+const char* vertSource = R"(#version 300 es
+precision highp float;
+layout (location = 0) in vec2 inPosition; 
+layout (location = 1) in float inSize;    
+layout (location = 2) in vec4 inColor;    
+
+out vec4 fragColor; 
+
+void main() {
+    gl_Position = vec4(inPosition, 0.0, 1.0); 
+    gl_PointSize = inSize;                   
+    fragColor = inColor;                     
+}
+)";
+
+const char* fragSource = R"(#version 300 es
+precision highp float;
+in vec4 fragColor;           
+in vec2 texCoord;            
+out vec4 FragColor;          
+uniform sampler2D spriteTexture; 
+void main() {
+    float dist = length(gl_PointCoord - vec2(0.5)); 
+    if (dist > 0.5) {
+        discard; 
+    }
+    vec4 texColor = texture(spriteTexture, gl_PointCoord); 
+    FragColor = texColor * fragColor;
+}
+)";
+#endif
+
 
 float generateRandomFloat(float min, float max) {
     std::random_device rd; 
@@ -65,7 +99,7 @@ public:
         float x, y, vx, vy, life;
     };
 
-    static constexpr int NUM_PARTICLES = 3000;
+    static constexpr int NUM_PARTICLES = 5000;
     gl::ShaderProgram program;
     std::vector<Particle> particles;
     GLuint VAO, VBO[3];
@@ -79,7 +113,7 @@ public:
     }
 
     void load(gl::GLWindow *win) override {
-        font.loadFont(win->util.getFilePath("data/font.ttf"), 36);
+        font.loadFont(win->util.getFilePath("data/font.ttf"), 24);
         if(!program.loadProgramFromText(vertSource, fragSource)) {
             throw mx::Exception("Error loading shader");
         }
@@ -108,8 +142,10 @@ public:
         texture = gl::loadTexture(win->util.getFilePath("data/snowball.png"));
     }
 
-    void draw(gl::GLWindow *win) override {  
+    void draw(gl::GLWindow *win) override {
+#ifndef __EMSCRIPTEN__  
         glEnable(GL_PROGRAM_POINT_SIZE);
+#endif
         glDisable(GL_DEPTH_TEST);
         Uint32 currentTime = SDL_GetTicks();
         float deltaTime = (currentTime - lastUpdateTime) / 1000.0f; // Convert to seconds
@@ -143,13 +179,14 @@ public:
             if (p.y < -1.0f) {
                 p.y = 1.1f;
                 p.x = generateRandomFloat(-1.0f, 1.0f); 
-                p.life = 1.0f;
+                p.life = generateRandomFloat(0.6f, 1.0f);
+                p.vy = generateRandomFloat(-0.1f, -0.2f);
             }
             positions.push_back(p.x);
             positions.push_back(p.y);
             float size = 10.0f * p.life;
             sizes.push_back(size);
-            float white = 0.95f;
+            float white = generateRandomFloat(0.8f, 1.0f);
             float particleAlpha = p.life;
             colors.push_back(white);
             colors.push_back(white);
@@ -157,7 +194,6 @@ public:
             colors.push_back(particleAlpha);
         }
 
-        // Update buffers
         glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
         glBufferSubData(GL_ARRAY_BUFFER, 0, positions.size() * sizeof(float), positions.data());
 
