@@ -193,6 +193,9 @@ public:
 #endif
                     }
                     break;
+                    case SDLK_SPACE:
+                        mx::system_out << "X: " << std::get<0>(rot_x) << " Y: " << std::get<0>(rot_y) << "\n";
+                    break;
                 }
             }
             break;
