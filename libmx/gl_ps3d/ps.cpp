@@ -29,16 +29,15 @@
 #ifndef __EMSCRIPTEN__
 const char* vertSource = R"(#version 330 core
 
-layout (location = 0) in vec3 inPosition; // <-- 3D positions
+layout (location = 0) in vec3 inPosition; 
 layout (location = 1) in float inSize;
 layout (location = 2) in vec4 inColor;
 
-uniform mat4 MVP;  // Model-View-Projection matrix
+uniform mat4 MVP;  
 
 out vec4 fragColor;
 
 void main() {
-    // Transform the 3D position by MVP to get clip-space
     gl_Position = MVP * vec4(inPosition, 1.0);
     gl_PointSize = inSize;
     fragColor = inColor;
@@ -53,13 +52,10 @@ out vec4 FragColor;
 uniform sampler2D spriteTexture;
 
 void main() {
-    // Round shape for each point
     float dist = length(gl_PointCoord - vec2(0.5));
     if (dist > 0.5) {
         discard;
     }
-
-    // Combine texture color and particle color
     vec4 texColor = texture(spriteTexture, gl_PointCoord);
     FragColor = texColor * fragColor;
 }
