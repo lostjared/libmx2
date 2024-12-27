@@ -25,14 +25,243 @@ printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
 #define M_PI 3.14159265358979323846
 #endif
 
+#ifndef __EMSCRIPTEN__
+const char* vertSource = R"(#version 330 core
 
+layout (location = 0) in vec3 inPosition; 
+layout (location = 1) in float inSize;
+layout (location = 2) in vec4 inColor;
 
-float getRandomFloat(float min, float max) {
-    static std::random_device rd;  
-    static std::mt19937 gen(rd()); 
-    std::uniform_real_distribution<float> dis(min, max);
-    return dis(gen);
+uniform mat4 MVP;  
+
+out vec4 fragColor;
+
+void main() {
+    gl_Position = MVP * vec4(inPosition, 1.0);
+    gl_PointSize = inSize;
+    fragColor = inColor;
 }
+)";
+
+const char* fragSource = R"(#version 330 core
+
+in vec4 fragColor;
+out vec4 FragColor;
+
+uniform sampler2D spriteTexture;
+
+void main() {
+    float dist = length(gl_PointCoord - vec2(0.5));
+    if (dist > 0.5) {
+        discard;
+    }
+    vec4 texColor = texture(spriteTexture, gl_PointCoord);
+    FragColor = texColor * fragColor;
+}
+)";
+
+#else
+const char* vertSource = R"(#version 300 es
+precision highp float;
+
+layout (location = 0) in vec3 inPosition; 
+layout (location = 1) in float inSize;
+layout (location = 2) in vec4 inColor;
+
+uniform mat4 MVP;
+
+out vec4 fragColor;
+
+void main() {
+    gl_Position = MVP * vec4(inPosition, 1.0);
+    gl_PointSize = inSize;
+    fragColor = inColor;
+}
+)";
+
+const char* fragSource = R"(#version 300 es
+precision highp float;
+
+in vec4 fragColor;
+out vec4 FragColor;
+
+uniform sampler2D spriteTexture;
+
+void main() {
+    float dist = length(gl_PointCoord - vec2(0.5));
+    if (dist > 0.5) {
+        discard;
+    }
+
+    vec4 texColor = texture(spriteTexture, gl_PointCoord);
+    FragColor = texColor * fragColor;
+}
+)";
+#endif
+
+float generateRandomFloat(float min, float max) {
+    static std::random_device rd; 
+    static std::default_random_engine eng(rd()); 
+    std::uniform_real_distribution<float> dist(min, max);
+    return dist(eng);
+}
+
+class StarField : public gl::GLObject {
+public:
+    struct Particle {
+        float x, y, z;   
+        float vx, vy, vz; 
+        float life;
+        float twinkle;
+    };
+
+    static constexpr int NUM_PARTICLES = 2500;
+    gl::ShaderProgram program;
+    GLuint VAO, VBO[3];
+    GLuint texture;
+    std::vector<Particle> particles;
+    Uint32 lastUpdateTime = 0;
+    float cameraZoom = 3.0f;   
+    float cameraRotation = 0.0f; 
+
+    StarField() : particles(NUM_PARTICLES) {}
+
+    ~StarField() override {
+        glDeleteVertexArrays(1, &VAO);
+        glDeleteBuffers(3, VBO);
+        glDeleteTextures(1, &texture);
+    }
+
+    void load(gl::GLWindow *win) override {
+        if(!program.loadProgramFromText(vertSource, fragSource)) {
+            throw mx::Exception("Error loading shader");
+        }
+
+        for (auto& p : particles) {
+            p.x = generateRandomFloat(-1.0f, 1.0f);
+            p.y = generateRandomFloat(-1.0f, 1.0f);
+            p.z = generateRandomFloat(-5.0f, -2.0f); 
+            p.vx = generateRandomFloat(-0.02f, 0.02f); 
+            p.vy = generateRandomFloat(-0.02f, 0.02f); 
+            p.vz = generateRandomFloat(0.2f, 0.5f);    
+            p.life = generateRandomFloat(0.6f, 1.0f);
+            p.twinkle = generateRandomFloat(1.0f, 5.0f);
+        }
+        glGenVertexArrays(1, &VAO);
+        glGenBuffers(3, VBO);
+        glBindVertexArray(VAO);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
+        glBufferData(GL_ARRAY_BUFFER, NUM_PARTICLES * 3 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);\
+        glBindBuffer(GL_ARRAY_BUFFER, VBO[1]);
+        glBufferData(GL_ARRAY_BUFFER, NUM_PARTICLES * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, 0, (void*)0);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO[2]);
+        glBufferData(GL_ARRAY_BUFFER, NUM_PARTICLES * 4 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, 0, (void*)0);
+        texture = gl::loadTexture(win->util.getFilePath("data/star.png"));
+        cameraRotation = 356.0f;
+        cameraZoom = 0.09f;
+        lastUpdateTime = SDL_GetTicks();
+    }
+
+    void event(gl::GLWindow *win, SDL_Event &e) override {
+
+    }
+    
+    void draw(gl::GLWindow *win) override {
+#ifndef __EMSCRIPTEN__
+        glEnable(GL_PROGRAM_POINT_SIZE);
+#endif
+        glDisable(GL_DEPTH_TEST);
+
+        Uint32 currentTime = SDL_GetTicks();
+        float deltaTime = (currentTime - lastUpdateTime) / 1000.0f; // seconds
+        lastUpdateTime = currentTime;
+
+        update(deltaTime);
+
+        CHECK_GL_ERROR();
+
+        program.useProgram();
+
+        glm::mat4 projection = glm::perspective(
+            glm::radians(45.0f), 
+            (float)win->w / (float)win->h, 
+            0.1f, 
+            100.0f
+        );
+
+        glm::vec3 cameraPos(
+            cameraZoom * sin(glm::radians(cameraRotation)), 
+            0.0f,                                           
+            cameraZoom * cos(glm::radians(cameraRotation))  
+        );
+        glm::vec3 target(0.0f, 0.0f, 0.0f); 
+        glm::vec3 up(0.0f, 1.0f, 0.0f);     \
+        glm::mat4 view = glm::lookAt(cameraPos, target, up);
+        glm::mat4 model = glm::mat4(1.0f);  
+        glm::mat4 MVP = projection * view * model;
+        program.setUniform("MVP", MVP);
+        program.setUniform("spriteTexture", 0);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glBindVertexArray(VAO);
+        glDrawArrays(GL_POINTS, 0, NUM_PARTICLES);
+    }
+
+    void update(float deltaTime) {
+        if(deltaTime > 0.1f) 
+            deltaTime = 0.1f;
+        std::vector<float> positions;
+        std::vector<float> sizes;
+        std::vector<float> colors;
+        positions.reserve(NUM_PARTICLES * 3);
+        sizes.reserve(NUM_PARTICLES);
+        colors.reserve(NUM_PARTICLES * 4);
+        for (auto& p : particles) {
+            p.x += p.vx * deltaTime;
+            p.y += p.vy * deltaTime;
+            p.z += p.vz * deltaTime;
+            if (p.z > 0.0f) {
+                p.x = generateRandomFloat(-1.0f, 1.0f);
+                p.y = generateRandomFloat(-1.0f, 1.0f);
+                p.z = generateRandomFloat(-5.0f, -2.0f); 
+                p.vx = generateRandomFloat(-0.02f, 0.02f); 
+                p.vy = generateRandomFloat(-0.02f, 0.02f); 
+                p.vz = generateRandomFloat(0.2f, 0.5f);    
+                p.life = generateRandomFloat(0.6f, 1.0f);
+                p.twinkle = generateRandomFloat(1.0f, 5.0f);
+            }
+            float twinkleFactor = 0.5f * (1.0f + sin(SDL_GetTicks() * 0.001f * p.twinkle));
+            float brightness = p.life * twinkleFactor;
+            positions.push_back(p.x);
+            positions.push_back(p.y);
+            positions.push_back(p.z);
+            float size = 10.0f * p.life;
+            sizes.push_back(size);
+            float alpha = p.life;
+            colors.push_back(brightness);
+            colors.push_back(brightness);
+            colors.push_back(brightness);
+            colors.push_back(alpha);
+        }
+
+        glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, positions.size() * sizeof(float), positions.data());
+
+        glBindBuffer(GL_ARRAY_BUFFER, VBO[1]);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, sizes.size() * sizeof(float), sizes.data());
+
+        glBindBuffer(GL_ARRAY_BUFFER, VBO[2]);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, colors.size() * sizeof(float), colors.data());
+    }
+};
+
+
 
 bool isColliding(const glm::vec3 &posA, float radiusA, const glm::vec3 &posB, float radiusB) {
     float dx = posA.x - posB.x;
@@ -230,13 +459,10 @@ public:
     GLuint fire = 0;
     int snd_fire = 0, snd_crash = 0, snd_takeoff = 0;
     bool launch_ship = true;
-    gl::ShaderProgram shaderProgram, textShader, starsShader;
+    gl::ShaderProgram shaderProgram, textShader;
     mx::Font font;
     mx::Input stick;
     int score = 0, lives = 5;
-    GLuint starsVBO, starsVAO;
-    const int numStars = 1000;
-    glm::vec3 stars[1000];
     mx::Model ship;
     mx::Model projectile;
     mx::Model enemy_ship, saucer, triangle, ufo_boss;
@@ -271,14 +497,13 @@ public:
     float bossRadius = 9.2f;
     float bossSize = 9.2f;
     int level = 1;
+    StarField field;
 
     SpaceGame(gl::GLWindow *win) : score{0}, lives{5}, ship_pos(0.0f, -20.0f, -70.0f), boss(&enemy_ship, &shaderProgram) {
            
     }
     
     virtual ~SpaceGame() {
-        glDeleteBuffers(1, &starsVBO);
-        glDeleteVertexArrays(1, &starsVAO);
         glDeleteTextures(1, &fire);
     }
 
@@ -288,9 +513,6 @@ public:
             throw mx::Exception("Could not load shader program tri");
         }        
         if(!textShader.loadProgram(win->util.getFilePath("data/text.vert"), win->util.getFilePath("data/text.frag"))) {
-            throw mx::Exception("Could not load shader program text");
-        }
-        if(!starsShader.loadProgram(win->util.getFilePath("data/stars.vert"), win->util.getFilePath("data/stars.frag"))) {
             throw mx::Exception("Could not load shader program text");
         }
         if(!ship.openModel(win->util.getFilePath("data/objects/bird.mxmod"))) {
@@ -312,6 +534,8 @@ public:
         if(!ufo_boss.openModel(win->util.getFilePath("data/objects/g_ufo.mxmod"))) {
             throw mx::Exception("Could not open g_ufo.mxmod");
         }
+
+        field.load(win);
 
         snd_fire = win->mixer.loadWav(win->util.getFilePath("data/sound/shoot.wav"));
         snd_crash = win->mixer.loadWav(win->util.getFilePath("data/sound/crash.wav"));
@@ -348,20 +572,6 @@ public:
         ufo_boss.setShaderProgram(&shaderProgram, "texture1");
         ufo_boss.setTextures(win, win->util.getFilePath("data/objects/metal.tex"),  win->util.getFilePath("data/objects"));
         fire = gl::loadTexture(win->util.getFilePath("data/objects/flametex.png"));
-        starsShader.useProgram();
-        starsShader.setUniform("starColor", glm::vec3(1.0f, 1.0f, 1.0f));
-        glm::mat4 star_projection = glm::ortho(-100.0f, 100.0f, -75.0f, 75.0f, -100.0f, 100.0f);
-        starsShader.setUniform("projection", star_projection);
-        initStars();
-        glGenVertexArrays(1, &starsVAO);
-        glGenBuffers(1, &starsVBO);
-        glBindVertexArray(starsVAO);
-        glBindBuffer(GL_ARRAY_BUFFER, starsVBO);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(stars), stars, GL_DYNAMIC_DRAW);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-        glEnableVertexAttribArray(0);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        glBindVertexArray(0);
 #ifndef __EMSCRIPTEN__
         glEnable(GL_PROGRAM_POINT_SIZE);
 #endif
@@ -388,12 +598,13 @@ public:
       
         /// draw objects
         glDisable(GL_DEPTH_TEST);
-        starsShader.useProgram();
+        /*starsShader.useProgram();
         glBindVertexArray(starsVAO);
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glDrawArrays(GL_POINTS, 0, numStars);
-        glBindVertexArray(0);
+        glBindVertexArray(0);*/
+        field.draw(win);
 
         glEnable(GL_DEPTH_TEST);
         shaderProgram.useProgram();
@@ -744,18 +955,6 @@ public:
             return;
         }
 
-        for (int i = 0; i < numStars; ++i) {
-            stars[i].y -= deltaTime * 10.0f; 
-            if (stars[i].y < -75.0f) {
-                stars[i] = glm::vec3(rand() % 200 - 100, 75.0f, 50.0f);
-            }
-        }
-   
-        glBindBuffer(GL_ARRAY_BUFFER, starsVBO);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(stars), stars);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        CHECK_GL_ERROR();
-
         if(launch_ship == true || game_over == true) return;
 
          if (isBarrelRolling) {
@@ -1008,12 +1207,6 @@ public:
     }
 
 private:
-    void initStars() {
-        std::srand(std::time(0));
-        for (int i = 0; i < numStars; ++i) {
-            stars[i] = glm::vec3(rand() % 200 - 100, rand() % 150 - 75, rand() % 100 + 1.0f);
-        }
-    }
 
     void releaseEnemy() {
         if(enemies_crashed < max_crashed) {
@@ -1032,13 +1225,13 @@ private:
                 break;
             }
             enemies.back()->fire = fire;
-            enemies.back()->object_pos = glm::vec3(getRandomFloat(std::get<0>(screenx)+6.0f, std::get<1>(screenx))-6.0f, std::get<3>(screenx)-1.0f, -70.0f);
+            enemies.back()->object_pos = glm::vec3(generateRandomFloat(std::get<0>(screenx)+6.0f, std::get<1>(screenx))-6.0f, std::get<3>(screenx)-1.0f, -70.0f);
             enemies.back()->initial_x = enemies.back()->object_pos.x;
         } else {
             if(boss.active == false) {
                 boss.active = true;
                 boss.fire = fire;
-                boss.object_pos = glm::vec3(getRandomFloat(std::get<0>(screenx)+6.0f, std::get<1>(screenx))-6.0f, std::get<3>(screenx)-1.0f, -70.0f);
+                boss.object_pos = glm::vec3(generateRandomFloat(std::get<0>(screenx)+6.0f, std::get<1>(screenx))-6.0f, std::get<3>(screenx)-1.0f, -70.0f);
                 boss.initial_x = boss.object_pos.x;
                 boss.initial_y = boss.object_pos.y;
                 enemies_crashed = 0;
