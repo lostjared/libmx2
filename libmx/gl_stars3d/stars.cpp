@@ -107,9 +107,8 @@ float generateRandomFloat(float min, float max) {
     return dist(eng);
 }
 
-class Game : public gl::GLObject {
+class StarField : public gl::GLObject {
 public:
-    
     struct Particle {
         float x, y, z;   
         float vx, vy, vz; 
@@ -121,22 +120,20 @@ public:
     gl::ShaderProgram program;
     GLuint VAO, VBO[3];
     GLuint texture;
-    mx::Font font;
     std::vector<Particle> particles;
     Uint32 lastUpdateTime = 0;
     float cameraZoom = 3.0f;   
     float cameraRotation = 0.0f; 
 
-    Game() : particles(NUM_PARTICLES) {}
+    StarField() : particles(NUM_PARTICLES) {}
 
-    ~Game() override {
+    ~StarField() override {
         glDeleteVertexArrays(1, &VAO);
         glDeleteBuffers(3, VBO);
         glDeleteTextures(1, &texture);
     }
 
-    void load(gl::GLWindow* win) override {
-        font.loadFont(win->util.getFilePath("data/font.ttf"), 24);
+    void load(gl::GLWindow *win) override {
         if(!program.loadProgramFromText(vertSource, fragSource)) {
             throw mx::Exception("Error loading shader");
         }
@@ -167,76 +164,55 @@ public:
         glEnableVertexAttribArray(2);
         glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, 0, (void*)0);
         texture = gl::loadTexture(win->util.getFilePath("data/star.png"));
-        cameraRotation = 355.0f;
+        cameraRotation = 356.0f;
         cameraZoom = 0.09f;
         lastUpdateTime = SDL_GetTicks();
     }
 
-    void draw(gl::GLWindow* win) override {
-    #ifndef __EMSCRIPTEN__
-            glEnable(GL_PROGRAM_POINT_SIZE);
-    #endif
-            glDisable(GL_DEPTH_TEST);
+    void event(gl::GLWindow *win, SDL_Event &e) override {
 
-            Uint32 currentTime = SDL_GetTicks();
-            float deltaTime = (currentTime - lastUpdateTime) / 1000.0f; // seconds
-            lastUpdateTime = currentTime;
-
-            update(deltaTime);
-
-            CHECK_GL_ERROR();
-
-            program.useProgram();
-
-            glm::mat4 projection = glm::perspective(
-                glm::radians(45.0f), 
-                (float)win->w / (float)win->h, 
-                0.1f, 
-                100.0f
-            );
-
-            glm::vec3 cameraPos(
-                cameraZoom * sin(glm::radians(cameraRotation)), 
-                0.0f,                                           
-                cameraZoom * cos(glm::radians(cameraRotation))  
-            );
-            glm::vec3 target(0.0f, 0.0f, 0.0f); 
-            glm::vec3 up(0.0f, 1.0f, 0.0f);     \
-            glm::mat4 view = glm::lookAt(cameraPos, target, up);
-            glm::mat4 model = glm::mat4(1.0f);  
-            glm::mat4 MVP = projection * view * model;
-            program.setUniform("MVP", MVP);
-            program.setUniform("spriteTexture", 0);
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, texture);
-            glBindVertexArray(VAO);
-            glDrawArrays(GL_POINTS, 0, NUM_PARTICLES);
-            win->text.setColor({255, 0, 0, 255});
-            win->text.printText_Solid(font,25.0f, 25.0f,"3D Stars - Zoom: " + std::to_string(cameraZoom) + " Rotation: " + std::to_string(cameraRotation) + " Count: " + std::to_string(NUM_PARTICLES));
-        }
-
-        void event(gl::GLWindow* win, SDL_Event &e) override {
-            if (e.type == SDL_KEYDOWN) {
-                switch (e.key.keysym.sym) {
-                    case SDLK_UP:    
-                        cameraZoom -= 0.1f;
-                        if (cameraZoom < -10.0f) cameraZoom = -10.0f; 
-                        break;
-                    case SDLK_DOWN:  
-                        cameraZoom += 0.1f;
-                        if (cameraZoom > 10.0f) cameraZoom = 10.0f; 
-                        break;
-                    case SDLK_LEFT:  
-                        cameraRotation -= 5.0f;
-                        break;
-                    case SDLK_RIGHT: 
-                        cameraRotation += 5.0f;
-                        break;
-                }
-            }
-        }
-
+    }
     
+    void draw(gl::GLWindow *win) override {
+#ifndef __EMSCRIPTEN__
+        glEnable(GL_PROGRAM_POINT_SIZE);
+#endif
+        glDisable(GL_DEPTH_TEST);
+
+        Uint32 currentTime = SDL_GetTicks();
+        float deltaTime = (currentTime - lastUpdateTime) / 1000.0f; // seconds
+        lastUpdateTime = currentTime;
+
+        update(deltaTime);
+
+        CHECK_GL_ERROR();
+
+        program.useProgram();
+
+        glm::mat4 projection = glm::perspective(
+            glm::radians(45.0f), 
+            (float)win->w / (float)win->h, 
+            0.1f, 
+            100.0f
+        );
+
+        glm::vec3 cameraPos(
+            cameraZoom * sin(glm::radians(cameraRotation)), 
+            0.0f,                                           
+            cameraZoom * cos(glm::radians(cameraRotation))  
+        );
+        glm::vec3 target(0.0f, 0.0f, 0.0f); 
+        glm::vec3 up(0.0f, 1.0f, 0.0f);     \
+        glm::mat4 view = glm::lookAt(cameraPos, target, up);
+        glm::mat4 model = glm::mat4(1.0f);  
+        glm::mat4 MVP = projection * view * model;
+        program.setUniform("MVP", MVP);
+        program.setUniform("spriteTexture", 0);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glBindVertexArray(VAO);
+        glDrawArrays(GL_POINTS, 0, NUM_PARTICLES);
+    }
 
     void update(float deltaTime) {
         if(deltaTime > 0.1f) 
@@ -283,7 +259,51 @@ public:
 
         glBindBuffer(GL_ARRAY_BUFFER, VBO[2]);
         glBufferSubData(GL_ARRAY_BUFFER, 0, colors.size() * sizeof(float), colors.data());
+    }
+};
 
+class Game : public gl::GLObject {
+public:
+    mx::Font font;
+    StarField field; //GLObjects inside of GLObjects
+    Game()  {}
+
+    ~Game() override {
+    }
+
+    void load(gl::GLWindow* win) override {
+        font.loadFont(win->util.getFilePath("data/font.ttf"), 24);
+        field.load(win);
+    }
+
+    void draw(gl::GLWindow* win) override {
+        field.draw(win);
+        win->text.setColor({255, 0, 0, 255});
+        win->text.printText_Solid(font,25.0f, 25.0f,"3D Stars - Zoom: " + std::to_string(field.cameraZoom) + " Rotation: " + std::to_string(field.cameraRotation) + " Count: " + std::to_string(field.NUM_PARTICLES));
+    }
+
+    void event(gl::GLWindow* win, SDL_Event &e) override {
+        if (e.type == SDL_KEYDOWN) {
+            switch (e.key.keysym.sym) {
+                case SDLK_UP:    
+                    field.cameraZoom -= 0.1f;
+                    if (field.cameraZoom < -10.0f) field.cameraZoom = -10.0f; 
+                    break;
+                case SDLK_DOWN:  
+                    field.cameraZoom += 0.1f;
+                    if (field.cameraZoom > 10.0f) field.cameraZoom = 10.0f; 
+                    break;
+                case SDLK_LEFT:  
+                    field.cameraRotation -= 1.0f;
+                    break;
+                case SDLK_RIGHT: 
+                    field.cameraRotation += 1.0f;
+                    break;
+            }
+        }
+    }
+
+    void update(float deltaTime) {
         CHECK_GL_ERROR();
     }
 };
