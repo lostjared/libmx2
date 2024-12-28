@@ -356,8 +356,6 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
         glBindTexture(GL_TEXTURE_2D, texture);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         SDL_Surface *surface = png::LoadPNG(filename.c_str());
         if (!surface) {
             throw mx::Exception("Error loading PNG file.");
@@ -365,21 +363,26 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
         SDL_Surface *converted = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_RGBA32, 0);
         SDL_FreeSurface(surface);
         surface = converted;
-        surface = mx::Texture::flipSurface(surface);
+        mx::Texture::flipSurface(surface);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, surface->w, surface->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, surface->pixels);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); 
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glGenerateMipmap(GL_TEXTURE_2D);
         SDL_FreeSurface(surface);
+        GLenum error = glGetError();
+        if (error != GL_NO_ERROR) {
+            throw mx::Exception("OpenGL error occurred.");
+        }
         glBindTexture(GL_TEXTURE_2D, 0);
         return texture;
     }
 
     GLuint loadTexture(const std::string &filename, int &w, int &h) {
-            GLuint texture = 0;
+        GLuint texture = 0;
         glGenTextures(1, &texture);
         glBindTexture(GL_TEXTURE_2D, texture);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         SDL_Surface *surface = png::LoadPNG(filename.c_str());
         if (!surface) {
             throw mx::Exception("Error loading PNG file.");
@@ -389,6 +392,9 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
         surface = converted;
         surface = mx::Texture::flipSurface(surface);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, surface->w, surface->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, surface->pixels);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); 
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glGenerateMipmap(GL_TEXTURE_2D);
         w = surface->w;
         h = surface->h;
         SDL_FreeSurface(surface);
@@ -405,22 +411,27 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
         glBindTexture(GL_TEXTURE_2D, texture);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
         SDL_Surface *converted = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_RGBA32, 0);
-      
+        if(!converted) {
+            glDeleteTextures(1, &texture);
+            throw mx::Exception("Failed to flip surface.");
+        }
+
         if(flip) {
             SDL_Surface *flipped = mx::Texture::flipSurface(converted);
             if (!flipped) {
+                glDeleteTextures(1, &texture);
                 SDL_FreeSurface(converted);
                 glBindTexture(GL_TEXTURE_2D, 0);
                 throw mx::Exception("Failed to flip surface.");
             }
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, flipped->w, flipped->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, flipped->pixels);
         } else {
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, converted->w, converted->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, converted->pixels);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, converted->w, converted->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, converted->pixels);    
         }
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); 
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glGenerateMipmap(GL_TEXTURE_2D);
         glBindTexture(GL_TEXTURE_2D, 0);
         SDL_FreeSurface(converted);
         return texture;
