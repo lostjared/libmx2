@@ -42,10 +42,11 @@ void main() {
 
 const char *s_vSource = R"(#version 300 es
 
+// Declare high precision for floating-point types
 precision highp float;
 
-layout (location = 0) precision highp float;in vec3 aPos;
-layout (location = 1) in vec4 aColor;
+layout(location = 0) in vec3 aPos;
+layout(location = 1) in vec4 aColor;
 
 out vec4 particleColor;
 
@@ -59,9 +60,11 @@ void main() {
     particleColor = aColor;
 })";
 
+
 const char *s_fSource = R"(#version 300 es
 
-precision highp float;
+// Declare medium precision for floating-point types
+precision mediump float;
 
 in vec4 particleColor;
 out vec4 FragColor;
