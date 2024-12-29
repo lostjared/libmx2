@@ -79,6 +79,7 @@ namespace gl {
         GLSprite();
         ~GLSprite();
         void initSize(float w, float h);
+        void setName(const std::string &name);
         void setShader(ShaderProgram *program);
         void initWithTexture(ShaderProgram *program, GLuint texture, float x, float y, int textWidth, int textHeight);
         void loadTexture(ShaderProgram *shader, const std::string &tex, float x, float  y, int textWidth, int textHeight);
@@ -93,6 +94,7 @@ namespace gl {
         std::vector<float> vertices;
         float screenWidth = 0.0f, screenHeight = 0.0f;
         int width = 0, height = 0;
+        std::string textureName;
     };
 
     class GLObject;

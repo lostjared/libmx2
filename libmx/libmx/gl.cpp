@@ -196,8 +196,7 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
         bool e = false;
         int glErr = glGetError();
         while(glErr != GL_NO_ERROR) {
-            mx::system_err << "GL Error: " << glErr << "\n";
-            //mx::system_err << "Error String: " << glewGetErrorString(glErr) << "\n";
+            std::cerr << "OpenGL Error: " << glErr << "\n";
             e = true;
             glErr = glGetError();
         }
@@ -591,7 +590,7 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
         glEnable(GL_DEPTH_TEST);
     }
 
-    GLSprite::GLSprite() : texture{0} {}
+    GLSprite::GLSprite() : texture{0}, textureName{"textTexture"} {}
 
     void GLSprite::initSize(float w, float h) {
         screenWidth = w;
@@ -600,6 +599,10 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
 
     void GLSprite::setShader(ShaderProgram *program) {
         shader = program;
+    }
+
+    void GLSprite::setName(const std::string &name) {
+        textureName = name;
     }
     
     GLSprite::~GLSprite() {
@@ -649,7 +652,7 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
         glEnableVertexAttribArray(1);
         this->shader->useProgram();
-        this->shader->setUniform("textTexture", 0);
+        this->shader->setUniform(textureName, 0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindVertexArray(0);
     }
@@ -683,7 +686,7 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
         glEnableVertexAttribArray(1);
         this->shader->useProgram();
-        this->shader->setUniform("textTexture", 0);
+        this->shader->setUniform(textureName, 0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindVertexArray(0);
     }
@@ -720,7 +723,7 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
         glEnableVertexAttribArray(1);
         this->shader->useProgram();
-        this->shader->setUniform("textTexture", 0);
+        this->shader->setUniform(textureName, 0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindVertexArray(0);
     }
