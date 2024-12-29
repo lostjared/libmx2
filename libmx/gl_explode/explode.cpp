@@ -34,18 +34,22 @@ out vec4 FragColor;
 uniform sampler2D sprite;
 
 void main() {
+    float dist = length(gl_PointCoord - vec2(0.5));
+    if (dist > 0.3) {
+        discard;
+    }
     vec4 texColor = texture(sprite, gl_PointCoord);
     FragColor = texColor * particleColor;
 })";
 
 #else
-
 const char *s_vSource = R"(#version 300 es
 
+// Declare high precision for floating-point types
 precision highp float;
 
-layout (location = 0) precision highp float;in vec3 aPos;
-layout (location = 1) in vec4 aColor;
+layout(location = 0) in vec3 aPos;
+layout(location = 1) in vec4 aColor;
 
 out vec4 particleColor;
 
@@ -55,13 +59,15 @@ uniform mat4 projection;
 
 void main() {
     gl_Position = projection * view * model * vec4(aPos, 1.0);
-    gl_PointSize = 25.0; 
+    gl_PointSize = 10.0; 
     particleColor = aColor;
 })";
 
+
 const char *s_fSource = R"(#version 300 es
 
-precision highp float;
+// Declare medium precision for floating-point types
+precision mediump float;
 
 in vec4 particleColor;
 out vec4 FragColor;
@@ -69,10 +75,13 @@ out vec4 FragColor;
 uniform sampler2D sprite;
 
 void main() {
+    float dist = length(gl_PointCoord - vec2(0.5));
+    if (dist > 0.3) {
+        discard;
+    }
     vec4 texColor = texture(sprite, gl_PointCoord);
     FragColor = texColor * particleColor;
 })";
-
 #endif
 
     Explosion::Explosion(unsigned int max) : maxParticles(max), VAO(0), VBO(0) {
@@ -195,7 +204,7 @@ void main() {
     }
     
     void ExplosionEmiter::explode(gl::GLWindow *win, glm::vec3 pos) {
-        explosions.push_back(std::make_unique<Explosion>(1000));
+        explosions.push_back(std::make_unique<Explosion>(250));
         explosions.back()->setInfo(&shader_program, texture);
         explosions.back()->load(win);
         explosions.back()->trigger(pos);
