@@ -296,6 +296,8 @@ public:
     float spinDuration = 0.6f;
     float elapsedSpinTime = 0.0f;
     GLuint fire = 0;
+    glm::vec4 particleColor;
+
     Enemy(mx::Model *m, EnemyType type, gl::ShaderProgram *shaderv) : object{m}, shader{shaderv}, etype{type} {
     }
     virtual ~Enemy() = default;
@@ -354,7 +356,10 @@ protected:
 class EnemyShip : public Enemy {
 public:
 
-    EnemyShip(mx::Model *m, gl::ShaderProgram *shadev) : Enemy(m, EnemyType::SHIP, shadev) {}
+    EnemyShip(mx::Model *m, gl::ShaderProgram *shadev) : Enemy(m, EnemyType::SHIP, shadev) {
+        particleColor = glm::vec4(1.0f, 0.3f, 0.0f, 1.0f);
+
+    }
     ~EnemyShip() override {}
     virtual void update(float deltatime) override {
 
@@ -378,7 +383,9 @@ protected:
 
 class EnemySaucer : public Enemy {
 public:
-    EnemySaucer(mx::Model *m, gl::ShaderProgram *shadev) : Enemy(m, EnemyType::SAUCER, shadev) {}
+    EnemySaucer(mx::Model *m, gl::ShaderProgram *shadev) : Enemy(m, EnemyType::SAUCER, shadev) {
+        particleColor = glm::vec4(1.0f, 0.3f, 0.0f, 1.0f);
+    }
     ~EnemySaucer() override {}
     virtual void update(float deltatime) override {
     
@@ -390,7 +397,9 @@ public:
 
 class EnemyTriangle : public Enemy {
 public:
-    EnemyTriangle(mx::Model *m, gl::ShaderProgram *shadev) : Enemy(m, EnemyType::TRIANGLE, shadev) {}
+    EnemyTriangle(mx::Model *m, gl::ShaderProgram *shadev) : Enemy(m, EnemyType::TRIANGLE, shadev) {
+        particleColor = glm::vec4(1.0f, 0.3f, 0.0f, 1.0f);
+    }
     ~EnemyTriangle() override {}
     virtual void update(float deltatime) override {
         
@@ -415,7 +424,9 @@ public:
     bool hit_flash = false;
     int max_hits = 25;
 
-    EnemyBoss(mx::Model *m, gl::ShaderProgram *shadev) : Enemy(m, EnemyType::BOSS, shadev) {}
+    EnemyBoss(mx::Model *m, gl::ShaderProgram *shadev) : Enemy(m, EnemyType::BOSS, shadev) {
+        particleColor = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+    }
     ~EnemyBoss() override {}
     virtual void update(float deltatime) override {
         
@@ -644,10 +655,13 @@ public:
             model = glm::rotate(model, glm::radians(spinAngle), glm::vec3(1.0f, 1.0f, 1.0f));
 
         shaderProgram.setUniform("model", model);
-        if(!isSpinning)
-            ship.drawArrays();
-        else
-            ship.drawArraysWithTexture(fire, "texture1");
+
+        if(!wait_explode) {
+            if(!isSpinning)
+                ship.drawArrays();
+            else
+                ship.drawArraysWithTexture(fire, "texture1");
+        }
 
         if(!projectiles.empty()) {
             for (auto &pos : projectiles) {
@@ -733,7 +747,8 @@ public:
 
             textTexture = createTextTexture(text, font.wrapper().unwrap(), white, textWidth, textHeight);
         }
-        renderText(textTexture, textWidth, textHeight, win->w, win->h);
+        if(!wait_explode)
+            renderText(textTexture, textWidth, textHeight, win->w, win->h);
         glDeleteTextures(1, &textTexture);
         glDisable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
@@ -796,7 +811,7 @@ public:
 
                 if(launch_ship == true) {
                     launch_ship = false;
-                     if(!win->mixer.isPlaying(0))
+                     if(!wait_explode && !win->mixer.isPlaying(0))
                         Mix_HaltChannel(0);
 
                     win->mixer.playWav(snd_takeoff, 0, 0);
@@ -866,10 +881,18 @@ public:
         }
 
         if(launch_ship == true) {
+
+            if(wait_explode && ex_emiter.explosions.size() != 0) {
+                return;
+            } else {
+                wait_explode = false;
+                ship_pos = glm::vec3(0.0f, -20.0f, -70.0f);
+            }
+
             if(stick.getButton(mx::Input_Button::BTN_X)) {
                 launch_ship = false;
 
-                if(!win->mixer.isPlaying(0))
+                if(!wait_explode && !win->mixer.isPlaying(0))
                     Mix_HaltChannel(0);
 
                 win->mixer.playWav(snd_takeoff, 0, 0);
@@ -941,12 +964,13 @@ public:
         }
     }
 
+    bool wait_explode = false;
 
     void die() {
         enemies.clear();
         projectiles.clear();
         launch_ship = true;
-        ship_pos = glm::vec3(0.0f, -20.0f, -70.0f);
+        wait_explode = true;
         barrelRollAngle = 0.0f;
         isBarrelRolling = false;
         shipRotation = 0.0f;
@@ -968,13 +992,16 @@ public:
         ex_emiter.update(win, deltaTime);
 
         if(ready == true) {
-            if(win->mixer.isPlaying(0))
-                Mix_HaltChannel(0);
+            ex_emiter.explode(win, ship_pos, glm::vec4(1.0f, 0.0f, 1.0f, 1.0f));
             die();
+            wait_explode = true;
             ready = false;
             return;
         }
-        if(launch_ship == true || game_over == true) return;
+
+        if(launch_ship == true || game_over == true) {
+            return;
+        }
 
 
          if (isBarrelRolling) {
@@ -1028,7 +1055,7 @@ public:
         for (int i = (int)enemies.size() - 1; i >= 0; i--) {
             enemies[i]->updateSpin(deltaTime);
             if (enemies[i]->ready) {
-                ex_emiter.explode(win, enemies[i]->object_pos);
+                ex_emiter.explode(win, enemies[i]->object_pos, enemies[i]->particleColor);
                 enemies.erase(enemies.begin() + i);
                 if(boss.active == false) enemies_crashed ++;
             }
@@ -1037,7 +1064,7 @@ public:
             boss.updateSpin(deltaTime);
         }
         if(boss.ready) {
-            ex_emiter.explode(win, boss.object_pos);
+            ex_emiter.explode(win, boss.object_pos, boss.particleColor);
             boss.active = false;
             boss.reset();
             boss.ready = false;

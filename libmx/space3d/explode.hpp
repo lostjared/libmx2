@@ -16,6 +16,9 @@ public:
         glm::vec4 color;
     };
 #pragma pack(pop)
+
+    glm::vec4 particleColor;
+
     Explosion(unsigned int maxParticles);
     ~Explosion() override {
         glDeleteVertexArrays(1, &VAO);
@@ -53,7 +56,7 @@ public:
     void update(gl::GLWindow *window, float deltaTime);
     void draw(gl::GLWindow *window);
 
-    void explode(gl::GLWindow *win, glm::vec3 pos);
+    void explode(gl::GLWindow *win, glm::vec3 pos, glm::vec4 particeColor);
 
     std::vector<std::unique_ptr<Explosion>> explosions;
     gl::ShaderProgram shader_program;

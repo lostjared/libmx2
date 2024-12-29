@@ -165,7 +165,7 @@ void main() {
         particle.position = origin;
         particle.velocity = glm::sphericalRand(4.0f);
         particle.lifetime = glm::linearRand(0.5f, 2.0f);
-        particle.color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f); 
+        particle.color = particleColor; 
     }
 
     void ExplosionEmiter::load(gl::GLWindow *win) {
@@ -195,9 +195,10 @@ void main() {
         }
     }
     
-    void ExplosionEmiter::explode(gl::GLWindow *win, glm::vec3 pos) {
-        explosions.push_back(std::make_unique<Explosion>(200));
+    void ExplosionEmiter::explode(gl::GLWindow *win, glm::vec3 pos, glm::vec4 particleColor) {
+        explosions.push_back(std::make_unique<Explosion>(100));
         explosions.back()->setInfo(&shader_program, texture);
+        explosions.back()->particleColor = particleColor;
         explosions.back()->load(win);
         explosions.back()->trigger(pos);
     }
