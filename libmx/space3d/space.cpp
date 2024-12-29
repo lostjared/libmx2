@@ -9,6 +9,7 @@
 #include<ctime>
 #include<cstdlib>
 #include<tuple>
+#include<memory>
 
 #include"gl.hpp"
 #include"loadpng.hpp"
@@ -279,6 +280,7 @@ enum class EnemyType { SHIP=1, SAUCER, TRIANGLE, BOSS };
 
 class Enemy {
 public:
+    std::unique_ptr<effect::Explosion> explosion;
     mx::Model *object = nullptr;
     gl::ShaderProgram *shader = nullptr;
     glm::vec3 object_pos;
@@ -290,17 +292,21 @@ public:
     float spinSpeed = 360.0f; 
     float spinDuration = 0.6f;
     float elapsedSpinTime = 0.0f;
+    
     GLuint fire = 0;
-    Enemy(mx::Model *m, EnemyType type, gl::ShaderProgram *shaderv) : object{m}, shader{shaderv}, etype{type} {}
+    Enemy(mx::Model *m, EnemyType type, gl::ShaderProgram *shaderv) : object{m}, shader{shaderv}, etype{type} {
+        explosion = std::make_unique<effect::Explosion>(1000);
+    }
     virtual ~Enemy() = default;
     Enemy(const Enemy &e) = delete;
     Enemy &operator=(const Enemy &e) = delete;
-    Enemy(Enemy &&e) : object{e.object}, shader{e.shader}, object_pos{e.object_pos}, etype{e.etype} {
+    Enemy(Enemy &&e) : explosion{std::move(e.explosion)}, object{e.object}, shader{e.shader}, object_pos{e.object_pos}, etype{e.etype} {
         e.object = nullptr;
         e.shader = nullptr;
     }
     Enemy &operator=(Enemy &&e) {
         if(this != &e) {
+            explosion = std::move(e.explosion);
             object = e.object;
             object_pos = e.object_pos;
             etype = e.etype;
@@ -311,6 +317,7 @@ public:
     }
     void load(gl::GLWindow *win, mx::Model *m) {
         object = m;
+        explosion->load(win);
     }
     void setEnemyType(EnemyType e) {
         etype = e;
@@ -321,6 +328,7 @@ public:
         else {
             object->drawArraysWithTexture(fire, "texture1");
         }
+        ;
     }
 
     virtual void update(float deltaTime) = 0;
@@ -500,7 +508,7 @@ public:
     float bossSize = 9.2f;
     int level = 1;
     StarField field;
-
+    
     SpaceGame(gl::GLWindow *win) : score{0}, lives{5}, ship_pos(0.0f, -20.0f, -70.0f), boss(&enemy_ship, &shaderProgram) {
            
     }
@@ -508,6 +516,8 @@ public:
     virtual ~SpaceGame() {
         glDeleteTextures(1, &fire);
     }
+
+    
 
     void load(gl::GLWindow *win) override {
         font.loadFont(win->util.getFilePath("data/font.ttf"), 24);
@@ -517,8 +527,6 @@ public:
         if(!textShader.loadProgram(win->util.getFilePath("data/text.vert"), win->util.getFilePath("data/text.frag"))) {
             throw mx::Exception("Could not load shader program text");
         }
-
-        effect::load_program();
 
         if(!ship.openModel(win->util.getFilePath("data/objects/bird.mxmod"))) {
             throw mx::Exception("Could not open model bird.mxmod");
@@ -693,7 +701,6 @@ public:
             shaderProgram.setUniform("model", projModel);
             boss.draw();
         }
-             
 
         glDisable(GL_DEPTH_TEST);
         glEnable(GL_BLEND);

@@ -70,15 +70,7 @@ void main() {
 })";
 
 #endif
-
-    gl::ShaderProgram Explosion::shader_program;
-
-    void load_program() {
-        if(!Explosion::shader_program.loadProgramFromText(s_vSource, s_fSource)) {
-            throw mx::Exception("Could not load");
-        }
-
-    } 
+ 
 
     Explosion::Explosion(unsigned int max) : maxParticles(max), VAO(0), VBO(0) {
 
@@ -86,6 +78,7 @@ void main() {
 
     void Explosion::load(gl::GLWindow *win) {
         particles.resize(maxParticles);
+        shader_program.loadProgramFromText(s_vSource, s_fSource);
 
         glGenVertexArrays(1, &VAO);
         glGenBuffers(1, &VBO);
@@ -114,14 +107,14 @@ void main() {
                 if (particle.lifetime > 0.0f) {
                     particle.lifetime -= deltaTime;
                     particle.position += particle.velocity * deltaTime;
-                    particle.color.a = particle.lifetime; // Fade out
+                    particle.color.a = particle.lifetime; 
                 }
         }
     }
 
     void Explosion::draw(gl::GLWindow *win) {
         glDisable(GL_DEPTH_TEST);
-        program->useProgram();
+        shader_program.useProgram();
         glBindVertexArray(VAO);
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
         glBufferSubData(GL_ARRAY_BUFFER, 0, particles.size() * sizeof(Particle), particles.data());

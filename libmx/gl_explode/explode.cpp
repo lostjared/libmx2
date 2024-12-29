@@ -114,7 +114,7 @@ void main() {
                 if (particle.lifetime > 0.0f) {
                     particle.lifetime -= deltaTime;
                     particle.position += particle.velocity * deltaTime;
-                    particle.color.a = particle.lifetime; // Fade out
+                    particle.color.a = particle.lifetime; 
                 }
         }
     }

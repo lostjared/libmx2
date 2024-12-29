@@ -34,10 +34,8 @@ private:
     void resetParticle(Particle &particle, glm::vec3 origin);
 
 public:
-    static gl::ShaderProgram shader_program;
+    gl::ShaderProgram shader_program;
 };
-
-extern void load_program();
 
 }
 
