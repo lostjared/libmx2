@@ -1,4 +1,4 @@
-add_executable(space3d space.cpp intro.cpp)
+add_executable(space3d space.cpp intro.cpp explode.cpp)
 target_include_directories(space3d PRIVATE 
     ${CMAKE_SOURCE_DIR}/libmx 
     ${SDL2_INCLUDE_DIRS} 

@@ -15,6 +15,8 @@
 #include"model.hpp"
 #include<random>
 #include"intro.hpp"
+#include"explode.hpp"
+
 
 #define CHECK_GL_ERROR() \
 { GLenum err = glGetError(); \
@@ -515,6 +517,9 @@ public:
         if(!textShader.loadProgram(win->util.getFilePath("data/text.vert"), win->util.getFilePath("data/text.frag"))) {
             throw mx::Exception("Could not load shader program text");
         }
+
+        effect::load_program();
+
         if(!ship.openModel(win->util.getFilePath("data/objects/bird.mxmod"))) {
             throw mx::Exception("Could not open model bird.mxmod");
         }
@@ -534,6 +539,7 @@ public:
         if(!ufo_boss.openModel(win->util.getFilePath("data/objects/g_ufo.mxmod"))) {
             throw mx::Exception("Could not open g_ufo.mxmod");
         }
+
 
         field.load(win);
 
