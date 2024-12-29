@@ -479,6 +479,7 @@ public:
     std::vector<std::tuple<glm::vec3, glm::vec3>> projectiles;
     std::vector<std::unique_ptr<Enemy>> enemies;
     EnemyBoss boss;
+    effect::ExplosionEmiter ex_emiter;
     float shipRotation = 0.0f;        
     float rotationSpeed = 90.0f;      
     float maxTiltAngle = 10.0f;       
@@ -566,12 +567,14 @@ public:
         std::get<3>(screenx) = height / 2.0f;
         glm::mat4 projection = glm::perspective(glm::radians(45.0f), aspectRatio, 0.1f, 100.0f);
         shaderProgram.setUniform("projection", projection);
+        ex_emiter.projection = projection;
         glm::mat4 view = glm::lookAt(
             glm::vec3(0.0f, 0.0f, 5.0f),  
             glm::vec3(0.0f, 0.0f, 0.0f),  
             glm::vec3(0.0f, 1.0f, 0.0f)   
         );
         shaderProgram.setUniform("view", view);   
+        ex_emiter.view = view;
         ship.setShaderProgram(&shaderProgram, "texture1");
         ship.setTextures(win, win->util.getFilePath("data/objects/bird.tex"), win->util.getFilePath("data/objects"));
         projectile.setShaderProgram(&shaderProgram, "texture1");
@@ -585,6 +588,7 @@ public:
         ufo_boss.setShaderProgram(&shaderProgram, "texture1");
         ufo_boss.setTextures(win, win->util.getFilePath("data/objects/metal.tex"),  win->util.getFilePath("data/objects"));
         fire = gl::loadTexture(win->util.getFilePath("data/objects/flametex.png"));
+        ex_emiter.load(win);
 #ifndef __EMSCRIPTEN__
         glEnable(GL_PROGRAM_POINT_SIZE);
 #endif
@@ -701,6 +705,8 @@ public:
             boss.draw();
         }
 
+        ex_emiter.draw(win);
+
         glDisable(GL_DEPTH_TEST);
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -708,7 +714,6 @@ public:
         SDL_Color white = {255, 255, 255, 255};
         int textWidth = 0, textHeight = 0;
         GLuint textTexture;
-
 #ifndef __EMSCRIPTEN__
         if(fill == false) {
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);        
@@ -956,8 +961,11 @@ public:
     }
 
     void update(gl::GLWindow *win, float deltaTime) {
+
         checkInput(win, deltaTime);
         updateSpin(deltaTime);
+
+        ex_emiter.update(win, deltaTime);
 
         if(ready == true) {
             if(win->mixer.isPlaying(0))
@@ -966,8 +974,8 @@ public:
             ready = false;
             return;
         }
-
         if(launch_ship == true || game_over == true) return;
+
 
          if (isBarrelRolling) {
            barrelRollAngle += barrelRollSpeed * deltaTime;
@@ -1020,6 +1028,7 @@ public:
         for (int i = (int)enemies.size() - 1; i >= 0; i--) {
             enemies[i]->updateSpin(deltaTime);
             if (enemies[i]->ready) {
+                ex_emiter.explode(win, enemies[i]->object_pos);
                 enemies.erase(enemies.begin() + i);
                 if(boss.active == false) enemies_crashed ++;
             }
@@ -1028,6 +1037,7 @@ public:
             boss.updateSpin(deltaTime);
         }
         if(boss.ready) {
+            ex_emiter.explode(win, boss.object_pos);
             boss.active = false;
             boss.reset();
             boss.ready = false;
@@ -1098,7 +1108,6 @@ public:
                         score += 10; 
                         projectileDestroyed = true;
                         enemies[ei]->isSpinning = true;
-                        //enemies[ei]->explosion->trigger(enemies[ei]->object_pos);
                         if(!win->mixer.isPlaying(2)) {
                             Mix_HaltChannel(1);
                             win->mixer.playWav(snd_crash, 0, 2);

@@ -57,8 +57,8 @@ public:
 
     std::vector<std::unique_ptr<Explosion>> explosions;
     gl::ShaderProgram shader_program;
-private:
     glm::mat4 projection, view, model;
+private:
     GLuint texture = 0;
 };
 

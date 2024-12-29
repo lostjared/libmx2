@@ -22,7 +22,7 @@ uniform mat4 projection;
 
 void main() {
     gl_Position = projection * view * model * vec4(aPos, 1.0);
-    gl_PointSize = 25.0; 
+    gl_PointSize = 10.0; 
     particleColor = aColor;
 })";
 
@@ -55,7 +55,7 @@ uniform mat4 projection;
 
 void main() {
     gl_Position = projection * view * model * vec4(aPos, 1.0);
-    gl_PointSize = 25.0; 
+    gl_PointSize = 10.0; 
     particleColor = aColor;
 })";
 
@@ -152,7 +152,7 @@ void main() {
 
     void Explosion::resetParticle(Particle &particle, glm::vec3 origin) {
         particle.position = origin;
-        particle.velocity = glm::sphericalRand(1.0f);
+        particle.velocity = glm::sphericalRand(4.0f);
         particle.lifetime = glm::linearRand(0.5f, 2.0f);
         particle.color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f); 
     }
@@ -161,16 +161,6 @@ void main() {
         if(!shader_program.loadProgramFromText(s_vSource, s_fSource)) {
             throw mx::Exception("Couldn't load Explosion Shader");
         }
-
-        float fov = glm::radians(45.0f); 
-        float aspectRatio = static_cast<float>(win->w) / static_cast<float>(win->h);
-        float nearPlane = 0.1f;
-        float farPlane = 100.0f;
-        projection = glm::perspective(fov, aspectRatio, nearPlane, farPlane);
-        glm::vec3 cameraPos   = glm::vec3(0.0f, 0.0f, 5.0f);
-        glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f); 
-        glm::vec3 upVector    = glm::vec3(0.0f, 1.0f, 0.0f); 
-        view = glm::lookAt(cameraPos, cameraTarget, upVector);
         model = glm::mat4(1.0f);
         shader_program.useProgram();
         shader_program.setUniform("projection", projection);
@@ -195,7 +185,7 @@ void main() {
     }
     
     void ExplosionEmiter::explode(gl::GLWindow *win, glm::vec3 pos) {
-        explosions.push_back(std::make_unique<Explosion>(1000));
+        explosions.push_back(std::make_unique<Explosion>(100));
         explosions.back()->setInfo(&shader_program, texture);
         explosions.back()->load(win);
         explosions.back()->trigger(pos);
