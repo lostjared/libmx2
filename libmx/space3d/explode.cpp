@@ -34,6 +34,10 @@ out vec4 FragColor;
 uniform sampler2D sprite;
 
 void main() {
+    float dist = length(gl_PointCoord - vec2(0.5));
+    if (dist > 0.3) {
+        discard;
+    }
     vec4 texColor = texture(sprite, gl_PointCoord);
     FragColor = texColor * particleColor;
 })";
@@ -72,6 +76,10 @@ out vec4 FragColor;
 uniform sampler2D sprite;
 
 void main() {
+    float dist = length(gl_PointCoord - vec2(0.5));
+    if (dist > 0.3) {
+        discard;
+    }
     vec4 texColor = texture(sprite, gl_PointCoord);
     FragColor = texColor * particleColor;
 })";
@@ -188,7 +196,7 @@ void main() {
     }
     
     void ExplosionEmiter::explode(gl::GLWindow *win, glm::vec3 pos) {
-        explosions.push_back(std::make_unique<Explosion>(100));
+        explosions.push_back(std::make_unique<Explosion>(200));
         explosions.back()->setInfo(&shader_program, texture);
         explosions.back()->load(win);
         explosions.back()->trigger(pos);
