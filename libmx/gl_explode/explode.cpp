@@ -1,6 +1,6 @@
 #include "explode.hpp"
 #ifdef __EMSCRIPTEN__
-#include "gtc/randos.hpp"
+#include "gtc/random.hpp"
 #else
 #include<glm/gtc/random.hpp>
 #endif
