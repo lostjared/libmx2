@@ -65,6 +65,7 @@ void main() {
 
 #else
 const char* vertSource = R"(#version 300 es
+
 precision highp float;
 
 layout (location = 0) in vec3 inPosition; 
@@ -83,6 +84,7 @@ void main() {
 )";
 
 const char* fragSource = R"(#version 300 es
+
 precision highp float;
 
 in vec4 fragColor;
@@ -214,6 +216,7 @@ public:
         glBindTexture(GL_TEXTURE_2D, texture);
         glBindVertexArray(VAO);
         glDrawArrays(GL_POINTS, 0, NUM_PARTICLES);
+        CHECK_GL_ERROR();
     }
 
     void update(float deltaTime) {
@@ -280,7 +283,7 @@ enum class EnemyType { SHIP=1, SAUCER, TRIANGLE, BOSS };
 
 class Enemy {
 public:
-    std::unique_ptr<effect::Explosion> explosion;
+    
     mx::Model *object = nullptr;
     gl::ShaderProgram *shader = nullptr;
     glm::vec3 object_pos;
@@ -292,21 +295,18 @@ public:
     float spinSpeed = 360.0f; 
     float spinDuration = 0.6f;
     float elapsedSpinTime = 0.0f;
-    
     GLuint fire = 0;
     Enemy(mx::Model *m, EnemyType type, gl::ShaderProgram *shaderv) : object{m}, shader{shaderv}, etype{type} {
-        explosion = std::make_unique<effect::Explosion>(1000);
     }
     virtual ~Enemy() = default;
     Enemy(const Enemy &e) = delete;
     Enemy &operator=(const Enemy &e) = delete;
-    Enemy(Enemy &&e) : explosion{std::move(e.explosion)}, object{e.object}, shader{e.shader}, object_pos{e.object_pos}, etype{e.etype} {
+    Enemy(Enemy &&e) :  object{e.object}, shader{e.shader}, object_pos{e.object_pos}, etype{e.etype} {
         e.object = nullptr;
         e.shader = nullptr;
     }
     Enemy &operator=(Enemy &&e) {
         if(this != &e) {
-            explosion = std::move(e.explosion);
             object = e.object;
             object_pos = e.object_pos;
             etype = e.etype;
@@ -317,7 +317,6 @@ public:
     }
     void load(gl::GLWindow *win, mx::Model *m) {
         object = m;
-        explosion->load(win);
     }
     void setEnemyType(EnemyType e) {
         etype = e;
@@ -994,7 +993,7 @@ public:
         }
         enemyReleaseTimer += deltaTime;
         if (enemyReleaseTimer >= enemyReleaseInterval) {
-            releaseEnemy();             
+            releaseEnemy(win);             
             enemyReleaseTimer = 0.0f;   
         }
         if(!enemies.empty()) {
@@ -1068,9 +1067,11 @@ public:
                         score += 25; 
                         projectileDestroyed = true;
                         boss.hitBoss();
+
                         if(!win->mixer.isPlaying(2)) {
                             Mix_HaltChannel(1);
                             win->mixer.playWav(snd_crash, 0, 2);
+
                         }
                         break; 
                     }
@@ -1097,6 +1098,7 @@ public:
                         score += 10; 
                         projectileDestroyed = true;
                         enemies[ei]->isSpinning = true;
+                        //enemies[ei]->explosion->trigger(enemies[ei]->object_pos);
                         if(!win->mixer.isPlaying(2)) {
                             Mix_HaltChannel(1);
                             win->mixer.playWav(snd_crash, 0, 2);
@@ -1129,6 +1131,7 @@ public:
                 }
                 if (isSpinning == false && isColliding(ship_pos, playerRadius, enemy->object_pos, enemyRadius)) {
                     isSpinning = true;
+                    //enemy->explosion->trigger(enemy->object_pos);
                     return;
                 }
             }
@@ -1221,7 +1224,7 @@ public:
 
 private:
 
-    void releaseEnemy() {
+    void releaseEnemy(gl::GLWindow *win) {
         if(enemies_crashed < max_crashed) {
             int r = rand()%3;
             switch(r) {
