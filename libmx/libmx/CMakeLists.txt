@@ -35,6 +35,8 @@ install(TARGETS mx
 install(FILES mx.hpp gl.hpp argz.hpp util.hpp jpeg.hpp loadpng.hpp object.hpp font.hpp cfg.hpp tee_stream.hpp texture.hpp exception.hpp joystick.hpp wrapper.hpp input.hpp sound.hpp model.hpp
     DESTINATION ${INSTALL_INCLUDE_DIR}
 )
+install(FILES include/glad/glad.h DESTINATION ${INSTALL_INCLUDE_DIR}/glad)
+install(FILES include/KHR/khrplatform.h DESTINATION ${INSTALL_INCLUE_DIR}/KHR)
 install(FILES ${CMAKE_BINARY_DIR}/config.h DESTINATION ${INSTALL_INCLUDE_DIR})
 install(EXPORT libmx2Targets
     FILE libmx2Targets.cmake
