@@ -120,7 +120,7 @@ class Game : public gl::GLObject {
 public:
     Uint32 lastUpdateTime = SDL_GetTicks();
     mx::Font font;
-    std::unique_ptr<effect::Explosion> explosion;
+    effect::ExplosionEmiter ex_emiter;
     GLuint texture = 0;
     glm::mat4 projection, view, model;
     Game()  {}
@@ -133,25 +133,7 @@ public:
 
     void load(gl::GLWindow* win) override {
         font.loadFont(win->util.getFilePath("data/font.ttf"), 24);
-        effect::load_program();
-        explosion.reset(new effect::Explosion(1000));
-        explosion->load(win);
-        texture = gl::loadTexture(win->util.getFilePath("data/star.png"));
-        explosion->setInfo(&effect::Explosion::shader_program, texture);
-        float fov = glm::radians(45.0f); 
-        float aspectRatio = static_cast<float>(win->w) / static_cast<float>(win->h);
-        float nearPlane = 0.1f;
-        float farPlane = 100.0f;
-        projection = glm::perspective(fov, aspectRatio, nearPlane, farPlane);
-        glm::vec3 cameraPos   = glm::vec3(0.0f, 0.0f, 5.0f);
-        glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f); 
-        glm::vec3 upVector    = glm::vec3(0.0f, 1.0f, 0.0f); 
-        view = glm::lookAt(cameraPos, cameraTarget, upVector);
-        model = glm::mat4(1.0f);
-        effect::Explosion::shader_program.useProgram();
-        effect::Explosion::shader_program.setUniform("projection", projection);
-        effect::Explosion::shader_program.setUniform("view", view);
-        effect::Explosion::shader_program.setUniform("model", model);
+        ex_emiter.load(win);
     }
 
     void draw(gl::GLWindow* win) override {
@@ -160,21 +142,19 @@ public:
         lastUpdateTime = currentTime;
         if(deltaTime > 0.1)
             deltaTime = 0.1;
-        update(deltaTime);
+        update(win, deltaTime);
         win->text.setColor({255, 0, 0, 255});
         win->text.printText_Solid(font,25.0f, 25.0f,"Explosion - Press Space to Trigger");
-        if(explosion) {
-            explosion->draw(win);
-        }
+        ex_emiter.draw(win);
     }
 
     void event(gl::GLWindow* win, SDL_Event &e) override {
         if(e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_SPACE)
-            explosion->trigger(generateRandomPosition());
+            ex_emiter.explode(win, generateRandomPosition());
     }
 
-    void update(float deltaTime) {
-        explosion->update(deltaTime);
+    void update(gl::GLWindow *win, float deltaTime) {
+        ex_emiter.update(win, deltaTime);
     }
 };
 
