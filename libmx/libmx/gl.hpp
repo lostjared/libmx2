@@ -112,7 +112,7 @@ namespace gl {
         virtual void draw() = 0;
 
         void setObject(GLObject *o);
-
+        void quit();
         void proc();
         void loop();
         void delay();

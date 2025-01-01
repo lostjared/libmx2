@@ -63,6 +63,10 @@ namespace mx {
         }
     }
 
+    void mxWindow::quit() {
+        active = false;
+    }
+
     void mxWindow::loop() {
         if(!object) {
             throw Exception("Requires you set an Object");

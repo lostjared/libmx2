@@ -114,6 +114,10 @@ namespace gl {
         }
     }
 
+    void GLWindow::quit() {
+        active = false;
+    }
+
     void GLWindow::loop() {
         if(!object) {
             throw mx::Exception("Requires you set an Object");
