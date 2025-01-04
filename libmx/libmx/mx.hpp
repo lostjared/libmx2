@@ -45,6 +45,7 @@ namespace mx {
         void setPath(const std::string &path) { util.path = path; }
         void setIcon(SDL_Surface *icon);
         void setIcon(const std::string &icon);
+        void setFullScreen(bool full);
         void quit();
         mxUtil util;
         Text text;

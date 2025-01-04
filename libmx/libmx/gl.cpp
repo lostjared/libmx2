@@ -103,6 +103,13 @@ namespace gl {
     void GLWindow::setWindowTitle(const std::string &title) {
         SDL_SetWindowTitle(window, title.c_str());
     }
+    void GLWindow::setFullScreen(bool full) {
+        if(full) {
+            SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
+        } else {
+            SDL_SetWindowFullscreen(window, 0);
+        }
+    }
 
     void GLWindow::setObject(gl::GLObject *o) {
         object.reset(o);

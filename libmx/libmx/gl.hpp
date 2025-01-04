@@ -120,6 +120,7 @@ namespace gl {
         void setWindowTitle(const std::string &title);
         void setWindowSize(int w, int h);
         void setWindowIcon(SDL_Surface *ico);
+        void setFullScreen(bool full);
         std::unique_ptr<gl::GLObject> object;
         mx::mxUtil util;
         int w = 0, h = 0;
