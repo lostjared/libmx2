@@ -8,16 +8,20 @@ namespace mx {
     
      void redirect() {
         if (!log_file.is_open()) {
+#ifndef _WIN32
             log_file.open("/tmp/system.log.txt", std::ios::out);
             if(!log_file.is_open()) {
                 std::cerr << "Error creating log file.\n";
             }
+#endif
         }
         if (!error_file.is_open()) {
+#ifndef _WIN32
             error_file.open("/tmp/error.log.txt");
             if(!error_file.is_open())  {
                 std::cerr << "Error creating error log.\n";
             }
+#endif
         }
 
         std::cout.rdbuf(system_out.rdbuf());
