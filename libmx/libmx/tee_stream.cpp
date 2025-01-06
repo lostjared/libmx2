@@ -10,34 +10,20 @@ namespace mx {
      void redirect() {
         std::filesystem::path tempDir = std::filesystem::temp_directory_path();
         if (!log_file.is_open()) {
-#ifndef _WIN32
-            log_file.open("/tmp/system.log.txt", std::ios::out);
-            if(!log_file.is_open()) {
-                std::cerr << "Error creating log file.\n";
-            }
-#else
             std::filesystem::path logFilePath = tempDir / "system.log.txt";
             log_file.open(logFilePath, std::ios::out);
             if(!log_file.is_open()) {
                 std::cerr << "Error";
             }
             system_out << "Redirected to: " << logFilePath << "\n";         
-#endif
         }
         if (!error_file.is_open()) {
-#ifndef _WIN32
-            error_file.open("/tmp/error.log.txt");
-            if(!error_file.is_open())  {
-                std::cerr << "Error creating error log.\n";
-            }
-#else
             std::filesystem::path logFilePath = tempDir / "error.log.txt";
             error_file.open(logFilePath, std::ios::out);
             if(!log_file.is_open()) {
                 std::cerr << "Error";
             }
             system_out << "Redirected to: " << logFilePath << "\n";
-#endif
         }
 
         std::cout.rdbuf(system_out.rdbuf());
