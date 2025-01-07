@@ -24,7 +24,7 @@ option(JPEG, "Build with JPEG Support" OFF)
 option(OPENGL "Build with OpenGL Support" ON)
 option(MIXER "Build with Sound Support" ON)
 
-include_directories(${CMAKE_BINARY_DIR})
+include_directories(${CMAKE_BINARY_DIR} ${CMAKE_INSTALL_PREFIX}/include)
 
 if(MIXER)
 find_package(SDL2_mixer REQUIRED)
@@ -62,7 +62,9 @@ set(IMG_LIB ${JPEG_LIBRARIES} ${PNG_LIBRARIES} ${ZLIB_LIBRARIES})
 else()
 message(STATUS "JPEG Disabled")
 set(IMG_LIB ${PNG_LIBRARIES} ${ZLIB_LIBRARIES})
-set(IMG_INCLUDE ${ZLIB_INCLUDE_DIRS} ${PNG_INCLUDE_DIRS})
+set(IMG_INCLUDE /usr/local/include/libpng16
+${ZLIB_INCLUDE_DIRS} 
+${PNG_INCLUDE_DIRS})
 endif()
 
 add_subdirectory(libmx)
