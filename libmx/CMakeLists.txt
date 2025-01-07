@@ -62,9 +62,7 @@ set(IMG_LIB ${JPEG_LIBRARIES} ${PNG_LIBRARIES} ${ZLIB_LIBRARIES})
 else()
 message(STATUS "JPEG Disabled")
 set(IMG_LIB ${PNG_LIBRARIES} ${ZLIB_LIBRARIES})
-set(IMG_INCLUDE /usr/local/include/libpng16
-${ZLIB_INCLUDE_DIRS} 
-${PNG_INCLUDE_DIRS})
+set(IMG_INCLUDE ${ZLIB_INCLUDE_DIRS} ${PNG_INCLUDE_DIRS})
 endif()
 
 add_subdirectory(libmx)
