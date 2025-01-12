@@ -38,7 +38,7 @@ public:
     glm::vec3 playerPos = glm::vec3(15.0f, 1.0f, 15.0f);
     glm::vec3 playerFront = glm::vec3(0.0f, 0.0f, -1.0f);
     glm::vec3 playerUp = glm::vec3(0.0f, 1.0f, 0.0f);
-    float yaw = -90.0f, pitch = 0.0f, playerSpeed = 3.5f, mouseSens = 0.10f;
+    float yaw = -90.0f, pitch = 0.0f, playerSpeed = 3.5f, mouseSens = 0.05f;
     float deltaTime = 0.0f, lastFrameTime = 0.0f;
     std::vector<float> pillarVertices;
     std::vector<unsigned int> pillarIndices;
