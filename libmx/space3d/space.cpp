@@ -1372,11 +1372,14 @@ int main(int argc, char **argv) {
         .addOptionSingleValue('p', "assets path")
         .addOptionDoubleValue('P', "path", "assets path")
         .addOptionSingleValue('r',"Resolution WidthxHeight")
-        .addOptionDoubleValue('R',"resolution", "Resolution WidthxHeight");
+        .addOptionDoubleValue('R',"resolution", "Resolution WidthxHeight")
+        .addOptionSingle('f', "fullscreen")
+        .addOptionDouble('F', "fullscreen", "fullscreen");
     Argument<std::string> arg;
     std::string path;
     int value = 0;
     int tw = 1280, th = 720;
+    bool fullscreen = false;
     try {
         while((value = parser.proc(arg)) != -1) {
             switch(value) {
@@ -1404,6 +1407,10 @@ int main(int argc, char **argv) {
                     th = atoi(right.c_str());
                 }
                     break;
+                case 'f':
+                case 'F':
+                    fullscreen = true;
+                    break;
             }
         }
     } catch (const ArgException<std::string>& e) {
@@ -1415,6 +1422,8 @@ int main(int argc, char **argv) {
     }
     try {
         MainWindow main_window(path, tw, th);
+        if(fullscreen)
+            main_window.setFullScreen(true);
         main_window.loop();
     } catch(const mx::Exception &e) {
         mx::system_err << "mx: Exception: " << e.text() << "\n";
