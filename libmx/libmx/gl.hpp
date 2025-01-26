@@ -47,7 +47,7 @@ namespace gl {
         void useProgram();
         void setName(const std::string &n);
         std::string name() const { return name_; }
-
+        void release();
         void setUniform(const std::string &name, int value);
         void setUniform(const std::string &name, float value);
         void setUniform(const std::string &name, const glm::vec2 &value);

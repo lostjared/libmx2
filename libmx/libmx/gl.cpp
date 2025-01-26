@@ -174,16 +174,24 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
     }
     
     ShaderProgram::~ShaderProgram() {
+        release();
+    }
+
+    void ShaderProgram::release() {
         if(shader_id) {
             glDeleteProgram(shader_id);
+            shader_id = 0;
         }
         if(vertex_shader) {
             glDeleteShader(vertex_shader);
+            vertex_shader = 0;
         }
         if(fragment_shader) {
             glDeleteShader(fragment_shader);
+            fragment_shader = 0;
         }
     }
+
     ShaderProgram &ShaderProgram::operator=(const ShaderProgram &p) {
         shader_id = p.shader_id;
         name_ = p.name_;
