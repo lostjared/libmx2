@@ -56,7 +56,7 @@ namespace gl {
         void setUniform(const std::string &name, const glm::mat4 &value);
 
     private:
-        GLuint shader_id;
+        GLuint shader_id = 0, vertex_shader = 0, fragment_shader = 0;
         std::string name_;
     };
     
