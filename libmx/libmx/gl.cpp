@@ -178,10 +178,6 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
     }
 
     void ShaderProgram::release() {
-        if(shader_id) {
-            glDeleteProgram(shader_id);
-            shader_id = 0;
-        }
         if(vertex_shader) {
             glDeleteShader(vertex_shader);
             vertex_shader = 0;
@@ -189,6 +185,10 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
         if(fragment_shader) {
             glDeleteShader(fragment_shader);
             fragment_shader = 0;
+        }
+        if(shader_id) {
+            glDeleteProgram(shader_id);
+            shader_id = 0;
         }
     }
 
@@ -248,9 +248,11 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
         checkError();
         glGetShaderiv(vShader, GL_COMPILE_STATUS, &vertCompiled);
         
-        if(vertCompiled != 1) {
+        if(vertCompiled != GL_TRUE) {
             mx::system_err << "Error on Vertex compile\n";
             printShaderLog(vShader);
+            glDeleteShader(vShader);
+            glDeleteShader(fShader);
             return 0;
         }
         
@@ -259,11 +261,12 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
         
         glGetShaderiv(fShader, GL_COMPILE_STATUS, &fragCompiled);
         
-        if(fragCompiled != 1) {
+        if(fragCompiled != GL_TRUE) {
             mx::system_err << "Error on Fragment compile\n";
             mx::system_err.flush();
             printShaderLog(fShader);
-            exit(EXIT_FAILURE);
+            glDeleteShader(vShader);
+            glDeleteShader(fShader);
             return 0;
         }
         GLuint vfProgram = glCreateProgram();
@@ -272,11 +275,13 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
         glLinkProgram(vfProgram);
         checkError();
         glGetProgramiv(vfProgram, GL_LINK_STATUS, &linked);
-        if(linked != 1) {
+        if(linked != GL_TRUE) {
             mx::system_err << "Linking failed...\n";
             mx::system_err.flush();
             printProgramLog(vfProgram);
-            exit(EXIT_FAILURE);
+            glDeleteShader(vShader);
+            glDeleteShader(fShader);
+            glDeleteProgram(vfProgram);
             return 0;
         }
         vertex_shader = vShader;
