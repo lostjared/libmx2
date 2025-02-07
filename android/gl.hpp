@@ -104,6 +104,7 @@ namespace gl {
         void setWindowSize(int w, int h);
         void setWindowIcon(SDL_Surface *ico);
         void setFullScreen(bool full);
+        void updateViewport();
         std::unique_ptr<gl::GLObject> object;
         mx::mxUtil util;
         int w = 0, h = 0;
@@ -111,9 +112,10 @@ namespace gl {
         mx::Mixer mixer;
 #endif
         GLText text;  
-    private:
-        SDL_GLContext glContext;
         SDL_Window *window;
+    protected:
+        SDL_GLContext glContext;
+        
         bool active = false;
         SDL_Event e;
     };
@@ -125,6 +127,7 @@ namespace gl {
         virtual void load(GLWindow *win) = 0;
         virtual void draw(GLWindow *win) = 0;
         virtual void event(GLWindow *window, SDL_Event &e) = 0;
+        virtual void resize(GLWindow *win, int w, int h) {}
     };
 
     GLuint loadTexture(const std::string &filename);

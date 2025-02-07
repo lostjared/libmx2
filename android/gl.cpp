@@ -22,6 +22,13 @@ namespace gl {
         SDL_SetWindowIcon(window, ico);
     }
 
+    void GLWindow::updateViewport() {
+        SDL_GL_GetDrawableSize(window, &this->w, &this->h);
+        glViewport(0, 0, this->w, this->h);
+        object->resize(this, this->w, this->h);
+        text.init(this->w, this->h);
+    }
+
     void GLWindow::initGL(const std::string &title, int width, int height) {
         if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER | SDL_INIT_AUDIO) < 0) {
             return;
@@ -52,26 +59,13 @@ namespace gl {
             return;
         }
         IMG_Init(IMG_INIT_PNG);
-        SDL_GL_GetDrawableSize(window, &w, &h);
-        glViewport(0, 0, w, h);
-
+        SDL_GL_GetDrawableSize(window, &this->w, &this->h);
+        glViewport(0, 0, this->w, this->h);
         text.init(this->w, this->h);
     }
 
-    void GLWindow::setWindowSize(int w, int h) {
-#ifdef __EMSCRIPTEN
-        SDL_SetWindowSize(window, w, h);
-        width = w;
-        height = h;
-        this->w = w;
-        this->h = h;
-        emscripten_webgl_make_context_current(context);
-        emscripten_set_canvas_element_size("#canvas", w, h);
-#else
-        SDL_SetWindowSize(window, w, h);
-#endif
-        int drawableWidth, drawableHeight;
-        SDL_GL_GetDrawableSize(window, &w, &h);
+    void GLWindow::setWindowSize(int wx, int wy) {
+        SDL_GL_GetDrawableSize(window, &this->w, &this->h);
         glViewport(0, 0, w, h);
     }
 

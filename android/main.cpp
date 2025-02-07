@@ -30,9 +30,12 @@ public:
     MainWindow(int wx, int wy) : gl::GLWindow("OpenGL Demo", wx , wy) {
          setObject(new Object());
          object->load(this);
+         
     }
 
     virtual void draw() {
+        SDL_GL_GetDrawableSize(window, &this->w, &this->h);
+        glViewport(0, 0, this->w, this->h);
         glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         object->draw(this);
@@ -40,7 +43,12 @@ public:
     }
 
     virtual void event(SDL_Event  &e) {
-       
+        if (e.type == SDL_WINDOWEVENT) {
+            if (e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+                SDL_GL_GetDrawableSize(window, &this->w, &this->h);
+                glViewport(0, 0, this->w, this->h);                
+            }
+        }
     }
 };
 
