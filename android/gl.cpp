@@ -52,6 +52,9 @@ namespace gl {
             return;
         }
         IMG_Init(IMG_INIT_PNG);
+        SDL_GL_GetDrawableSize(window, &w, &h);
+        glViewport(0, 0, w, h);
+
         text.init(this->w, this->h);
     }
 
@@ -67,7 +70,9 @@ namespace gl {
 #else
         SDL_SetWindowSize(window, w, h);
 #endif
-        glViewport(0, 0, w, h); 
+        int drawableWidth, drawableHeight;
+        SDL_GL_GetDrawableSize(window, &w, &h);
+        glViewport(0, 0, w, h);
     }
 
     void GLWindow::setWindowTitle(const std::string &title) {
