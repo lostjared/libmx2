@@ -1,13 +1,14 @@
 #include"util.hpp"
 #include"loadpng.hpp"
 #include<sstream>
+#include<string>
+#include"SDL.h"
 #include"SDL_image.h"
 namespace mx {
 
     std::string mxUtil::getFilePath(const std::string &filename) {
-        std::ostringstream stream;
-        stream << path << "/" << filename;
-        return stream.str();
+        SDL_Log("Loading file: %s\n", filename.c_str());
+        return filename;
     }
 
     void mxUtil::printText(SDL_Renderer *renderer,TTF_Font *font,int x, int y, const std::string &text, SDL_Color col) {
@@ -36,8 +37,7 @@ namespace mx {
     SDL_Texture *mxUtil::loadTexture(SDL_Renderer *renderer, const std::string &filename, int &w, int &h, bool color, SDL_Color key) {
         SDL_Surface *surface = IMG_Load(getFilePath(filename).c_str());
         if(!surface) {
-            //std::cerr << "mx: Error could not open file: " << getFilePath(filename) << "\n";
-            //std::cerr.flush();
+            SDL_Log("mx: Error could not open file: %s", getFilePath(filename).c_str());
             exit(EXIT_FAILURE);
         }
         if(color)
@@ -48,8 +48,7 @@ namespace mx {
 
         SDL_Texture *tex = SDL_CreateTextureFromSurface(renderer, surface);
         if(!tex) {
-            //std::cerr << "mx: Error creating texture from surface..\n";
-            //std::cerr.flush();
+            SDL_Log("mx: Error creating texture from surface..");
             exit(EXIT_FAILURE);
         }
         SDL_FreeSurface(surface);
@@ -59,8 +58,7 @@ namespace mx {
     TTF_Font *mxUtil::loadFont(const std::string &filename, int size) {
         TTF_Font *fnt = TTF_OpenFont(getFilePath(filename).c_str(), size);
         if(!fnt) {
-            //std::cerr << "mx: Error Opening Font: " << filename << "\n";
-            //std::cerr.flush();
+            SDL_Log("mx: Error Opening Font: %s", filename.c_str());
             exit(EXIT_FAILURE);
         }
         return fnt;
@@ -74,9 +72,9 @@ namespace mx {
         for(int i = 0; i < SDL_NumJoysticks(); ++i) {
             SDL_Joystick *stick_ = SDL_JoystickOpen(i);
             if(!stick_) {
-                //std::cout << "mx: Joystick disabled..\n";
+                SDL_Log("mx: Joystick disabled..");
             } else {
-                //std::cout << "mx: Joystick: " << SDL_JoystickName(stick_) << " enabled...\n";
+                SDL_Log("mx: Joystick: %s enabled...", SDL_JoystickName(stick_));
             }
             stick.push_back(stick_);
         }
@@ -87,6 +85,37 @@ namespace mx {
         for(int i = 0; i < SDL_NumJoysticks(); ++i) {
             SDL_JoystickClose(stick[i]);
         }
+    }
+    std::string LoadTextFile(const char* filename) {
+        SDL_RWops* rw = SDL_RWFromFile(filename, "rb");
+        if (!rw) {
+            SDL_Log("Failed to open file '%s': %s", filename, SDL_GetError());
+            return "";
+        }
+        Sint64 fileSize = SDL_RWsize(rw);
+        if (fileSize < 0) {
+            SDL_Log("Failed to get file size: %s", SDL_GetError());
+            SDL_RWclose(rw);
+            return "";
+        }
+        char* buffer = new char[fileSize + 1];
+        if (!buffer) {
+            SDL_Log("Memory allocation error");
+            SDL_RWclose(rw);
+            return "";
+        }
+        size_t bytesRead = SDL_RWread(rw, buffer, 1, fileSize);
+        if (bytesRead != static_cast<size_t>(fileSize)) {
+            SDL_Log("Failed to read the entire file: %s", SDL_GetError());
+            delete[] buffer;
+            SDL_RWclose(rw);
+            return "";
+        }
+        buffer[fileSize] = '\0';
+        std::string fileContents(buffer);
+        delete[] buffer;
+        SDL_RWclose(rw);
+        return fileContents;
     }
 
 }

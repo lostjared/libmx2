@@ -29,6 +29,8 @@ namespace mx {
         void closeJoystick();
         std::vector<SDL_Joystick *> stick;
     };
+
+    std::string LoadTextFile(const char* filename);
 }
 
 #endif

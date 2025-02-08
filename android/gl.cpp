@@ -1,4 +1,5 @@
 #include"gl.hpp"
+#include <unistd.h> // Required for access()
 
 namespace gl {
    
@@ -257,21 +258,10 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
     }
     
     GLuint ShaderProgram::createProgramFromFile(const std::string &vert, const std::string &frag) {
-        std::fstream v,f;
-        v.open(vert, std::ios::in);
-        if(!v.is_open()) {
-            SDL_Log("Error cou ld not open file: \n");
-            return 0;
-        }
-        f.open(frag, std::ios::in);
-        if(!f.is_open()) {
-            SDL_Log("Error cou ld not open file: \n");
-            return 0;
-        }
-        std::ostringstream stream1, stream2;
-        stream1 << v.rdbuf();
-        stream2 << f.rdbuf();
-        return createProgram(stream1.str().c_str(), stream2.str().c_str());
+        std::string v,f;
+        v = mx::LoadTextFile(vert.c_str());
+        f = mx::LoadTextFile(frag.c_str());
+        return createProgram(v.c_str(), f.c_str());
     }
     
     bool ShaderProgram::loadProgram(const std::string &v, const std::string &f) {
