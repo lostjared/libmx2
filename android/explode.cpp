@@ -7,6 +7,7 @@
 
 namespace effect {
 
+
 const char *s_vSource = R"(#version 300 es
 
 // Declare high precision for floating-point types
@@ -47,6 +48,7 @@ void main() {
     FragColor = texColor * particleColor;
 })";
 
+
     Explosion::Explosion(unsigned int max) : maxParticles(max), VAO(0), VBO(0) {
 
     }
@@ -74,10 +76,6 @@ void main() {
     void Explosion::setInfo(gl::ShaderProgram *prog, GLuint texture_id) {
         this->shader_program = prog;
         this->textureID = texture_id;
-    }
-
-    void Explosion::resize(gl::GLWindow *win, int w,  int h) {
-
     }
         
     void Explosion::update(float deltaTime) {
@@ -125,36 +123,21 @@ void main() {
 
     void Explosion::resetParticle(Particle &particle, glm::vec3 origin) {
         particle.position = origin;
-        particle.velocity = glm::sphericalRand(1.0f);
+        particle.velocity = glm::sphericalRand(4.0f);
         particle.lifetime = glm::linearRand(0.5f, 2.0f);
-        particle.color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f); 
-    }
+        particle.color = particleColor; 
+    } 
 
     void ExplosionEmiter::load(gl::GLWindow *win) {
         if(!shader_program.loadProgramFromText(s_vSource, s_fSource)) {
             throw mx::Exception("Couldn't load Explosion Shader");
         }
-        resize(win, win->w, win->h);
-        
-        texture = gl::loadTexture("star.png");
-    }
-
-    void ExplosionEmiter::resize(gl::GLWindow *win, int w, int h) {
-        float fov = glm::radians(45.0f); 
-        float aspectRatio = static_cast<float>(w) / static_cast<float>(h);
-        float nearPlane = 0.1f;
-        float farPlane = 100.0f;
-        projection = glm::perspective(fov, aspectRatio, nearPlane, farPlane);
-        glm::vec3 cameraPos   = glm::vec3(0.0f, 0.0f, 5.0f);
-        glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f); 
-        glm::vec3 upVector    = glm::vec3(0.0f, 1.0f, 0.0f); 
-        view = glm::lookAt(cameraPos, cameraTarget, upVector);
         model = glm::mat4(1.0f);
         shader_program.useProgram();
         shader_program.setUniform("projection", projection);
         shader_program.setUniform("view", view);
         shader_program.setUniform("model", model);
-        SDL_Log("Viewport: Width: %d Height: %d\n", w, h);
+        texture = gl::loadTexture(win->util.getFilePath("data/star.png"));
     }
 
     void ExplosionEmiter::update(gl::GLWindow *win, float deltaTime) {
@@ -162,7 +145,7 @@ void main() {
             explosions[i]->update(deltaTime);
             if(!explosions[i]->active()) {
                 explosions.erase(explosions.begin() + i);
-            }
+           }
         }
     }
     void ExplosionEmiter::draw(gl::GLWindow *win) {
@@ -172,9 +155,10 @@ void main() {
         }
     }
     
-    void ExplosionEmiter::explode(gl::GLWindow *win, glm::vec3 pos) {
-        explosions.push_back(std::make_unique<Explosion>(250));
+    void ExplosionEmiter::explode(gl::GLWindow *win, glm::vec3 pos, glm::vec4 particleColor) {
+        explosions.push_back(std::make_unique<Explosion>(100));
         explosions.back()->setInfo(&shader_program, texture);
+        explosions.back()->particleColor = particleColor;
         explosions.back()->load(win);
         explosions.back()->trigger(pos);
     }

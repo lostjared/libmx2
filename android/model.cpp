@@ -360,11 +360,11 @@ namespace mx {
     }
 
     void Model::setTextures(gl::GLWindow *win, const std::string &filename, const std::string prefix) {
-        std::fstream file;
-        file.open(filename, std::ios::in);
-        if(!file.is_open()) {
-            throw mx::Exception("Error could not open file: " + filename + " for texture");
+        std::string f = mx::LoadTextFile(filename.c_str());
+        if(f.empty()) {
+            throw mx::Exception("Error loading texture file: " + filename);
         }
+        std::istringstream file(f);
         std::vector<GLuint> text;
         while(!file.eof()) {
             std::string line;
@@ -377,7 +377,6 @@ namespace mx {
                 // mx::system_out.flush();
             }
         }
-        file.close();
         setTextures(text);
     }
 }
