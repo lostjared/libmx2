@@ -12,7 +12,7 @@ LOCAL_CPPFLAGS := -std=c++17 -DWITH_MIXER
 LOCAL_CPP_FEATURES += exceptions rtti
 
 # Add your application source files here...
-LOCAL_SRC_FILES := space.cpp intro.cpp explode.cpp model.cpp gl.cpp cfg.cpp loadpng.cpp exception.cpp font.cpp input.cpp joystick.cpp mx.cpp sound.cpp tee_stream.cpp texture.cpp util.cpp
+LOCAL_SRC_FILES := main.cpp model.cpp gl.cpp cfg.cpp loadpng.cpp exception.cpp font.cpp input.cpp joystick.cpp mx.cpp sound.cpp tee_stream.cpp texture.cpp util.cpp
 
 LOCAL_SHARED_LIBRARIES := SDL2 SDL2_ttf SDL2_image SDL2_mixer
 
