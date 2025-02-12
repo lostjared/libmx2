@@ -34,14 +34,17 @@ namespace mx {
                 files.clear();
                 wav.clear();
                 Mix_CloseAudio();
+                Mix_Quit();
                 init_ = false;
             }
 
         }
         
         void Mixer::stopMusic() {
-            Mix_HaltMusic();
-            Mix_HaltChannel(-1);
+            if (Mix_QuerySpec(nullptr, nullptr, nullptr) != 0) {
+                Mix_HaltMusic();
+                Mix_HaltChannel(-1);
+            }
         }
 
         void Mixer::init() {
