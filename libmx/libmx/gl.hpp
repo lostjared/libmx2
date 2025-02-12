@@ -106,10 +106,12 @@ namespace gl {
         };
         virtual ~GLWindow();
         void initGL(const std::string &title, int width, int height);
+        void updateViewport();
         void swap();
 
         virtual void event(SDL_Event &e) = 0;
         virtual void draw() = 0;
+        virtual void resize(int w,  int h) {}
 
         void setObject(GLObject *o);
         void quit();
@@ -142,6 +144,7 @@ namespace gl {
         virtual void load(GLWindow *win) = 0;
         virtual void draw(GLWindow *win) = 0;
         virtual void event(GLWindow *window, SDL_Event &e) = 0;
+        virtual void resize(gl::GLWindow *win, int w, int h) {}
     };
 
     GLuint loadTexture(const std::string &filename);

@@ -29,6 +29,16 @@ namespace gl {
         SDL_Quit();
     }
 
+    void GLWindow::updateViewport() {
+        #ifdef __ANDROID__
+        SDL_GL_GetDrawableSize(window, &this->w, &this->h);
+        #else
+        SDL_GetWindowSize(window, &this->w, &this->h);
+        #endif
+        glViewport(0, 0, this->w, this->h);
+        if(object) object->resize(this, this->w, this->h);
+        text.init(this->w, this->h);
+    }
 
     void GLWindow::setWindowIcon(SDL_Surface *ico) {
         SDL_SetWindowIcon(window, ico);
@@ -82,7 +92,6 @@ namespace gl {
             mx::system_err.flush();
             exit(EXIT_FAILURE);
         }
-        text.init(this->w, this->h);
     }
 
     void GLWindow::setWindowSize(int w, int h) {
@@ -97,7 +106,7 @@ namespace gl {
 #else
         SDL_SetWindowSize(window, w, h);
 #endif
-        glViewport(0, 0, w, h); 
+        updateViewport();
     }
 
     void GLWindow::setWindowTitle(const std::string &title) {
@@ -152,15 +161,18 @@ namespace gl {
             throw mx::Exception("Requires an active Object");
         }
         while(SDL_PollEvent(&e)) {
-            if(e.type == SDL_QUIT || (e.type == SDL_KEYDOWN && 
-e.key.keysym.sym == SDLK_ESCAPE)) {
+            if(e.type == SDL_QUIT || (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE)) {
                 active = false;
                 return;
             }
-		
-
-            event(e);
-            object->event(this, e);
+            if (e.type == SDL_WINDOWEVENT) {
+                if (e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+                    updateViewport();
+                }
+            } else {
+                event(e);
+                object->event(this, e);
+            }
         }
         draw();
     }
