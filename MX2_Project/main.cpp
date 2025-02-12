@@ -49,8 +49,9 @@ private:
 
 class MainWindow : public gl::GLWindow {
 public:
-    MainWindow(std::string path, int tw, int th) : gl::GLWindow("Skeleton", tw, th) {
+    MainWindow(bool full, std::string path, int tw, int th) : gl::GLWindow("Skeleton", tw, th) {
         setPath(path);
+	if(full) setFullScreen(true);
         setObject(new Game());
         object->load(this);
     }
@@ -81,7 +82,7 @@ void eventProc() {
 int main(int argc, char **argv) {
 #ifdef __EMSCRIPTEN__
     try {
-    MainWindow main_window("/", 960, 720);
+    MainWindow main_window(false, "/", 960, 720);
     main_w =&main_window;
     emscripten_set_main_loop(eventProc, 0, 1);
     } catch (mx::Exception &e) {
@@ -94,11 +95,14 @@ int main(int argc, char **argv) {
         .addOptionSingleValue('p', "assets path")
         .addOptionDoubleValue('P', "path", "assets path")
         .addOptionSingleValue('r',"Resolution WidthxHeight")
-        .addOptionDoubleValue('R',"resolution", "Resolution WidthxHeight");
+        .addOptionDoubleValue('R',"resolution", "Resolution WidthxHeight")
+        .addOptionSingle('f', "fullscreen")
+        .addOptionDouble('F', "fullscreen", "Full screeen");
     Argument<std::string> arg;
     std::string path;
     int value = 0;
     int tw = 960, th = 720;
+    bool full = false;
     try {
         while((value = parser.proc(arg)) != -1) {
             switch(value) {
@@ -124,7 +128,11 @@ int main(int argc, char **argv) {
                     right = arg.arg_value.substr(pos+1);
                     tw = atoi(left.c_str());
                     th = atoi(right.c_str());
-                }
+		}
+		    break;
+                case 'F':
+                case 'f':
+                    full = true;
                     break;
             }
         }
@@ -136,7 +144,7 @@ int main(int argc, char **argv) {
         path = ".";
     }
     try {
-        MainWindow main_window(path, tw, th);
+        MainWindow main_window(full, path, tw, th);
         main_window.loop();
     } catch(const mx::Exception &e) {
         mx::system_err << "mx: Exception: " << e.text() << "\n";

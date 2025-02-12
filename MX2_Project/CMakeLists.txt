@@ -18,7 +18,6 @@ target_include_directories(mx2_app PRIVATE
     ${SDL2_INCLUDE_DIRS} 
     ${SDL2_TTF_INCLUDE_DIRS}
     ${SDL2_MIXER_INCLUDE_DIRS}
-    ${CMAKE_CURRENT_SOURCE_DIR}/webmx/mx2/include
 )
 
 target_link_libraries(mx2_app PRIVATE 
