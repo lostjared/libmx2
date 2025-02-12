@@ -56,7 +56,7 @@ namespace gl {
 	    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
 	    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 #endif
-        window = SDL_CreateWindow(title.c_str(),25,25,width,height,SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+        window = SDL_CreateWindow(title.c_str(),25,25,width,height,SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
         if (!window) {
             throw std::runtime_error("Failed to create SDL window: " + std::string(SDL_GetError()));
         }
