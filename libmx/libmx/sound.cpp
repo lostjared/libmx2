@@ -42,7 +42,9 @@ namespace mx {
         
         void Mixer::stopMusic() {
             if (Mix_QuerySpec(nullptr, nullptr, nullptr) != 0) {
-                Mix_HaltMusic();
+                if (Mix_PlayingMusic()) {
+                    Mix_HaltMusic();
+                }
                 Mix_HaltChannel(-1);
             }
         }
