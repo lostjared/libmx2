@@ -889,7 +889,7 @@ public:
                 ship_pos = glm::vec3(0.0f, -20.0f, -70.0f);
             }
 
-            if(stick.getButton(mx::Input_Button::BTN_X)) {
+            if(stick.getButton(mx::Input_Button::BTN_X) && wait_explode == false) {
                 launch_ship = false;
 
                 if(!wait_explode && !win->mixer.isPlaying(0))
