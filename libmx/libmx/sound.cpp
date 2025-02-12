@@ -13,17 +13,37 @@ namespace mx {
 
         }
         Mixer::~Mixer() {
-            if(init_) {
-                for (auto &m : files) {
-                    Mix_FreeMusic(m);
+           cleanup();
+        }
+
+        void Mixer::cleanup() {
+            if(init_ == true) {
+                stopMusic();
+                for(auto &i : files) {
+                    if(i != nullptr) {
+                        Mix_FreeMusic(i);
+                        i = nullptr;
+                    }
                 }
-                for(auto &m: wav) {
-                    Mix_FreeChunk(m);
+                for(auto &i : wav) {
+                    if(i != nullptr) {
+                        Mix_FreeChunk(i);
+                        i = nullptr;
+                    }
                 }
+                files.clear();
+                wav.clear();
                 Mix_CloseAudio();
+                init_ = false;
             }
+
         }
         
+        void Mixer::stopMusic() {
+            Mix_HaltMusic();
+            Mix_HaltChannel(-1);
+        }
+
         void Mixer::init() {
             if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
                 throw mx::Exception("Could not initalize: " + std::string(Mix_GetError()));
