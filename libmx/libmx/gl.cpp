@@ -92,6 +92,8 @@ namespace gl {
             mx::system_err.flush();
             exit(EXIT_FAILURE);
         }
+        text.init(w,  h);
+        glViewport(0, 0, w, h);
     }
 
     void GLWindow::setWindowSize(int w, int h) {
@@ -347,7 +349,7 @@ namespace gl {
 
     void ShaderProgram::setUniform(const std::string &name, int value) {
         GLint location = glGetUniformLocation(shader_id, name.c_str());
-        if (location == -1) {
+        if (location == -1 && silent_ == false) {
             mx::system_err << "Uniform '" << name << "' not found or not used in shader.\n";
             return;
         }
@@ -356,7 +358,7 @@ namespace gl {
 
     void ShaderProgram::setUniform(const std::string &name, float value) {
         GLint location = glGetUniformLocation(shader_id, name.c_str());
-        if (location == -1) {
+        if (location == -1 && silent_ == false) {
             mx::system_err << "Uniform '" << name << "' not found or not used in shader.\n";
             return;
         }
@@ -365,7 +367,7 @@ namespace gl {
 
     void ShaderProgram::setUniform(const std::string &name, const glm::vec2 &value) {
         GLint location = glGetUniformLocation(shader_id, name.c_str());
-        if (location == -1) {
+        if (location == -1 && silent_ == false) {
             mx::system_err << "Uniform '" << name << "' not found or not used in shader.\n";
             return;
         }
@@ -374,7 +376,7 @@ namespace gl {
 
     void ShaderProgram::setUniform(const std::string &name, const glm::vec3 &value) {
         GLint location = glGetUniformLocation(shader_id, name.c_str());
-        if (location == -1) {
+        if (location == -1 && silent_ == false) {
             mx::system_err << "Uniform '" << name << "' not found or not used in shader.\n";
             return;
         }
@@ -383,7 +385,7 @@ namespace gl {
 
     void ShaderProgram::setUniform(const std::string &name, const glm::vec4 &value) {
         GLint location = glGetUniformLocation(shader_id, name.c_str());
-        if (location == -1) {
+        if (location == -1 && silent_ == false) {
             mx::system_err << "Uniform '" << name << "' not found or not used in shader.\n";
             return;
         }
@@ -392,7 +394,7 @@ namespace gl {
 
     void ShaderProgram::setUniform(const std::string &name, const glm::mat4 &value) {
         GLint location = glGetUniformLocation(shader_id, name.c_str());
-        if (location == -1) {
+        if (location == -1 && silent_ == false) {
             mx::system_err << "Uniform '" << name << "' not found or not used in shader.\n";
             return;
         }
@@ -510,7 +512,7 @@ namespace gl {
         return surf;
     }
 
-#ifdef __EMSCRIPTEN__
+#if defined(__EMSCRIPTEN__) || defined(__ANDROID__)
     const char *vSource = R"(#version 300 es
             precision mediump float;
             layout (location = 0) in vec3 aPos;
@@ -551,14 +553,17 @@ namespace gl {
         }
     )";
 #endif
-    GLText::GLText() {}
+    GLText::GLText() {
+        
+    }
 
     void GLText::init(int width, int height) {
+        w = width;
+        h = height;
+        if(textShader.loaded() == true) return;
         if(!textShader.loadProgramFromText(vSource, fSource)) {
             throw mx::Exception("Could not load Text Shader ");
         }
-        w = width;
-        h = height;
     }
 
     void GLText::setColor(SDL_Color col) {
