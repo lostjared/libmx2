@@ -10,6 +10,7 @@ namespace puzzle {
 	class Block {
 	public:
 		int x,y,color;
+		float rotate_x;
 		Block();
 		Block(int x, int y, int color);
 		Block(const Block &b);
@@ -61,6 +62,7 @@ namespace puzzle {
 		int height() const;
 		int numBlocks() const { return block_number; }
 		bool canMoveDown();
+		void spin();
 	protected:
 		Block **blocks = nullptr;
 		int grid_w = 0, grid_h = 0;

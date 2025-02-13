@@ -8,8 +8,8 @@
 class Game : public gl::GLObject {
 public:
     Game(int diff) : mp(diff) {
-        mp.setCallback([this]() {
-            mp.procBlocks();
+        mp.grid.game_piece.setCallback([]() {
+            std::cout << "Game Piece set..\n";
         });
     }
 
@@ -37,12 +37,30 @@ public:
         }
         background.loadProgramFromText(gl::vSource, gl::fSource);
         bg.initSize(win->w, win->h);
-        bg.loadTexture(&background, win->util.getFilePath("data/logo.png"), 0.0f, 0.0f, win->w, win->h);
+        bg.loadTexture(&background, win->util.getFilePath("data/mp_wall.png"), 0.0f, 0.0f, win->w, win->h);
         resize(win, win->w, win->h);
     }
 
+    float deltaTime = 0.0f;
     virtual void draw(gl::GLWindow *win) override {
-
+        Uint32 currentTime = SDL_GetTicks();
+        deltaTime = (currentTime - lastUpdateTime) / 1000.0f;        
+        if((currentTime - lastUpdateTime) > 25) {
+            lastUpdateTime = currentTime;
+            mp.grid.spin();
+            mp.procBlocks();
+        }
+        static Uint32 previous_time = SDL_GetTicks();
+        Uint32 current_time = SDL_GetTicks();
+        if (current_time - previous_time >= mp.timeout) {
+            if(mp.grid.canMoveDown()) {
+                mp.grid.game_piece.moveDown();
+                previous_time = current_time;
+            } else {
+                // Game over
+                return;
+            }
+        }
         glDisable(GL_DEPTH_TEST);
         background.useProgram();
         bg.initSize(win->w, win->h);                                                      
@@ -57,33 +75,63 @@ public:
         program.setUniform("lightPos", lightPos);
         program.setUniform("viewPos", viewPos);
         program.setUniform("lightColor", lightColor);
-    
         for(int i = 0; i < mp.grid.width(); ++i) {
             for(int z = 0; z < mp.grid.height(); ++z) {
                 glActiveTexture(GL_TEXTURE0);
                 program.setName("texture1");  
                 puzzle::Block *b = mp.grid.at(i, z);
-                if(b != nullptr && b->color != 0)     
-                    drawGridXY(i, z, b->color);   
+                if(b != nullptr && b->color > 0) {
+                    drawGridXY(i, z, b->color, 0);   
+                } else if(b->color == -1) {
+                    drawGridXY(i, z, 1+(rand()%3), b->rotate_x);
+                }
             }
         }
 
-        drawGridXY(mp.grid.game_piece.getX(), mp.grid.game_piece.getY(), mp.grid.game_piece.at(0)->color);
-        drawGridXY(mp.grid.game_piece.getX(), mp.grid.game_piece.getY()+1, mp.grid.game_piece.at(1)->color);
-        drawGridXY(mp.grid.game_piece.getX(), mp.grid.game_piece.getY()+2, mp.grid.game_piece.at(2)->color);
-
+        int x_val = mp.grid.game_piece.getX();
+        int y_val = mp.grid.game_piece.getY();  
+        for(int q = 0; q < 3; ++q) {
+            int cx =  x_val;
+            int cy =  y_val;
+            switch(mp.grid.game_piece.getDirection()) {
+                case 0:
+                cx = x_val;
+                cy = y_val + q;
+                break;
+                case 1:
+                cx = x_val + q;
+                cy = y_val;
+                break;
+                case 2:
+                cx = x_val - q;
+                cy = y_val;
+                break;
+                case 3:
+                cx = x_val;
+                cy = y_val - q;
+                break;
+            }
+            puzzle::Block *b = mp.grid.game_piece.at(q);
+            if (b != nullptr) {
+                drawGridXY(cx, cy, b->color, 0.0f);
+            }
+        }
     }
 
-    void drawGridXY(int x, int y, int color) {
+    void drawGridXY(int x, int y, int color, float rotate_) {
         glm::mat4 model = glm::mat4(1.0f);
         model = glm::translate(model, glm::vec3(0.0f, 10.0f, -25.0f));
         model = glm::translate(model, glm::vec3(-10.0f, 0.0f, 0.0f));
         model = glm::translate(model, glm::vec3(x * 1.2f, -y * 1.2f, 0.0f)); 
         program.setUniform("model", model);
         glActiveTexture(GL_TEXTURE0);
-        program.setName("texture1");          
-        glm::mat4 rotated = glm::rotate(glm::mat4(1.0f), (float)SDL_GetTicks() / 1000.0f, glm::vec3(0.0f, 1.0f, 0.0f));
-        program.setUniform("model", model * rotated);
+        program.setName("texture1"); 
+        if(rotate_ > 0) {         
+            glm::mat4 rotated = glm::rotate(glm::mat4(1.0f), rotate_ * deltaTime, glm::vec3(0.0f, 1.0, 0.0f));
+            program.setUniform("model", model * rotated);
+        } else if(color > 0){
+            program.setUniform("model", model);
+        }
         cube.drawArraysWithTexture(textures[color], "texture1");
     }
     
@@ -102,6 +150,9 @@ public:
                 break;
                 case SDLK_DOWN:
                     mp.grid.game_piece.moveDown();
+                break;
+                case SDLK_SPACE:
+                    mp.grid.game_piece.shiftDirection();
                 break;
             }
             break;
@@ -128,6 +179,7 @@ private:
     std::vector<GLuint> textures;
     puzzle::MasterPiece mp;
     gl::GLSprite bg;
+    Uint32 lastUpdateTime = 0;
 };
 
 void Intro::draw(gl::GLWindow *win) {

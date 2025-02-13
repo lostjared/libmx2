@@ -7,19 +7,20 @@
 
 namespace puzzle {
 
-    Block::Block(): x{0}, y{0}, color{0} {}
+    Block::Block(): x{0}, y{0}, color{0}, rotate_x{0} {}
 
 
     Block::Block(int x, int y, int color) {
         this->x = x;
         this->y = y;
         this->color =  color;
+        this->rotate_x = 0.0;
     }
 
-    Block::Block(const Block &b)  :x{b.x}, y{b.y}, color{b.color} {
+    Block::Block(const Block &b)  :x{b.x}, y{b.y}, color{b.color}, rotate_x{b.rotate_x}{
 
     }
-    Block::Block(Block&& b) :x{b.x}, y{b.y}, color{b.color} {
+    Block::Block(Block&& b) :x{b.x}, y{b.y}, color{b.color}, rotate_x{b.rotate_x} {
 
     }
 
@@ -27,6 +28,7 @@ namespace puzzle {
         color = b.color;
         x = b.x;
         y =  b.y;
+        rotate_x = b.rotate_x;
         return *this;
     }
 	
@@ -34,6 +36,7 @@ namespace puzzle {
         color = b.color;
         x = b.x;
         y =  b.y;
+        rotate_x = b.rotate_x;
         return *this;
     }
 
@@ -88,6 +91,7 @@ namespace puzzle {
             return &blocks[index];
         return nullptr;
     }
+    
 
     void Piece::moveLeft() {
 
@@ -219,6 +223,21 @@ namespace puzzle {
 
     GameGrid::~GameGrid() {
         releaseGrid();
+    }
+
+    void GameGrid::spin() {
+        for(int i = 0; i < grid_w; ++i) {
+            for(int z  = 0; z < grid_h; ++z) {
+                Block *b = at(i, z);
+                if(b != nullptr && b->color == -1) {
+                    b->rotate_x += 20.0f;
+                    if(b->rotate_x >= 360.0f) {
+                        b->rotate_x = 0;
+                        b->color = 0;
+                    }
+                }
+            }
+        }
     }
     
     void GameGrid::releaseGrid() {
