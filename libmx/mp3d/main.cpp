@@ -503,7 +503,7 @@ void eventProc() {
     main_w->proc();
 }
 
-int main(int argc, char **argv) 
+int main(int argc, char **argv) {
     srand(static_cast<int>(time(0)));
 #ifdef __EMSCRIPTEN__
     MainWindow main_window("");
