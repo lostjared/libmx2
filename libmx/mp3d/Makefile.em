@@ -12,9 +12,9 @@ ZLIB_LIB = -s USE_ZLIB=1 # $(LIBS_PATH)/zlib/lib/libz.a
 PNG_LIB = -s USE_LIBPNG=1 # $(LIBS_PATH)/libpng/lib/libpng.a
 LIBMX_LIB = $(LIBS_PATH)/mx2/lib/libmx.a 
 PRELOAD = --preload-file data
-SOURCES = main.cpp intro.cpp start.cpp quadtris.cpp
+SOURCES = main.cpp intro.cpp start.cpp quadtris.cpp gameover.cpp
 OBJECTS = $(SOURCES:.cpp=.o)
-OUTPUT = mp3dhtml
+OUTPUT = mp3d.html
 
 .PHONY: all clean install
 

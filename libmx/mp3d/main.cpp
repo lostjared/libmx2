@@ -111,7 +111,7 @@ public:
                         mp.grid.game_piece.moveDown();
                     }
                     previous_time = current_time;
-                } else {
+                } else if(mp.drop == false) {
                     // Game over
                     win->setObject(new GameOver(mp.score, mp.level));
                     win->object->load(win);
@@ -211,12 +211,21 @@ public:
     }
     
     void dropPiece() {
-        mp.drop = true;
-        mp.grid.game_piece.drop();
+        if(mp.drop == false) {
+            mp.drop = true;
+            mp.grid.game_piece.drop();
+        }
     }
 
     virtual void event(gl::GLWindow *win, SDL_Event &e) override {
+
+
         switch(e.type) {
+            case SDL_KEYUP:
+            if(e.key.keysym.sym == SDLK_RETURN)
+                dropPiece();
+
+            break;
             case SDL_KEYDOWN:
             switch(e.key.keysym.sym) {
                 case SDLK_LEFT:
@@ -234,9 +243,6 @@ public:
                 case SDLK_SPACE:
                     mp.grid.game_piece.shiftDirection();
                 break;
-                case SDLK_RETURN:
-                    dropPiece();
-                    break;
                 case SDLK_w:
                     rotateX += 0.5f;
                 break;
@@ -403,7 +409,7 @@ void Start::load_shader() {
 }
 
 void Start::event(gl::GLWindow *win, SDL_Event &e) {
-    if(e.type == SDL_KEYDOWN || e.type == SDL_FINGERUP || e.type == SDL_MOUSEBUTTONUP) {
+    if(fade_in == true && (e.type == SDL_KEYDOWN || e.type == SDL_FINGERUP || e.type == SDL_MOUSEBUTTONUP)) {
         fade = 1.0f;
         fade_in = false;
         return;
@@ -471,8 +477,19 @@ public:
     }
 };
 
+MainWindow *main_w = nullptr;
+
+void eventProc() {
+    main_w->proc();
+}
+
 int main(int argc, char **argv) {
-    #if defined(_WIN32) || defined(__linux__) || defined(__APPLE__)
+#ifdef __EMSCRIPTEN__
+    MainWindow main_window("");
+    main_w =&main_window;
+    emscripten_set_main_loop(eventProc, 0, 1);
+#else
+#if defined(_WIN32) || defined(__linux__) || defined(__APPLE__)
     if(argc == 2) {
         try {
             MainWindow main_window(argv[1]);
@@ -481,13 +498,14 @@ int main(int argc, char **argv) {
             SDL_Log("mx: Exception: %s", e.text().c_str());
         }
     }
-    #elif defined(__ANDROID__)
+#elif defined(__ANDROID__)
         try {
             MainWindow main_window("");
             main_window.loop();
         }  catch(mx::Exception &e) {
             SDL_Log("mx: Exception: %s", e.text().c_str());
         }
-    #endif
+#endif
+#endif
     return 0;
 }
