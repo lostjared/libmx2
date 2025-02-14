@@ -29,7 +29,7 @@
 
             normCoord += wave;
             float dist = length(normCoord);
-            float angle = atan(normCoord.y, normCoord.x);\
+            float angle = atan(normCoord.y, normCoord.x);
             float spiralAmount = tan(time_f) * 3.0;
             angle += dist * spiralAmount;
             vec2 spiralCoord = vec2(cos(angle), sin(angle)) * dist;
