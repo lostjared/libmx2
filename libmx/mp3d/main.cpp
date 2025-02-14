@@ -5,12 +5,56 @@
 #include "intro.hpp"
 #include "start.hpp"
 
+#if defined(__EMSCRIPTEN__) || defined(__ANDORID__)
+    const char *m_vSource = R"(#version 300 es
+            precision mediump float;
+            layout (location = 0) in vec3 aPos;
+            layout (location = 1) in vec2 aTexCoord;
+
+            out vec2 TexCoord;
+
+            void main() {
+                gl_Position = vec4(aPos, 1.0); 
+                TexCoord = aTexCoord;         
+            }
+    )";
+    const char *m_fSource = R"(#version 300 es
+        precision mediump float;
+        in vec2 TexCoord;
+        out vec4 FragColor;
+        uniform sampler2D textTexture; 
+        uniform float alpha;
+        void main() {
+            vec4 fcolor = texture(textTexture, TexCoord);
+            FragColor = mix(fcolor, vec4(0.0, 0.0, 0.0, fcolor.a), alpha);
+        }
+    )";
+#else
+    const char *m_vSource = R"(#version 330 core
+        layout (location = 0) in vec3 aPos;
+        layout (location = 1) in vec2 aTexCoord;
+        out vec2 TexCoord;
+        void main() {
+            gl_Position = vec4(aPos, 1.0); 
+            TexCoord = aTexCoord;        
+        }
+    )";
+    const char *m_fSource = R"(#version 330 core
+        in vec2 TexCoord;
+        out vec4 FragColor;
+        uniform sampler2D textTexture; 
+        uniform float alpha;
+        void main() {
+            vec4 fcolor = texture(textTexture, TexCoord);
+            FragColor = fcolor * alpha; // Apply alpha here!
+        }
+    )";
+#endif
+
 class Game : public gl::GLObject {
 public:
     Game(int diff) : mp(diff) {
-        mp.grid.game_piece.setCallback([]() {
-            std::cout << "Game Piece set..\n";
-        });
+        mp.grid.game_piece.setCallback([]() {});
     }
 
     ~Game() override {
@@ -35,9 +79,10 @@ public:
             }
             textures.push_back(tex);
         }
-        background.loadProgramFromText(gl::vSource, gl::fSource);
+        background.loadProgramFromText(m_vSource,m_fSource);
         bg.initSize(win->w, win->h);
-        bg.loadTexture(&background, win->util.getFilePath("data/mp_wall.png"), 0.0f, 0.0f, win->w, win->h);
+        bg.loadTexture(&background, win->util.getFilePath("data/bg.png"), 0.0f, 0.0f, win->w, win->h);
+        font.loadFont(win->util.getFilePath("data/font.ttf"), 24);
         resize(win, win->w, win->h);
     }
 
@@ -62,11 +107,16 @@ public:
             }
         }
         glDisable(GL_DEPTH_TEST);
-        background.useProgram();
-        bg.initSize(win->w, win->h);                                                      
-        bg.draw();
 
+        glEnable(GL_BLEND); 
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        background.useProgram();
+        background.setUniform("alpha", 0.5f); 
+        bg.initSize(win->w, win->h);
+        bg.draw();
+        glDisable(GL_BLEND); 
         glEnable(GL_DEPTH_TEST);
+
         program.useProgram();
         glm::vec3 cameraPos(0.0f, 0.0f,10.0f);
         glm::vec3 lightPos(0.0f, 3.0f, 2.0f); 
@@ -116,12 +166,21 @@ public:
                 drawGridXY(cx, cy, b->color, 0.0f);
             }
         }
+
+        win->text.setColor({255, 255, 255, 255});
+        win->text.printText_Solid(font, 25.0f, 25.0f, "Score: " + std::to_string(mp.score));
+        win->text.setColor({255, 0, 0, 255});
+        win->text.printText_Solid(font, 25.0f, 60.0f, "Level: " + std::to_string(mp.level));
     }
 
     void drawGridXY(int x, int y, int color, float rotate_) {
         glm::mat4 model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(0.0f, 10.0f, -25.0f));
-        model = glm::translate(model, glm::vec3(-10.0f, 0.0f, 0.0f));
+        model = glm::rotate(model, glm::radians(rotateX), glm::vec3(1.0f, 0.0f, 0.0f));
+        model = glm::rotate(model, glm::radians(rotateY), glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::rotate(model, glm::radians(rotateZ), glm::vec3(0.0f, 0.0f, 1.0f));
+        model = glm::translate(model, glm::vec3(0.0f, 0.0f,zoom ));
+        float gridWidthOffset = -(mp.grid.width() * 1.2f) / 2.0f;
+        model = glm::translate(model, glm::vec3(gridWidthOffset, 0.0f, 0.0f));
         model = glm::translate(model, glm::vec3(x * 1.2f, -y * 1.2f, 0.0f)); 
         program.setUniform("model", model);
         glActiveTexture(GL_TEXTURE0);
@@ -154,6 +213,33 @@ public:
                 case SDLK_SPACE:
                     mp.grid.game_piece.shiftDirection();
                 break;
+                case SDLK_w:
+                    rotateX += 0.5f;
+                break;
+                case SDLK_s:
+                    rotateX -= 0.5;
+                break;
+                case SDLK_a:
+                     rotateY -= 0.5f;
+                break;
+                case SDLK_d:
+                    rotateY += 0.5f;
+                break;
+                case SDLK_z:
+                    rotateZ -= 0.5f;
+                break;
+                case SDLK_x:
+                    rotateZ +=  0.5f;
+                break;
+                case SDLK_EQUALS:
+                    zoom += 0.5f;
+                break;
+                case SDLK_MINUS:
+                    zoom -= 0.5f;
+                break;
+                case SDLK_k:
+                //std::cout << "ZOOM: " << zoom << " X,Y,Z" << rotateX << "," << rotateY << "," << rotateZ << std::endl;
+                break;
             }
             break;
         }
@@ -164,22 +250,28 @@ public:
         cube.setShaderProgram(&program);
         glm::mat4 model = glm::mat4(1.0f);
         glm::mat4 view = glm::lookAt(
-             glm::vec3(0.0f, 0.0f, 5.0f),  // Camera position
+             glm::vec3(0.0f, 3.0f, 5.0f),  // Camera position
              glm::vec3(0.0f, 0.0f, 0.0f),  // Look at origin
              glm::vec3(0.0f, 1.0f, 0.0f)   // Up vector
          );
-         glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)win->w / win->h, 0.1f, 100.0f);
+         glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)win->w / win->h, 0.1f, 1000.0f);
          program.setUniform("model", model);
          program.setUniform("view", view);
          program.setUniform("projection", projection); 
     }
 private:
-    gl::ShaderProgram program, background;
+    gl::ShaderProgram program, background, grid;
     mx::Model cube;
     std::vector<GLuint> textures;
     puzzle::MasterPiece mp;
     gl::GLSprite bg;
+    gl::GLSprite grid_bg;
+    mx::Font font;
     Uint32 lastUpdateTime = 0;
+    float rotateX = 0.0f;
+    float rotateY = 0.0f;
+    float rotateZ = -0.5f;
+    float zoom = -14.0f;
 };
 
 void Intro::draw(gl::GLWindow *win) {
