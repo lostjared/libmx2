@@ -75,7 +75,7 @@ public:
         if(program.loadProgram(win->util.getFilePath("data/tri.vert"), win->util.getFilePath("data/tri.frag")) == false) {
             throw mx::Exception("Failed to load shader program");
         }
-        const char *texture_files[] = {"data/block_clear.png","data/block_dblue.png","data/block_gray.png","data/block_green.png","data/block_ltblue.png", "data/block_purple.png", 0 };
+        const char *texture_files[] = {"data/block_clear.png","data/punk.png","data/block_ltblue.png","data/block_yellow.png","data/block_purple.png", "data/block_green.png", 0 };
         for(int i = 0; texture_files[i] != 0; ++i) {
             GLuint tex = gl::loadTexture(win->util.getFilePath(texture_files[i]));
             if(tex == 0) {
@@ -480,6 +480,7 @@ public:
         setPath(path);
         setObject(new Intro());
         object->load(this);
+        updateViewport();
     }
 
     virtual void draw() override {

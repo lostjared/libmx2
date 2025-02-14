@@ -1,7 +1,7 @@
 #include"intro.hpp"
 
 
-#if defined(__EMSCRIPTEN__) || defined(__ANDORID__)
+#if defined(__EMSCRIPTEN__) || defined(__ANDROID__)
     const char *vSource = R"(#version 300 es
             precision mediump float;
             layout (location = 0) in vec3 aPos;
