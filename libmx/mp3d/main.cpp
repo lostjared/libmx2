@@ -84,6 +84,7 @@ public:
         bg.loadTexture(&background, win->util.getFilePath("data/bg.png"), 0.0f, 0.0f, win->w, win->h);
         font.loadFont(win->util.getFilePath("data/font.ttf"), 24);
         resize(win, win->w, win->h);
+        mouse_x = mouse_y = 0;
     }
 
     float deltaTime = 0.0f;
@@ -99,10 +100,14 @@ public:
         Uint32 current_time = SDL_GetTicks();
         if (current_time - previous_time >= mp.timeout) {
             if(mp.grid.canMoveDown()) {
-                mp.grid.game_piece.moveDown();
+                if(mp.drop == false) {
+                    mp.grid.game_piece.moveDown();
+                }
                 previous_time = current_time;
             } else {
                 // Game over
+                win->setObject(new Intro());
+                win->object->load(win);
                 return;
             }
         }
@@ -138,35 +143,36 @@ public:
             }
         }
 
-        int x_val = mp.grid.game_piece.getX();
-        int y_val = mp.grid.game_piece.getY();  
-        for(int q = 0; q < 3; ++q) {
-            int cx =  x_val;
-            int cy =  y_val;
-            switch(mp.grid.game_piece.getDirection()) {
-                case 0:
-                cx = x_val;
-                cy = y_val + q;
-                break;
-                case 1:
-                cx = x_val + q;
-                cy = y_val;
-                break;
-                case 2:
-                cx = x_val - q;
-                cy = y_val;
-                break;
-                case 3:
-                cx = x_val;
-                cy = y_val - q;
-                break;
-            }
-            puzzle::Block *b = mp.grid.game_piece.at(q);
-            if (b != nullptr) {
-                drawGridXY(cx, cy, b->color, 0.0f);
+        if(mp.drop == false) {
+            int x_val = mp.grid.game_piece.getX();
+            int y_val = mp.grid.game_piece.getY();  
+            for(int q = 0; q < 3; ++q) {
+                int cx =  x_val;
+                int cy =  y_val;
+                switch(mp.grid.game_piece.getDirection()) {
+                    case 0:
+                    cx = x_val;
+                    cy = y_val + q;
+                    break;
+                    case 1:
+                    cx = x_val + q;
+                    cy = y_val;
+                    break;
+                    case 2:
+                    cx = x_val - q;
+                    cy = y_val;
+                    break;
+                    case 3:
+                    cx = x_val;
+                    cy = y_val - q;
+                    break;
+                }
+                puzzle::Block *b = mp.grid.game_piece.at(q);
+                if (b != nullptr) {
+                    drawGridXY(cx, cy, b->color, 0.0f);
+                }
             }
         }
-
         win->text.setColor({255, 255, 255, 255});
         win->text.printText_Solid(font, 25.0f, 25.0f, "Score: " + std::to_string(mp.score));
         win->text.setColor({255, 0, 0, 255});
@@ -194,6 +200,11 @@ public:
         cube.drawArraysWithTexture(textures[color], "texture1");
     }
     
+    void dropPiece() {
+        mp.drop = true;
+        mp.grid.game_piece.drop();
+    }
+
     virtual void event(gl::GLWindow *win, SDL_Event &e) override {
         switch(e.type) {
             case SDL_KEYDOWN:
@@ -213,6 +224,9 @@ public:
                 case SDLK_SPACE:
                     mp.grid.game_piece.shiftDirection();
                 break;
+                case SDLK_RETURN:
+                    dropPiece();
+                    break;
                 case SDLK_w:
                     rotateX += 0.5f;
                 break;
@@ -242,6 +256,45 @@ public:
                 break;
             }
             break;
+            case SDL_MOUSEBUTTONDOWN:
+                if (e.button.button == SDL_BUTTON_LEFT) {
+                    mouse_down = true;
+                    mouse_x = e.button.x;
+                    mouse_y = e.button.y;
+                    mouse_click_time = SDL_GetTicks();
+                    double_click = false;
+                    if (SDL_GetTicks() - last_click_time < double_click_interval) {
+                        double_click = true;
+                    }
+                    last_click_time = SDL_GetTicks();
+                }
+                break;
+            case SDL_MOUSEBUTTONUP:
+                if (e.button.button == SDL_BUTTON_LEFT) {
+                    mouse_down = false;
+                    int dy = e.button.y - mouse_y;
+                    if (dy < -50) {
+                        mp.grid.game_piece.shiftColors();
+                    } else if(dy > 50) {
+                        mp.grid.game_piece.shiftDirection();   
+                    } else if (double_click == true) {
+                        dropPiece();
+                        double_click = false;
+                    }
+                }
+                break;
+            case SDL_MOUSEMOTION:
+                if (mouse_down) {
+                    int dx = e.motion.x - mouse_x;
+                    if (dx > 25) {
+                        mp.grid.game_piece.moveRight();
+                        mouse_x = e.motion.x;
+                    } else if (dx < -25) {
+                        mp.grid.game_piece.moveLeft();
+                        mouse_x = e.motion.x;
+                    }
+                }
+                break;
         }
     }
 
@@ -272,6 +325,13 @@ private:
     float rotateY = 0.0f;
     float rotateZ = -0.5f;
     float zoom = -14.0f;
+    bool mouse_down = false;
+    int mouse_x = 0;
+    int mouse_y = 0;
+    Uint32 mouse_click_time = 0;
+    Uint32 last_click_time = 0;
+    bool double_click = false;
+    Uint32 double_click_interval = 250;
 };
 
 void Intro::draw(gl::GLWindow *win) {
@@ -295,8 +355,16 @@ void Intro::draw(gl::GLWindow *win) {
     }
 }
 void Start::event(gl::GLWindow *win, SDL_Event &e) {
-    if(e.type == SDL_KEYDOWN || e.type == SDL_FINGERDOWN || e.type == SDL_MOUSEBUTTONDOWN) {
+    if(e.type == SDL_KEYDOWN || e.type == SDL_FINGERUP || e.type == SDL_MOUSEBUTTONUP) {
         win->setObject(new Game(0));
+        win->object->load(win);
+        return;
+    }
+}
+
+void Intro::event(gl::GLWindow *win, SDL_Event &e) {
+    if(e.type == SDL_KEYDOWN || e.type == SDL_FINGERUP || e.type == SDL_MOUSEBUTTONUP) {
+        win->setObject(new Start());
         win->object->load(win);
         return;
     }

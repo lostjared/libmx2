@@ -102,6 +102,7 @@ namespace puzzle {
 		int level =  0;
 		void procBlocks();
 		void moveDown_Blocks();
+		bool drop = false;
 	private:
 		int diff = 0;
 	};

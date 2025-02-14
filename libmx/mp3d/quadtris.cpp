@@ -838,6 +838,7 @@ namespace puzzle {
                 }
             }
         }
+        drop = false;
     }
 }
 
