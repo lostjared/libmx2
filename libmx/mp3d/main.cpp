@@ -5,7 +5,8 @@
 #include "intro.hpp"
 #include "start.hpp"
 #include "gameover.hpp"
-
+#include<cstdlib>
+#include<ctime>
 
 #if defined(__EMSCRIPTEN__) || defined(__ANDORID__)
     const char *m_vSource = R"(#version 300 es
@@ -502,7 +503,8 @@ void eventProc() {
     main_w->proc();
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv) 
+    srand(static_cast<int>(time(0)));
 #ifdef __EMSCRIPTEN__
     MainWindow main_window("");
     main_w =&main_window;
