@@ -9,7 +9,7 @@
 
 #if defined(__EMSCRIPTEN__) || defined(__ANDORID__)
     const char *m_vSource = R"(#version 300 es
-            precision mediump float;
+            precision highp float; 
             layout (location = 0) in vec3 aPos;
             layout (location = 1) in vec2 aTexCoord;
 
@@ -21,7 +21,7 @@
             }
     )";
     const char *m_fSource = R"(#version 300 es
-        precision mediump float;
+        precision highp float; 
         in vec2 TexCoord;
         out vec4 FragColor;
         uniform sampler2D textTexture; 
@@ -120,7 +120,6 @@ public:
             }
         }
         glDisable(GL_DEPTH_TEST);
-
         glEnable(GL_BLEND); 
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         background.useProgram();
@@ -279,39 +278,57 @@ public:
                 if (e.type == SDL_MOUSEBUTTONDOWN) {
                     x = e.button.x;
                     y = e.button.y;
+                    mouse_down = true;
+                    mouse_x = x;
+                    mouse_y = y;
+                    mouse_click_time = SDL_GetTicks();
+                    double_click = false;
+                    if (SDL_GetTicks() - last_click_time < double_click_interval) {
+                        double_click = true;
+                    }
+                    last_click_time = SDL_GetTicks();
                 } else {
+                    // For touch events, count active fingers
                     x = e.tfinger.x * win->w;
                     y = e.tfinger.y * win->h;
+                    num_fingers++;
+                    if (num_fingers == 1) {
+                        mouse_down = true;
+                        mouse_x = x;
+                        mouse_y = y;
+                    } else if (num_fingers == 2) {
+                        dropPiece();
+                    }
                 }
-                mouse_down = true;
-                mouse_x = x;
-                mouse_y = y;
-                mouse_click_time = SDL_GetTicks();
-                double_click = false;
-                if (SDL_GetTicks() - last_click_time < double_click_interval) {
-                    double_click = true;
-                }
-                last_click_time = SDL_GetTicks();
                 break;
             }
             case SDL_MOUSEBUTTONUP:
             case SDL_FINGERUP:
             {
-                mouse_down = false;
-                int y;
                 if (e.type == SDL_MOUSEBUTTONUP) {
-                    y = e.button.y;
+                    mouse_down = false;
+                    int dy = e.button.y - mouse_y;
+                    if (dy < -50) {
+                        mp.grid.game_piece.shiftColors();
+                    } else if (dy > 50) {
+                        mp.grid.game_piece.shiftDirection();
+                    } else if (double_click == true) {
+                        dropPiece();
+                        double_click = false;
+                    }
                 } else {
-                    y = e.tfinger.y * win->h;
-                }
-                int dy = y - mouse_y;
-                if (dy < -50) {
-                    mp.grid.game_piece.shiftColors();
-                } else if (dy > 50) {
-                    mp.grid.game_piece.shiftDirection();
-                } else if (double_click == true) {
-                    dropPiece();
-                    double_click = false;
+                    num_fingers--;
+                    if (num_fingers <= 0) {
+                        mouse_down = false;
+                        num_fingers = 0;
+                    }
+                    int y = e.tfinger.y * win->h;
+                    int dy = y - mouse_y;
+                    if (dy < -50) {
+                        mp.grid.game_piece.shiftColors();
+                    } else if (dy > 50) {
+                        mp.grid.game_piece.shiftDirection();
+                    }
                 }
                 break;
             }
@@ -373,6 +390,7 @@ private:
     Uint32 last_click_time = 0;
     bool double_click = false;
     Uint32 double_click_interval = 250;
+    int num_fingers = 0;
 };
 
 void Intro::draw(gl::GLWindow *win) {
