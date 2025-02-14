@@ -4,6 +4,8 @@
 #include "quadtris.hpp"
 #include "intro.hpp"
 #include "start.hpp"
+#include "gameover.hpp"
+
 
 #if defined(__EMSCRIPTEN__) || defined(__ANDORID__)
     const char *m_vSource = R"(#version 300 es
@@ -26,7 +28,7 @@
         uniform float alpha;
         void main() {
             vec4 fcolor = texture(textTexture, TexCoord);
-            FragColor = mix(fcolor, vec4(0.0, 0.0, 0.0, fcolor.a), alpha);
+            FragColor = fcolor * alpha;
         }
     )";
 #else
@@ -46,7 +48,7 @@
         uniform float alpha;
         void main() {
             vec4 fcolor = texture(textTexture, TexCoord);
-            FragColor = fcolor * alpha; // Apply alpha here!
+            FragColor = fcolor * alpha; 
         }
     )";
 #endif
@@ -62,8 +64,10 @@ public:
             glDeleteTextures(1, &t);
         }
     }
-
+    bool fade_in = false;
+    float fade = 0.0f;
     virtual void load(gl::GLWindow *win) override {
+        fade_in = true;
         mp.newGame();
         if(cube.openModel(win->util.getFilePath("data/cube.mxmod")) == false) {
             throw mx::Exception("Failed to open model");
@@ -95,20 +99,24 @@ public:
             lastUpdateTime = currentTime;
             mp.grid.spin();
             mp.procBlocks();
+            if(fade_in == true && fade <= 0.5f) fade += 0.05;
+            else fade_in = false;
         }
         static Uint32 previous_time = SDL_GetTicks();
         Uint32 current_time = SDL_GetTicks();
         if (current_time - previous_time >= mp.timeout) {
-            if(mp.grid.canMoveDown()) {
-                if(mp.drop == false) {
-                    mp.grid.game_piece.moveDown();
+            if(fade_in == false) {
+                if(mp.grid.canMoveDown()) {
+                    if(mp.drop == false) {
+                        mp.grid.game_piece.moveDown();
+                    }
+                    previous_time = current_time;
+                } else {
+                    // Game over
+                    win->setObject(new GameOver(mp.score, mp.level));
+                    win->object->load(win);
+                    return;
                 }
-                previous_time = current_time;
-            } else {
-                // Game over
-                win->setObject(new Intro());
-                win->object->load(win);
-                return;
             }
         }
         glDisable(GL_DEPTH_TEST);
@@ -116,7 +124,7 @@ public:
         glEnable(GL_BLEND); 
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         background.useProgram();
-        background.setUniform("alpha", 0.5f); 
+        background.setUniform("alpha", fade); 
         bg.initSize(win->w, win->h);
         bg.draw();
         glDisable(GL_BLEND); 
@@ -143,7 +151,7 @@ public:
             }
         }
 
-        if(mp.drop == false) {
+        if(fade_in == false && mp.drop == false) {
             int x_val = mp.grid.game_piece.getX();
             int y_val = mp.grid.game_piece.getY();  
             for(int q = 0; q < 3; ++q) {
@@ -173,10 +181,12 @@ public:
                 }
             }
         }
-        win->text.setColor({255, 255, 255, 255});
-        win->text.printText_Solid(font, 25.0f, 25.0f, "Score: " + std::to_string(mp.score));
-        win->text.setColor({255, 0, 0, 255});
-        win->text.printText_Solid(font, 25.0f, 60.0f, "Level: " + std::to_string(mp.level));
+        if(fade_in == false)  {
+            win->text.setColor({255, 255, 255, 255});
+            win->text.printText_Solid(font, 25.0f, 25.0f, "Score: " + std::to_string(mp.score));
+            win->text.setColor({255, 0, 0, 255});
+            win->text.printText_Solid(font, 25.0f, 60.0f, "Level: " + std::to_string(mp.level));
+        }
     }
 
     void drawGridXY(int x, int y, int color, float rotate_) {
@@ -257,44 +267,69 @@ public:
             }
             break;
             case SDL_MOUSEBUTTONDOWN:
-                if (e.button.button == SDL_BUTTON_LEFT) {
-                    mouse_down = true;
-                    mouse_x = e.button.x;
-                    mouse_y = e.button.y;
-                    mouse_click_time = SDL_GetTicks();
-                    double_click = false;
-                    if (SDL_GetTicks() - last_click_time < double_click_interval) {
-                        double_click = true;
-                    }
-                    last_click_time = SDL_GetTicks();
+            case SDL_FINGERDOWN:
+            {
+                int x, y;
+                if (e.type == SDL_MOUSEBUTTONDOWN) {
+                    x = e.button.x;
+                    y = e.button.y;
+                } else {
+                    x = e.tfinger.x * win->w;
+                    y = e.tfinger.y * win->h;
                 }
+                mouse_down = true;
+                mouse_x = x;
+                mouse_y = y;
+                mouse_click_time = SDL_GetTicks();
+                double_click = false;
+                if (SDL_GetTicks() - last_click_time < double_click_interval) {
+                    double_click = true;
+                }
+                last_click_time = SDL_GetTicks();
                 break;
+            }
             case SDL_MOUSEBUTTONUP:
-                if (e.button.button == SDL_BUTTON_LEFT) {
-                    mouse_down = false;
-                    int dy = e.button.y - mouse_y;
-                    if (dy < -50) {
-                        mp.grid.game_piece.shiftColors();
-                    } else if(dy > 50) {
-                        mp.grid.game_piece.shiftDirection();   
-                    } else if (double_click == true) {
-                        dropPiece();
-                        double_click = false;
-                    }
+            case SDL_FINGERUP:
+            {
+                mouse_down = false;
+                int y;
+                if (e.type == SDL_MOUSEBUTTONUP) {
+                    y = e.button.y;
+                } else {
+                    y = e.tfinger.y * win->h;
+                }
+                int dy = y - mouse_y;
+                if (dy < -50) {
+                    mp.grid.game_piece.shiftColors();
+                } else if (dy > 50) {
+                    mp.grid.game_piece.shiftDirection();
+                } else if (double_click == true) {
+                    dropPiece();
+                    double_click = false;
                 }
                 break;
+            }
             case SDL_MOUSEMOTION:
+            case SDL_FINGERMOTION:
+            {
+                int x;
+                if (e.type == SDL_MOUSEMOTION) {
+                    x = e.motion.x;
+                } else {
+                    x = e.tfinger.x * win->w;
+                }
                 if (mouse_down) {
-                    int dx = e.motion.x - mouse_x;
+                    int dx = x - mouse_x;
                     if (dx > 25) {
                         mp.grid.game_piece.moveRight();
-                        mouse_x = e.motion.x;
+                        mouse_x = x;
                     } else if (dx < -25) {
                         mp.grid.game_piece.moveLeft();
-                        mouse_x = e.motion.x;
+                        mouse_x = x;
                     }
                 }
                 break;
+            }
         }
     }
 
@@ -343,21 +378,34 @@ void Intro::draw(gl::GLWindow *win) {
 #endif
     program.useProgram();
     program.setUniform("alpha", fade);
+    program.setUniform("time_f", SDL_GetTicks() / 1000.0f);
     intro.draw();
     if((currentTime - lastUpdateTime) > 25) {
         lastUpdateTime = currentTime;
-        fade += 0.01;
+        fade -= 0.01;
     }
-    if(fade >= 1.0) {
+    if(fade <= 0.1) {
         win->setObject(new Start());
         win->object->load(win);
         return;
     }
 }
+
+void Start::setGame(gl::GLWindow *win) {
+    win->setObject(new Game(0));
+    win->object->load(win);
+}
+
+void Start::load_shader() {
+    if(!program.loadProgramFromText(m_vSource, m_fSource)) {
+        throw mx::Exception("Failed to load shader program Intro::load_shader()");
+    }
+}
+
 void Start::event(gl::GLWindow *win, SDL_Event &e) {
     if(e.type == SDL_KEYDOWN || e.type == SDL_FINGERUP || e.type == SDL_MOUSEBUTTONUP) {
-        win->setObject(new Game(0));
-        win->object->load(win);
+        fade = 1.0f;
+        fade_in = false;
         return;
     }
 }
@@ -365,6 +413,38 @@ void Start::event(gl::GLWindow *win, SDL_Event &e) {
 void Intro::event(gl::GLWindow *win, SDL_Event &e) {
     if(e.type == SDL_KEYDOWN || e.type == SDL_FINGERUP || e.type == SDL_MOUSEBUTTONUP) {
         win->setObject(new Start());
+        win->object->load(win);
+        return;
+    }
+}
+
+void GameOver::draw(gl::GLWindow *win) {
+    glDisable(GL_DEPTH_TEST);
+    program.useProgram();
+    GLint loc = glGetUniformLocation(program.id(), "iResolution");
+    glUniform2f(loc, win->w, win->h);
+    program.setUniform("time_f", static_cast<float>(SDL_GetTicks()) / 1000.0f);
+    game_over.draw();
+    win->text.setColor({255, 255, 255, 255});
+    int tw = 0, th = 0;
+    TTF_Font *f = font.unwrap();
+    std::string gameover_text = "Game Over Your Score: " + std::to_string(score_);
+    std::string play_again = "Tap or Enter to play again";
+    TTF_SizeText(f, gameover_text.c_str(), &tw, &th);
+    float centerX = static_cast<float>(win->w - tw) / 2.0f;
+    float centerY = static_cast<float>(win->h - th) / 2.0f;
+    win->text.setColor({150, 80, 255, 255});
+    win->text.printText_Solid(font, centerX, centerY, gameover_text.c_str());
+    TTF_SizeText(f, play_again.c_str(), &tw, &th);
+    centerX = static_cast<float>(win->w - tw) / 2.0f;
+    centerY = static_cast<float>(win->h - th) / 2.0f;
+    win->text.setColor({255, 255, 255, 255});
+    win->text.printText_Solid(font, centerX, centerY + 80.0f, play_again.c_str());
+}
+
+void GameOver::event(gl::GLWindow *win, SDL_Event &e) {
+    if((e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_RETURN) || (e.type == SDL_FINGERUP) || (e.type == SDL_MOUSEBUTTONUP)) {
+        win->setObject(new Intro());
         win->object->load(win);
         return;
     }

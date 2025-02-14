@@ -3,11 +3,20 @@
 void Start::draw(gl::GLWindow *win) {
     glDisable(GL_DEPTH_TEST);
     program.useProgram();
+    program.setUniform("alpha", fade);
     start.draw();
-}
-
-void Start::load_shader() {
-    if(!program.loadProgramFromText(gl::vSource, gl::fSource)) {
-        throw mx::Exception("Failed to load shader program Intro::load_shader()");
+    currentTime = SDL_GetTicks();
+    if((currentTime - lastUpdateTime) > 25) {
+        lastUpdateTime = currentTime;
+        if(fade_in == true && fade < 1.0f) fade += 0.05;
+        if(fade_in == false && fade > 0.1f) fade -= 0.05;
+    }
+    if(fade_in == true && fade >= 1.0f) {
+        fade = 1.0f;
+    } else if(fade_in == false  && fade <= 0.1f) {
+        fade = 0.0f;
+        setGame(win);
+        return;
     }
 }
+

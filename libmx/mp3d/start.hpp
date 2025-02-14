@@ -19,7 +19,10 @@ public:
 private:
     gl::ShaderProgram program;
     gl::GLSprite start;
+    float fade = 0.0f;
+    bool fade_in = true;
+    Uint32 currentTime = 0, lastUpdateTime = 0;
+    void setGame(gl::GLWindow *win);
 };
-
 
 #endif

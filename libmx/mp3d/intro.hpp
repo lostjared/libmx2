@@ -20,7 +20,7 @@ private:
     gl::ShaderProgram program;
     gl::GLSprite intro;
     Uint32 lastUpdateTime = 0;
-    float fade = 0.0f;
+    float fade = 1.0f;
 };
 
 
