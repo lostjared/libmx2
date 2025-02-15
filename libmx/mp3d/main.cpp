@@ -477,8 +477,13 @@ void GameOver::event(gl::GLWindow *win, SDL_Event &e) {
 
 class MainWindow : public gl::GLWindow {
 public:
-    MainWindow(const std::string &path) : gl::GLWindow("mp3d", 1280, 720) {
+    MainWindow(const std::string &path) : gl::GLWindow("MasterPiece3D", 1280, 720) {
         setPath(path);
+        SDL_Surface *ico = png::LoadPNG(util.getFilePath("data/punk.png").c_str());
+        if(ico != nullptr) {
+            setWindowIcon(ico);
+            SDL_FreeSurface(ico);
+        }
         setObject(new Intro());
         object->load(this);
         updateViewport();
