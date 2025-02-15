@@ -493,7 +493,13 @@ public:
     }
 
     virtual void event(SDL_Event &e) override {
-    //    Game *g = dynamic_cast<Game *>(object.get());
+#ifdef __ANDROID__
+        if (e.type == SDL_WINDOWEVENT) {
+            if (e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+                updateViewport();
+            }
+        } 
+#endif
     }
 };
 
