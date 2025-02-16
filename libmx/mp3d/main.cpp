@@ -5,8 +5,8 @@
 #include "intro.hpp"
 #include "start.hpp"
 #include "gameover.hpp"
-#include<cstdlib>
-#include<ctime>
+#include <cstdlib>
+#include <ctime>
 
 #if defined(__EMSCRIPTEN__) || defined(__ANDORID__)
     const char *m_vSource = R"(#version 300 es
@@ -59,14 +59,11 @@ public:
     Game(int diff) : mp(diff) {
         mp.grid.game_piece.setCallback([]() {});
     }
-
     ~Game() override {
         for (auto &t : textures)  {
             glDeleteTextures(1, &t);
         }
     }
-    bool fade_in = false;
-    float fade = 0.0f;
     virtual void load(gl::GLWindow *win) override {
         fade_in = true;
         mp.newGame();
@@ -91,8 +88,6 @@ public:
         resize(win, win->w, win->h);
         mouse_x = mouse_y = 0;
     }
-
-    float deltaTime = 0.0f;
     virtual void draw(gl::GLWindow *win) override {
         Uint32 currentTime = SDL_GetTicks();
         deltaTime = (currentTime - lastUpdateTime) / 1000.0f;        
@@ -129,7 +124,6 @@ public:
         bg.draw();
         glDisable(GL_BLEND); 
         glEnable(GL_DEPTH_TEST);
-
         program.useProgram();
         glm::vec3 cameraPos(0.0f, 0.0f,10.0f);
         glm::vec3 lightPos(0.0f, 3.0f, 2.0f); 
@@ -150,7 +144,6 @@ public:
                 }
             }
         }
-
         if(fade_in == false && mp.drop == false) {
             int x_val = mp.grid.game_piece.getX();
             int y_val = mp.grid.game_piece.getY();  
@@ -188,7 +181,6 @@ public:
             win->text.printText_Solid(font, 25.0f, 60.0f, "Level: " + std::to_string(mp.level));
         }
     }
-
     void drawGridXY(int x, int y, int color, float rotate_) {
         glm::mat4 model = glm::mat4(1.0f);
         model = glm::rotate(model, glm::radians(rotateX), glm::vec3(1.0f, 0.0f, 0.0f));
@@ -209,22 +201,17 @@ public:
         }
         cube.drawArraysWithTexture(textures[color], "texture1");
     }
-    
     void dropPiece() {
         if(mp.drop == false) {
             mp.drop = true;
             mp.grid.game_piece.drop();
         }
     }
-
     virtual void event(gl::GLWindow *win, SDL_Event &e) override {
-
-
         switch(e.type) {
             case SDL_KEYUP:
             if(e.key.keysym.sym == SDLK_RETURN)
                 dropPiece();
-
             break;
             case SDL_KEYDOWN:
             switch(e.key.keysym.sym) {
@@ -289,7 +276,6 @@ public:
                     }
                     last_click_time = SDL_GetTicks();
                 } else {
-                    // For touch events, count active fingers
                     x = e.tfinger.x * win->w;
                     y = e.tfinger.y * win->h;
                     num_fingers++;
@@ -362,9 +348,9 @@ public:
         cube.setShaderProgram(&program);
         glm::mat4 model = glm::mat4(1.0f);
         glm::mat4 view = glm::lookAt(
-             glm::vec3(0.0f, 3.0f, 5.0f),  // Camera position
-             glm::vec3(0.0f, 0.0f, 0.0f),  // Look at origin
-             glm::vec3(0.0f, 1.0f, 0.0f)   // Up vector
+             glm::vec3(0.0f, 3.0f, 5.0f),  
+             glm::vec3(0.0f, 0.0f, 0.0f),  
+             glm::vec3(0.0f, 1.0f, 0.0f)   
          );
          glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)win->w / win->h, 0.1f, 1000.0f);
          program.setUniform("model", model);
@@ -392,6 +378,9 @@ private:
     bool double_click = false;
     Uint32 double_click_interval = 250;
     int num_fingers = 0;
+    bool fade_in = false;
+    float fade = 0.0f;
+    float deltaTime = 0.0f;
 };
 
 void Intro::draw(gl::GLWindow *win) {
@@ -496,7 +485,7 @@ public:
         swap();
         delay();
     }
-
+    
     virtual void event(SDL_Event &e) override {
 #ifdef __ANDROID__
         if (e.type == SDL_WINDOWEVENT) {
