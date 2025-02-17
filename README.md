@@ -24,7 +24,7 @@ while using an approach I prefer, an Object Oriented Design. I have experimented
 
 - C++20 compatible compiler (e.g., GCC 10+, Clang 10+, MSVC 2019+
 - SDL2/SDL2_ttf/SDL2_mixer, libpng, zlib installed
-- Optional: OpenGL/GLM includes GLAD
+- Optional: OpenGL/GLM includes GLAD or Vulkan
 
 ### Installation
 
@@ -66,6 +66,8 @@ Current Options:
 * -DBUILD_STATIC_LIB=OFF - optionally compile library as a static library ON or OFF
 * -DOPENGL=ON optionally compile OpenGL support into the library either ON or OFF
 * -DMIXER=ON optionally compile audio support with SDL2_mixer either ON or OFF
+* -DVULKAN=ON optionally compile Vulkan support into the library ON  or OFF
+* 
 ## Usage
 
 Include the `libmx2` headers in your project and link against the compiled library.
