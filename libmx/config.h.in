@@ -16,5 +16,9 @@
 #ifndef WITH_JPEG
 #define WITH_JPEG
 #endif
+#if @WITH_VK_VAL@
+#ifndef WITH_VK
+#define WITH_VK
 #endif
-
+#endif
+#endif
