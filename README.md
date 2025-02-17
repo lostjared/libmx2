@@ -11,6 +11,8 @@ It provides a collection of utilities and abstractions to streamline the creatio
 The motivation for creating this library was to give me an easy way to assemble new SDL2 applications 
 while using an approach I prefer, an Object Oriented Design. I have experimented with AI in some of the example projects for this library.
 
+# In Progress
+I am working on adding support for Vulkan
 
 ## Features
 
@@ -18,6 +20,7 @@ while using an approach I prefer, an Object Oriented Design. I have experimented
 - **Modern C++20 Design**: Utilizes C++20 features for cleaner and more efficient code.
 - **Modular Architecture**: Offers a flexible structure to accommodate various project needs.
 - **Optional OpenGL/GLAD/GLM support**: You can compile in support for these libraries with examples
+- **Optional Vulkan**: You can compile in support for Vulkan
 ## Getting Started
 
 ### Prerequisites
