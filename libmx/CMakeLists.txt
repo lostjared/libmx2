@@ -131,6 +131,7 @@ endif()
 
 if(VULKAN)
 add_subdirectory(vk_ex1)
+add_subdirectory(vk_cube)
 endif()
 
 else()
