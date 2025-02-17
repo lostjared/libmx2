@@ -123,7 +123,6 @@ namespace mx {
         vkDeviceWaitIdle(device);
     }
     void VKWindow::proc() {
-
     }
     void VKWindow::cleanup() {
         vkDestroySemaphore(device, renderFinishedSemaphore, nullptr);
@@ -150,7 +149,7 @@ namespace mx {
     void VKWindow::createInstance() {
         VkApplicationInfo appInfo{};
         appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-        appInfo.pApplicationName = "Vulkan Triangle";
+        appInfo.pApplicationName = "VulkanApp";
         appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
         appInfo.pEngineName = "No Engine";
         appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
