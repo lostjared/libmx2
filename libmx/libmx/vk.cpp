@@ -569,6 +569,5 @@ namespace mx {
         
         vkQueuePresentKHR(presentQueue, &presentInfo);
         vkQueueWaitIdle(presentQueue);
-    }
-    
+    }  
 }
