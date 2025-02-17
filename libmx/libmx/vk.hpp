@@ -35,7 +35,7 @@ namespace mx {
         VKWindow(const std::string &title, int width, int height);
         virtual ~VKWindow() { cleanup() ; }
         void initWindow(const std::string &title, int width, int height);
-        void initVulkan();
+        virtual void initVulkan();
         void loop();
         void proc();
         void cleanup();
@@ -79,14 +79,14 @@ namespace mx {
         void createSurface();
         void pickPhysicalDevice();
         void createLogicalDevice();
-        void createSwapChain();
+        virtual void createSwapChain();
         void createImageViews();
         void createRenderPass();
         void createFramebuffers();
         void createCommandPool();
         void createCommandBuffers();
         void createSyncObjects();
-
+        virtual void cleanupSwapChain();
         QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
         VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
         VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
