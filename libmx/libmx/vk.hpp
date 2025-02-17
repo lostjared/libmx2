@@ -41,10 +41,10 @@ namespace mx {
         void cleanup();
         virtual void event(SDL_Event &e) = 0;
         virtual void draw(); // overload this function to draw
-        virtual void createGraphicsPipeline(); // overload to setup shaders/custom drawing
+        virtual void createGraphicsPipeline() = 0; // overload to setup shaders/custom drawing
         VkShaderModule createShaderModule(const std::vector<char>& code);
         int w = 0, h = 0;
-    private:
+    protected:
         VkInstance instance = VK_NULL_HANDLE;
         VkSurfaceKHR surface = VK_NULL_HANDLE;
         VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
