@@ -82,7 +82,6 @@ namespace mx {
         void createSwapChain();
         void createImageViews();
         void createRenderPass();
-        void createGraphicsPipeline();
         void createFramebuffers();
         void createCommandPool();
         void createCommandBuffers();
