@@ -8,7 +8,9 @@ struct Vertex {
 
 class MainWindow : public mx::VKWindow {
 public:
-    MainWindow() : mx::VKWindow("Hello, World with Vulkan", 1024, 768) {}
+    MainWindow(const std::string &path) : mx::VKWindow("Hello, World with Vulkan", 1024, 768) {
+        setPath(path);
+    }
     virtual ~MainWindow() {}
     virtual void event(SDL_Event &e) override {}
 
@@ -119,21 +121,8 @@ private:
 
 public:
     virtual void createGraphicsPipeline() override {
-        auto readFile = [](const std::string& filename) -> std::vector<char> {
-            std::ifstream file(filename, std::ios::ate | std::ios::binary);
-            if (!file.is_open()) {
-                throw mx::Exception("Failed to open file: " + filename);
-            }
-            size_t fileSize = (size_t)file.tellg();
-            std::vector<char> buffer(fileSize);
-            file.seekg(0);
-            file.read(buffer.data(), fileSize);
-            file.close();
-            return buffer;
-        };
-
-        auto vertShaderCode = readFile("vert.spv");
-        auto fragShaderCode = readFile("frag.spv");
+        auto vertShaderCode = util.readFile(util.getFilePath("vert.spv"));
+        auto fragShaderCode = util.readFile(util.getFilePath("frag.spv"));
 
         VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
         VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
@@ -351,12 +340,16 @@ public:
 };
 
 int main(int argc, char **argv) {
+   if(argc != 2) {
+        SDL_Log("Usage: %s <path to assets>\n", argv[0]);
+        return EXIT_FAILURE;
+    }
     try {
-        MainWindow window;
+        MainWindow window(argv[1]);
         window.initVulkan();
         window.loop();   
     } catch (mx::Exception &e) {
         SDL_Log("mx: Exception: %s\n", e.text().c_str());
     }
-    return 0;
+    return EXIT_SUCCESS;
 }

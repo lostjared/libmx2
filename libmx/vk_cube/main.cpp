@@ -14,7 +14,9 @@ struct Vertex {
 
 class MainWindow : public mx::VKWindow {
 public:
-    MainWindow() : mx::VKWindow("-[ Cube with Vulkan ]-", 960, 720) {}
+    MainWindow(const std::string &path) : mx::VKWindow("-[ Cube with Vulkan ]-", 960, 720) {
+        setPath(path);
+    }
     virtual ~MainWindow() {}
     virtual void event(SDL_Event &e) override {}
 
@@ -157,22 +159,8 @@ private:
 
 public:
     virtual void createGraphicsPipeline() override {
-        auto readFile = [](const std::string& filename) -> std::vector<char> {
-            std::ifstream file(filename, std::ios::ate | std::ios::binary);
-            if (!file.is_open()) {
-                throw mx::Exception("Failed to open file: " + filename);
-            }
-            size_t fileSize = (size_t)file.tellg();
-            std::vector<char> buffer(fileSize);
-            file.seekg(0);
-            file.read(buffer.data(), fileSize);
-            file.close();
-            return buffer;
-        };
-
-        auto vertShaderCode = readFile("vert.spv");
-        auto fragShaderCode = readFile("frag.spv");
-
+        auto vertShaderCode = util.readFile(util.getFilePath("vert.spv"));
+        auto fragShaderCode = util.readFile(util.getFilePath("frag.spv"));
         VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
         VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
 
@@ -396,14 +384,18 @@ public:
         mx::VKWindow::cleanupSwapChain();
     }
 };
-
 int main(int argc, char **argv) {
-    try {
-        MainWindow window;
-        window.initVulkan();
-        window.loop();   
-    } catch (mx::Exception &e) {
-        SDL_Log("mx: Exception: %s\n", e.text().c_str());
-    }
-    return 0;
-}
+    if(argc != 2) {
+         SDL_Log("Usage: %s <path to assets>\n", argv[0]);
+         return EXIT_FAILURE;
+     }
+ 
+     try {
+         MainWindow window(argv[1]);
+         window.initVulkan();
+         window.loop();   
+     } catch (mx::Exception &e) {
+         SDL_Log("mx: Exception: %s\n", e.text().c_str());
+     }
+     return EXIT_SUCCESS;
+ }
