@@ -71,7 +71,9 @@ Current Options:
 * -DMIXER=ON optionally compile audio support with SDL2_mixer either ON or OFF
 * -DVULKAN=ON optionally compile Vulkan support into the library ON  or OFF
 * -DMMOLTEN=ON optionally compile with MoltenVK
-* 
+* =DMOLTEN_PATh=/usr/local/opt/molten-vk  (or path you installed molten-vk)
+
+
 ## Usage
 
 Include the `libmx2` headers in your project and link against the compiled library.
