@@ -70,7 +70,7 @@ Current Options:
 * -DOPENGL=ON optionally compile OpenGL support into the library either ON or OFF
 * -DMIXER=ON optionally compile audio support with SDL2_mixer either ON or OFF
 * -DVULKAN=ON optionally compile Vulkan support into the library ON  or OFF
-* -DMMOLTEN=ON optionally compile with MoltenVK
+* -DMOLTEN=ON optionally compile with MoltenVK
 * =DMOLTEN_PATH=/usr/local/opt/molten-vk  (or path you installed molten-vk)
 
 
