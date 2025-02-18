@@ -5,6 +5,6 @@ target_include_directories(vk_ex1 PRIVATE
     ${SDL2_TTF_INCLUDE_DIRS}
     ${VK_INCLUDE}
 )
-target_link_libraries(vk_ex1 PUBLIC mx)
+target_link_libraries(vk_ex1 PUBLIC mx SDL2::SDL2main SDL2::SDL2)
 
 
