@@ -23,10 +23,21 @@ target_include_directories(mx PUBLIC
     ${MIXER_INCLUDE}
     ${VK_INCLUDE}
 )
+
+if(MOLTEN)
+link_directories(${MOLTEN_PATH}/lib)
+target_link_libraries(mx PRIVATE
+    "-framework QuartzCore"
+    "-framework Metal"
+    "-framework IOSurface"
+    "-framework CoreGraphics")
+
 target_link_libraries(mx PUBLIC SDL2::SDL2 SDL2_ttf::SDL2_ttf ${IMG_LIB} ${GL_LIB} ${MIXER_LIB} ${VK_LIB})
+else()
+target_link_libraries(mx PUBLIC SDL2::SDL2 SDL2_ttf::SDL2_ttf ${IMG_LIB} ${GL_LIB} ${MIXER_LIB} ${VK_LIB})
+endif()
+
 add_library(libmx2::mx ALIAS mx)
-
-
 
 install(TARGETS mx
     EXPORT libmx2Targets
