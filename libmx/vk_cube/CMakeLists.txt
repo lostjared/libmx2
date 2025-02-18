@@ -6,4 +6,4 @@ target_include_directories(vk_cube PRIVATE
     ${VK_INCLUDE}
 )
 
-target_link_libraries(vk_cube PRIVATE mx ${SDL2_LIBRARIES} ${SDL2_TTF_LIBRARIES})
+target_link_libraries(vk_cube PUBLIC mx SDL2::SDL2main SDL2::SDL2)
