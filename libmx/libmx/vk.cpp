@@ -34,6 +34,10 @@ namespace mx {
         createSyncObjects();
     }
 
+    void VKWindow::setPath(const std::string &path) {
+        util.path = path;
+    }
+
     bool VKWindow::isDeviceSuitable(VkPhysicalDevice device) {
         QueueFamilyIndices indices = findQueueFamilies(device);
 

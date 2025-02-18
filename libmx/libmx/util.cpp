@@ -1,8 +1,22 @@
 #include"util.hpp"
 #include"loadpng.hpp"
 #include<sstream>
+#include"exception.hpp"
 
 namespace mx {
+
+    std::vector<char> mxUtil::readFile(const std::string& filename) {
+        std::ifstream file(filename, std::ios::ate | std::ios::binary);
+        if (!file.is_open()) {
+            throw Exception("Failed to open file: " + filename);
+        }
+        size_t fileSize = (size_t)file.tellg();
+        std::vector<char> buffer(fileSize);
+        file.seekg(0);
+        file.read(buffer.data(), fileSize);
+        file.close();
+        return buffer;
+    }
 
     std::string mxUtil::getFilePath(const std::string &filename) {
         std::ostringstream stream;

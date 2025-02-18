@@ -36,6 +36,7 @@ namespace mx {
         virtual ~VKWindow() { cleanup() ; }
         void initWindow(const std::string &title, int width, int height);
         virtual void initVulkan();
+        void setPath(const std::string &path);
         void loop();
         void proc();
         void cleanup();
@@ -44,6 +45,7 @@ namespace mx {
         virtual void createGraphicsPipeline() = 0; 
         VkShaderModule createShaderModule(const std::vector<char>& code);
         int w = 0, h = 0;
+        mxUtil util;
     protected:
         VkInstance instance = VK_NULL_HANDLE;
         VkSurfaceKHR surface = VK_NULL_HANDLE;
