@@ -20,14 +20,14 @@ I am working on adding support for Vulkan
 - **Modern C++20 Design**: Utilizes C++20 features for cleaner and more efficient code.
 - **Modular Architecture**: Offers a flexible structure to accommodate various project needs.
 - **Optional OpenGL/GLAD/GLM support**: You can compile in support for these libraries with examples
-- **Optional Vulkan**: You can compile in support for Vulkan
+- **Optional Vulkan**: You can compile in support for Vulkan or MoltenVK
 ## Getting Started
 
 ### Prerequisites
 
 - C++20 compatible compiler (e.g., GCC 10+, Clang 10+, MSVC 2019+
 - SDL2/SDL2_ttf/SDL2_mixer, libpng, zlib installed
-- Optional: OpenGL/GLM includes GLAD or Vulkan
+- Optional: OpenGL/GLM includes GLAD or Vulkan/MoletnVK
 
 ### Installation
 
@@ -70,6 +70,7 @@ Current Options:
 * -DOPENGL=ON optionally compile OpenGL support into the library either ON or OFF
 * -DMIXER=ON optionally compile audio support with SDL2_mixer either ON or OFF
 * -DVULKAN=ON optionally compile Vulkan support into the library ON  or OFF
+* -DMMOLTEN=ON optionally compile with MoltenVK
 * 
 ## Usage
 
