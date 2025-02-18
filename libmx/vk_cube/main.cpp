@@ -14,7 +14,7 @@ struct Vertex {
 
 class MainWindow : public mx::VKWindow {
 public:
-    MainWindow() : mx::VKWindow("Cube with Vulkan", 960, 720) {}
+    MainWindow() : mx::VKWindow("-[ Cube with Vulkan ]-", 960, 720) {}
     virtual ~MainWindow() {}
     virtual void event(SDL_Event &e) override {}
 
@@ -32,7 +32,7 @@ private:
             {{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}},   
             {{-0.5f, 0.5f, -0.5f}, {1.0f, 0.0f, 1.0f}},  
             {{-0.5f, -0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},  
-            {{0.5f, -0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}},   
+            {{0.5f, -0.5f, 0.5f}, {1.0f, 0.0f, 0.0f}},   
             {{0.5f, 0.5f, 0.5f}, {1.0f, 1.0f,  0.0f}},   
             {{-0.5f, 0.5f, 0.5f}, {0.0f, 1.0f, 1.0f}}    
         };
@@ -324,51 +324,30 @@ public:
         VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
         renderPassInfo.clearValueCount = 1;
         renderPassInfo.pClearValues = &clearColor;
-        
         vkCmdBeginRenderPass(commandBuffers[imageIndex], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-        
         float time = SDL_GetTicks() / 1000.0f;
         glm::mat4 model = glm::rotate(glm::mat4(1.0f), time, glm::vec3(1.0f, 1.0f, 0.0f));
-        
-        
         glm::mat4 view = glm::lookAt(
             glm::vec3(2.0f, 2.0f, 2.0f), 
             glm::vec3(0.0f, 0.0f, 0.0f), 
             glm::vec3(0.0f, 1.0f, 0.0f)  
         );
-
         glm::mat4 proj = glm::perspective(
             glm::radians(45.0f),
             swapChainExtent.width / (float) swapChainExtent.height,
             0.1f,
             10.0f
         );
-
         // flip Y because its inverted
         proj[1][1] *= -1;
-
-        
         glm::mat4 mvp = proj * view * model;
-
-        vkCmdPushConstants(
-            commandBuffers[imageIndex],
-            pipelineLayout,
-            VK_SHADER_STAGE_VERTEX_BIT,
-            0,
-            sizeof(mvp),
-            glm::value_ptr(mvp)
-        );
-        
+        vkCmdPushConstants(commandBuffers[imageIndex],pipelineLayout,VK_SHADER_STAGE_VERTEX_BIT,0,sizeof(mvp),glm::value_ptr(mvp));
         vkCmdBindPipeline(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-
         VkBuffer vertexBuffers[] = { vertexBuffer };
         VkDeviceSize offsets[] = { 0 };
         vkCmdBindVertexBuffers(commandBuffers[imageIndex], 0, 1, vertexBuffers, offsets);
         vkCmdBindIndexBuffer(commandBuffers[imageIndex], indexBuffer, 0, VK_INDEX_TYPE_UINT16);
-
         vkCmdDrawIndexed(commandBuffers[imageIndex], indexCount, 1, 0, 0, 0);
-        
         vkCmdEndRenderPass(commandBuffers[imageIndex]);
         
         if (vkEndCommandBuffer(commandBuffers[imageIndex]) != VK_SUCCESS) {
