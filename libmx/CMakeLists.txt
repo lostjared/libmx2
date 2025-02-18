@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_compile_options(-O2 -Wall -pedantic)
+add_compile_options(-O2 -Wall)
 
 find_package(SDL2 REQUIRED)
 find_package(SDL2_ttf REQUIRED)
