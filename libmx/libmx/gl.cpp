@@ -116,10 +116,14 @@ namespace gl {
     }
     void GLWindow::setFullScreen(bool full) {
         if(full) {
-            SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
+            SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
         } else {
             SDL_SetWindowFullscreen(window, 0);
         }
+        updateViewport();
+        SDL_RaiseWindow(window);
+        SDL_SetWindowInputFocus(window);
+        SDL_Delay(100);
     }
 
     void GLWindow::setObject(gl::GLObject *o) {
