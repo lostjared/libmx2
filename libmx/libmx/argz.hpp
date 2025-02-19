@@ -439,6 +439,12 @@ inline Arguments proc_args(int &argc, char **argv) {
         }
     } catch (const ArgException<std::string>& e) {
         std::cerr << "mx: Argument Exception" << e.text() << std::endl;
+		// defaults
+		args.width = 1280;
+		args.height = 720;
+		args.path = ".";
+		args.fullscreen = false;
+		return args;
     }
     if(path.empty()) {
         std::cerr << "mx: No path provided trying default current directory.\n";
