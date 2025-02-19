@@ -8,6 +8,10 @@
 #include <cstdlib>
 #include <ctime>
 
+#if defined(__APPLE__) || defined(_WIN32) || defined(__linux__)
+#include"argz.hpp"
+#endif
+
 #if defined(__EMSCRIPTEN__) || defined(__ANDORID__)
     const char *m_vSource = R"(#version 300 es
             precision highp float; 
@@ -466,7 +470,7 @@ void GameOver::event(gl::GLWindow *win, SDL_Event &e) {
 
 class MainWindow : public gl::GLWindow {
 public:
-    MainWindow(const std::string &path) : gl::GLWindow("MasterPiece3D", 1280, 720) {
+    MainWindow(const std::string &path, int wx, int wy) : gl::GLWindow("MasterPiece3D", wx, wy) {
         setPath(path);
         SDL_Surface *ico = png::LoadPNG(util.getFilePath("data/punk.png").c_str());
         if(ico != nullptr) {
@@ -511,21 +515,22 @@ int main(int argc, char **argv) {
     emscripten_set_main_loop(eventProc, 0, 1);
 #else
 #if defined(_WIN32) || defined(__linux__) || defined(__APPLE__)
-    if(argc == 2) {
-        try {
-            MainWindow main_window(argv[1]);
-            main_window.loop();
-        }  catch(mx::Exception &e) {
-            SDL_Log("mx: Exception: %s", e.text().c_str());
-        }
+    Arguments args = proc_args(argc, argv);
+    try {
+        MainWindow main_window(args.path, args.width, args.height);
+        if(args.fullscreen)
+            main_window.setFullScreen(true);
+        main_window.loop();
+    }  catch(mx::Exception &e) {
+        SDL_Log("mx: Exception: %s", e.text().c_str());
     }
 #elif defined(__ANDROID__)
-        try {
-            MainWindow main_window("");
-            main_window.loop();
-        }  catch(mx::Exception &e) {
-            SDL_Log("mx: Exception: %s", e.text().c_str());
-        }
+    try {
+        MainWindow main_window("");
+        main_window.loop();
+    }  catch(mx::Exception &e) {
+        SDL_Log("mx: Exception: %s", e.text().c_str());
+    }
 #endif
 #endif
     return 0;
