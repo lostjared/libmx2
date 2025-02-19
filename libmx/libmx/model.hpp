@@ -37,7 +37,7 @@ namespace mx {
         size_t normIndex;
         Mesh()
                : shape_type(GL_TRIANGLES),texture{0},
-                 VAO(0), positionVBO(0), normalVBO(0), texCoordVBO(0),
+                 EBO(0), VAO(0), positionVBO(0), normalVBO(0), texCoordVBO(0),
                  vertIndex(0), texIndex(0), normIndex(0) {}
         ~Mesh();
         Mesh(const Mesh &m) = delete;
