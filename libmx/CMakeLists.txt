@@ -56,13 +56,12 @@ else()
 endif()
 
 if(VULKAN)
-
   if(MOLTEN)
   message(FATAL_ERROR "Its either Vulkan or MoltenVK")
   endif()
-
   find_package(Vulkan REQUIRED)
-  set(VK_INCLUDE ${Vulkan_INCLUDE_DIRS})
+  find_package(glm REQUIRED)
+  set(VK_INCLUDE ${Vulkan_INCLUDE_DIRS} ${GLM_INCLUDE_DIRS})
   set(VK_LIB Vulkan::Vulkan)
   set(VK_SRC vk.cpp)
   message(STATUS "Vulkan Include: ${VK_INCLUDE}")
@@ -72,15 +71,14 @@ else()
 endif()
 
 if(MOLTEN)
-
   if(VULKAN)
   message(FATAL_ERROR "Its ethier Vulkan or MoltenVK")
   endif()
-
   if(NOT MOLTEN_PATH)
   set(MOLTEN_PATH /usr/local/opt/molten-vk)
   endif()
-  set(VK_INCLUDE ${MOLTEN_PATH}/include)
+  find_package(glm REQUIRED)
+  set(VK_INCLUDE ${MOLTEN_PATH}/include ${GLM_INCLUDE_DIRS})
   set(VK_SRC vk.cpp)
   set(VK_LIB "${MOLTEN_PATH}/lib/libMoltenVK.dylib")
   message(STATUS "MoltenVK Include: ${VK_INCLUDE}")
