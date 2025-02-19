@@ -129,6 +129,7 @@ namespace mx {
     }
 
     void Mesh::compressIndices() {
+        std::cout << "mx: Uncompressed Mesh: V: " << vert.size() << " T: " << tex.size() << " N: " << norm.size() << "\n";
         size_t numVertices =vert.size() / 3;
         std::vector<Vertex> uniqueVertices;
         std::unordered_map<Vertex, GLuint, VertexHash> vertexToIndex;
@@ -188,6 +189,8 @@ namespace mx {
         if (!tex.empty())
             tex = std::move(newTex);
         indices = std::move(newIndices);
+        std::cout << "mx: Compressed Mesh: V: " << vert.size() << " T: " << tex.size() << " N: " << norm.size() << "\n";
+        std::cout << "mx: Mesh Indices: " << indices.size() << "\n";
     }
 
     void Mesh::generateBuffers() {

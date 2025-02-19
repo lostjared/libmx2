@@ -19,16 +19,12 @@ namespace mx {
         std::vector<GLfloat> vert;
         std::vector<GLfloat> tex;
         std::vector<GLfloat> norm;
-        
         std::vector<GLuint> indices;
-
 
         GLuint shape_type;
         GLuint texture;
 
         void compressIndices();
-      
-
         void generateBuffers();
         void cleanup();
         void draw();
