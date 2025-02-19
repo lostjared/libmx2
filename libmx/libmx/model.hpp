@@ -19,15 +19,23 @@ namespace mx {
         std::vector<GLfloat> vert;
         std::vector<GLfloat> tex;
         std::vector<GLfloat> norm;
+        
+        std::vector<GLuint> indices;
+
+
         GLuint shape_type;
         GLuint texture;
+
+        void compressIndices();
+      
+
         void generateBuffers();
         void cleanup();
         void draw();
         void drawWithForcedTexture(gl::ShaderProgram &shader, GLuint texture, const std::string texture_name);
         void setShapeType(GLuint type);
         void bindTexture(gl::ShaderProgram &shader, const std::string texture_name);
-        GLuint VAO, positionVBO, normalVBO, texCoordVBO;
+        GLuint EBO, VAO, positionVBO, normalVBO, texCoordVBO;
         size_t vertIndex;
         size_t texIndex;
         size_t normIndex;
@@ -51,7 +59,7 @@ namespace mx {
        Model(Model &&m);
        Model &operator=(const Model &m) = delete;
        Model &operator=(Model &&m);
-       bool openModel(const std::string &filename);
+       bool openModel(const std::string &filename, bool compress = true);
        void drawArrays();
        void drawArraysWithTexture(GLuint texture, const std::string texture_name);
        void printData(std::ostream &out);

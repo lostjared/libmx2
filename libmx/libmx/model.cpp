@@ -7,8 +7,51 @@
 #include"model.hpp"
 #include<sstream>
 #include<fstream>
+#include<vector>
+#include<unordered_map>
+#include<functional>
+#include<cstddef>
 
 namespace mx {
+
+    struct Vertex {
+        float position[3];
+        float normal[3];
+        float texCoord[2];
+
+        bool operator==(const Vertex& other) const {
+            return position[0] == other.position[0] &&
+                position[1] == other.position[1] &&
+                position[2] == other.position[2] &&
+                normal[0]   == other.normal[0] &&
+                normal[1]   == other.normal[1] &&
+                normal[2]   == other.normal[2] &&
+                texCoord[0] == other.texCoord[0] &&
+                texCoord[1] == other.texCoord[1];
+        }
+    };
+
+
+    struct VertexHash {
+        std::size_t operator()(const Vertex& v) const {
+            std::size_t seed = 0;
+            auto hash_combine = [&seed](float value) {
+                std::hash<float> hasher;
+                seed ^= hasher(value) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            };
+            hash_combine(v.position[0]);
+            hash_combine(v.position[1]);
+            hash_combine(v.position[2]);
+            hash_combine(v.normal[0]);
+            hash_combine(v.normal[1]);
+            hash_combine(v.normal[2]);
+            hash_combine(v.texCoord[0]);
+            hash_combine(v.texCoord[1]);
+            return seed;
+        }
+    };
+
+    
 
     Mesh::Mesh(Mesh &&m)
         : vert(std::move(m.vert)),
@@ -76,11 +119,79 @@ namespace mx {
             glDeleteBuffers(1, &texCoordVBO);
             texCoordVBO = 0;
         }
+        if (EBO) {
+            glDeleteBuffers(1, &EBO);
+            EBO = 0;
+        }
         if(texture) {
              glDeleteTextures(1, &texture);
         }
     }
 
+    void Mesh::compressIndices() {
+        size_t numVertices =vert.size() / 3;
+        std::vector<Vertex> uniqueVertices;
+        std::unordered_map<Vertex, GLuint, VertexHash> vertexToIndex;
+        std::vector<GLuint> newIndices;
+        newIndices.reserve(numVertices);
+        for (size_t i = 0; i < numVertices; ++i) {
+            Vertex vertex;
+            vertex.position[0] = vert[i * 3 + 0];
+            vertex.position[1] = vert[i * 3 + 1];
+            vertex.position[2] = vert[i * 3 + 2];
+            if (!norm.empty()) {
+                vertex.normal[0] = norm[i * 3 + 0];
+                vertex.normal[1] = norm[i * 3 + 1];
+                vertex.normal[2] = norm[i * 3 + 2];
+            } else {
+                vertex.normal[0] = vertex.normal[1] = vertex.normal[2] = 0.0f;
+            }
+            if (!tex.empty()) {
+                vertex.texCoord[0] = tex[i * 2 + 0];
+                vertex.texCoord[1] = tex[i * 2 + 1];
+            } else {
+                vertex.texCoord[0] = vertex.texCoord[1] = 0.0f;
+            }   
+            auto it = vertexToIndex.find(vertex);
+            if (it != vertexToIndex.end()) {
+                newIndices.push_back(it->second);
+            } else {
+                GLuint newIndex = static_cast<GLuint>(uniqueVertices.size());
+                uniqueVertices.push_back(vertex);
+                vertexToIndex[vertex] = newIndex;
+                newIndices.push_back(newIndex);
+            }
+        }
+        std::vector<GLfloat> newVerts;
+        std::vector<GLfloat> newNorms;
+        std::vector<GLfloat> newTex;
+        newVerts.reserve(uniqueVertices.size() * 3);
+        if (!norm.empty()) newNorms.reserve(uniqueVertices.size() * 3);
+        if (!tex.empty()) newTex.reserve(uniqueVertices.size() * 2);
+        for (const auto& v : uniqueVertices) {
+            newVerts.push_back(v.position[0]);
+            newVerts.push_back(v.position[1]);
+            newVerts.push_back(v.position[2]);
+            if (!norm.empty()) {
+                newNorms.push_back(v.normal[0]);
+                newNorms.push_back(v.normal[1]);
+                newNorms.push_back(v.normal[2]);
+            }
+            if (!tex.empty()) {
+                newTex.push_back(v.texCoord[0]);
+                newTex.push_back(v.texCoord[1]);
+            }
+        }
+        vert = std::move(newVerts);
+        if (!norm.empty())
+            norm = std::move(newNorms);
+        if (!tex.empty())
+            tex = std::move(newTex);
+        indices = std::move(newIndices);
+    }
+
+    /*
+    
     void Mesh::generateBuffers() {
         glGenVertexArrays(1, &VAO);
         glBindVertexArray(VAO);
@@ -104,20 +215,58 @@ namespace mx {
             glEnableVertexAttribArray(2);
         }
         glBindVertexArray(0);
+    }*/
+
+    void Mesh::generateBuffers() {
+        glGenVertexArrays(1, &VAO);
+        glBindVertexArray(VAO);
+        glGenBuffers(1, &positionVBO);
+        glBindBuffer(GL_ARRAY_BUFFER, positionVBO);
+        glBufferData(GL_ARRAY_BUFFER, vert.size() * sizeof(GLfloat), vert.data(), GL_STATIC_DRAW);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)0);
+        glEnableVertexAttribArray(0);
+        if (!norm.empty()) {
+            glGenBuffers(1, &normalVBO);
+            glBindBuffer(GL_ARRAY_BUFFER, normalVBO);
+            glBufferData(GL_ARRAY_BUFFER, norm.size() * sizeof(GLfloat), norm.data(), GL_STATIC_DRAW);
+            glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)0);
+            glEnableVertexAttribArray(1);
+        }
+        if (!tex.empty()) {
+            glGenBuffers(1, &texCoordVBO);
+            glBindBuffer(GL_ARRAY_BUFFER, texCoordVBO);
+            glBufferData(GL_ARRAY_BUFFER, tex.size() * sizeof(GLfloat), tex.data(), GL_STATIC_DRAW);
+            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, (GLvoid*)0);
+            glEnableVertexAttribArray(2);
+        }
+        if (!indices.empty()) {
+            glGenBuffers(1, &EBO);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.data(), GL_STATIC_DRAW);
+        }    
+        glBindVertexArray(0);
     }
 
     void Mesh::draw() {
         glBindVertexArray(VAO);
-        glDrawArrays(shape_type, 0, static_cast<GLsizei>(vert.size() / 3));
+        if (!indices.empty()) {
+            glDrawElements(shape_type, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0);
+        } else {
+            glDrawArrays(shape_type, 0, static_cast<GLsizei>(vert.size() / 3));
+        }
         glBindVertexArray(0);
     }
-
+    
     void Mesh::drawWithForcedTexture(gl::ShaderProgram &shader, GLuint texture, const std::string texture_name) {
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture);
         shader.setUniform(texture_name, 0);
         glBindVertexArray(VAO);
-        glDrawArrays(shape_type, 0, static_cast<GLsizei>(vert.size() / 3));
+        if (!indices.empty()) {
+            glDrawElements(shape_type, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0);
+        } else {
+            glDrawArrays(shape_type, 0, static_cast<GLsizei>(vert.size() / 3));
+        }
         glBindVertexArray(0);
     }
 
@@ -154,7 +303,7 @@ namespace mx {
         }
     }
 
-    bool Model::openModel(const std::string &filename) {
+    bool Model::openModel(const std::string &filename, bool compress) {
         std::ifstream file(filename);
         if (!file.is_open()) {
             return false;
@@ -227,10 +376,16 @@ namespace mx {
 
         }
 
+        mx::system_out << "mx: Model Loaded: " << filename << "\n";
+        if(compress) {
+            mx::system_out << "mx: Compressing Indices\n";
+        }
         for(auto &m : meshes) {
+            if(compress) {
+                m.compressIndices();
+            }
             m.generateBuffers();
         }
-        
         return true;
     }
 
