@@ -1371,9 +1371,11 @@ int main(int argc, char **argv) {
     Arguments args = proc_args(argc, argv);
     try {
         MainWindow main_window(args.path, args.width, args.height);
-        if(args.fullscreen)
+        SDL_ShowCursor(SDL_FALSE);
+        if(args.fullscreen) 
             main_window.setFullScreen(true);
         main_window.loop();
+        SDL_ShowCursor(SDL_TRUE);
     } catch(const mx::Exception &e) {
         mx::system_err << "mx: Exception: " << e.text() << "\n";
         mx::system_err.flush();
