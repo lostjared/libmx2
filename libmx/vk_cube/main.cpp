@@ -7,6 +7,10 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#if defined(__APPLE__) || defined(_WIN32) || defined(__linux__)
+#include "argz.hpp"
+#endif
+
 struct Vertex {
     float pos[3];   
     float color[3]; 
@@ -14,7 +18,7 @@ struct Vertex {
 
 class MainWindow : public mx::VKWindow {
 public:
-    MainWindow(const std::string &path) : mx::VKWindow("-[ Cube with Vulkan ]-", 960, 720) {
+    MainWindow(const std::string& path, int wx, int wy) : mx::VKWindow("-[ Cube with Vulkan ]-", wx, wy) {
         setPath(path);
     }
     virtual ~MainWindow() {}
@@ -385,17 +389,24 @@ public:
     }
 };
 int main(int argc, char **argv) {
-    if(argc != 2) {
-         SDL_Log("Usage: %s <path to assets>\n", argv[0]);
-         return EXIT_FAILURE;
-     }
- 
-     try {
-         MainWindow window(argv[1]);
-         window.initVulkan();
-         window.loop();   
-     } catch (mx::Exception &e) {
-         SDL_Log("mx: Exception: %s\n", e.text().c_str());
-     }
-     return EXIT_SUCCESS;
- }
+    #if defined(__APPLE__) || defined(_WIN32) || defined(__linux__)
+        Arguments args = proc_args(argc, argv);
+        try {
+            MainWindow window(args.path, args.width, args.height);
+            window.initVulkan();
+            window.loop();   
+        } catch (mx::Exception &e) {
+            SDL_Log("mx: Exception: %s\n", e.text().c_str());
+        }
+    
+    #elif defined(__ANDROID__)
+        try {
+            MainWindow window("", 960, 720);
+            window.initVulkan();
+            window.loop();   
+        } catch (mx::Exception &e) {
+            SDL_Log("mx: Exception: %s\n", e.text().c_str());
+        }
+    #endif
+        return EXIT_SUCCESS;
+}
