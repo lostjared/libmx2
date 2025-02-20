@@ -1,8 +1,9 @@
 #ifndef _VK_MX_H__
 #define _VK_MX_H__
 #include "mx.hpp"
-#include <SDL_vulkan.h>
-#include <vulkan/vulkan.h>
+#include "volk/volk.h"
+#include<SDL_vulkan.h>
+//#include <vulkan/vulkan.h>
 #include <iostream>
 #include <stdexcept>
 #include <cstdlib>
@@ -12,6 +13,13 @@
 #include <fstream>
 #include <algorithm>
 #include <array>
+
+#define VK_CHECK_RESULT(f) { \
+    VkResult res = (f); \
+    if (res != VK_SUCCESS) { \
+        throw mx::Exception("Fatal : VkResult is \"" + std::to_string(res) + "\" in " + __FILE__ + " at line " + std::to_string(__LINE__)); \
+    } \
+}
 
 namespace mx {
 

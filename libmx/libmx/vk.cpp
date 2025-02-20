@@ -152,26 +152,46 @@ namespace mx {
     void VKWindow::proc() {
     }
     void VKWindow::cleanup() {
-        vkDestroySemaphore(device, renderFinishedSemaphore, nullptr);
-        vkDestroySemaphore(device, imageAvailableSemaphore, nullptr);
-        vkDestroyCommandPool(device, commandPool, nullptr);
-        for (auto framebuffer : swapChainFramebuffers) {
-            vkDestroyFramebuffer(device, framebuffer, nullptr);
+        if (renderFinishedSemaphore != VK_NULL_HANDLE) {
+            vkDestroySemaphore(device, renderFinishedSemaphore, nullptr);
+            renderFinishedSemaphore = VK_NULL_HANDLE;
         }
-        vkDestroyPipeline(device, graphicsPipeline, nullptr);
-        vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
-        vkDestroyRenderPass(device, renderPass, nullptr);
-        for (auto imageView : swapChainImageViews) {
-            vkDestroyImageView(device, imageView, nullptr);
+        if (imageAvailableSemaphore != VK_NULL_HANDLE) {
+            vkDestroySemaphore(device, imageAvailableSemaphore, nullptr);
+            imageAvailableSemaphore = VK_NULL_HANDLE;
         }
-        vkDestroySwapchainKHR(device, swapChain, nullptr);
-        vkDestroyDevice(device, nullptr);
-        vkDestroySurfaceKHR(instance, surface, nullptr);
-        vkDestroyInstance(instance, nullptr);
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-    }
 
+        cleanupSwapChain();
+
+        if (commandPool != VK_NULL_HANDLE) {
+            vkDestroyCommandPool(device, commandPool, nullptr);
+            commandPool = VK_NULL_HANDLE;
+        }
+
+        if (pipelineLayout != VK_NULL_HANDLE) {
+            vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+            pipelineLayout = VK_NULL_HANDLE;
+        }
+        if (device != VK_NULL_HANDLE) {
+            vkDestroyDevice(device, nullptr);
+            device = VK_NULL_HANDLE;
+        }
+        if (surface != VK_NULL_HANDLE) {
+            vkDestroySurfaceKHR(instance, surface, nullptr);
+            surface = VK_NULL_HANDLE;
+        }
+        if (instance != VK_NULL_HANDLE) {
+            vkDestroyInstance(instance, nullptr);
+            instance = VK_NULL_HANDLE;
+        }
+        if (window != nullptr) {
+            SDL_DestroyWindow(window);
+            window = nullptr;
+            SDL_Quit();
+        }
+
+        volkFinalize();
+    }
 
     void VKWindow::createInstance() {
         VkApplicationInfo appInfo{};
@@ -181,7 +201,7 @@ namespace mx {
         appInfo.pEngineName = "MX2";
         appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
         appInfo.apiVersion = VK_API_VERSION_1_0;
-        
+
         VkInstanceCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
         createInfo.pApplicationInfo = &appInfo;
@@ -194,13 +214,21 @@ namespace mx {
         if (!SDL_Vulkan_GetInstanceExtensions(window, &sdlExtensionCount, extensions.data())) {
             throw mx::Exception("Could not get the required Vulkan instance extensions from SDL.");
         }
+
         createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
         createInfo.ppEnabledExtensionNames = extensions.data();
-        
-        if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
-            throw mx::Exception("Failed to create Vulkan instance!");
+
+        std::cout << "Extensions count: " << extensions.size() << "\n";
+
+        if (volkInitialize() != VK_SUCCESS) {
+            throw mx::Exception("Failed to initialize Volk!");
         }
+
+        VK_CHECK_RESULT(vkCreateInstance(&createInfo, nullptr, &instance));
+
+        volkLoadInstance(instance);
     }
+
 
     void VKWindow::createSurface() {
         if (!SDL_Vulkan_CreateSurface(window, instance, &surface)) {
@@ -288,6 +316,8 @@ namespace mx {
         
         vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
         vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
+
+        volkLoadDevice(device);
     }
     
     void VKWindow::createSwapChain() {
@@ -487,21 +517,43 @@ namespace mx {
     }
 
     void VKWindow::cleanupSwapChain() {
+
         for (auto framebuffer : swapChainFramebuffers) {
-            vkDestroyFramebuffer(device, framebuffer, nullptr);
+            if (framebuffer != VK_NULL_HANDLE) {
+                vkDestroyFramebuffer(device, framebuffer, nullptr);
+            }
         }
-    
-        vkFreeCommandBuffers(device, commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
-    
-        vkDestroyPipeline(device, graphicsPipeline, nullptr);
-        vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
-        vkDestroyRenderPass(device, renderPass, nullptr);
-    
+        swapChainFramebuffers.clear();
+
+        if (!commandBuffers.empty()) {
+            vkFreeCommandBuffers(device, commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
+            commandBuffers.clear();
+        }
+
+        if (graphicsPipeline != VK_NULL_HANDLE) {
+            vkDestroyPipeline(device, graphicsPipeline, nullptr);
+            graphicsPipeline = VK_NULL_HANDLE;
+        }
+        if (pipelineLayout != VK_NULL_HANDLE) {
+            vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+            pipelineLayout = VK_NULL_HANDLE;
+        }
+        if (renderPass != VK_NULL_HANDLE) {
+            vkDestroyRenderPass(device, renderPass, nullptr);
+            renderPass = VK_NULL_HANDLE;
+        }
+
         for (auto imageView : swapChainImageViews) {
-            vkDestroyImageView(device, imageView, nullptr);
+            if (imageView != VK_NULL_HANDLE) {
+                vkDestroyImageView(device, imageView, nullptr);
+            }
         }
-    
-        vkDestroySwapchainKHR(device, swapChain, nullptr);
+        swapChainImageViews.clear();
+
+        if (swapChain != VK_NULL_HANDLE) {
+            vkDestroySwapchainKHR(device, swapChain, nullptr);
+            swapChain = VK_NULL_HANDLE;
+        }
     }
 
     void VKWindow::draw() {
