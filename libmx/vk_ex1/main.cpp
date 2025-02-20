@@ -2,13 +2,17 @@
 #include <vector>
 #include <fstream>
 
+#if defined(__APPLE__) || defined(_WIN32) || defined(__linux__)
+#include"argz.hpp"
+#endif
+
 struct Vertex {
     float pos[2]; // x, y coordinates
 };
 
 class MainWindow : public mx::VKWindow {
 public:
-    MainWindow(const std::string &path) : mx::VKWindow("Hello, World with Vulkan", 1024, 768) {
+    MainWindow(const std::string& path, int wx, int wy) : mx::VKWindow("-[ Cube with Vulkan ]-", wx, wy) {  
         setPath(path);
     }
     virtual ~MainWindow() {}
@@ -19,7 +23,6 @@ private:
     VkDeviceMemory vertexBufferMemory;
 
     void createVertexBuffer() {
-        // Define vertex data
         std::vector<Vertex> vertices = {
             {{0.0f, -0.5f}},
             {{0.5f, 0.5f}},
@@ -27,8 +30,6 @@ private:
         };
 
         VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
-
-        // Create a staging buffer to copy data to the vertex buffer
         VkBuffer stagingBuffer;
         VkDeviceMemory stagingBufferMemory;
         createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
@@ -36,9 +37,7 @@ private:
         void* data;
         vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
         memcpy(data, vertices.data(), (size_t) bufferSize);
-        vkUnmapMemory(device, stagingBufferMemory); // Corrected line: Removed extra arguments
-
-        // Create the vertex buffer
+        vkUnmapMemory(device, stagingBufferMemory);
         createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
 
         copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
@@ -340,16 +339,25 @@ public:
 };
 
 int main(int argc, char **argv) {
-   if(argc != 2) {
-        SDL_Log("Usage: %s <path to assets>\n", argv[0]);
-        return EXIT_FAILURE;
-    }
+
+#if defined(__APPLE__) || defined(_WIN32) || defined(__linux__)
+    Arguments args = proc_args(argc, argv);
     try {
-        MainWindow window(argv[1]);
+        MainWindow window(args.path, args.width, args.height);
         window.initVulkan();
         window.loop();   
     } catch (mx::Exception &e) {
         SDL_Log("mx: Exception: %s\n", e.text().c_str());
     }
+
+#elif defined(__ANDROID__)
+    try {
+        MainWindow window("", 960, 720);
+        window.initVulkan();
+        window.loop();   
+    } catch (mx::Exception &e) {
+        SDL_Log("mx: Exception: %s\n", e.text().c_str());
+    }
+#endif
     return EXIT_SUCCESS;
 }
