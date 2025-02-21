@@ -200,7 +200,7 @@ public:
         glm::vec3 leftWingOffset = glm::rotate(glm::mat4(1.0f), glm::radians(shipRotation), glm::vec3(0,0,1))
                              * glm::vec4(-2.0f, -1.5f, 0.0f, 1.0f); 
         p1.pos = shipPos + leftWingOffset;
-        p1.velocity = glm::rotate(glm::mat4(1.0f), glm::radians(shipRotation), glm::vec3(0,0,1)) * glm::vec4(0.0f, 10.0f, 0.0f, 0.0f);
+        p1.velocity = glm::rotate(glm::mat4(1.0f), glm::radians(shipRotation), glm::vec3(0,0,1)) * glm::vec4(0.0f, -10.0f, 0.0f, 0.0f);
         p1.life = 0.0f;
         p1.maxLife = 1.0f;  
         exhaustParticles.push_back(p1);
@@ -210,7 +210,7 @@ public:
         glm::vec3 rightWingOffset = glm::rotate(glm::mat4(1.0f), glm::radians(shipRotation), glm::vec3(0,0,1))
                              * glm::vec4(2.0f, -1.5f, 0.0f, 1.0f); 
         p2.pos = shipPos + rightWingOffset;
-        p2.velocity = glm::rotate(glm::mat4(1.0f), glm::radians(shipRotation), glm::vec3(0,0,1)) * glm::vec4(0.0f, 10.0f, 0.0f, 0.0f);
+        p2.velocity = glm::rotate(glm::mat4(1.0f), glm::radians(shipRotation), glm::vec3(0,0,1)) * glm::vec4(0.0f, -10.0f, 0.0f, 0.0f);
         p2.life = 0.0f;
         p2.maxLife = 1.0f;  
         exhaustParticles.push_back(p2);
