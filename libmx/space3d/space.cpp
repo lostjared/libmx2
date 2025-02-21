@@ -190,11 +190,9 @@ public:
     }
 
     std::vector<ExhaustParticle> exhaustParticles;
-    const size_t maxExhaustParticles = 10;
+    const size_t maxExhaustParticles = 25;
 
     void spawnExhaustParticle(const glm::vec3& shipPos, float shipRotation) {
-        if(!isMoving) return;        
-
         
         ExhaustParticle p1;
         glm::vec3 leftWingOffset = glm::rotate(glm::mat4(1.0f), glm::radians(shipRotation), glm::vec3(0,0,1))
@@ -236,7 +234,7 @@ public:
     GLuint exhaustVAO = 0;
     GLuint exhaustVBO[3];
     gl::ShaderProgram exhaustShader;
-    bool isMoving = false;
+
 
     void initializeExhaustBuffers() {
         glGenVertexArrays(1, &exhaustVAO);
@@ -486,7 +484,7 @@ public:
     bool isSpinning = false;
     float spinAngle = 0.0f;
     float spinSpeed = 360.0f; 
-    float spinDuration = 0.6f;
+    float spinDuration = 0.8f;
     float elapsedSpinTime = 0.0f;
     GLuint fire = 0;
     glm::vec4 particleColor;
@@ -522,7 +520,6 @@ public:
         else {
             object->drawArraysWithTexture(fire, "texture1");
         }
-        ;
     }
 
     virtual void update(float deltaTime) = 0;
@@ -538,6 +535,7 @@ public:
             if (elapsedSpinTime >= spinDuration) {
                 isSpinning = false; 
                 ready = true;
+                elapsedSpinTime = 0.0f;
             }
         }
     }
@@ -639,6 +637,7 @@ public:
                 isSpinning = true;
                 hit = 0;
                 max_hits += 10;
+                spinAngle = 0.0f;
             }
         }
     }
@@ -678,7 +677,7 @@ public:
     int score = 0, lives = 5;
     mx::Model ship;
     mx::Model projectile;
-    mx::Model enemy_ship, saucer, triangle, ufo_boss;
+    mx::Model enemy_ship, saucer, triangle, ufo_boss, planet_boss;
     glm::vec3 ship_pos;
     std::vector<std::tuple<glm::vec3, glm::vec3>> projectiles;
     std::vector<std::unique_ptr<Enemy>> enemies;
@@ -750,8 +749,10 @@ public:
         if(!ufo_boss.openModel(win->util.getFilePath("data/objects/g_ufo.mxmod"))) {
             throw mx::Exception("Could not open g_ufo.mxmod");
         }
+        if(!planet_boss.openModel(win->util.getFilePath("data/objects/saturn.mxmod"))) {
+            throw mx::Exception("Could not open saturn.mxmod");
+        }
         
-
         field.load(win);
         exhaust.initializeExhaustBuffers();
 
@@ -791,6 +792,8 @@ public:
         triangle.setTextures(win, win->util.getFilePath("data/objects/metal_ship.tex"), win->util.getFilePath("data/objects"));
         ufo_boss.setShaderProgram(&shaderProgram, "texture1");
         ufo_boss.setTextures(win, win->util.getFilePath("data/objects/metal.tex"),  win->util.getFilePath("data/objects"));
+        planet_boss.setShaderProgram(&shaderProgram, "texture1");
+        planet_boss.setTextures(win, win->util.getFilePath("data/objects/planet.tex"), win->util.getFilePath("data/objects"));
         fire = gl::loadTexture(win->util.getFilePath("data/objects/flametex.png"));
         ex_emiter.load(win);
 #ifndef __EMSCRIPTEN__
@@ -914,6 +917,8 @@ public:
             projModel = glm::rotate(projModel, glm::radians(-90.0f), glm::vec3(1.0f,0.0f,0.0f));
             projModel = glm::rotate(projModel, glm::radians(projectileRotation), glm::vec3(0.0f,1.0f,0.0f));
             projModel = glm::scale(projModel, glm::vec3(bossSize, bossSize, bossSize));
+            projModel = glm::rotate(projModel, glm::radians(spinAngle), glm::vec3(0.0f, 1.0f, 0.0f));
+            projModel = glm::rotate(projModel, glm::radians(spinAngle), glm::vec3(0.0f, 0.0f, 1.0f));
             shaderProgram.setUniform("model", projModel);
             boss.draw();
         }
@@ -946,8 +951,8 @@ public:
 
             textTexture = createTextTexture(text, font.wrapper().unwrap(), white, textWidth, textHeight);
         }
-        if(!wait_explode)
-            renderText(textTexture, textWidth, textHeight, win->w, win->h);
+        
+        renderText(textTexture, textWidth, textHeight, win->w, win->h);
         glDeleteTextures(1, &textTexture);
         glDisable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
@@ -1004,14 +1009,13 @@ public:
             break;
             case SDL_FINGERDOWN: {
 
-                exhaust.isMoving = false;
-
+                
                 if(game_over == true) { 
                     newGame();
                     return;
                 }
 
-                if(launch_ship == true) {
+                if(launch_ship == true && wait_explode == false) {
                     launch_ship = false;
                      if(!wait_explode && !win->mixer.isPlaying(0))
                         Mix_HaltChannel(0);
@@ -1046,7 +1050,6 @@ public:
 
         case SDL_FINGERMOTION:
             if (is_touch_active) {
-                exhaust.isMoving = true;
                 float touch_current_x = e.tfinger.x * win->w;
                 float touch_current_y = e.tfinger.y * win->h;
                 ship_pos.x += (touch_current_x - touch_start_x) / win->w * (std::get<1>(screenx) - std::get<0>(screenx));
@@ -1060,7 +1063,7 @@ public:
 
         case SDL_FINGERUP:
             is_touch_active = false;
-            exhaust.isMoving = false;
+            
             break;
         }
     }
@@ -1076,8 +1079,7 @@ public:
     
     void checkInput(gl::GLWindow *win, float deltaTime) {
 
-        exhaust.isMoving = false;
-
+     
         if(game_over == true) {
             if(stick.getButton(mx::Input_Button::BTN_START)) {
                 newGame();
@@ -1139,26 +1141,21 @@ public:
             if (stick.getButton(mx::Input_Button::BTN_D_LEFT)) {
                 moveX -= 50.0f; 
                 shipRotation = glm::clamp(shipRotation + rotationSpeed * deltaTime, -maxTiltAngle, maxTiltAngle);
-                exhaust.isMoving = true;
             }
             if (stick.getButton(mx::Input_Button::BTN_D_RIGHT)) {
                 moveX += 50.0f; 
                 shipRotation = glm::clamp(shipRotation - rotationSpeed * deltaTime, -maxTiltAngle, maxTiltAngle);
-                exhaust.isMoving = true;
             }
             if (stick.getButton(mx::Input_Button::BTN_D_UP)) {
                 moveY += 50.0f; 
-                exhaust.isMoving = true;
             }
             if (stick.getButton(mx::Input_Button::BTN_D_DOWN)) {
                 moveY -= 50.0f; 
-                exhaust.isMoving = true;
             }
             if (moveX != 0.0f || moveY != 0.0f) {
                 float magnitude = glm::sqrt(moveX * moveX + moveY * moveY);
                 moveX = (moveX / magnitude) * 50.0f * deltaTime;
                 moveY = (moveY / magnitude) * 50.0f * deltaTime;
-                exhaust.isMoving = true;
             }
             ship_pos.x += moveX;
             ship_pos.y += moveY;
@@ -1203,7 +1200,7 @@ public:
         ex_emiter.update(win, deltaTime);
 
         if(ready == true) {
-            ex_emiter.explode(win, ship_pos, glm::vec4(1.0f, 0.0f, 1.0f, 1.0f));
+            ex_emiter.explode(win, ship_pos, glm::vec4(1.0f, 0.0f, 1.0f, 1.0f), false);
             die();
             wait_explode = true;
             ready = false;
@@ -1268,7 +1265,7 @@ public:
         for (int i = (int)enemies.size() - 1; i >= 0; i--) {
             enemies[i]->updateSpin(deltaTime);
             if (enemies[i]->ready) {
-                ex_emiter.explode(win, enemies[i]->object_pos, enemies[i]->particleColor);
+                ex_emiter.explode(win, enemies[i]->object_pos, enemies[i]->particleColor, false);
                 enemies.erase(enemies.begin() + i);
                 if(boss.active == false) enemies_crashed ++;
             }
@@ -1277,7 +1274,7 @@ public:
             boss.updateSpin(deltaTime);
         }
         if(boss.ready) {
-            ex_emiter.explode(win, boss.object_pos, boss.particleColor);
+            ex_emiter.explode(win, boss.object_pos, boss.particleColor, true); // Pass true for isBoss
             boss.active = false;
             boss.reset();
             boss.ready = false;
@@ -1293,13 +1290,13 @@ public:
                 bossRadius = 12.0f;
                 bossSize = 15.0f;
             } else if(level == 4) {
-                boss.object = &ufo_boss;
+                boss.object = &enemy_ship;
                 bossRadius = 8.0f * 2;
                 bossSize = 25.0f * 2;
             } else if (level >= 5) {
-                boss.object = &enemy_ship;
-                bossRadius = 9.2f;
-                bossSize = 9.2f;
+                boss.object = &planet_boss;
+                bossRadius = 25.2f;
+                bossSize = 12.2f;
             }
        }
 
@@ -1523,6 +1520,7 @@ private:
                 boss.initial_x = boss.object_pos.x;
                 boss.initial_y = boss.object_pos.y;
                 enemies_crashed = 0;
+                
             }
         }
     }

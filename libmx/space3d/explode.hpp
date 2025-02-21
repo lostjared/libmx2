@@ -1,71 +1,60 @@
-#ifndef __EXPLODE_H__
-#define __EXPLODE_H__
+#ifndef EXPLODE_HPP
+#define EXPLODE_HPP
 
-#include"mx.hpp"
-#include"gl.hpp"
+#include "gl.hpp"
+#include "mx.hpp"
+#ifdef __EMSCRIPTEN__
+#include "gtc/random.hpp"
+#else
+#include<glm/gtc/random.hpp>
+#endif
 
 namespace effect {
 
-class Explosion : public gl::GLObject {
-public:
-#pragma pack(push, 1)
     struct Particle {
         glm::vec3 position;
-        glm::vec3 velocity;
-        float lifetime;
+        glm::vec3 velocity; 
         glm::vec4 color;
+        float lifetime;
     };
-#pragma pack(pop)
 
-    glm::vec4 particleColor;
+    class Explosion { 
+    public:
+        Explosion(unsigned int max, bool isBoss); 
+        ~Explosion() = default;
+        void load(gl::GLWindow *win);
+        void setInfo(gl::ShaderProgram *prog, GLuint texture_id);
+        void update(float deltaTime);
+        void draw(gl::GLWindow *win);
+        void event(gl::GLWindow *win, SDL_Event &e);
+        bool active() const;
+        void trigger(glm::vec3 origin);
+        void resetParticle(Particle &particle, glm::vec3 origin);
+        unsigned int maxParticles;
+        GLuint VAO, VBO;
+        std::vector<Particle> particles;
+        gl::ShaderProgram *shader_program = nullptr;
+        GLuint textureID = 0;
+        glm::vec4 particleColor;
+        bool is_active = false;
+        bool isBoss; 
+    };
 
-    Explosion(unsigned int maxParticles);
-    ~Explosion() override {
-        glDeleteVertexArrays(1, &VAO);
-        glDeleteBuffers(1, &VBO);
-    }
-    void load(gl::GLWindow *win) override;
-    void update(float deltaTime);
-    void draw(gl::GLWindow *win) override;
-    void trigger(glm::vec3 origin);
-    void event(gl::GLWindow *win, SDL_Event &e) override;
-    void setInfo(gl::ShaderProgram *prog, GLuint texture_id);
-    bool active() const;
-private:
-    unsigned int maxParticles;
-    GLuint VAO, VBO;
-    GLuint textureID;
-    std::vector<Particle> particles;
-    void resetParticle(Particle &particle, glm::vec3 origin);
-    bool is_active = false;
+    class ExplosionEmiter {
+    public:
+        ExplosionEmiter();
+        glm::mat4 projection, view, model;
+        gl::ShaderProgram shader_program;
+        GLuint texture;
 
-public:
-    gl::ShaderProgram *shader_program;
-};
+        void load(gl::GLWindow *win);
+        void update(gl::GLWindow *win, float deltaTime);
+        void draw(gl::GLWindow *win);
+        void explode(gl::GLWindow *win, glm::vec3 pos, glm::vec4 particleColor, bool isBoss); 
 
-class ExplosionEmiter {
-public:
-    ExplosionEmiter() {}
-    ~ExplosionEmiter() { 
-        if(texture) {
-            glDeleteTextures(1, &texture);
-        }
-    }
+        std::vector<std::unique_ptr<Explosion>> explosions;
+    };
 
-    void load(gl::GLWindow *window);
-    void update(gl::GLWindow *window, float deltaTime);
-    void draw(gl::GLWindow *window);
+} 
 
-    void explode(gl::GLWindow *win, glm::vec3 pos, glm::vec4 particeColor);
-
-    std::vector<std::unique_ptr<Explosion>> explosions;
-    gl::ShaderProgram shader_program;
-    glm::mat4 projection, view, model;
-private:
-    GLuint texture = 0;
-};
-
-
-}
-
-#endif
+#endif 

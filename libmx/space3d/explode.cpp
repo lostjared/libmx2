@@ -1,8 +1,7 @@
 #include "explode.hpp"
+
 #ifdef __EMSCRIPTEN__
-#include "gtc/random.hpp"
 #else
-#include<glm/gtc/random.hpp>
 #endif
 
 namespace effect {
@@ -22,7 +21,7 @@ uniform mat4 projection;
 
 void main() {
     gl_Position = projection * view * model * vec4(aPos, 1.0);
-    gl_PointSize = 10.0; 
+    gl_PointSize = 10.0;
     particleColor = aColor;
 })";
 
@@ -60,7 +59,7 @@ uniform mat4 projection;
 
 void main() {
     gl_Position = projection * view * model * vec4(aPos, 1.0);
-    gl_PointSize = 10.0; 
+    gl_PointSize = 10.0;
     particleColor = aColor;
 })";
 
@@ -86,7 +85,7 @@ void main() {
 
 #endif
 
-    Explosion::Explosion(unsigned int max) : maxParticles(max), VAO(0), VBO(0) {
+    Explosion::Explosion(unsigned int max, bool isBoss) : maxParticles(max), VAO(0), VBO(0), isBoss(isBoss) { // Modified constructor
 
     }
 
@@ -114,16 +113,16 @@ void main() {
         this->shader_program = prog;
         this->textureID = texture_id;
     }
-        
+
     void Explosion::update(float deltaTime) {
         is_active = false;
         for (auto &particle : particles) {
-                if (particle.lifetime > 0.0f) {
-                    particle.lifetime -= deltaTime;
-                    particle.position += particle.velocity * deltaTime;
-                    particle.color.a = particle.lifetime; 
-                    is_active = true;
-                }
+            if (particle.lifetime > 0.0f) {
+                particle.lifetime -= deltaTime;
+                particle.position += particle.velocity * deltaTime;
+                particle.color.a = particle.lifetime;
+                is_active = true;
+            }
         }
     }
 
@@ -163,15 +162,27 @@ void main() {
 
     void Explosion::resetParticle(Particle &particle, glm::vec3 origin) {
         particle.position = origin;
-        particle.velocity = glm::sphericalRand(4.0f);
-        particle.lifetime = glm::linearRand(0.5f, 2.0f);
-        particle.color = particleColor; 
+        float velocityScale = 4.0f;
+        float lifetimeScale = 0.5f;
+
+        if (isBoss) {
+            velocityScale = 8.0f; 
+            lifetimeScale = 1.0f; 
+        }
+
+        particle.velocity = glm::sphericalRand(velocityScale);
+        particle.lifetime = glm::linearRand(lifetimeScale, lifetimeScale * 4.0f);
+        particle.color = particleColor;
     }
 
+    ExplosionEmiter::ExplosionEmiter() : shader_program{}, texture{0} {}
+
     void ExplosionEmiter::load(gl::GLWindow *win) {
-        if(!shader_program.loadProgramFromText(s_vSource, s_fSource)) {
+        if (!shader_program.loadProgramFromText(s_vSource, s_fSource)) {
             throw mx::Exception("Couldn't load Explosion Shader");
         }
+        projection = glm::perspective(glm::radians(45.0f), (float)win->w / (float)win->h, 0.1f, 100.0f);
+        view = glm::lookAt(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         model = glm::mat4(1.0f);
         shader_program.useProgram();
         shader_program.setUniform("projection", projection);
@@ -181,26 +192,30 @@ void main() {
     }
 
     void ExplosionEmiter::update(gl::GLWindow *win, float deltaTime) {
-        for(int i = static_cast<int>(explosions.size()) - 1; i >= 0; i--) {
+        for (int i = static_cast<int>(explosions.size()) - 1; i >= 0; i--) {
             explosions[i]->update(deltaTime);
-            if(!explosions[i]->active()) {
+            if (!explosions[i]->active()) {
                 explosions.erase(explosions.begin() + i);
             }
         }
     }
     void ExplosionEmiter::draw(gl::GLWindow *win) {
-        for(auto &e : explosions) {
-            if(e->active()) 
-                e->draw(win);   
+        for (auto &e : explosions) {
+            if (e->active())
+                e->draw(win);
         }
     }
-    
-    void ExplosionEmiter::explode(gl::GLWindow *win, glm::vec3 pos, glm::vec4 particleColor) {
-        explosions.push_back(std::make_unique<Explosion>(100));
+
+    void ExplosionEmiter::explode(gl::GLWindow *win, glm::vec3 pos, glm::vec4 particleColor, bool isBoss) { 
+        if(isBoss)
+            explosions.push_back(std::make_unique<Explosion>(500, isBoss));
+        else
+            explosions.push_back(std::make_unique<Explosion>(100, isBoss));
+
         explosions.back()->setInfo(&shader_program, texture);
         explosions.back()->particleColor = particleColor;
         explosions.back()->load(win);
         explosions.back()->trigger(pos);
     }
 
-}         
+} 
