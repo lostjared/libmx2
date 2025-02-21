@@ -196,7 +196,7 @@ public:
         
         ExhaustParticle p1;
         glm::vec3 leftWingOffset = glm::rotate(glm::mat4(1.0f), glm::radians(shipRotation), glm::vec3(0,0,1))
-                             * glm::vec4(-2.0f, -1.5f, 0.0f, 1.0f); 
+                             * glm::vec4(-2.0f, -0.8f, 0.0f, 1.0f); 
         p1.pos = shipPos + leftWingOffset;
         p1.velocity = glm::rotate(glm::mat4(1.0f), glm::radians(shipRotation), glm::vec3(0,0,1)) * glm::vec4(0.0f, -10.0f, 0.0f, 0.0f);
         p1.life = 0.0f;
@@ -206,7 +206,7 @@ public:
         
         ExhaustParticle p2;
         glm::vec3 rightWingOffset = glm::rotate(glm::mat4(1.0f), glm::radians(shipRotation), glm::vec3(0,0,1))
-                             * glm::vec4(2.0f, -1.5f, 0.0f, 1.0f); 
+                             * glm::vec4(2.0f, -0.8, 0.0f, 1.0f); 
         p2.pos = shipPos + rightWingOffset;
         p2.velocity = glm::rotate(glm::mat4(1.0f), glm::radians(shipRotation), glm::vec3(0,0,1)) * glm::vec4(0.0f, -10.0f, 0.0f, 0.0f);
         p2.life = 0.0f;
@@ -259,20 +259,21 @@ public:
         std::vector<float> positions;
         std::vector<float> sizes;
         std::vector<float> colors;
-        
+        positions.reserve(exhaustParticles.size() * 3);
+        sizes.reserve(exhaustParticles.size());
+        colors.reserve(exhaustParticles.size() * 4);
+        float index = 0.3f;
         for(auto& p : exhaustParticles) {
             positions.push_back(p.pos.x);
             positions.push_back(p.pos.y);
             positions.push_back(p.pos.z);
-            
             float lifeFactor = 1.0f - (p.life / p.maxLife);
             sizes.push_back(10.0f * lifeFactor);  
-            
-            
+            colors.push_back(1.0f - index);            
             colors.push_back(1.0f);            
-            colors.push_back(0.5f);            
-            colors.push_back(0.0f);            
-            colors.push_back(lifeFactor);      
+            colors.push_back(1.0f);            
+            colors.push_back(lifeFactor);
+            index -= 0.2f;
         }
         
         glBindBuffer(GL_ARRAY_BUFFER, exhaustVBO[0]);
