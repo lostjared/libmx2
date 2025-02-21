@@ -153,13 +153,14 @@ if(EXAMPLES)
     add_subdirectory(mp3d)
   endif()
 
+#disable for now
   if(VULKAN)
-    add_subdirectory(vk_ex1)
-    add_subdirectory(vk_cube)
+    # add_subdirectory(vk_ex1)
+    # add_subdirectory(vk_cube) 
   else()
     if(MOLTEN)
-      add_subdirectory(vk_ex1)
-      add_subdirectory(vk_cube)
+     # add_subdirectory(vk_ex1)
+     # add_subdirectory(vk_cube)
     endif()
   endif()
 
