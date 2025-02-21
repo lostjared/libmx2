@@ -12,7 +12,7 @@ The motivation for creating this library was to give me an easy way to assemble 
 while using an approach I prefer, an Object Oriented Design. I have experimented with AI in some of the example projects for this library.
 
 # In Progress
-I am working on adding support for Vulkan
+I am working on adding support for Vulkan (its not complete)
 
 ## Features
 
