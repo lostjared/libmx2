@@ -951,8 +951,8 @@ public:
 
             textTexture = createTextTexture(text, font.wrapper().unwrap(), white, textWidth, textHeight);
         }
-        
-        renderText(textTexture, textWidth, textHeight, win->w, win->h);
+        if(wait_explode == false || game_over == true)
+            renderText(textTexture, textWidth, textHeight, win->w, win->h);
         glDeleteTextures(1, &textTexture);
         glDisable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
