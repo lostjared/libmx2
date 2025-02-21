@@ -1041,7 +1041,7 @@ public:
 #else
                 double ticks = emscripten_get_now();
 #endif
-                if (ticks - last_shot_time > 300) {
+                if ((ticks - last_shot_time > 300) && wait_explode == false) {
                     std::tuple<glm::vec3, glm::vec3> shots;
                     std::get<0>(shots) = ship_pos;
                     std::get<0>(shots).x -= 1.5f;
@@ -1121,7 +1121,7 @@ public:
         double currentTime = emscripten_get_now();
 #endif
         if(currentTime - fireTime >= 175) {
-            if(stick.getButton(mx::Input_Button::BTN_A)) {
+            if(stick.getButton(mx::Input_Button::BTN_A) && wait_explode == false) {
                 std::tuple<glm::vec3, glm::vec3> shots;
                 std::get<0>(shots) = ship_pos;
                 std::get<0>(shots).x -= 1.5f;
