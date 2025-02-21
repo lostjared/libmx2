@@ -1004,6 +1004,8 @@ public:
             break;
             case SDL_FINGERDOWN: {
 
+                exhaust.isMoving = false;
+
                 if(game_over == true) { 
                     newGame();
                     return;
@@ -1044,6 +1046,7 @@ public:
 
         case SDL_FINGERMOTION:
             if (is_touch_active) {
+                exhaust.isMoving = true;
                 float touch_current_x = e.tfinger.x * win->w;
                 float touch_current_y = e.tfinger.y * win->h;
                 ship_pos.x += (touch_current_x - touch_start_x) / win->w * (std::get<1>(screenx) - std::get<0>(screenx));
@@ -1057,6 +1060,7 @@ public:
 
         case SDL_FINGERUP:
             is_touch_active = false;
+            exhaust.isMoving = false;
             break;
         }
     }
