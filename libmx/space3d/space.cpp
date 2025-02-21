@@ -104,6 +104,198 @@ void main() {
 }
 )";
 #endif
+#ifndef __EMSCRIPTEN__
+const char* exhaustVertSource = R"(#version 330 core
+layout (location = 0) in vec3 inPosition;
+layout (location = 1) in float inSize;
+layout (location = 2) in vec4 inColor;
+
+uniform mat4 MVP;
+
+out vec4 fragColor;
+
+void main() {
+    gl_Position = MVP * vec4(inPosition, 1.0);
+    gl_PointSize = inSize;
+    fragColor = inColor;
+}
+)";
+
+const char* exhaustFragSource = R"(#version 330 core
+in vec4 fragColor;
+out vec4 FragColor;
+
+uniform sampler2D spriteTexture;
+
+void main() {
+    float dist = length(gl_PointCoord - vec2(0.5));
+    if (dist > 0.5) {
+        discard;
+    }
+    vec4 texColor = texture(spriteTexture, gl_PointCoord);
+    FragColor = texColor * fragColor;
+}
+)";
+#else
+const char* exhaustVertSource = R"(#version 300 es
+precision highp float;
+
+layout (location = 0) in vec3 inPosition;
+layout (location = 1) in float inSize;
+layout (location = 2) in vec4 inColor;
+
+uniform mat4 MVP;
+
+out vec4 fragColor;
+
+void main() {
+    gl_Position = MVP * vec4(inPosition, 1.0);
+    gl_PointSize = inSize;
+    fragColor = inColor;
+}
+)";
+
+const char* exhaustFragSource = R"(#version 300 es
+precision highp float;
+
+in vec4 fragColor;
+out vec4 FragColor;
+
+uniform sampler2D spriteTexture;
+
+void main() {
+    float dist = length(gl_PointCoord - vec2(0.5));
+    if (dist > 0.5) {
+        discard;
+    }
+    vec4 texColor = texture(spriteTexture, gl_PointCoord);
+    FragColor = texColor * fragColor;
+}
+)";
+#endif
+
+class Exhaust {
+public:
+    struct ExhaustParticle {
+        glm::vec3 pos;
+        glm::vec3 velocity;
+        float life;     
+        float maxLife;  
+    };
+
+    Exhaust() = default;
+    ~Exhaust() {
+        glDeleteVertexArrays(1, &exhaustVAO);
+        glDeleteBuffers(3, exhaustVBO);
+    }
+
+    std::vector<ExhaustParticle> exhaustParticles;
+    const size_t maxExhaustParticles = 10;
+
+    void spawnExhaustParticle(const glm::vec3& shipPos, float shipRotation) {
+        if(!isMoving) return;        
+
+        
+        ExhaustParticle p1;
+        glm::vec3 leftWingOffset = glm::rotate(glm::mat4(1.0f), glm::radians(shipRotation), glm::vec3(0,0,1))
+                             * glm::vec4(-2.0f, -1.5f, 0.0f, 1.0f); 
+        p1.pos = shipPos + leftWingOffset;
+        p1.velocity = glm::rotate(glm::mat4(1.0f), glm::radians(shipRotation), glm::vec3(0,0,1)) * glm::vec4(0.0f, 10.0f, 0.0f, 0.0f);
+        p1.life = 0.0f;
+        p1.maxLife = 1.0f;  
+        exhaustParticles.push_back(p1);
+
+        
+        ExhaustParticle p2;
+        glm::vec3 rightWingOffset = glm::rotate(glm::mat4(1.0f), glm::radians(shipRotation), glm::vec3(0,0,1))
+                             * glm::vec4(2.0f, -1.5f, 0.0f, 1.0f); 
+        p2.pos = shipPos + rightWingOffset;
+        p2.velocity = glm::rotate(glm::mat4(1.0f), glm::radians(shipRotation), glm::vec3(0,0,1)) * glm::vec4(0.0f, 10.0f, 0.0f, 0.0f);
+        p2.life = 0.0f;
+        p2.maxLife = 1.0f;  
+        exhaustParticles.push_back(p2);
+
+        while (exhaustParticles.size() > maxExhaustParticles) {
+            exhaustParticles.erase(exhaustParticles.begin());
+        }
+    }
+
+    void updateExhaustParticles(float deltaTime) {
+        for(auto& p : exhaustParticles) {
+            p.pos += p.velocity * deltaTime;
+            p.life += deltaTime;
+        }
+        exhaustParticles.erase(
+            std::remove_if(exhaustParticles.begin(), exhaustParticles.end(),
+                [](const ExhaustParticle& p) { return p.life >= p.maxLife; }),
+            exhaustParticles.end()
+        );
+    }
+
+
+    GLuint exhaustVAO = 0;
+    GLuint exhaustVBO[3];
+    gl::ShaderProgram exhaustShader;
+    bool isMoving = false;
+
+    void initializeExhaustBuffers() {
+        glGenVertexArrays(1, &exhaustVAO);
+        glGenBuffers(3, exhaustVBO);
+        glBindVertexArray(exhaustVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, exhaustVBO[0]);
+        glBufferData(GL_ARRAY_BUFFER, maxExhaustParticles * 3 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+        glBindBuffer(GL_ARRAY_BUFFER, exhaustVBO[1]);
+        glBufferData(GL_ARRAY_BUFFER, maxExhaustParticles * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, 0, (void*)0);
+        glBindBuffer(GL_ARRAY_BUFFER, exhaustVBO[2]);
+        glBufferData(GL_ARRAY_BUFFER, maxExhaustParticles * 4 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, 0, (void*)0);
+        glBindVertexArray(0);
+    }
+
+    void drawExhaustParticles(const glm::mat4& MVP, GLuint exhaustTexture) {
+        std::vector<float> positions;
+        std::vector<float> sizes;
+        std::vector<float> colors;
+        
+        for(auto& p : exhaustParticles) {
+            positions.push_back(p.pos.x);
+            positions.push_back(p.pos.y);
+            positions.push_back(p.pos.z);
+            
+            float lifeFactor = 1.0f - (p.life / p.maxLife);
+            sizes.push_back(10.0f * lifeFactor);  
+            
+            
+            colors.push_back(1.0f);            
+            colors.push_back(0.5f);            
+            colors.push_back(0.0f);            
+            colors.push_back(lifeFactor);      
+        }
+        
+        glBindBuffer(GL_ARRAY_BUFFER, exhaustVBO[0]);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, positions.size() * sizeof(float), positions.data());
+        
+        glBindBuffer(GL_ARRAY_BUFFER, exhaustVBO[1]);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, sizes.size() * sizeof(float), sizes.data());
+        
+        glBindBuffer(GL_ARRAY_BUFFER, exhaustVBO[2]);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, colors.size() * sizeof(float), colors.data());
+        exhaustShader.useProgram();
+        exhaustShader.setUniform("MVP", MVP);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, exhaustTexture);
+        exhaustShader.setUniform("spriteTexture", 0);
+        
+        glBindVertexArray(exhaustVAO);
+        glDrawArrays(GL_POINTS, 0, static_cast<GLsizei>(exhaustParticles.size()));
+        CHECK_GL_ERROR(); // Add this line to check for errors after drawing
+    }
+};
 
 float generateRandomFloat(float min, float max) {
     static std::random_device rd; 
@@ -520,16 +712,13 @@ public:
     float bossSize = 9.2f;
     int level = 1;
     StarField field;
+    Exhaust exhaust;
     
-    SpaceGame(gl::GLWindow *win) : score{0}, lives{5}, ship_pos(0.0f, -20.0f, -70.0f), boss(&enemy_ship, &shaderProgram) {
-           
-    }
+    SpaceGame(gl::GLWindow *win) : score{0}, lives{5}, ship_pos(0.0f, -20.0f, -70.0f), boss(&enemy_ship, &shaderProgram) {}
     
     virtual ~SpaceGame() {
         glDeleteTextures(1, &fire);
     }
-
-    
 
     void load(gl::GLWindow *win) override {
         font.loadFont(win->util.getFilePath("data/font.ttf"), 24);
@@ -539,7 +728,9 @@ public:
         if(!textShader.loadProgram(win->util.getFilePath("data/text.vert"), win->util.getFilePath("data/text.frag"))) {
             throw mx::Exception("Could not load shader program text");
         }
-
+        if(exhaust.exhaustShader.loadProgramFromText(exhaustVertSource, exhaustFragSource) == false) {
+            throw mx::Exception("Could not load shader program exhaust");
+        }
         if(!ship.openModel(win->util.getFilePath("data/objects/bird.mxmod"))) {
             throw mx::Exception("Could not open model bird.mxmod");
         }
@@ -559,9 +750,10 @@ public:
         if(!ufo_boss.openModel(win->util.getFilePath("data/objects/g_ufo.mxmod"))) {
             throw mx::Exception("Could not open g_ufo.mxmod");
         }
-
+        
 
         field.load(win);
+        exhaust.initializeExhaustBuffers();
 
         snd_fire = win->mixer.loadWav(win->util.getFilePath("data/sound/shoot.wav"));
         snd_crash = win->mixer.loadWav(win->util.getFilePath("data/sound/crash.wav"));
@@ -612,7 +804,7 @@ public:
 #endif
     void draw(gl::GLWindow *win) override {
         shaderProgram.useProgram();
-        CHECK_GL_ERROR();
+        CHECK_GL_ERROR(); // Add this line to check for errors before drawing
 #ifndef __EMSCRIPTEN__
         Uint32 currentTime = SDL_GetTicks();
 #else
@@ -634,7 +826,6 @@ public:
         glDrawArrays(GL_POINTS, 0, numStars);
         glBindVertexArray(0);*/
         field.draw(win);
-
         glEnable(GL_DEPTH_TEST);
         shaderProgram.useProgram();
         glm::vec3 cameraPos(0.0f, 0.0f, 10.0f);
@@ -654,16 +845,23 @@ public:
         model = glm::rotate(model, glm::radians(-180.0f), glm::vec3(0.0f, 0.0f, 1.0f));  
         if(isSpinning)
             model = glm::rotate(model, glm::radians(spinAngle), glm::vec3(1.0f, 1.0f, 1.0f));
-
         shaderProgram.setUniform("model", model);
-
         if(!wait_explode) {
             if(!isSpinning)
                 ship.drawArrays();
             else
                 ship.drawArraysWithTexture(fire, "texture1");
         }
-
+        model = glm::translate(glm::mat4(1.0f), ship_pos);
+        glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        float aspectRatio = (float)win->w / (float)win->h;
+        glm::mat4 projection = glm::perspective(glm::radians(45.0f), aspectRatio, 0.1f, 100.0f);
+        glm::mat4 mvp = projection * view;
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        exhaust.drawExhaustParticles(mvp, fire);
+        glDisable(GL_BLEND);
+        shaderProgram.useProgram();
         if(!projectiles.empty()) {
             for (auto &pos : projectiles) {
                 auto setPos = [&](glm::vec3 &posx) -> void {
@@ -759,6 +957,7 @@ public:
         }
 #endif
         shaderProgram.useProgram();
+        CHECK_GL_ERROR(); // Add this line to check for errors after drawing
     }
 
     void newGame() {
@@ -873,6 +1072,8 @@ public:
     
     void checkInput(gl::GLWindow *win, float deltaTime) {
 
+        exhaust.isMoving = false;
+
         if(game_over == true) {
             if(stick.getButton(mx::Input_Button::BTN_START)) {
                 newGame();
@@ -934,21 +1135,26 @@ public:
             if (stick.getButton(mx::Input_Button::BTN_D_LEFT)) {
                 moveX -= 50.0f; 
                 shipRotation = glm::clamp(shipRotation + rotationSpeed * deltaTime, -maxTiltAngle, maxTiltAngle);
+                exhaust.isMoving = true;
             }
             if (stick.getButton(mx::Input_Button::BTN_D_RIGHT)) {
                 moveX += 50.0f; 
                 shipRotation = glm::clamp(shipRotation - rotationSpeed * deltaTime, -maxTiltAngle, maxTiltAngle);
+                exhaust.isMoving = true;
             }
             if (stick.getButton(mx::Input_Button::BTN_D_UP)) {
                 moveY += 50.0f; 
+                exhaust.isMoving = true;
             }
             if (stick.getButton(mx::Input_Button::BTN_D_DOWN)) {
                 moveY -= 50.0f; 
+                exhaust.isMoving = true;
             }
             if (moveX != 0.0f || moveY != 0.0f) {
                 float magnitude = glm::sqrt(moveX * moveX + moveY * moveY);
                 moveX = (moveX / magnitude) * 50.0f * deltaTime;
                 moveY = (moveY / magnitude) * 50.0f * deltaTime;
+                exhaust.isMoving = true;
             }
             ship_pos.x += moveX;
             ship_pos.y += moveY;
@@ -999,6 +1205,8 @@ public:
             ready = false;
             return;
         }
+
+        exhaust.updateExhaustParticles(deltaTime);
 
         if(launch_ship == true || game_over == true) {
             return;
@@ -1172,10 +1380,12 @@ public:
                     return;
                 }
             }
-        }
+    }
+    
+    exhaust.spawnExhaustParticle(ship_pos, shipRotation);
+    
 
-        
-        if (boss.active == true && isSpinning == false && isColliding(ship_pos, playerRadius, boss.object_pos, bossRadius)) {
+    if (boss.active == true && isSpinning == false && isColliding(ship_pos, playerRadius, boss.object_pos, bossRadius)) {
             isSpinning = true;
             return;
         }
@@ -1235,28 +1445,49 @@ public:
         
         GLuint VBO, VAO;
         glGenVertexArrays(1, &VAO);
+        CHECK_GL_ERROR();
         glGenBuffers(1, &VBO);
+        CHECK_GL_ERROR();
         
         glBindVertexArray(VAO);
+        CHECK_GL_ERROR();
+        
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+        CHECK_GL_ERROR();
         
+        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW); // Line 1391
+        CHECK_GL_ERROR();
+        
+        // Position attribute
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+        CHECK_GL_ERROR();
         glEnableVertexAttribArray(0);
+        CHECK_GL_ERROR();
         
+        // Texture coord attribute
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+        CHECK_GL_ERROR();
         glEnableVertexAttribArray(1);
+        CHECK_GL_ERROR();
         
         textShader.useProgram();
+        CHECK_GL_ERROR();
         textShader.setUniform("textTexture", 0);
+        CHECK_GL_ERROR();
         glActiveTexture(GL_TEXTURE0);
+        CHECK_GL_ERROR();
         glBindTexture(GL_TEXTURE_2D, texture);
+        CHECK_GL_ERROR();
         
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        CHECK_GL_ERROR();
         
         glBindVertexArray(0);
+        CHECK_GL_ERROR();
         glDeleteBuffers(1, &VBO);
+        CHECK_GL_ERROR();
         glDeleteVertexArrays(1, &VAO);
+        CHECK_GL_ERROR();
     }
 
 private:
