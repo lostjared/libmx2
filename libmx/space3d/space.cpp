@@ -992,6 +992,13 @@ public:
         switch(e.type) {
             case SDL_KEYDOWN:
             switch(e.key.keysym.sym) {
+
+                case SDLK_F1: {
+                    //level = 6;
+                    //enemies_crashed = 60;
+                }
+                break;
+
                 case SDLK_p: {
 #ifndef __EMSCRIPTEN__
                     if(fill == true) {
@@ -1208,6 +1215,22 @@ public:
         }
 
         exhaust.updateExhaustParticles(deltaTime);
+       
+        projectileRotation += 50.0f * deltaTime;
+        if(projectileRotation >= 360.0f) {
+            projectileRotation -= 360.0f;
+        }
+
+       
+        if(!projectiles.empty()) {
+            for (int i = (int)projectiles.size() - 1; i >= 0; i--) {
+                std::get<0>(projectiles[i]).y += projectileSpeed * deltaTime;
+                std::get<1>(projectiles[i]).y += projectileSpeed * deltaTime;
+                if ((std::get<0>(projectiles[i]).y > (std::get<3>(screenx) + projectileLifetime)) || (std::get<1>(projectiles[i]).y > (std::get<3>(screenx) + projectileLifetime))) {
+                    projectiles.erase(projectiles.begin() + i);
+                }
+            }
+        }
 
         if(launch_ship == true || game_over == true) {
             return;
@@ -1222,20 +1245,7 @@ public:
             }
         }
 
-        projectileRotation += 50.0f * deltaTime;
-        if(projectileRotation >= 360.0f) {
-            projectileRotation -= 360.0f;
-        }
-
-        if(!projectiles.empty()) {
-            for (int i = (int)projectiles.size() - 1; i >= 0; i--) {
-                std::get<0>(projectiles[i]).y += projectileSpeed * deltaTime;
-                std::get<1>(projectiles[i]).y += projectileSpeed * deltaTime;
-                if ((std::get<0>(projectiles[i]).y > (std::get<3>(screenx) + projectileLifetime)) || (std::get<1>(projectiles[i]).y > (std::get<3>(screenx) + projectileLifetime))) {
-                    projectiles.erase(projectiles.begin() + i);
-                }
-            }
-        }
+       
         enemyReleaseTimer += deltaTime;
         if (enemyReleaseTimer >= enemyReleaseInterval) {
             releaseEnemy(win);             
