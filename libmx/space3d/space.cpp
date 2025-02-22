@@ -678,7 +678,7 @@ public:
     int score = 0, lives = 5;
     mx::Model ship;
     mx::Model projectile;
-    mx::Model enemy_ship, saucer, triangle, ufo_boss, planet_boss;
+    mx::Model enemy_ship, saucer, triangle, ufo_boss, planet_boss, star_boss;
     glm::vec3 ship_pos;
     std::vector<std::tuple<glm::vec3, glm::vec3>> projectiles;
     std::vector<std::unique_ptr<Enemy>> enemies;
@@ -753,6 +753,9 @@ public:
         if(!planet_boss.openModel(win->util.getFilePath("data/objects/saturn.mxmod"))) {
             throw mx::Exception("Could not open saturn.mxmod");
         }
+        if(!star_boss.openModel(win->util.getFilePath("data/objects/star.mxmod"))) {
+            throw mx::Exception("Could not open star.mxmod");
+        }
         
         field.load(win);
         exhaust.initializeExhaustBuffers();
@@ -795,6 +798,9 @@ public:
         ufo_boss.setTextures(win, win->util.getFilePath("data/objects/metal.tex"),  win->util.getFilePath("data/objects"));
         planet_boss.setShaderProgram(&shaderProgram, "texture1");
         planet_boss.setTextures(win, win->util.getFilePath("data/objects/planet.tex"), win->util.getFilePath("data/objects"));
+        star_boss.setShaderProgram(&shaderProgram, "texture1");
+        star_boss.setTextures(win, win->util.getFilePath("data/objects/planet.tex"), win->util.getFilePath("data/objects"));
+        
         fire = gl::loadTexture(win->util.getFilePath("data/objects/flametex.png"));
         ex_emiter.load(win);
 #ifndef __EMSCRIPTEN__
@@ -993,13 +999,24 @@ public:
         switch(e.type) {
             case SDL_KEYDOWN:
             switch(e.key.keysym.sym) {
-
-                case SDLK_F1: {
-                    //level = 6;
-                    //enemies_crashed = 60;
+                /*
+                case SDLK_F4:
+                   level = 5;
+                   enemies_crashed = 60;
+                break;
+                case SDLK_F3: {
+                    level = 4;
+                    enemies_crashed = 60;
                 }
                 break;
-
+                case SDLK_F2:
+                    level = 3;
+                    enemies_crashed = 40;   
+                break;
+                case SDLK_F1:
+                    level = 2;
+                    enemies_crashed = 30;
+                break;*/
                 case SDLK_p: {
 #ifndef __EMSCRIPTEN__
                     if(fill == true) {
@@ -1285,7 +1302,7 @@ public:
             boss.updateSpin(deltaTime);
         }
         if(boss.ready) {
-            ex_emiter.explode(win, boss.object_pos, boss.particleColor, true); // Pass true for isBoss
+            ex_emiter.explode(win, boss.object_pos, boss.particleColor, true); 
             boss.active = false;
             boss.reset();
             boss.ready = false;
@@ -1301,9 +1318,9 @@ public:
                 bossRadius = 12.0f;
                 bossSize = 15.0f;
             } else if(level == 4) {
-                boss.object = &enemy_ship;
-                bossRadius = 8.0f * 2;
-                bossSize = 25.0f * 2;
+                boss.object = &star_boss;
+                bossRadius = 9.2f * 2;
+                bossSize = 9.2f * 2;
             } else if (level >= 5) {
                 boss.object = &planet_boss;
                 bossRadius = 25.2f;
