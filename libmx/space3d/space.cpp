@@ -999,7 +999,7 @@ public:
         switch(e.type) {
             case SDL_KEYDOWN:
             switch(e.key.keysym.sym) {
-                /*
+#ifdef DEBUG_MODE
                 case SDLK_F4:
                    level = 5;
                    enemies_crashed = 60;
@@ -1016,8 +1016,11 @@ public:
                 case SDLK_F1:
                     level = 2;
                     enemies_crashed = 30;
-                break;*/
-                case SDLK_p: {
+                break; 
+#endif
+
+		case SDLK_p: {
+
 #ifndef __EMSCRIPTEN__
                     if(fill == true) {
                         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
