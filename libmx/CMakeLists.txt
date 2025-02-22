@@ -5,7 +5,20 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_compile_options(-O2 -Wall)
+
+option(DEBUG_MODE "Debug mode" OFF)
+
+if(DEBUG_MODE)
+  add_compile_definitions(DEBUG_MODE)
+  message(STATUS "Debug Enabled")
+  set(COMPILE_FLAG "-g")
+else() 
+  set(COMPILE_FLAG "")
+  message(STATUS "Release mode enabled") 
+endif()
+
+add_compile_options(-O2 -Wall ${COMPILE_FLAG}) 
+
 
 find_package(SDL2 REQUIRED)
 find_package(SDL2_ttf REQUIRED)
