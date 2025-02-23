@@ -168,9 +168,9 @@ if(EXAMPLES)
 
 #disable for now
   if(VULKAN)
-#    add_subdirectory(vk_ex1)
-#    add_subdirectory(vk_cube)
-#    add_subdirectory(vk_tex_cube) 
+     add_subdirectory(vk_ex1)
+     add_subdirectory(vk_cube)
+     add_subdirectory(vk_tex_cube) 
   else()
     if(MOLTEN)
      add_subdirectory(vk_ex1)
