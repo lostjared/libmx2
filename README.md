@@ -105,7 +105,12 @@ Refer to the `examples` directory for sample usage scenarios. Also various subfo
 * Space3D: Attack of the Drones ( https://lostsidedead.biz/game/Space3D )
 * Four Point Sprite Examples ( gl_ps, gl_ps2, gl_ps3, gl_ps4 https://lostsidedead.biz/point-sprites )
 * 3D Snow Particle Demo ( https://lostsidedead.biz/holiday/3d.html )
-* 
+
+## Vulkan Examples
+* Basic Triangle/Shader
+* 3D Cube
+* 3D texture Mapped Cube
+
 ## How to Run the Examples
 
 The examples require the resources for each instance to be within the same directory as the executable or to pass the path of that directory to the program with the -p or --path argument.
