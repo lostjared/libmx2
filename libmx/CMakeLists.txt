@@ -17,6 +17,11 @@ else()
   message(STATUS "Release mode enabled") 
 endif()
 
+if(UNIX AND NOT APPLE)
+  set(COMPILE_FLAG "${COMPILE_FLAG} -fPIC -fPIE")
+endif()
+
+
 add_compile_options(-O2 -Wall ${COMPILE_FLAG}) 
 
 
