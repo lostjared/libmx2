@@ -190,7 +190,7 @@ namespace mx {
             SDL_Quit();
         }
 
-#ifdef WITH_MOLTEN
+#ifndef WITH_MOLTEN
         volkFinalize();
 #endif
     }
