@@ -18,7 +18,7 @@ else()
 endif()
 
 if(UNIX AND NOT APPLE)
-  set(COMPILE_FLAG "${COMPILE_FLAG} -fPIC -fPIE")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -fPIE")
 endif()
 
 
