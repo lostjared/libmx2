@@ -8,9 +8,9 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include"SDL_image.h"
-#ifdef _WIN32
-#include<windows.h>
-#endif
+//#ifdef _WIN32
+//#include<windows.h>
+//#endif
 #if defined(__APPLE__) || defined(_WIN32) || defined(__linux__)
 #include "argz.hpp"
 #endif
@@ -982,7 +982,7 @@ public:
     }
 };
 int main(int argc, char **argv) {
-    SetDllDirectory(TEXT("C:\\VulkanSDK\\1.4.304.1\\Bin"));
+    //SetDllDirectory(TEXT("C:\\VulkanSDK\\1.4.304.1\\Bin"));
     #if defined(__APPLE__) || defined(_WIN32) || defined(__linux__)
         Arguments args = proc_args(argc, argv);
         try {
