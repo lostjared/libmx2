@@ -1,9 +1,9 @@
 #ifndef _VK_MX_H__
 #define _VK_MX_H__
-#include "mx.hpp"
-#include "volk/volk.h"
-#include<SDL_vulkan.h>
-//#include <vulkan/vulkan.h>
+#include "volk.h"
+#include"exception.hpp"
+#include "util.hpp"
+#include <SDL2/SDL_vulkan.h>
 #include <iostream>
 #include <stdexcept>
 #include <cstdlib>
