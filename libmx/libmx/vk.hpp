@@ -1,8 +1,17 @@
 #ifndef _VK_MX_H__
 #define _VK_MX_H__
-#include "volk.h"
+
+#include"config.h"
+
+#ifdef WITH_MOLTEN
+#include<vulkan/vulkan.h>
+#else
+#include"volk.h"
+#endif
+
+#include"mx.hpp"
 #include"exception.hpp"
-#include "util.hpp"
+#include"util.hpp"
 #include <SDL2/SDL_vulkan.h>
 #include <iostream>
 #include <stdexcept>

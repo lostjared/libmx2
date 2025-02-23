@@ -190,7 +190,7 @@ namespace mx {
             SDL_Quit();
         }
 
-        volkFinalize();
+       // volkFinalize();
     }
 
     void VKWindow::createInstance() {
@@ -220,13 +220,13 @@ namespace mx {
 
         std::cout << "Extensions count: " << extensions.size() << "\n";
 
-        if (volkInitialize() != VK_SUCCESS) {
-            throw mx::Exception("Failed to initialize Volk!");
-        }
+        //if (volkInitialize() != VK_SUCCESS) {
+           // throw mx::Exception("Failed to initialize Volk!");
+        //}
 
         VK_CHECK_RESULT(vkCreateInstance(&createInfo, nullptr, &instance));
 
-        volkLoadInstance(instance);
+        //volkLoadInstance(instance);
     }
 
 
@@ -317,7 +317,7 @@ namespace mx {
         vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
         vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
 
-        volkLoadDevice(device);
+        //volkLoadDevice(device);
     }
     
     void VKWindow::createSwapChain() {
