@@ -7,10 +7,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include"SDL_image.h"
-//#ifdef _WIN32
-//#include<windows.h>
-//#endif
+
 #if defined(__APPLE__) || defined(_WIN32) || defined(__linux__)
 #include "argz.hpp"
 #endif
@@ -22,27 +19,29 @@ struct Vertex {
 
 class MainWindow : public mx::VKWindow {
 public:
-    MainWindow(const std::string& path, int wx, int wy) : mx::VKWindow("-[ Cube with Vulkan ]-", wx, wy) {
-        setPath(path);
-    }
+    MainWindow(const std::string& path, int wx, int wy)
+         : mx::VKWindow("-[ Cube with Vulkan ]-", wx, wy)
+     {
+         setPath(path);
+     }
+    
     virtual ~MainWindow() {
         
     }
     virtual void event(SDL_Event& e) override {}
 
 private:
-    VkBuffer vertexBuffer;
-    VkDeviceMemory vertexBufferMemory;
-    VkBuffer indexBuffer;
-    VkDeviceMemory indexBufferMemory;
+    VkBuffer vertexBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE;
+    VkBuffer indexBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory indexBufferMemory = VK_NULL_HANDLE;
     uint32_t indexCount;
-
-    VkImage textureImage;
-    VkDeviceMemory textureImageMemory;
-    VkImageView textureImageView;
-    VkSampler textureSampler;
-    VkDescriptorSetLayout descriptorSetLayout;
-    VkDescriptorPool descriptorPool;
+    VkImage textureImage = VK_NULL_HANDLE;
+    VkDeviceMemory textureImageMemory = VK_NULL_HANDLE;
+    VkImageView textureImageView = VK_NULL_HANDLE;
+    VkSampler textureSampler = VK_NULL_HANDLE;
+    VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
+    VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
     std::vector<VkDescriptorSet> descriptorSets;
     uint32_t width, height;
 

@@ -111,7 +111,7 @@ if(JPEG)
 else()
   message(STATUS "JPEG Disabled")
   set(IMG_LIB ${PNG_LIBRARIES} ${ZLIB_LIBRARIES})
-  set(IMG_INCLUDE ${ZLIB_INCLUDE_DIRS} ${PNG_INCLUDE_DIRS})
+  set(IMG_INCLUDE /usr/local/include/libpng16 ${ZLIB_INCLUDE_DIRS} ${PNG_INCLUDE_DIRS})
 endif()
 
 add_subdirectory(libmx)
@@ -173,9 +173,9 @@ if(EXAMPLES)
 #    add_subdirectory(vk_tex_cube) 
   else()
     if(MOLTEN)
-#     add_subdirectory(vk_ex1)
-#     add_subdirectory(vk_cube)
-#     add_subdirectory(vk_tex_cube)
+     add_subdirectory(vk_ex1)
+     add_subdirectory(vk_cube)
+     add_subdirectory(vk_tex_cube)
     endif()
   endif()
 
@@ -201,11 +201,20 @@ else()
   set(WITH_VK_VAL 0)
 endif()
 
+
+if(MOLTEN)
+  set(WITH_MOLTEN_VAL 1)
+else()
+  set(WITH_MOLTEN_VAL 0)
+endif()
+
 if(JPEG)
   set(WITH_JPEG_VAL 1)
 else()
   set(WITH_JPEG_VAL 0)
 endif()
+
+
 
 configure_file(
     ${CMAKE_SOURCE_DIR}/config.h.in
