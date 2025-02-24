@@ -3,9 +3,9 @@
 #include"config.h"
 #ifndef WITH_MOLTEN
 #include "volk.h"
+#include <SDL_vulkan.h>
 #else
 #include <SDL_vulkan.h>
-
 #include<vulkan/vulkan.h>
 #endif
 #include"exception.hpp"
