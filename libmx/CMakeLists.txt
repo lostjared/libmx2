@@ -174,6 +174,7 @@ if(EXAMPLES)
     add_subdirectory(gl_walk)
     add_subdirectory(gl_about)
     add_subdirectory(mp3d)
+    add_subdirectory(gl_cubemap)
   endif()
 
 #disable for now
