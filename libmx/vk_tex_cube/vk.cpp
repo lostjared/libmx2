@@ -146,7 +146,7 @@ namespace mx {
                 return availablePresentMode;
             }
         }
-        return VK_PRESENT_MODE_FIFO_KHR; 
+        return VK_PRESENT_MODE_FIFO_KHR;
     }
 
     VkExtent2D VKWindow::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) {
@@ -338,8 +338,10 @@ namespace mx {
         
         vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
         vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
-
+#ifndef WITH_MOLTEN
         volkLoadDevice(device);
+#endif
+        
     }
     
     void VKWindow::createSwapChain() {
@@ -484,7 +486,7 @@ namespace mx {
         VkCommandPoolCreateInfo poolInfo{};
         poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
-        poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; 
+        poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
         if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
             throw mx::Exception("Failed to create command pool!");
         }
@@ -529,11 +531,11 @@ namespace mx {
                 commandBuffers[i],
                 VK_PIPELINE_BIND_POINT_GRAPHICS,
                 pipelineLayout,
-                0, 
-                1, 
+                0,
+                1,
                 &descriptorSets[i],
-                0, 
-                nullptr 
+                0,
+                nullptr
             );
 
             float time = SDL_GetTicks() / 1000.0f;
@@ -1297,7 +1299,7 @@ namespace mx {
         }
         catch (mx::Exception& e) {
             SDL_Log("Exception in createGraphicsPipeline: %s\n", e.text().c_str());
-            throw; 
+            throw;
         }
     }
     

@@ -1,15 +1,18 @@
-
+if(MOLTEN)
+add_executable(vk_tex_cube ${CMAKE_SOURCE_DIR}/vk_tex_cube/main.cpp ${CMAKE_SOURCE_DIR}/vk_tex_cube/vk.cpp)
+else()
 add_executable(vk_tex_cube ${CMAKE_SOURCE_DIR}/vk_tex_cube/main.cpp ${CMAKE_SOURCE_DIR}/vk_tex_cube/vk.cpp ${CMAKE_SOURCE_DIR}/vk_tex_cube/volk.c)
+endif()
 target_include_directories(vk_tex_cube PRIVATE 
     ${CMAKE_SOURCE_DIR}/libmx 
     ${SDL2_INCLUDE_DIRS} 
-    ${SDL2_TTF_INCLUDE_DIRS}
+    ${SDL2_TTF_INCLUDE_DIRS}y
     ${VK_INCLUDE}
 )
 
 if(MOLTEN)
 link_directories(${MOLTEN_PATH}/lib)
-target_link_libraries(mx PRIVATE
+target_link_libraries(vk_tex_cube PRIVATE
     "-framework QuartzCore"
     "-framework Metal"
     "-framework IOSurface"
