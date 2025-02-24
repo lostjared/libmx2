@@ -1484,10 +1484,15 @@ namespace mx {
             vkDestroyInstance(instance, nullptr);
         }
 
+#ifndef WITH_MOLTEN
+	volkFinalize();
+#endif
+
         if (window != nullptr) {
             SDL_DestroyWindow(window);
             SDL_Quit();
         }
+
     }
     
     void VKWindow::recreateSwapChain() {
