@@ -1154,21 +1154,10 @@ namespace mx {
             if (device == VK_NULL_HANDLE) {
                 throw mx::Exception("Device is invalid in createGraphicsPipeline()");
             }
-            // Load shader bytecode from files.
+     
             auto vertShaderCode = util.readFile(util.getFilePath("vert.spv"));
             auto fragShaderCode = util.readFile(util.getFilePath("frag.spv"));
 
-            std::cout << "vertShaderCode size: " << vertShaderCode.size() << "\n";
-            std::cout << "fragShaderCode size: " << fragShaderCode.size() << "\n";
-
-            // Print the first few bytes of the shader code for validation.
-            std::cout << "First 4 bytes of vertShaderCode: ";
-            for (int i = 0; i < 4 && i < vertShaderCode.size(); ++i) {
-                std::cout << std::hex << (int)(unsigned char)vertShaderCode[i] << " ";
-            }
-            std::cout << std::endl;
-
-            // Create shader modules.
             VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
 
             if (vertShaderModule == VK_NULL_HANDLE) {
