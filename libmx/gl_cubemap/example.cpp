@@ -150,8 +150,6 @@ public:
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
         CHECK_GL_ERROR();
-
-  
     }
 
     virtual void draw(gl::GLWindow *win) override {
@@ -173,16 +171,17 @@ public:
         float deltaTime = (currentTime - lastTime) / 1000.0f;
         lastTime = currentTime;
         rotationAngle += deltaTime * 50.0f; 
+        static float time_f = 0.0f;
+        time_f += deltaTime;
+
         glm::mat4 model = glm::rotate(glm::mat4(1.0f), glm::radians(rotationAngle), glm::vec3(1.0f, 1.0f, 0.0f));
     
         shaderProgram.setUniform("model", model);
         shaderProgram.setUniform("view", view);
         shaderProgram.setUniform("projection", projection);
-        shaderProgram.setUniform("debugMode", false);  
-        
+        shaderProgram.setUniform("time_f", time_f);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_CUBE_MAP, texture);
-        shaderProgram.setUniform("cubemapTexture", 0);
         CHECK_GL_ERROR();
         
         glBindVertexArray(VAO);
