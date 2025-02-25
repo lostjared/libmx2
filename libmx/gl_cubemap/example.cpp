@@ -104,6 +104,7 @@ public:
         }
         shaderProgram.useProgram();
         shaderProgram.setUniform("cubemapTexture", 0);
+        glUniform2f(glGetUniformLocation(shaderProgram.id(), "iResolution"), win->w, win->h);
         glm::mat4 model = glm::mat4(1.0f); 
         glm::mat4 view = glm::lookAt(
             glm::vec3(0.0f, 0.0f, 5.0f),  

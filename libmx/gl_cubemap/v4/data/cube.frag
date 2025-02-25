@@ -3,39 +3,24 @@ out vec4 color;
 in vec3 localPos; 
 uniform samplerCube cubemapTexture;
 uniform float time_f;
+uniform vec2 iResolution;
 
-float pingPong(float x, float length) {
-    float modVal = mod(x, length * 2.0);
-    return modVal <= length ? modVal : length * 2.0 - modVal;
-}
-
-vec3 uvToDir(vec2 uv) {
-    float theta = uv.x * 3.14159265;         
-    float phi   = uv.y * (3.14159265 * 0.5);  
-    float x = cos(phi) * sin(theta);
-    float y = sin(phi);
-    float z = cos(phi) * cos(theta);
-    return vec3(x, y, z);
+vec4 getCubemapColor(vec3 apos, samplerCube cube) {
+    float r = length(apos.xy);
+    float theta = atan(apos.y, apos.x);
+    float spiralEffect = time_f * 0.2;
+    r -= mod(spiralEffect, 4.0);
+    theta += spiralEffect;
+    vec2 distortedXY = vec2(cos(theta), sin(theta)) * r;
+    vec3 newApos = normalize(vec3(distortedXY, apos.z));
+    vec4 texColor = texture(cube, newApos);
+    return vec4(texColor.rgb, 1.0);
 }
 
 void main(void) {
-
-    vec3 nPos = normalize(localPos);
-    float theta = atan(nPos.x, nPos.z);  
-    float phi = asin(nPos.y);            
-    vec2 uv = vec2(theta / 3.14159265, phi / (3.14159265 * 0.5));
-    float t = mod(time_f, 10.0) * 0.1;
-    float angle = sin(t * 3.14159265) * 0.5;
-    float dist = length(uv);
-    float bend = sin(dist * 6.0 - t * 2.0 * 3.14159265) * 0.05;
-    uv = mat2(cos(angle), -sin(angle),
-              sin(angle),  cos(angle)) * uv;
-    
-    float time_t = pingPong(time_f, 10.0);
-    uv += sin(time_t * bend) + tan(bend * uv * time_t);
-    
-    vec3 dir = uvToDir(uv);
-    dir = normalize(dir);
-    
-    color = texture(cubemapTexture, dir);
+    vec3 tc = normalize(localPos);
+    vec4 texColor = getCubemapColor(localPos, cubemapTexture);
+    float sparkle = abs(sin(time_f * 10.0 + tc.x * 100.0) * cos(time_f * 15.0 + tc.y * 100.0));
+    vec3 magicalColor = vec3(sin(time_f * 2.0) * 0.5 + 0.5, cos(time_f * 3.0) * 0.5 + 0.5, sin(time_f * 4.0) * 0.5 + 0.5);
+    color = texColor + vec4(magicalColor * sparkle, 1.0);
 }
