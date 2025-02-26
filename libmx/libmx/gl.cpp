@@ -55,6 +55,8 @@ namespace gl {
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
 	    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
 	    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+        SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+        SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 #endif
         window = SDL_CreateWindow(title.c_str(),25,25,width,height,SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
         if (!window) {
@@ -538,6 +540,17 @@ namespace gl {
             FragColor = texture(textTexture, TexCoord);
         }
     )";
+     const char *ftSource = R"(#version 300 es
+        precision highp float; 
+        in vec2 TexCoord;
+        out vec4 FragColor;
+        uniform sampler2D textTexture; 
+        void main() {
+            FragColor = texture(textTexture, TexCoord);
+            if(FragColor.a < 0.1)
+                discard;
+        }
+    )";
 #else
     const char *vSource = R"(#version 330 core
         layout (location = 0) in vec3 aPos;
@@ -556,6 +569,16 @@ namespace gl {
             FragColor = texture(textTexture, TexCoord);
         }
     )";
+    const char *ftSource = R"(#version 330 core
+        in vec2 TexCoord;
+        out vec4 FragColor;
+        uniform sampler2D textTexture; 
+        void main() {
+            FragColor = texture(textTexture, TexCoord);
+            if(FragColor.a < 0.1)
+                discard;
+        }
+    )";
 #endif
     GLText::GLText() {
         
@@ -565,7 +588,7 @@ namespace gl {
         w = width;
         h = height;
         if(textShader.loaded() == true) return;
-        if(!textShader.loadProgramFromText(vSource, fSource)) {
+        if(!textShader.loadProgramFromText(vSource, ftSource)) {
             throw mx::Exception("Could not load Text Shader ");
         }
     }
