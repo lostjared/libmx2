@@ -18,6 +18,56 @@ printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
 #define M_PI 3.14159265358979323846
 #endif
 
+#if defined(__EMSCRIPTEN__) || defined(__ANDROID__)
+const char *fragShader1 = R"(#version 300 es
+precision highp float;
+out vec4 color;
+in vec2 TexCoord;
+uniform sampler2D textTexture;
+uniform vec2 iResolution;
+uniform float time_f;
+void main(void) {
+    vec2 normCoord = (TexCoord * 2.0 - 1.0) * vec2(iResolution.x / iResolution.y, 1.0);
+    float waveStrength = 0.05;
+    float waveFrequency = 3.0;
+    vec2 wave = vec2(sin(normCoord.y * waveFrequency + time_f) * waveStrength,
+                    cos(normCoord.x * waveFrequency + time_f) * waveStrength);
+
+    normCoord += wave;
+    float dist = length(normCoord);
+    float angle = atan(normCoord.y, normCoord.x);\
+    float spiralAmount = tan(time_f) * 3.0;
+    angle += dist * spiralAmount;
+    vec2 spiralCoord = vec2(cos(angle), sin(angle)) * dist;
+    spiralCoord = (spiralCoord / vec2(iResolution.x / iResolution.y, 1.0) + 1.0) / 2.0;
+    color = texture(textTexture, spiralCoord);
+    color = vec4(color.rgb, 0.8);
+}
+)";
+const char *fragShader2 = R"(#version 300 es
+precision highp float;
+out vec4 FragColor;
+in vec2 TexCoord;
+
+uniform sampler2D textTexture;
+uniform float time_f;
+float alpha = 1.0;
+
+void main(void) {
+vec2 uv = TexCoord * 2.0 - 1.0;
+float len = length(uv);
+float bubble = smoothstep(0.8, 1.0, 1.0 - len);
+vec2 distort = uv * (1.0 + 0.1 * sin(time_f + len * 20.0));
+vec4 texColor = texture(textTexture, distort * 0.5 + 0.5);
+FragColor = mix(texColor, vec4(1.0, 1.0, 1.0, 1.0), bubble);
+FragColor = FragColor * alpha;
+FragColor = vec4(FragColor.rgb, 0.5);
+}
+)";
+
+
+
+#else
 const char *fragShader1 = R"(#version 330 core
         out vec4 color;
         in vec2 TexCoord;
@@ -42,8 +92,7 @@ const char *fragShader1 = R"(#version 330 core
             color = vec4(color.rgb, 0.8);
         }
 )";
-const char *fragShader2 = R"(#version 300 es
-    precision highp float;
+const char *fragShader2 = R"(#version 330 core
     out vec4 FragColor;
     in vec2 TexCoord;
     
@@ -62,6 +111,7 @@ const char *fragShader2 = R"(#version 300 es
         FragColor = vec4(FragColor.rgb, 0.5);
     }
 )";
+#endif
 
 class Game : public gl::GLObject {
 public:
