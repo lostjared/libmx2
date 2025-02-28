@@ -3,7 +3,7 @@ CXXFLAGS = -std=c++20 -O2 -DFOR_WASM -s USE_SDL=2 -s USE_SDL_TTF=2 -s NO_DISABLE
 ###############################################################
 #### set LIBS_PATH to directory where libmx2 is installed #####
 ###############################################################
-LIBS_PATH = /home/jared/emscripten-libs
+LIBS_PATH = $(HOME)/emscripten-libs
 ###############################################################
 ZLIB_INCLUDE = -s USE_ZLIB=1 #-I$(LIBS_PATH)/zlib/include
 PNG_INCLUDE = -s USE_LIBPNG=1 #-I$(LIBS_PATH)/libpng/include
