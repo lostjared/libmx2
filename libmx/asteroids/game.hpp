@@ -4,11 +4,34 @@
 #include"mx.hpp"
 #include<cstdlib>
 #include<ctime>
-
+#include<algorithm>
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
 
+inline void fillPolygon(SDL_Renderer* renderer, const std::vector<SDL_Point>& vertices) {
+    int minY = vertices[0].y, maxY = vertices[0].y;
+    for (const auto& v : vertices) {
+        if (v.y < minY) minY = v.y;
+        if (v.y > maxY) maxY = v.y;
+    }
+    for (int y = minY; y <= maxY; y++) {
+        std::vector<int> nodeX; 
+        size_t j = vertices.size() - 1;
+        for (size_t i = 0; i < vertices.size(); i++) {
+            if ((vertices[i].y < y && vertices[j].y >= y) ||
+                (vertices[j].y < y && vertices[i].y >= y)) {
+                int x = vertices[i].x + (y - vertices[i].y) * (vertices[j].x - vertices[i].x) / (vertices[j].y - vertices[i].y);
+                nodeX.push_back(x);
+            }
+            j = i;
+        }
+        std::sort(nodeX.begin(), nodeX.end());
+        for (size_t k = 0; k + 1 < nodeX.size(); k += 2) {
+            SDL_RenderDrawLine(renderer, nodeX[k], y, nodeX[k + 1], y);
+        }
+    }
+}
 
 
 class Game : public obj::Object {
@@ -30,7 +53,7 @@ public:
         score = 0;
         lives = 3;
 
-        const int numStars = 100; 
+        const int numStars = 300; 
         for (int i = 0; i < numStars; ++i) {
             Star star;
             star.x = static_cast<float>(std::rand() % tex_width);
@@ -351,18 +374,19 @@ private:
 */
 
     void drawAsteroid(SDL_Renderer* renderer, const Asteroid& asteroid) {
-        SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
         std::vector<SDL_Point> points(asteroid.vertices.size());
         for (size_t i = 0; i < asteroid.vertices.size(); i++) {
-             points[i].x = static_cast<int>(asteroid.x) + asteroid.vertices[i].x;
-             points[i].y = static_cast<int>(asteroid.y) + asteroid.vertices[i].y;
+            points[i].x = static_cast<int>(asteroid.x) + asteroid.vertices[i].x;
+            points[i].y = static_cast<int>(asteroid.y) + asteroid.vertices[i].y;
         }
-        
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        fillPolygon(renderer, points);
+        SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
         SDL_RenderDrawLines(renderer, points.data(), points.size());
         SDL_RenderDrawLine(renderer, points.back().x, points.back().y,
-                                      points.front().x, points.front().y);
+                                    points.front().x, points.front().y);
     }
-    
+
     void drawAsteroids(SDL_Renderer* renderer) {
         for (const auto& asteroid : asteroids) {
             drawAsteroid(renderer, asteroid);
