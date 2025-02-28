@@ -1,5 +1,6 @@
 CXX = em++
-CXXFLAGS = -std=c++20 -s USE_SDL=2 -s USE_SDL_TTF=2 
+GLM_PATH=-I/usr/include/glm -I/usr/local/include/glm -I/opt/homebrew/include/glm  # add path to GLM headers
+CXXFLAGS = -std=c++20 -s USE_SDL=2 -s USE_SDL_TTF=2 $(GLM_PATH)
 LIBS_PATH = ./webmx
 ZLIB_INCLUDE = -s USE_ZLIB=1
 PNG_INCLUDE = -s USE_LIBPNG=1
