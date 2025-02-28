@@ -199,6 +199,5 @@ Screenshots of Examples
 ![libmx matrix](https://github.com/user-attachments/assets/df69b3c1-1d1f-4806-9366-21a480494461)
 ![vb_tetris](https://github.com/user-attachments/assets/efbb3881-ba0a-483c-92db-4abba66c61d8)
 ![libmx knight 2](https://github.com/user-attachments/assets/0f12d584-6478-4df7-8da0-81903ce7eac6)
-![vb_aster](https://github.com/user-attachments/assets/91bf11ad-b171-4363-96be-cad2bd7f5ea2)
 ![vb_pong](https://github.com/user-attachments/assets/ae63f64b-1830-4a2d-a3ed-26ccc6fd2578)
 
