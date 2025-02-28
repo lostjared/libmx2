@@ -22,6 +22,8 @@ namespace mx {
         int playMusic(int id, int value = 0);
         int playWav(int id, int value = 0, int channel = 0);
         bool isPlaying(int channel) const;
+        void cleanup();
+        void stopMusic();
     private:
         bool init_ = false;
         std::vector<Mix_Music *> files;

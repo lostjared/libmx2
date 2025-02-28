@@ -383,4 +383,78 @@ private:
 	int index = 0, cindex = 1;
 };
 
+struct Arguments {
+	int width, height;
+	std::string path;
+	bool fullscreen;
+};
+
+inline Arguments proc_args(int &argc, char **argv) {
+	Arguments args;
+	Argz<std::string> parser(argc, argv);
+    parser.addOptionSingle('h', "Display help message")
+        .addOptionSingleValue('p', "assets path")
+        .addOptionDoubleValue('P', "path", "assets path")
+        .addOptionSingleValue('r',"Resolution WidthxHeight")
+        .addOptionDoubleValue('R',"resolution", "Resolution WidthxHeight")
+        .addOptionSingle('f', "fullscreen")
+        .addOptionDouble('F', "fullscreen", "fullscreen");
+    Argument<std::string> arg;
+    std::string path;
+    int value = 0;
+    int tw = 1280, th = 720;
+    bool fullscreen = false;
+    try {
+        while((value = parser.proc(arg)) != -1) {
+            switch(value) {
+                case 'h':
+                case 'v':
+                    parser.help(std::cout);
+                    exit(EXIT_SUCCESS);
+                    break;
+                case 'p':
+                case 'P':
+                    path = arg.arg_value;
+                    break;
+                case 'r':
+                case 'R': {
+                    auto pos = arg.arg_value.find("x");
+                    if(pos == std::string::npos)  {
+                        mx::system_err << "Error invalid resolution use WidthxHeight\n";
+                        mx::system_err.flush();
+                        exit(EXIT_FAILURE);
+                    }
+                    std::string left, right;
+                    left = arg.arg_value.substr(0, pos);
+                    right = arg.arg_value.substr(pos+1);
+                    tw = atoi(left.c_str());
+                    th = atoi(right.c_str());
+                }
+                    break;
+                case 'f':
+                case 'F':
+                    fullscreen = true;
+                    break;
+            }
+        }
+    } catch (const ArgException<std::string>& e) {
+        std::cerr << "mx: Argument Exception" << e.text() << std::endl;
+		// defaults
+		args.width = 1280;
+		args.height = 720;
+		args.path = ".";
+		args.fullscreen = false;
+		return args;
+    }
+    if(path.empty()) {
+        std::cerr << "mx: No path provided trying default current directory.\n";
+        path = ".";
+    }
+	args.width = tw;
+	args.height = th;	
+	args.path = path;
+	args.fullscreen = fullscreen;
+	return args;
+}
+
 #endif

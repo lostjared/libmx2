@@ -44,20 +44,22 @@ namespace gl {
         bool loadProgram(const std::string &text1, const std::string &text2);
         bool loadProgramFromText(const std::string &v, const std::string &f);
         int id() const { return shader_id; }
+        bool loaded() const { return shader_id != 0; }
         void useProgram();
         void setName(const std::string &n);
         std::string name() const { return name_; }
-
+        void release();
         void setUniform(const std::string &name, int value);
         void setUniform(const std::string &name, float value);
         void setUniform(const std::string &name, const glm::vec2 &value);
         void setUniform(const std::string &name, const glm::vec3 &value);
         void setUniform(const std::string &name, const glm::vec4 &value);
         void setUniform(const std::string &name, const glm::mat4 &value);
-
+        void silent(bool b) { silent_ = b; }
     private:
-        GLuint shader_id;
+        GLuint shader_id = 0, vertex_shader = 0, fragment_shader = 0;
         std::string name_;
+        bool silent_ = false;
     };
     
     class GLText {
@@ -79,6 +81,7 @@ namespace gl {
         GLSprite();
         ~GLSprite();
         void initSize(float w, float h);
+        void setName(const std::string &name);
         void setShader(ShaderProgram *program);
         void initWithTexture(ShaderProgram *program, GLuint texture, float x, float y, int textWidth, int textHeight);
         void loadTexture(ShaderProgram *shader, const std::string &tex, float x, float  y, int textWidth, int textHeight);
@@ -93,6 +96,7 @@ namespace gl {
         std::vector<float> vertices;
         float screenWidth = 0.0f, screenHeight = 0.0f;
         int width = 0, height = 0;
+        std::string textureName;
     };
 
     class GLObject;
@@ -104,19 +108,23 @@ namespace gl {
         };
         virtual ~GLWindow();
         void initGL(const std::string &title, int width, int height);
+        void updateViewport();
         void swap();
 
         virtual void event(SDL_Event &e) = 0;
         virtual void draw() = 0;
+        virtual void resize(int w,  int h) {}
 
         void setObject(GLObject *o);
-
+        void quit();
         void proc();
         void loop();
         void delay();
         void setPath(const std::string &path) { util.path = path; }
         void setWindowTitle(const std::string &title);
         void setWindowSize(int w, int h);
+        void setWindowIcon(SDL_Surface *ico);
+        void setFullScreen(bool full);
         std::unique_ptr<gl::GLObject> object;
         mx::mxUtil util;
         int w = 0, h = 0;
@@ -138,6 +146,7 @@ namespace gl {
         virtual void load(GLWindow *win) = 0;
         virtual void draw(GLWindow *win) = 0;
         virtual void event(GLWindow *window, SDL_Event &e) = 0;
+        virtual void resize(gl::GLWindow *win, int w, int h) {}
     };
 
     GLuint loadTexture(const std::string &filename);
