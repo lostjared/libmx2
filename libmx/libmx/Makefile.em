@@ -1,10 +1,10 @@
 CXX = em++
-CXXFLAGS = -std=c++20 -O2 -DFOR_WASM -DWITH_MIXER -DWITH_GL -s USE_SDL=2 -s USE_SDL_TTF=2 -s USE_SDL_MIXER=2
-LIBS_PATH = /home/jared/emscripten-libs
-ZLIB_INCLUDE = -I$(LIBS_PATH)/zlib/include
-PNG_INCLUDE = -I$(LIBS_PATH)/libpng/include
-ZLIB_LIB = $(LIBS_PATH)/zlib/lib/libz.a
-PNG_LIB = $(LIBS_PATH)/libpng/lib/libpng.a
+CXXFLAGS = -std=c++20 -O2 -DFOR_WASM -DWITH_MIXER -DWITH_GL -s USE_SDL=2 -s USE_SDL_TTF=2 -s USE_SDL_MIXER=2 -I/usr/local/include/glm -I/usr/include/glm
+LIBS_PATH = $(HOME)/emscripten-libs
+ZLIB_INCLUDE = -s USE_ZLIB=1 #-I$(LIBS_PATH)/zlib/include
+PNG_INCLUDE = -s USE_LIBPNG=1 #-I$(LIBS_PATH)/libpng/include
+ZLIB_LIB = -s USE_ZLIB=1 #$(LIBS_PATH)/zlib/lib/libz.a
+PNG_LIB = -s USE_LIBPNG=1 #$(LIBS_PATH)/libpng/lib/libpng.a
 SOURCES = cfg.cpp exception.cpp font.cpp loadpng.cpp mx.cpp texture.cpp util.cpp joystick.cpp gl.cpp input.cpp sound.cpp model.cpp tee_stream.cpp
 OBJECTS = $(SOURCES:.cpp=.o)
 OUTPUT = libmx.a
