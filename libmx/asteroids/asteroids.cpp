@@ -49,56 +49,11 @@ int main(int argc, char **argv) {
     main_w =&main_window;
     emscripten_set_main_loop(eventProc, 0, 1);
 #else
-    Argz<std::string> parser(argc, argv);    
-    parser.addOptionSingle('h', "Display help message")
-          .addOptionSingleValue('p', "assets path")
-          .addOptionDoubleValue('P', "path", "assets path")
-          .addOptionSingleValue('r',"Resolution WidthxHeight")
-          .addOptionDoubleValue('R',"resolution", "Resolution WidthxHeight");
-    Argument<std::string> arg;
-    std::string path;
-    int value = 0;
-    int tw = 960, th = 720;
+    Arguments args = proc_args(argc, argv);
     try {
-        while((value = parser.proc(arg)) != -1) {
-            switch(value) {
-                case 'h':
-                case 'v':
-                    parser.help(std::cout);
-                    exit(EXIT_SUCCESS);
-                    break;
-                case 'p':
-                case 'P':
-                    path = arg.arg_value;
-                break;
-                case 'r':
-                case 'R': {
-                    auto pos = arg.arg_value.find("x");
-                    if(pos == std::string::npos)  {
-                        mx::system_err << "Error invalid resolution use WidthxHeight\n";
-                        mx::system_err.flush();
-                        exit(EXIT_FAILURE);
-                    }
-                    std::string left, right;
-                    left = arg.arg_value.substr(0, pos);
-                    right = arg.arg_value.substr(pos+1);
-                    tw = atoi(left.c_str());
-                    th = atoi(right.c_str());
-                }
-                break;
-
-            }
-        }
-    } catch (const ArgException<std::string>& e) {
-        mx::system_err << e.text() << "\n";
-    }
-
-    if(path.empty()) {
-        mx::system_out << "mx: No path provided trying default current directory.\n";
-        path = ".";
-    }
-    try {
-        MainWindow main_window(path, tw, th);
+        MainWindow main_window(args.path, args.width, args.height);
+        if(args.fullscreen)
+            main_window.setFullScreen(true);
         main_window.loop();
     }
     catch(const mx::Exception &e) {

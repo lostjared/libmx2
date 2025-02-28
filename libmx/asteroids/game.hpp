@@ -117,12 +117,37 @@ private:
         float angle;
         float speed;
     } ship{tex_width / 2.0f, tex_height / 2.0f, 0.0f, 0.0f};
-
+     
     struct Asteroid {
-        float x, y;
-        float dx, dy;
-        float radius;
+        float x, y;           
+        float radius; 
+        float dx, dy;        
+        float collisionRadius; 
+        std::vector<SDL_Point> vertices; 
+    
+        Asteroid(float x, float y, float radius) : x(x), y(y), radius(radius) {
+            dx = (std::rand() % 100 - 50) / 100.0f;
+            dy = (std::rand() % 100 - 50) / 100.0f;
+            generateVertices();
+        }
+        
+        void generateVertices(int num_points = 12) {
+            vertices.resize(num_points);
+            float maxRadius = 0.0f;
+            for (int i = 0; i < num_points; i++) {
+                float angle = 2 * M_PI * i / num_points;
+                float offset = ((static_cast<float>(std::rand()) / RAND_MAX) - 0.5f) * 0.6f * radius;
+                float r = radius + offset;
+                vertices[i].x = static_cast<int>(r * std::cos(angle));
+                vertices[i].y = static_cast<int>(r * std::sin(angle));
+                if (r > maxRadius) {
+                    maxRadius = r;
+                }
+            }
+            collisionRadius = maxRadius;
+        }
     };
+    
 
     struct Bullet {
         float x, y;
@@ -139,12 +164,11 @@ private:
     std::vector<Star> stars;
 
     void spawnAsteroid() {
-        Asteroid asteroid;
-        asteroid.x = static_cast<float>(std::rand() % tex_width);
-        asteroid.y = static_cast<float>(std::rand() % tex_height);
-        asteroid.dx = (std::rand() % 100 - 50) / 100.0f;
-        asteroid.dy = (std::rand() % 100 - 50) / 100.0f;
-        asteroid.radius = 20 + std::rand() % 30;
+        float x = static_cast<float>(std::rand() % tex_width);
+        float y = static_cast<float>(std::rand() % tex_height);
+        float radius = 20 + std::rand() % 30;
+    
+        Asteroid asteroid(x, y, radius);
         asteroids.push_back(asteroid);
     }
 
@@ -184,19 +208,12 @@ private:
                 if (dist <= asteroidIt->radius) {
                     bulletIt = bullets.erase(bulletIt);
                     bulletErased = true;
-                    score += 100;
                     if (asteroidIt->radius > 10) {
                         for (int i = 0; i < 2; ++i) {
-                            Asteroid smallAsteroid;
-                            smallAsteroid.x = asteroidIt->x;
-                            smallAsteroid.y = asteroidIt->y;
-                            smallAsteroid.radius = asteroidIt->radius / 2;
-                            smallAsteroid.dx = (std::rand() % 100 - 50) / 100.0f;
-                            smallAsteroid.dy = (std::rand() % 100 - 50) / 100.0f;
+                            Asteroid smallAsteroid(asteroidIt->x, asteroidIt->y, asteroidIt->radius / 2);
                             newAsteroids.push_back(smallAsteroid);
                         }
                     }
-
                     asteroidIt = asteroids.erase(asteroidIt);
                     break;
                 } else {
@@ -220,9 +237,13 @@ private:
     }
 
     bool checkShipCollision(mx::mxWindow *win) {
+        const float shipCollisionRadius = 10.0f;  
         for (const auto& asteroid : asteroids) {
-            float dist = std::sqrt(std::pow(ship.x - asteroid.x, 2) + std::pow(ship.y - asteroid.y, 2));
-            if (dist <= asteroid.radius) {
+            float dx = ship.x - asteroid.x;
+            float dy = ship.y - asteroid.y;
+            float dist = std::sqrt(dx * dx + dy * dy);
+            
+            if (dist <= asteroid.collisionRadius + shipCollisionRadius) {
                 lives--;
                 if (lives > 0) {
                     resetShip();
@@ -242,6 +263,7 @@ private:
         }
         return false;
     }
+
     void updateShip() {
         ship.x += ship.speed * std::cos(ship.angle * M_PI / 180.0);
         ship.y += ship.speed * std::sin(ship.angle * M_PI / 180.0);
@@ -309,30 +331,58 @@ private:
                 SDL_RenderDrawPoint(renderer, x, y);
             }
         }
+    } 
+/*
+    void drawShip(SDL_Renderer* renderer, int ship_x, int ship_y, float ship_angle) {
+        SDL_Color color = {200, 200, 200, 255};
+        SDL_Point points[3];
+        points[0] = { static_cast<int>(ship_x + 15 * std::cos(ship_angle * M_PI / 180.0)),
+                      static_cast<int>(ship_y + 15 * std::sin(ship_angle * M_PI / 180.0)) };
+        points[1] = { static_cast<int>(ship_x + 15 * std::cos((ship_angle + 140) * M_PI / 180.0)),
+                      static_cast<int>(ship_y + 15 * std::sin((ship_angle + 140) * M_PI / 180.0)) };
+        points[2] = { static_cast<int>(ship_x + 15 * std::cos((ship_angle + 220) * M_PI / 180.0)),
+                      static_cast<int>(ship_y + 15 * std::sin((ship_angle + 220) * M_PI / 180.0)) };
+    
+        SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
+        SDL_RenderDrawLine(renderer, points[0].x, points[0].y, points[1].x, points[1].y);
+        SDL_RenderDrawLine(renderer, points[1].x, points[1].y, points[2].x, points[2].y);
+        SDL_RenderDrawLine(renderer, points[2].x, points[2].y, points[0].x, points[0].y);
     }
+*/
 
+    void drawAsteroid(SDL_Renderer* renderer, const Asteroid& asteroid) {
+        SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
+        std::vector<SDL_Point> points(asteroid.vertices.size());
+        for (size_t i = 0; i < asteroid.vertices.size(); i++) {
+             points[i].x = static_cast<int>(asteroid.x) + asteroid.vertices[i].x;
+             points[i].y = static_cast<int>(asteroid.y) + asteroid.vertices[i].y;
+        }
+        
+        SDL_RenderDrawLines(renderer, points.data(), points.size());
+        SDL_RenderDrawLine(renderer, points.back().x, points.back().y,
+                                      points.front().x, points.front().y);
+    }
+    
     void drawAsteroids(SDL_Renderer* renderer) {
         for (const auto& asteroid : asteroids) {
-            int rounded_x = static_cast<int>(std::round(asteroid.x));
-            int rounded_y = static_cast<int>(std::round(asteroid.y));
-            int radius = static_cast<int>(std::round(asteroid.radius));
-
-            draw_circle(renderer, rounded_x, rounded_y, radius);
+            drawAsteroid(renderer, asteroid);
         }
     }
-
-    void draw_circle(SDL_Renderer* renderer, int center_x, int center_y, int radius) {
+    
+    void draw_circle_outline(SDL_Renderer* renderer, int center_x, int center_y, int radius) {
+        const float threshold = 1.0f;
         for (int y = -radius; y <= radius; y++) {
             for (int x = -radius; x <= radius; x++) {
-                int dist_sq = x * x + y * y;
-                if (dist_sq <= radius * radius) {
-                    float dist = std::sqrt(static_cast<float>(dist_sq));
+                float dist = std::sqrt(static_cast<float>(x * x + y * y));
+                if (std::abs(dist - radius) < threshold) {
                     float shade = 255 * (1 - (dist / radius));
-
                     if (shade < 0) shade = 0;
                     if (shade > 255) shade = 255;
-
-                    SDL_SetRenderDrawColor(renderer, static_cast<Uint8>(shade), static_cast<Uint8>(shade), static_cast<Uint8>(shade), 255);
+                    SDL_SetRenderDrawColor(renderer,
+                                           static_cast<Uint8>(shade),
+                                           static_cast<Uint8>(shade),
+                                           static_cast<Uint8>(shade),
+                                           255);
                     SDL_RenderDrawPoint(renderer, center_x + x, center_y + y);
                 }
             }
