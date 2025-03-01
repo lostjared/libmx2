@@ -22,16 +22,16 @@ These options display help or version information.
 
 Command:
         
-        mxmod_compress -c path/to/input_file -o path/to/output_file.mxmod.z
+        mxmod_compress -c path/to/input_file.mxmod -o path/to/output_file.mxmod.z
 
 Description:
 Reads the specified input file, compresses its content using zlib, and writes the compressed data to the output file.
 Make sure the output file’s name ends with .mxmod.z so that the program recognizes it as a valid model file for compression.
 Decompression Mode:
 
-Command:
+Command TO Decompress:
 
-    mxmod_compress -z path/to/input_file -o path/to/output_file.mxmod
+    mxmod_compress -z path/to/input_file.mxmod.z -o path/to/output_file.mxmod
 
 Description:
 Reads the specified compressed input file, decompresses it, and writes the decompressed content to the output file.
