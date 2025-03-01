@@ -72,7 +72,9 @@ int main(int argc, char **argv) {
 	Argz<std::string> parser(argc, argv);
     parser.addOptionSingleValue('c', "Model to compress")
         .addOptionSingleValue('o', "Output")
-        .addOptionSingleValue('z', "Model to decompress");
+        .addOptionSingleValue('z', "Model to decompress")
+        .addOptionSingle('h', "Help")
+        .addOptionSingle('v', "Version");
     Argument<std::string> arg;
     std::string compress_file;
     std::string decomp_file;
@@ -108,7 +110,7 @@ int main(int argc, char **argv) {
     }
     try {
         if(compress_file.empty() && decomp_file.empty()) {
-            std::cerr << "mx: Error no file to compress or decompress\n";
+            std::cerr << "mx: Error no file to compress or decompress\nmx: Use -h for help\n";
             exit(EXIT_FAILURE);
         }
         if(!compress_file.empty() && !decomp_file.empty()) {
