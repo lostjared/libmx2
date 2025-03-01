@@ -22,15 +22,17 @@ public:
     GLuint texture;
     mx::Model obj_model;
     std::string filename;
-    std::string text;
+    std::string text, texture_path;
     std::tuple<float, bool> rot_x;
     std::tuple<float, bool> rot_y;
     std::tuple<float, bool> rot_z;
     std::tuple<float, float, float> light;    
+    
 
-    ModelViewer(const std::string &filename, const std::string &text) : rot_x{1.0f, true}, rot_y{1.0f, true}, rot_z{0.0f, false}, light(0.0, 10.0, 5.0) {
+    ModelViewer(const std::string &filename, const std::string &text, std::string text_path) : rot_x{1.0f, true}, rot_y{1.0f, true}, rot_z{0.0f, false}, light(0.0, 10.0, 5.0) {
         this->filename = filename;
         this->text = text;
+        this->texture_path = text_path;    
     }
     virtual ~ModelViewer() override {
         glDeleteTextures(1, &texture);
@@ -39,8 +41,12 @@ public:
     float zoom = 45.0f;
 
     virtual void load(gl::GLWindow *win) override {
+        if(texture_path.empty()) {
+            texture_path = win->util.getFilePath("data");
+            std::cout << "Viewer: Texture default: " << texture_path << "\n";
+        }
         mx::system_out << "Viewer: Loading files in path: " << win->util.getFilePath("data") << "\n";
-        if(!obj_model.openModel(win->util.getFilePath("data/" + filename), true)) {
+        if(!obj_model.openModel(filename, true)) { 
             throw mx::Exception("Error loading model...");
         }
         mx::system_out << "mx: Loaded Meshes:  " << obj_model.meshes.size() << "\n";
@@ -71,23 +77,9 @@ public:
             std::vector<GLuint> textures {texture};
             obj_model.setTextures(textures);
         } else {
-            obj_model.setTextures(win, win->util.getFilePath("data/"+text), win->util.getFilePath("data"));
+            obj_model.setTextures(win, text, texture_path);
         }
-
-        if(filename.rfind("mxmod.z") == std::string::npos) {
-            mx::system_out << "mx: Compressing Model File: " << win->util.getFilePath("data/"+filename) << "\n";
-            std::vector<char> buffer_value = mx::readFile(win->util.getFilePath("data/"+filename));
-            uLong size_val = buffer_value.size();
-            auto compressed_data = mx::compressString(std::string(buffer_value.begin(), buffer_value.end()), size_val);
-            std::fstream ofile;
-            ofile.open(win->util.getFilePath("data/"+filename+".z"), std::ios::out | std::ios::binary);
-            if(!ofile.is_open()) {
-                throw mx::Exception("Error could not open file: " + win->util.getFilePath("data/"+filename+".z") + " for writing");
-            }
-            ofile.write(reinterpret_cast<char *>(compressed_data.get()), size_val);
-            ofile.close();
-            mx::system_out << "mx: Wrote Compressed Model File: " << win->util.getFilePath("data/"+filename+".z") << "\n";
-        }
+        // use mxmod_compress to compress files
     }
 
 
@@ -222,9 +214,9 @@ private:
 
 class MainWindow : public gl::GLWindow {
 public:
-    MainWindow(const std::string &path, const std::string &filename, const std::string &text, int tw, int th) : gl::GLWindow("Model Viewer", tw, th) {
+    MainWindow(const std::string &path, const std::string &filename, const std::string &text, const std::string &tpath, int tw, int th) : gl::GLWindow("Model Viewer", tw, th) {
         setPath(path);
-        setObject(new ModelViewer(filename, text));
+        setObject(new ModelViewer(filename, text, tpath));
 		object->load(this);
     }
     
@@ -265,13 +257,15 @@ int main(int argc, char **argv) {
           .addOptionSingleValue('m',"Model file")
           .addOptionDoubleValue('M', "model", "model file to load")
           .addOptionSingleValue('t', "texture file")
-          .addOptionDoubleValue('T', "texture", "texture file");
+          .addOptionDoubleValue(123, "texture", "texture file")
+          .addOptionSingleValue('T', "texture path")
+          .addOptionSingle('a', "Aboolute Path");
     Argument<std::string> arg;
     std::string path;
     int value = 0;
     int tw = 1440, th = 1080;
     std::string model_file;
-    std::string text_file;
+    std::string text_file, texture_path;
     try {
         while((value = parser.proc(arg)) != -1) {
             switch(value) {
@@ -303,10 +297,14 @@ int main(int argc, char **argv) {
                 case 'M':
                     model_file = arg.arg_value;
                 break;
+                case 123:
                 case 't':
-                case 'T':
                     text_file = arg.arg_value;
                 break;
+                case 'T':
+                    texture_path = arg.arg_value;
+                    break;
+
             }
         }
     } catch (const ArgException<std::string>& e) {
@@ -317,7 +315,7 @@ int main(int argc, char **argv) {
         path = ".";
     }
     try {
-        MainWindow main_window(path, model_file, text_file, tw, th);
+        MainWindow main_window(path, model_file, text_file,texture_path,  tw, th);
         main_window.loop();
     } catch(const mx::Exception &e) {
         mx::system_err << "mx: Exception: " << e.text() << "\n";
