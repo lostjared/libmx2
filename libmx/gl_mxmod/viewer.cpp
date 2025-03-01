@@ -73,6 +73,21 @@ public:
         } else {
             obj_model.setTextures(win, win->util.getFilePath("data/"+text), win->util.getFilePath("data"));
         }
+
+        if(filename.rfind("mxmod.z") == std::string::npos) {
+            mx::system_out << "mx: Compressing Model File: " << win->util.getFilePath("data/"+filename) << "\n";
+            std::vector<char> buffer_value = mx::readFile(win->util.getFilePath("data/"+filename));
+            uLong size_val = buffer_value.size();
+            auto compressed_data = mx::compressString(std::string(buffer_value.begin(), buffer_value.end()), size_val);
+            std::fstream ofile;
+            ofile.open(win->util.getFilePath("data/"+filename+".z"), std::ios::out | std::ios::binary);
+            if(!ofile.is_open()) {
+                throw mx::Exception("Error could not open file: " + win->util.getFilePath("data/"+filename+".z") + " for writing");
+            }
+            ofile.write(reinterpret_cast<char *>(compressed_data.get()), size_val);
+            ofile.close();
+            mx::system_out << "mx: Wrote Compressed Model File: " << win->util.getFilePath("data/"+filename+".z") << "\n";
+        }
     }
 
 
