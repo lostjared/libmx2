@@ -2,10 +2,60 @@
 #include"loadpng.hpp"
 #include<sstream>
 #include"exception.hpp"
+#include<zlib.h>
+#include<memory>
+#include<fstream>
+#include<iostream>
 
 namespace mx {
 
-    std::vector<char> mxUtil::readFile(const std::string& filename) {
+    std::unique_ptr<char[]> compressString(const std::string &text, uLong &len) {
+        uLong sourceLen = text.size();
+        uLong destLen = compressBound(sourceLen);
+        std::unique_ptr<char[]> compressedData(new char[destLen]);
+    
+        int ret = ::compress(reinterpret_cast<Bytef*>(compressedData.get()), &destLen,
+                             reinterpret_cast<const Bytef*>(text.data()), sourceLen);
+        if (ret != Z_OK) {
+            len = 0;
+            throw std::runtime_error("Compression failed with error code: " + std::to_string(ret));
+        }
+        len = destLen;
+        return compressedData;
+    }
+
+    std::string decompressString(void *data, uLong size_) {
+        z_stream strm;
+        strm.zalloc = Z_NULL;
+        strm.zfree = Z_NULL;
+        strm.opaque = Z_NULL;
+        strm.avail_in = size_;
+        strm.next_in = reinterpret_cast<Bytef*>(data);
+        int ret = inflateInit(&strm);
+        if (ret != Z_OK) {
+            throw std::runtime_error("inflateInit failed");
+        }
+    
+        std::string outStr;
+        const size_t chunkSize = 16384;
+        char outBuffer[chunkSize];
+        do {
+            strm.avail_out = chunkSize;
+            strm.next_out = reinterpret_cast<Bytef*>(outBuffer);
+            ret = inflate(&strm, Z_NO_FLUSH);
+            if (ret != Z_OK && ret != Z_STREAM_END) {
+                inflateEnd(&strm);
+                throw std::runtime_error("inflate failed with error code: " + std::to_string(ret));
+            }
+            size_t have = chunkSize - strm.avail_out;
+            outStr.append(outBuffer, have);
+        } while (ret != Z_STREAM_END);
+    
+        inflateEnd(&strm);
+        return outStr;
+    }
+    
+    std::vector<char> readFile(const std::string& filename) {
         std::ifstream file(filename, std::ios::ate | std::ios::binary);
         if (!file.is_open()) {
             throw Exception("Failed to open file: " + filename);

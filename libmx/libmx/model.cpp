@@ -279,12 +279,23 @@ namespace mx {
         }
     }
 
-    bool Model::openModel(const std::string &filename, bool compress) {
-        std::ifstream file(filename);
-        if (!file.is_open()) {
-            return false;
-        }
+    bool Model::openCompressedModel(const std::string &filename) {
+        std::vector<char> buffer = mx::readFile(filename);
+        std::string text = decompressString(buffer.data(), static_cast<uLong>(buffer.size()));
+        return openModelString(filename, text, false);
+    }
 
+    bool Model::openModel(const std::string &filename, bool compress) {
+        if(filename.rfind("mxmod.z") != std::string::npos) {
+            return openCompressedModel(filename);
+        }
+        std::vector<char> buffer = mx::readFile(filename);
+        std::string text(buffer.begin(), buffer.end());
+        return openModelString(filename, text, compress);
+    }
+
+    bool Model::openModelString(const std::string &filename, const std::string &text, bool compress) {
+        std::istringstream file(text);
         Mesh currentMesh;
         int type = -1;
         size_t count = 0;
