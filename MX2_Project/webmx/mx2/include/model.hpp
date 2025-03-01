@@ -55,6 +55,7 @@ namespace mx {
        Model(Model &&m);
        Model &operator=(const Model &m) = delete;
        Model &operator=(Model &&m);
+       bool openModelString(const std::string &filename, const std::string &text, bool compress = true);
        bool openModel(const std::string &filename, bool compress = true);
        void drawArrays();
        void drawArraysWithTexture(GLuint texture, const std::string texture_name);

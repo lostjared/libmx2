@@ -8,6 +8,9 @@
 #include "SDL_ttf.h"
 #include"tee_stream.hpp"
 #include<optional>
+#include<memory>
+#include<zlib.h>
+#include<vector>
 
 namespace mx {
 
@@ -24,11 +27,14 @@ namespace mx {
         SDL_Texture *loadTexture(SDL_Renderer *renderer, const std::string &filename, int &w, int &h, bool color, SDL_Color key);
         SDL_Surface *loadSurface(const std::string &name);
         TTF_Font *loadFont(const std::string &filename, int size);
-        std::vector<char> readFile(const std::string &filename);
         void initJoystick();
         void closeJoystick();
         std::vector<SDL_Joystick *> stick;
     };
+
+    std::vector<char> readFile(const std::string &filename);
+    std::string decompressString(const std::unique_ptr<char[]> &data, uLong size_);
+    std::unique_ptr<char[]> compressString(const std::string &text, uLong &len);
 }
 
 #endif
