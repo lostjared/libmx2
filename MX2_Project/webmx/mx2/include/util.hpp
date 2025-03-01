@@ -33,7 +33,7 @@ namespace mx {
     };
 
     std::vector<char> readFile(const std::string &filename);
-    std::string decompressString(const std::unique_ptr<char[]> &data, uLong size_);
+    std::string decompressString(void *data, uLong size_);
     std::unique_ptr<char[]> compressString(const std::string &text, uLong &len);
 }
 
