@@ -420,8 +420,8 @@ inline Arguments proc_args(int &argc, char **argv) {
                 case 'R': {
                     auto pos = arg.arg_value.find("x");
                     if(pos == std::string::npos)  {
-                        mx::system_err << "Error invalid resolution use WidthxHeight\n";
-                        mx::system_err.flush();
+                    	std::cerr << "Error invalid resolution use WidthxHeight\n";
+                        std::cerr.flush();
                         exit(EXIT_FAILURE);
                     }
                     std::string left, right;

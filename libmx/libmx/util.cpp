@@ -18,7 +18,7 @@ namespace mx {
                              reinterpret_cast<const Bytef*>(text.data()), sourceLen);
         if (ret != Z_OK) {
             len = 0;
-            throw std::runtime_error("Compression failed with error code: " + std::to_string(ret));
+            throw mx::Exception("Compression failed with error code: " + std::to_string(ret));
         }
         len = destLen;
         return compressedData;
@@ -33,7 +33,7 @@ namespace mx {
         strm.next_in = reinterpret_cast<Bytef*>(data);
         int ret = inflateInit(&strm);
         if (ret != Z_OK) {
-            throw std::runtime_error("inflateInit failed");
+            throw mx::Exception("inflateInit failed");
         }
     
         std::string outStr;
@@ -45,7 +45,7 @@ namespace mx {
             ret = inflate(&strm, Z_NO_FLUSH);
             if (ret != Z_OK && ret != Z_STREAM_END) {
                 inflateEnd(&strm);
-                throw std::runtime_error("inflate failed with error code: " + std::to_string(ret));
+                throw mx::Exception("inflate failed with error code: " + std::to_string(ret));
             }
             size_t have = chunkSize - strm.avail_out;
             outStr.append(outBuffer, have);
