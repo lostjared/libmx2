@@ -197,6 +197,8 @@ else()
   message(STATUS "Not Building Examples")
 endif()
 
+add_subdirectory(mxmod_compress)
+
 if(MIXER)
   set(WITH_MIXER_VAL 1)
 else()
