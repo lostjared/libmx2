@@ -177,6 +177,7 @@ if(EXAMPLES)
     add_subdirectory(gl_cubemap)
     add_subdirectory(gl_stencil_test)
     add_subdirectory(gl_blend_shader)
+    add_subdirectory(gl_framebuffer)
   endif()
 
 #disable for now
