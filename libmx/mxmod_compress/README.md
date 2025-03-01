@@ -22,7 +22,7 @@ These options display help or version information.
 
 Command:
         
-        mxmod_compress -c path/to/input_file.mxmod -o path/to/output_file.mxmod.z
+    mxmod_compress -c path/to/input_file.mxmod -o path/to/output_file.mxmod.z
 
 Description:
 Reads the specified input file, compresses its content using zlib, and writes the compressed data to the output file.
