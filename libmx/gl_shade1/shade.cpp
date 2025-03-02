@@ -164,7 +164,7 @@ public:
         float aspectRatio = static_cast<float>(win->w) / static_cast<float>(win->h);
         projectionMatrix = glm::perspective(glm::radians(45.0f), aspectRatio, 0.1f, 100.0f);
 
-        lightPos = glm::vec3(0.0f, 5.0f, 0.0f); 
+        //lightPos = glm::vec3(0.0f, 5.0f, 0.0f); 
 
         obj.setShaderProgram(&shade_program, "texture1");
         shade_program.useProgram();
@@ -184,7 +184,36 @@ public:
         update(deltaTime);
     }
     
-    void event(gl::GLWindow *win, SDL_Event &e) override {}
+    void event(gl::GLWindow *win, SDL_Event &e) override {
+        if (e.type == SDL_KEYDOWN) {
+            float moveSpeed = 0.05f; 
+            switch (e.key.keysym.sym) {
+                case SDLK_LEFT:
+                    lightPos.x -= moveSpeed;
+                    break;
+                case SDLK_RIGHT:
+                    lightPos.x += moveSpeed;
+                    break;
+                case SDLK_UP:
+                    lightPos.z -= moveSpeed;
+                    break;
+                case SDLK_DOWN:
+                    lightPos.z += moveSpeed;
+                    break;
+                case SDLK_PAGEUP:
+                    lightPos.y += moveSpeed;
+                    break;
+                case SDLK_PAGEDOWN:
+                    lightPos.y -= moveSpeed;
+                    break;
+                case SDLK_RETURN:
+                    lightPos = glm::vec3(0.0f, 5.0f, 0.0f);
+                    break;
+            }
+            std::cout << "Light Position: " << lightPos.x << ", " << lightPos.y << ", " << lightPos.z << "\n";
+        }
+    }
+
     void update(float deltaTime) {}
 private:
     gl::ShaderProgram shade_program;
@@ -194,7 +223,7 @@ private:
     glm::mat4 viewMatrix{1.0f};
     glm::mat4 projectionMatrix{1.0f};
     glm::vec3 cameraPosition{0.0f, 2.0f, 5.0f};
-    glm::vec3 lightPos{2.0f, 2.0f, 2.0f};
+    glm::vec3 lightPos{0.0f, 5.0f, 0.0f};
 };
 
 class MainWindow : public gl::GLWindow {
