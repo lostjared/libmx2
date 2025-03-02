@@ -1157,8 +1157,8 @@ namespace mx {
                 throw mx::Exception("Device is invalid in createGraphicsPipeline()");
             }
      
-            auto vertShaderCode = util.readFile(util.getFilePath("vert.spv"));
-            auto fragShaderCode = util.readFile(util.getFilePath("frag.spv"));
+            auto vertShaderCode = mx::readFile(util.getFilePath("vert.spv"));
+            auto fragShaderCode = mx::readFile(util.getFilePath("frag.spv"));
 
             VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
 
