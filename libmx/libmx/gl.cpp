@@ -44,7 +44,7 @@ namespace gl {
         SDL_SetWindowIcon(window, ico);
     }
 
-    void GLWindow::initGL(const std::string &title, int width, int height) {
+    void GLWindow::initGL(const std::string &title, int width, int height, bool resize_) {
         mx::redirect();
         if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER | SDL_INIT_AUDIO) < 0) {
             mx::system_err << "Error initalizing SDL.\n";
@@ -58,7 +58,11 @@ namespace gl {
         SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
         SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 #endif
-        window = SDL_CreateWindow(title.c_str(),25,25,width,height,SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+        if(resize_) {
+            window = SDL_CreateWindow(title.c_str(),25,25,width,height,SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+        } else {
+            window = SDL_CreateWindow(title.c_str(),25,25,width,height,SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+        }
         if (!window) {
             throw std::runtime_error("Failed to create SDL window: " + std::string(SDL_GetError()));
         }
