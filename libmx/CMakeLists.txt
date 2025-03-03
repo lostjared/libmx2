@@ -179,6 +179,7 @@ if(EXAMPLES)
     add_subdirectory(gl_blend_shader)
     add_subdirectory(gl_framebuffer)
     add_subdirectory(gl_shade1)
+    add_subdirectory(gl_shade2)
   endif()
 
 #disable for now
