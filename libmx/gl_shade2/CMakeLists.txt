@@ -1,7 +1,7 @@
-add_executable(gl_shade1  shade.cpp)
-target_include_directories(gl_shade1 PRIVATE 
+add_executable(gl_shade2  shade.cpp)
+target_include_directories(gl_shade2 PRIVATE 
     ${CMAKE_SOURCE_DIR}/libmx 
     ${SDL2_INCLUDE_DIRS} 
     ${SDL2_TTF_INCLUDE_DIRS}
 )
-target_link_libraries(gl_shade1 PRIVATE mx ${SDL2_LIBRARIES} ${SDL2_TTF_LIBRARIES})
+target_link_libraries(gl_shade2 PRIVATE mx ${SDL2_LIBRARIES} ${SDL2_TTF_LIBRARIES})
