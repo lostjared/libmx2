@@ -36,7 +36,115 @@
             FragColor = fcolor * alpha;
         }
     )";
+
+    const char *v_mainShader = R"(#version 300 es
+        precision mediump float; 
+        layout(location = 0) in vec3 position;   
+        layout(location = 1) in vec3 normal;     
+        layout(location = 2) in vec2 texCoord;   
+
+        out vec3 fragPos;       
+        out vec3 fragNormal;    
+        out vec2 fragTexCoord;  
+
+        uniform mat4 model;
+        uniform mat4 view;
+        uniform mat4 projection;
+
+        void main() {
+            fragPos = vec3(model * vec4(position, 1.0));              
+            fragNormal = mat3(transpose(inverse(model))) * normal;    
+            fragTexCoord = texCoord;                                 
+
+            gl_Position = projection * view * vec4(fragPos, 1.0);    
+        }
+    )";
+    const char *f_mainShader = R"(#version 300 es
+        precision highp float;  
+
+        in vec3 fragPos;       
+        in vec3 fragNormal;    
+        in vec2 fragTexCoord;  
+        out vec4 fragColor;
+
+        uniform sampler2D texture1; 
+        uniform vec3 lightPos;
+        uniform vec3 viewPos;
+        uniform vec3 lightColor;
+
+        void main() {
+            float ambientStrength = 0.15;
+            vec3 ambient = ambientStrength * lightColor;
+            vec3 norm = normalize(fragNormal);
+            vec3 lightDir = normalize(lightPos - fragPos);
+            float diff = max(dot(norm, lightDir), 0.0);
+            vec3 diffuse = diff * lightColor;
+            float specularStrength = 0.5;
+            vec3 viewDir = normalize(viewPos - fragPos);
+            vec3 reflectDir = reflect(-lightDir, norm);
+            float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0); 
+            vec3 specular = specularStrength * spec * lightColor;
+            vec3 textureColor = texture(texture1, fragTexCoord).rgb; 
+            vec3 result = (ambient + diffuse + specular) * textureColor;
+            fragColor = vec4(result, 1.0); 
+            fragColor.a = 0.8;
+        }
+)";
+
 #else
+    const char *v_mainShader = R"(#version 330 core
+        layout(location = 0) in vec3 position;   
+        layout(location = 1) in vec3 normal;     
+        layout(location = 2) in vec2 texCoord;   
+
+        out vec3 fragPos;       
+        out vec3 fragNormal;    
+        out vec2 fragTexCoord;  
+
+        uniform mat4 model;
+        uniform mat4 view;
+        uniform mat4 projection;
+
+        void main() {
+            fragPos = vec3(model * vec4(position, 1.0));              
+            fragNormal = mat3(transpose(inverse(model))) * normal;    
+            fragTexCoord = texCoord;                                 
+
+            gl_Position = projection * view * vec4(fragPos, 1.0);    
+        }
+    )";
+    
+    const char *f_mainShader = R"(#version 330 core
+        in vec3 fragPos;       
+        in vec3 fragNormal;    
+        in vec2 fragTexCoord;  
+        out vec4 fragColor;
+
+        uniform sampler2D texture1; 
+        uniform vec3 lightPos;
+        uniform vec3 viewPos;
+        uniform vec3 lightColor;
+
+        void main() {
+            float ambientStrength = 0.15;
+            vec3 ambient = ambientStrength * lightColor;
+            vec3 norm = normalize(fragNormal);
+            vec3 lightDir = normalize(lightPos - fragPos);
+            float diff = max(dot(norm, lightDir), 0.0);
+            vec3 diffuse = diff * lightColor;
+            float specularStrength = 0.5;
+            vec3 viewDir = normalize(viewPos - fragPos);
+            vec3 reflectDir = reflect(-lightDir, norm);
+            float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0); 
+            vec3 specular = specularStrength * spec * lightColor;
+            vec3 textureColor = texture(texture1, fragTexCoord).rgb; 
+            vec3 result = (ambient + diffuse + specular) * textureColor;
+            fragColor = vec4(result, 1.0); 
+            fragColor.a = 0.8;
+        }
+    )";
+    
+
     const char *m_vSource = R"(#version 330 core
         layout (location = 0) in vec3 aPos;
         layout (location = 1) in vec2 aTexCoord;
@@ -74,7 +182,7 @@ public:
         if(cube.openModel(win->util.getFilePath("data/cube.mxmod")) == false) {
             throw mx::Exception("Failed to open model");
         }
-        if(program.loadProgram(win->util.getFilePath("data/tri.vert"), win->util.getFilePath("data/tri.frag")) == false) {
+        if(program.loadProgramFromText(v_mainShader, f_mainShader) == false) {
             throw mx::Exception("Failed to load shader program");
         }
         const char *texture_files[] = {"data/block_clear.png","data/punk.png","data/block_ltblue.png","data/block_yellow.png","data/block_purple.png", "data/block_green.png", 0 };
@@ -198,12 +306,17 @@ public:
         glActiveTexture(GL_TEXTURE0);
         program.setName("texture1"); 
         if(rotate_ > 0) {         
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glDepthMask(GL_FALSE);
             glm::mat4 rotated = glm::rotate(glm::mat4(1.0f), rotate_ * deltaTime, glm::vec3(0.0f, 1.0, 0.0f));
             program.setUniform("model", model * rotated);
         } else if(color > 0){
             program.setUniform("model", model);
         }
         cube.drawArraysWithTexture(textures[color], "texture1");
+        glDepthMask(GL_TRUE);
+        glDisable(GL_BLEND);
     }
     void dropPiece() {
         if(mp.drop == false) {
@@ -400,7 +513,7 @@ void Intro::draw(gl::GLWindow *win) {
     intro.draw();
     if((currentTime - lastUpdateTime) > 25) {
         lastUpdateTime = currentTime;
-        fade -= 0.01;
+        fade -= .01;
     }
     if(fade <= 0.1) {
         win->setObject(new Start());
