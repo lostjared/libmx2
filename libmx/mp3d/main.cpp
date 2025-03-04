@@ -623,7 +623,7 @@ void eventProc() {
 int main(int argc, char **argv) {
     srand(static_cast<int>(time(0)));
 #ifdef __EMSCRIPTEN__
-    MainWindow main_window("");
+    MainWindow main_window(".", 1920, 1080);
     main_w =&main_window;
     emscripten_set_main_loop(eventProc, 0, 1);
 #else
