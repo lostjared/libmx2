@@ -180,6 +180,7 @@ if(EXAMPLES)
     add_subdirectory(gl_framebuffer)
     add_subdirectory(gl_shade1)
     add_subdirectory(gl_shade2)
+    add_subdirectory(gl_shadow)
   endif()
 
 #disable for now
