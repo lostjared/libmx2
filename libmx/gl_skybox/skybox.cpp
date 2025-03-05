@@ -76,7 +76,10 @@ public:
     int lastMouseX = 0;
     int lastMouseY = 0;
     float mouseSensitivity = 0.15f;
-        
+    bool touchActive = false;
+    float lastTouchX = 0.0f;
+    float lastTouchY = 0.0f;
+            
     Cube() = default;
     virtual ~Cube() override {
         glDeleteVertexArrays(1, &VAO);
@@ -241,6 +244,26 @@ public:
                 lastMouseX = window->w/2;
                 lastMouseY = window->h/2;
             }
+        }
+        else if (e.type == SDL_FINGERDOWN) {
+            touchActive = true;
+            lastTouchX = e.tfinger.x * window->w;  
+            lastTouchY = e.tfinger.y * window->h;
+        }
+        else if (e.type == SDL_FINGERUP) {
+            touchActive = false;
+        }
+        else if (e.type == SDL_FINGERMOTION && touchActive) {
+            float touchX = e.tfinger.x * window->w;
+            float touchY = e.tfinger.y * window->h;
+            float deltaX = touchX - lastTouchX;
+            float deltaY = touchY - lastTouchY;
+            float touchSensitivity = 0.2f;
+            yaw += deltaX * touchSensitivity;
+            pitch += deltaY * touchSensitivity;
+            pitch = glm::clamp(pitch, -89.0f, 89.0f);
+            lastTouchX = touchX;
+            lastTouchY = touchY;
         }
     }
     
