@@ -568,7 +568,6 @@ private:
     float lightRadius = 3.0f;
     float lightAngle = 0.0f;
     float lightHeight = 5.0f;
-    float lightMoveSpeed = 2.0f; 
 #ifdef __EMSCRIPTEN__
     GLuint colorAttachment = 0;
 #endif
