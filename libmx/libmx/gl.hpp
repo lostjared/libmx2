@@ -128,6 +128,7 @@ namespace gl {
         std::unique_ptr<gl::GLObject> object;
         mx::mxUtil util;
         int w = 0, h = 0;
+        SDL_Window *getWindow() { return window; }
 #ifdef WITH_MIXER
         mx::Mixer mixer;
 #endif
