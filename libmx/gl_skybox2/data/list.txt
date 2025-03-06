@@ -1,0 +1,6 @@
+cm_back.png
+cm_bottom.png
+cm_front.png
+cm_left.png
+cm_right.png
+cm_top.png

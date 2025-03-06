@@ -182,6 +182,7 @@ if(EXAMPLES)
     add_subdirectory(gl_shade2)
     add_subdirectory(gl_shadow)
     add_subdirectory(gl_skybox)
+    add_subdirectory(gl_skybox2)
   endif()
 
 #disable for now
