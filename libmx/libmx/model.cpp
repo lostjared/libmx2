@@ -282,7 +282,7 @@ namespace mx {
     bool Model::openCompressedModel(const std::string &filename) {
         std::vector<char> buffer = mx::readFile(filename);
         std::string text = decompressString(buffer.data(), static_cast<uLong>(buffer.size()));
-        return openModelString(filename, text, false);
+        return openModelString(filename, text, true);
     }
 
     bool Model::openModel(const std::string &filename, bool compress) {
