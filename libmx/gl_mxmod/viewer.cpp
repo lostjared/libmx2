@@ -27,7 +27,12 @@ public:
     std::tuple<float, bool> rot_y;
     std::tuple<float, bool> rot_z;
     std::tuple<float, float, float> light;    
-    
+
+    glm::vec3 lookDirection = glm::vec3(0.0f, 0.0f, -1.0f);
+    bool viewRotationActive = false;
+    float cameraYaw = 0.0f;
+    float cameraPitch = 0.0f;
+    const float cameraRotationSpeed = 5.0f;
 
     ModelViewer(const std::string &filename, const std::string &text, std::string text_path) : rot_x{1.0f, true}, rot_y{1.0f, true}, rot_z{0.0f, false}, light(0.0, 10.0, 5.0) {
         this->filename = filename;
@@ -60,11 +65,11 @@ public:
 
         obj_model.setShaderProgram(&shaderProgram, "texture1");
 
-        glm::mat4 model = glm::mat4(1.0f); // Identity matrix
+        glm::mat4 model = glm::mat4(1.0f); 
         glm::mat4 view = glm::lookAt(
-            glm::vec3(0.0f, 0.0f, 5.0f),  // Camera position
-            glm::vec3(0.0f, 0.0f, 0.0f),  // Look at origin
-            glm::vec3(0.0f, 1.0f, 0.0f)   // Up vector
+            glm::vec3(0.0f, 0.0f, 5.0f),  
+            glm::vec3(0.0f, 0.0f, 0.0f),  
+            glm::vec3(0.0f, 1.0f, 0.0f)   
         );
 
         glm::mat4 projection = glm::perspective(glm::radians(zoom), (float)win->w / win->h, 0.1f, 100.0f);
@@ -79,16 +84,41 @@ public:
         } else {
             obj_model.setTextures(win, text, texture_path);
         }
-        // use mxmod_compress to compress files
     }
 
 
     virtual void draw(gl::GLWindow *win) override {
         glDisable(GL_CULL_FACE);
-        glm::vec3 cameraPos(0.0f, 0.0f, 5.0f);
-        glm::vec3 cameraTarget(0.0f, 0.0f, 0.0f);
-        glm::vec3 cameraUp(0.0f, 1.0f, 0.0f);
-        float aspectRatio = (float)win->w / (float)win->h;
+        glm::vec3 cameraPos;
+        float fovDegrees;
+        if (insideCube) {
+            lookDirection.x = cos(glm::radians(cameraPitch)) * cos(glm::radians(cameraYaw));
+            lookDirection.y = sin(glm::radians(cameraPitch));
+            lookDirection.z = cos(glm::radians(cameraPitch)) * sin(glm::radians(cameraYaw));
+            lookDirection = glm::normalize(lookDirection);
+            cameraPos = glm::vec3(0.0f, 0.0f, 0.0f);
+            fovDegrees = 120.0f;  
+        } else {
+            lookDirection = glm::vec3(0.0f, 0.0f, -1.0f);  
+            cameraPos = outsideCameraPos;
+            fovDegrees = outsideFOV;
+        }
+        glm::vec3 cameraTarget = cameraPos + lookDirection;
+        glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
+
+        glm::mat4 viewMatrix = glm::lookAt(cameraPos, cameraTarget, cameraUp);
+        glm::mat4 projectionMatrix = glm::perspective(
+            glm::radians(fovDegrees),
+            static_cast<float>(win->w) / static_cast<float>(win->h),
+            insideCube ? 0.01f : 0.1f,  
+            10.0f
+        );
+        if (insideCube) {
+            glFrontFace(GL_CW);
+        } else {
+            glFrontFace(GL_CCW);
+        }
+
     #ifdef __EMSCRIPTEN__
         static Uint32 lastTime = emscripten_get_now();
         float currentTime = emscripten_get_now();
@@ -126,8 +156,6 @@ public:
         modelMatrix = glm::rotate(modelMatrix, glm::radians(std::get<0>(rot_x)), glm::vec3(1.0f, 0.0f, 0.0f));
         modelMatrix = glm::rotate(modelMatrix, glm::radians(std::get<0>(rot_y)), glm::vec3(0.0f, 1.0f, 0.0f));
         modelMatrix = glm::rotate(modelMatrix, glm::radians(std::get<0>(rot_z)), glm::vec3(0.0f, 0.0f, 1.0f));
-        glm::mat4 viewMatrix = glm::lookAt(cameraPos, cameraTarget, cameraUp);
-        glm::mat4 projectionMatrix = glm::perspective(glm::radians(zoom), aspectRatio, 0.1f, 100.0f);
         glm::vec3 lightPos(std::get<0>(light), std::get<1>(light), std::get<2>(light));
         glm::vec4 lightPosView = viewMatrix * glm::vec4(lightPos, 1.0f);
         shaderProgram.setUniform("lightPos", glm::vec3(lightPosView));
@@ -150,7 +178,17 @@ public:
         }
     }
 
-    virtual void event(gl::GLWindow *window, SDL_Event &e) override {
+    virtual void event(gl::GLWindow *win, SDL_Event &e) override {
+        switch(e.type) {
+            case SDL_KEYUP:
+                switch(e.key.keysym.sym) {
+                    case SDLK_RETURN:
+                        insideCube = !insideCube;
+                        viewRotationActive = insideCube ? false : true;
+                        break;
+                }
+                break;
+        }
         float stepSize = 1.0;
            switch(e.type) {
             case SDL_KEYDOWN: {
@@ -209,7 +247,9 @@ public:
         }
     }
 private:
-    
+    bool insideCube = false;
+    glm::vec3 outsideCameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
+    float outsideFOV = 45.0f;
 };
 
 class MainWindow : public gl::GLWindow {
