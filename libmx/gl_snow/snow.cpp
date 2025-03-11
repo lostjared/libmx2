@@ -150,7 +150,9 @@ public:
         
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+#ifndef __EMSCRIPTEN__
         glEnable(GL_PROGRAM_POINT_SIZE);
+#endif
         glDepthMask(GL_FALSE);
         
         snowShader.useProgram();
@@ -171,7 +173,9 @@ public:
         glDrawArrays(GL_POINTS, 0, snowflakes.size());
         glBindVertexArray(0);
 
+#ifndef __EMSCRIPTEN__
         glDisable(GL_PROGRAM_POINT_SIZE);
+#endif
         glDepthMask(GL_TRUE);
         CHECK_GL_ERROR();
     }
