@@ -186,6 +186,7 @@ if(EXAMPLES)
     add_subdirectory(gl_skybox3)
     add_subdirectory(gl_curve)
     add_subdirectory(gl_snow)
+    add_subdirectory(gl_fire)
   endif()
 
 #disable for now
