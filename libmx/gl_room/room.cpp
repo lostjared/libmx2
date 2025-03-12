@@ -8,6 +8,8 @@
 
 #include"gl.hpp"
 #include"loadpng.hpp"
+#include"model.hpp"
+#include<random>
 
 #define CHECK_GL_ERROR() \
 { GLenum err = glGetError(); \
@@ -27,7 +29,7 @@ public:
     }
 
     void load(gl::GLWindow *win) {
-#ifndef __EMSRIPTEN__
+#ifndef __EMSCRIPTEN__
         const char *vertexShader = R"(
             #version 330 core
             layout(location = 0) in vec3 aPos;
@@ -183,6 +185,257 @@ private:
     glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f); 
 };
 
+class Objects {
+public:
+    static const int MAX_OBJECTS = 10;
+
+    Objects() = default;
+    ~Objects() {
+        
+    }
+
+    mx::Model saturn;
+    mx::Model bird;
+
+    struct Object {
+        mx::Model *model;
+        glm::vec3 position;
+        glm::vec3 rotation;
+        glm::vec3 scale;
+        float rotationSpeed; 
+    };
+
+    std::vector<Object> objects;
+    gl::ShaderProgram obj_shader;
+
+    void load(gl::GLWindow *win) {
+        
+#ifndef __EMSCRIPTEN__
+        const char *vertexShader = R"(
+            #version 330 core
+            layout(location = 0) in vec3 aPos;
+            layout(location = 1) in vec3 aNormal;
+            layout(location = 2) in vec2 aTexCoord;
+            
+            out vec2 TexCoord;
+            out vec3 Normal;
+            out vec3 FragPos;
+            
+            uniform mat4 model;
+            uniform mat4 view;
+            uniform mat4 projection;
+            
+            void main() {
+                gl_Position = projection * view * model * vec4(aPos, 1.0);
+                FragPos = vec3(model * vec4(aPos, 1.0));
+                Normal = mat3(transpose(inverse(model))) * aNormal;
+                TexCoord = aTexCoord;
+            }
+        )";
+
+        const char *fragmentShader = R"(
+            #version 330 core
+            out vec4 FragColor;
+            
+            in vec2 TexCoord;
+            in vec3 Normal;
+            in vec3 FragPos;
+            
+            uniform sampler2D objectTexture;
+            uniform vec3 lightPos;
+            uniform vec3 viewPos;
+            uniform vec3 lightColor;
+            
+            void main() {
+        
+                float ambientStrength = 0.3;
+                vec3 ambient = ambientStrength * lightColor;
+                
+        
+                vec3 norm = normalize(Normal);
+                vec3 lightDir = normalize(lightPos - FragPos);
+                float diff = max(dot(norm, lightDir), 0.0);
+                vec3 diffuse = diff * lightColor;
+                
+        
+                float specularStrength = 0.5;
+                vec3 viewDir = normalize(viewPos - FragPos);
+                vec3 reflectDir = reflect(-lightDir, norm);
+                float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
+                vec3 specular = specularStrength * spec * lightColor;
+                
+        
+                vec4 texColor = texture(objectTexture, TexCoord);
+                vec3 result = (ambient + diffuse + specular) * vec3(texColor);
+                FragColor = vec4(result, texColor.a);
+            }
+        )";
+#else
+        const char *vertexShader = R"(#version 300 es
+            precision highp float;
+            layout(location = 0) in vec3 aPos;
+            layout(location = 1) in vec3 aNormal;
+            layout(location = 2) in vec2 aTexCoord;
+            
+            out vec2 TexCoord;
+            out vec3 Normal;
+            out vec3 FragPos;
+            
+            uniform mat4 model;
+            uniform mat4 view;
+            uniform mat4 projection;
+            
+            void main() {
+                gl_Position = projection * view * model * vec4(aPos, 1.0);
+                FragPos = vec3(model * vec4(aPos, 1.0));
+                Normal = mat3(transpose(inverse(model))) * aNormal;
+                TexCoord = aTexCoord;
+            }
+        )";
+
+        const char *fragmentShader = R"(#version 300 es
+            precision highp float;
+            out vec4 FragColor;
+            
+            in vec2 TexCoord;
+            in vec3 Normal;
+            in vec3 FragPos;
+            
+            uniform sampler2D objectTexture;
+            uniform vec3 lightPos;
+            uniform vec3 viewPos;
+            uniform vec3 lightColor;
+            
+            void main() {
+                float ambientStrength = 0.3;
+                vec3 ambient = ambientStrength * lightColor;    
+        
+                vec3 norm = normalize(Normal);
+                vec3 lightDir = normalize(lightPos - FragPos);
+                float diff = max(dot(norm, lightDir), 0.0);
+                vec3 diffuse = diff * lightColor;
+            
+                float specularStrength = 0.5;
+                vec3 viewDir = normalize(viewPos - FragPos);
+                vec3 reflectDir = reflect(-lightDir, norm);
+                float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
+                vec3 specular = specularStrength * spec * lightColor;
+                
+                vec4 texColor = texture(objectTexture, TexCoord);
+                vec3 result = (ambient + diffuse + specular) * vec3(texColor);
+                FragColor = vec4(result, texColor.a);
+            }
+        )";
+#endif
+
+        if(obj_shader.loadProgramFromText(vertexShader, fragmentShader) == false) {
+            throw mx::Exception("Failed to load object shader program");
+        }
+
+        objects.resize(MAX_OBJECTS);
+        std::vector<int> modelTypes(MAX_OBJECTS);
+        for(int i = 0; i < MAX_OBJECTS / 2; i++) {
+            modelTypes[i] = 0; 
+        }
+        for(int i = MAX_OBJECTS / 2; i < MAX_OBJECTS; i++) {
+            modelTypes[i] = 1; 
+        }
+        
+        std::random_device rd;
+        std::mt19937 g(rd());
+        std::shuffle(modelTypes.begin(), modelTypes.end(), g);
+        
+        if(!saturn.openModel(win->util.getFilePath("data/saturn.mxmod.z"))) {
+            throw mx::Exception("Failed to load saturn model");
+        }
+        
+        saturn.setTextures(win, win->util.getFilePath("data/planet.tex"), 
+                                             win->util.getFilePath("data"));
+                
+
+        if(!bird.openModel(win->util.getFilePath("data/bird.mxmod.z"))) {
+            throw mx::Exception("Failed to load bird model");
+        }
+        bird.setTextures(win, win->util.getFilePath("data/bird.tex"), 
+                                        win->util.getFilePath("data"));
+        
+
+        for(int i = 0; i < MAX_OBJECTS; ++i) {
+        
+            if(modelTypes[i] == 0) { 
+                objects[i].model = &saturn;  
+                float scale = 0.4f + ((rand() % 1000) / 1000.0f) * 0.4f;
+                objects[i].scale = glm::vec3(scale, scale, scale);
+                objects[i].rotationSpeed = 5.0f + ((rand() % 1000) / 1000.0f) * 10.0f;
+            } 
+            else { 
+                objects[i].model = &bird;    
+                float scale = 0.3f + ((rand() % 1000) / 1000.0f) * 0.2f;
+                objects[i].scale = glm::vec3(scale, scale, scale);
+                objects[i].rotationSpeed = 20.0f + ((rand() % 1000) / 1000.0f) * 40.0f;
+            }
+            
+            
+            float x = ((i % 3) - 1) * 20.0f;  
+            float z = ((i / 3) - 1) * 20.0f;  
+            
+            
+            x += ((rand() % 1000) / 1000.0f) * 10.0f - 5.0f;
+            z += ((rand() % 1000) / 1000.0f) * 10.0f - 5.0f;
+            
+            
+            float y = (modelTypes[i] == 1) ? 1.5f + (rand() % 100) / 100.0f : 2.5f;
+            objects[i].position = glm::vec3(x, y, z);
+            
+            
+            objects[i].rotation = glm::vec3(0.0f, static_cast<float>(rand() % 360), 0.0f);
+        }
+    }
+
+    void update(float deltaTime) {
+        for(auto &obj : objects) {
+            obj.rotation.y += obj.rotationSpeed * deltaTime;
+            if(obj.rotation.y > 360.0f) {
+                obj.rotation.y -= 360.0f;
+            }
+        }
+    }
+
+    void draw(gl::GLWindow *win, const glm::mat4& view, const glm::mat4& projection, const glm::vec3& cameraPos) {
+        obj_shader.useProgram();
+        
+        GLuint viewLoc = glGetUniformLocation(obj_shader.id(), "view");
+        GLuint projectionLoc = glGetUniformLocation(obj_shader.id(), "projection");
+        GLuint lightPosLoc = glGetUniformLocation(obj_shader.id(), "lightPos");
+        GLuint viewPosLoc = glGetUniformLocation(obj_shader.id(), "viewPos");
+        GLuint lightColorLoc = glGetUniformLocation(obj_shader.id(), "lightColor");
+        
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+        glUniform3f(lightPosLoc, 0.0f, 15.0f, 0.0f);
+        glUniform3f(viewPosLoc, cameraPos.x, cameraPos.y, cameraPos.z);
+        glUniform3f(lightColorLoc, 1.0f, 1.0f, 1.0f);
+        
+        
+        for(auto &obj : objects) {
+        
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::translate(model, obj.position);
+            model = glm::rotate(model, glm::radians(obj.rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+            model = glm::rotate(model, glm::radians(obj.rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+            model = glm::rotate(model, glm::radians(obj.rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+            model = glm::scale(model, obj.scale);
+            
+        
+            GLuint modelLoc = glGetUniformLocation(obj_shader.id(), "model");
+            glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+            
+        
+            obj.model->setShaderProgram(&obj_shader, "objectTexture");
+            obj.model->drawArrays();
+        }
+    }
+};
 
 class Game : public gl::GLObject {
 public:
@@ -190,8 +443,9 @@ public:
     virtual ~Game() override {}
 
     void load(gl::GLWindow *win) override {
-        font.loadFont(win->util.getFilePath("data/font.ttf"), 36);
+        font.loadFont(win->util.getFilePath("data/font.ttf"), 20);
         game_floor.load(win);
+        game_objects.load(win);
         
         SDL_SetRelativeMouseMode(SDL_TRUE);
         lastX = win->w / 2.0f;
@@ -215,9 +469,10 @@ public:
     }
 
     void draw(gl::GLWindow *win) override {
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f); 
+        glClearColor(0.53f, 0.81f, 0.92f, 1.0f); 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
+        // Rest of the method remains unchanged
         glEnable(GL_DEPTH_TEST); 
         
         Uint32 currentTime = SDL_GetTicks();
@@ -227,9 +482,21 @@ public:
         update(deltaTime);
         game_floor.draw(win);
         
+        glm::mat4 view = glm::lookAt(
+            glm::vec3(game_floor.getCameraPosition().x, game_floor.getCameraPosition().y, game_floor.getCameraPosition().z),
+            glm::vec3(game_floor.getCameraPosition().x + game_floor.getCameraFront().x, game_floor.getCameraPosition().y + game_floor.getCameraFront().y, game_floor.getCameraPosition().z + game_floor.getCameraFront().z),
+            glm::vec3(0.0f, 1.0f, 0.0f)
+        );
+        
+        glm::mat4 projection = glm::perspective(glm::radians(45.0f), 
+                                            static_cast<float>(win->w) / static_cast<float>(win->h),
+                                            0.1f, 100.0f);
+        
+        game_objects.draw(win, view, projection, game_floor.getCameraPosition());
+        
         win->text.setColor({255, 255, 255, 255});
         win->text.printText_Solid(font, 25.0f, 25.0f, 
-                               "3D Room - WASD to move, Mouse to look around");
+                               "3D Room - [Escape to Release Mouse] WASD to move, Mouse to look around");
         
         if (showFPS) {
             float fps = 1.0f / deltaTime;
@@ -240,18 +507,22 @@ public:
     
     void event(gl::GLWindow *win, SDL_Event &e) override {
         const float cameraSpeed = 0.1f;
+        const float minHeight = 1.7f;  
         
         if (e.type == SDL_KEYDOWN) {
             glm::vec3 cameraPos = game_floor.getCameraPosition();
             glm::vec3 cameraFront = game_floor.getCameraFront();
-            glm::vec3 cameraRight = glm::normalize(glm::cross(cameraFront, glm::vec3(0.0f, 1.0f, 0.0f)));
+            
+            
+            glm::vec3 horizontalFront = glm::normalize(glm::vec3(cameraFront.x, 0.0f, cameraFront.z));
+            glm::vec3 cameraRight = glm::normalize(glm::cross(horizontalFront, glm::vec3(0.0f, 1.0f, 0.0f)));
             
             switch (e.key.keysym.sym) {
                 case SDLK_w:
-                    cameraPos += cameraSpeed * cameraFront;
+                    cameraPos += (isSprinting ? cameraSpeed * 2.0f : cameraSpeed) * horizontalFront;
                     break;
                 case SDLK_s:
-                    cameraPos -= cameraSpeed * cameraFront;
+                    cameraPos -= cameraSpeed * horizontalFront;
                     break;
                 case SDLK_a:
                     cameraPos -= cameraSpeed * cameraRight;
@@ -265,10 +536,33 @@ public:
                 case SDLK_f: 
                     showFPS = !showFPS;
                     break;
+                case SDLK_SPACE:  
+                    if (cameraPos.y <= minHeight + 0.01f) {  
+                        jumpVelocity = 0.3f;  
+                    }
+                    break;
+                case SDLK_LCTRL:
+                    isCrouching = true;
+                    break;
+                case SDLK_LSHIFT:
+                    isSprinting = true;
+                    break;
             }
+            
+            cameraPos.y = std::max(cameraPos.y, minHeight);
             
             game_floor.setCameraPosition(cameraPos);
         }
+        
+        if (e.type == SDL_KEYUP) {
+            if (e.key.keysym.sym == SDLK_LCTRL) {
+                isCrouching = false;
+            }
+            if (e.key.keysym.sym == SDLK_LSHIFT) {
+                isSprinting = false;
+            }
+        }
+        
         
         if (e.type == SDL_MOUSEMOTION && mouseCapture) {
             float xoffset = e.motion.xrel * mouseSensitivity;
@@ -292,14 +586,34 @@ public:
     }
     
     void update(float deltaTime) {
-        this->deltaTime = deltaTime; 
+        this->deltaTime = deltaTime;
+        
+        
+        glm::vec3 cameraPos = game_floor.getCameraPosition();
+        
+        
+        cameraPos.y += jumpVelocity * deltaTime * 60.0f;
+        
+        
+        jumpVelocity -= gravity * deltaTime * 60.0f;
+        
+        
+        float currentMinHeight = isCrouching ? 0.8f : 1.7f;
+        if (cameraPos.y < currentMinHeight) {
+            cameraPos.y = currentMinHeight;
+            jumpVelocity = 0.0f;  
+        }
+        
+        game_floor.setCameraPosition(cameraPos);
         game_floor.update(deltaTime);
+        game_objects.update(deltaTime);
     }
     
 private:
     mx::Font font;
     Uint32 lastUpdateTime = SDL_GetTicks();
     Floor game_floor;
+    Objects game_objects;
     float lastX = 0.0f, lastY = 0.0f;
     float yaw = -90.0f; 
     float pitch = 0.0f;
@@ -308,6 +622,10 @@ private:
     float mouseSensitivity = 0.15f;
     bool showFPS = true;
     float deltaTime = 0.0f;
+    float jumpVelocity = 0.0f;  
+    const float gravity = 0.015f;
+    bool isCrouching = false;  
+    bool isSprinting = false;  
 };
 
 class MainWindow : public gl::GLWindow {
@@ -341,9 +659,15 @@ void eventProc() {
 
 int main(int argc, char **argv) {
 #ifdef __EMSCRIPTEN__
-    MainWindow main_window("/", 960, 720);
-    main_w =&main_window;
-    emscripten_set_main_loop(eventProc, 0, 1);
+    try {
+        MainWindow main_window("", 1920, 1080);
+        main_w =&main_window;
+        emscripten_set_main_loop(eventProc, 0, 1);
+    } catch(const mx::Exception &e) {
+        mx::system_err << "mx: Exception: " << e.text() << "\n";
+        mx::system_err.flush();
+        exit(EXIT_FAILURE);
+    }
 #else
     Arguments args = proc_args(argc, argv);
     try {
