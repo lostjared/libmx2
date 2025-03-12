@@ -188,6 +188,7 @@ if(EXAMPLES)
     add_subdirectory(gl_snow)
     add_subdirectory(gl_fire)
     add_subdirectory(gl_water)
+    add_subdirectory(gl_rain)
   endif()
 
 #disable for now
