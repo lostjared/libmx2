@@ -389,7 +389,7 @@ private:
         trailLengths.resize(totalColumns);
         
         
-        int maxChars = totalColumns * gridSizeY * 3; 
+        int maxChars = totalColumns * gridSizeY * 15; 
         characters.resize(maxChars);
         
         for (int i = 0; i < maxChars; ++i) {
@@ -430,8 +430,8 @@ private:
         
         float xPos = (x - gridSizeX/2.0f) * gridSpacing;
         float zPos = (z - gridSizeZ/2.0f) * gridSpacing;
-        
-        for (int i = 0; i < static_cast<int>(characters.size()); ++i) {
+        int i = 0;
+        for (i = 0; i < static_cast<int>(characters.size()); ++i) {
             if (!characters[i].active) {
                 if (firstCharIndex == -1) {
                     firstCharIndex = i;
@@ -446,16 +446,36 @@ private:
                 characters[i].active = true;
                 
                 if (i - firstCharIndex >= trailLength - 1) {
-                    
                     columnHeads[columnIndex] = firstCharIndex;
                     break;
                 }
             }
         }
+        if (firstCharIndex == -1 || i - firstCharIndex < trailLength - 1) {
+            columnHeads[columnIndex] = -1;
+        }
     }
     
     void updateMatrix3DData(float deltaTime, int screenWidth, int screenHeight) {
         int totalColumns = gridSizeX * gridSizeZ;
+        
+        
+        static int refreshCounter = 0;
+        refreshCounter++;
+        
+        
+        if (refreshCounter > 120) {
+            refreshCounter = 0;
+            for (int columnIndex = 0; columnIndex < totalColumns; ++columnIndex) {
+                if (columnHeads[columnIndex] < 0) {
+                    int x = columnIndex / gridSizeZ;
+                    int z = columnIndex % gridSizeZ;
+                    trailLengths[columnIndex] = rand() % 10 + 10; 
+                    float startY = gridSizeY * gridSpacing * 1.1f;
+                    addColumnChars3D(x, z, startY);
+                }
+            }
+        }
         
         for (int columnIndex = 0; columnIndex < totalColumns; ++columnIndex) {
             if (columnHeads[columnIndex] < 0) continue;
@@ -467,10 +487,12 @@ private:
                 int idx = head - i;
                 if (idx < 0 || idx >= static_cast<int>(characters.size())) continue;
                 if (!characters[idx].active) continue;
-                characters[idx].position.y -= speed * deltaTime * 0.8f;
+                
+                
+                characters[idx].position.y -= speed * deltaTime * 1.2f;
                 int changeFrequency;
                 if (i == 0) {
-                    changeFrequency = 5;
+                    changeFrequency = 5; 
                 } else if (i < 3) {
                     changeFrequency = 15;
                 } else {
@@ -482,44 +504,53 @@ private:
                 }
             }
             
+            
             if (characters[head].position.y < -gridSizeY * gridSpacing) {
+            
                 for (int i = 0; i < trailLength; ++i) {
                     int idx = head - i;
                     if (idx < 0 || idx >= static_cast<int>(characters.size())) continue;
                     characters[idx].active = false;
                 }
                 
+            
                 int x = columnIndex / gridSizeZ;
                 int z = columnIndex % gridSizeZ;
                 
-                trailLengths[columnIndex] = rand() % 20 + 10;
-                float startY = gridSizeY * gridSpacing; 
-                addColumnChars3D(x, z, startY);
+                trailLengths[columnIndex] = rand() % 20 + 15;  
+                float startY = gridSizeY * gridSpacing * 1.1f; 
+                
+                
+                if (rand() % 10 > 7) { 
+                    addColumnChars3D(x, z, startY);
+                } else {
+                    addColumnChars3D(x, z, startY);
+                }
             }
         }
     }
     
     void drawMatrix3D(gl::GLWindow *win) {
         glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE); //GL_ONE_MINUS_SRC_ALPHA);
         glDepthMask(GL_FALSE);
         glEnable(GL_DEPTH_TEST);
         
-        // Use shader
+        
         shader.useProgram();
         
-        // Set up projection matrix (perspective with wider FOV for immersion)
+        
         glm::mat4 projection = glm::perspective(glm::radians(70.0f), (float)win->w / (float)win->h, 0.1f, 100.0f);
         GLint projectionLoc = glGetUniformLocation(shader.id(), "projection");
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
         
-        // Set up view matrix (camera) based on mode
+        
         glm::mat4 view;
         if (insideMatrix) {
-            // First-person view
+        
             view = glm::lookAt(cameraPosition, cameraTarget, cameraUp);
         } else {
-            // Orbital view
+        
             updateCameraPosition();
             view = glm::lookAt(cameraPosition, glm::vec3(0.0f, 0.0f, 0.0f), cameraUp);
         }
