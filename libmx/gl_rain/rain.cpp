@@ -62,7 +62,7 @@ public:
         SDL_FreeSurface(waterSurface);
 
 #ifdef __EMSCRIPTEN__
-        const char *vertexShader = R"(#version 300 es
+const char *vertexShader = R"(#version 300 es
 precision highp float;
 layout(location = 0) in vec3 position;
 layout(location = 1) in vec4 color;
@@ -78,7 +78,7 @@ void main() {
     gl_Position = viewProj * vec4(pos, 1.0);
     float particleScale = size * (0.9 + sin(time * 5.0 + position.y * 10.0) * 0.1);
     float distanceToCamera = gl_Position.w;
-    gl_PointSize = particleScale * 30.0 / distanceToCamera;
+    gl_PointSize = particleScale * 60.0 / distanceToCamera;  // Was 30.0
     particleColor = color;
     particleLife = life;
 }
@@ -94,12 +94,18 @@ uniform float time;
 
 void main() {
     vec2 texCoord = gl_PointCoord;
+    
+    texCoord.y = (texCoord.y - 0.5) * 2.0 + 0.5;  // Stretch vertically
+    
     vec4 texColor = texture(waterTexture, texCoord);
     if(texColor.r < 0.1 && texColor.g < 0.1 && texColor.b < 0.1) discard;
-    float alpha = texColor.a * particleLife * 0.8;
-    vec3 waterColor = vec3(0.6, 0.8, 1.0) * texColor.rgb;
-    float highlight = pow(texCoord.y, 3.0) * 0.5;
+    
+    float alpha = texColor.a * particleLife * 0.9;  // Was 0.8
+    vec3 waterColor = vec3(0.7, 0.85, 1.0) * texColor.rgb;  // Brighter blue
+    
+    float highlight = pow(texCoord.y, 2.0) * 0.7;  // Was pow(texCoord.y, 3.0) * 0.5
     waterColor += highlight * vec3(1.0);
+    
     float ripple = sin(time * 8.0 + gl_FragCoord.y * 0.2) * 0.05 + 0.95;
     fragColor = vec4(waterColor * ripple * particleColor.rgb, alpha);
     if(alpha < 0.01) discard;
@@ -137,17 +143,14 @@ uniform float time;
 void main() {
     vec2 texCoord = gl_PointCoord;
     
-    // Create elongated raindrop effect
     texCoord.y = (texCoord.y - 0.5) * 2.0 + 0.5;  // Stretch vertically
     
     vec4 texColor = texture(waterTexture, texCoord);
     if(texColor.r < 0.1 && texColor.g < 0.1 && texColor.b < 0.1) discard;
     
-    // Brighter rain with stronger highlights
     float alpha = texColor.a * particleLife * 0.9;  // Was 0.8
     vec3 waterColor = vec3(0.7, 0.85, 1.0) * texColor.rgb;  // Brighter blue
     
-    // Stronger highlight
     float highlight = pow(texCoord.y, 2.0) * 0.7;  // Was pow(texCoord.y, 3.0) * 0.5
     waterColor += highlight * vec3(1.0);
     
