@@ -27,7 +27,7 @@ public:
     }
 
     void load(gl::GLWindow *win) override {
-        font.loadFont(win->util.getFilePath("data/font.ttf"), 16);
+        font.loadFont(win->util.getFilePath("data/keifont.ttf"), 16);
         cameraPosition = glm::vec3(0.0f, 0.0f, 0.0f); 
         cameraTarget = glm::vec3(0.0f, 0.0f, -1.0f);
         cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
@@ -271,9 +271,9 @@ private:
     
     
     std::vector<std::pair<int, int>> codepointRanges = {
-        {48, 57},   // 0-9 digits 
-        {65, 90},   // A-Z uppercase
-        {97, 122}   // a-z lowercase
+        {0x3040, 0x309F},  
+        {0x30A0, 0x30FF},  
+        {0x4E00, 0x4FFF}   
     };
     
     void updateCameraPosition() {
@@ -334,12 +334,9 @@ private:
                 charCodes.push_back(code);
             }
         }
-        for (int i = 33; i < 127; ++i) {
-            charCodes.push_back(i);
-        }
         
         atlasSize = (int)ceil(sqrt(charCodes.size() + 1));
-        int texSize = atlasSize * 32; 
+        int texSize = atlasSize * 64;  
         SDL_Surface *atlasSurface = SDL_CreateRGBSurface(0, texSize, texSize, 32, 
                                                        0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF);
         SDL_FillRect(atlasSurface, NULL, 0x00000000);
@@ -504,7 +501,8 @@ private:
     
     void drawMatrix3D(gl::GLWindow *win) {
         glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glDepthMask(GL_FALSE);
         glEnable(GL_DEPTH_TEST);
         
         // Use shader
@@ -580,6 +578,7 @@ private:
         glDrawArrays(GL_TRIANGLES, 0, activeChars * 6);
         glBindVertexArray(0);
         glDisable(GL_BLEND);
+        glDepthMask(GL_TRUE);
         std::string modeText = insideMatrix ? "Mode: Inside Matrix (WASD to move)" : "Mode: Orbital View";
         win->text.printText_Solid(font, 10.0f, 100.0f, modeText);
         win->text.printText_Solid(font, 10.0f, 130.0f, "Press SPACE to toggle mode");
@@ -590,9 +589,7 @@ private:
                            const glm::vec2 &texOffset, 
                            const glm::vec2 &texSize,
                            float r, float g, float b, float a) {
-        float halfSize = gridSpacing * 0.45f;  
-        
-        
+        float halfSize = gridSpacing * 0.55f;          
         glm::vec3 look = glm::normalize(cameraPosition - pos);
         glm::vec3 right = glm::normalize(glm::cross(cameraUp, look));
         glm::vec3 up = glm::normalize(glm::cross(look, right));
