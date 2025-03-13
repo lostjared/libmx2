@@ -561,13 +561,10 @@ uniform mat4 viewProj;
 uniform float time;
 uniform float size;
 void main() {
-    // Apply size to scale the pool
     vec3 pos = position * vec3(size, 1.0, size);
-    
-    // Add gentle waves
+    pos.y = 0.02f;  // Set higher above floor
     pos.y += sin(time * 2.0 + position.x * 10.0) * 0.01;
     pos.y += cos(time * 1.5 + position.z * 8.0) * 0.01;
-    
     gl_Position = viewProj * vec4(pos, 1.0);
     TexCoord = texCoord;
     FragPos = pos;
@@ -582,27 +579,26 @@ uniform float time;
 uniform sampler2D reflectionTexture;
 uniform float poolSize;
 void main() {
-    // Calculate distance from center with smoother transition
+    
     float dist = length(FragPos.xz) / poolSize;
-    float edgeFade = smoothstep(0.95, 0.75, dist);  // Sharper edge
+    float edgeFade = smoothstep(0.95, 0.75, dist);  
     
-    // More vibrant base water color
-    vec3 waterColor = vec3(0.1, 0.4, 0.6);  // Brighter blue
     
-    // Add stronger ripple effect
+    vec3 waterColor = vec3(0.2, 0.5, 0.8);  
+    
+    
     vec2 rippleCoord = TexCoord * 5.0;
     rippleCoord.x += sin(time * 0.5) * 0.1;
     rippleCoord.y += cos(time * 0.3) * 0.1;
     
     float ripple1 = sin(rippleCoord.x * 10.0 + time * 3.0) * 0.5 + 0.5;
     float ripple2 = sin(rippleCoord.y * 8.0 + time * 2.5) * 0.5 + 0.5;
-    float rippleValue = mix(ripple1, ripple2, 0.5) * 0.3;  // Stronger ripple effect
+    float rippleValue = mix(ripple1, ripple2, 0.5) * 0.3;  
     
     vec3 highlight = vec3(0.8, 0.9, 1.0) * rippleValue;
     vec3 finalColor = waterColor + highlight;
     
-    // Higher opacity
-    fragColor = vec4(finalColor, 0.8 * edgeFade);  // Was 0.7
+    fragColor = vec4(finalColor, 0.85 * edgeFade);  
 }
 )";
 #else
@@ -616,13 +612,10 @@ uniform mat4 viewProj;
 uniform float time;
 uniform float size;
 void main() {
-    // Apply size to scale the pool
     vec3 pos = position * vec3(size, 1.0, size);
-    
-    // Add gentle waves
+    pos.y = 0.02f;  // Set higher above floor
     pos.y += sin(time * 2.0 + position.x * 10.0) * 0.01;
     pos.y += cos(time * 1.5 + position.z * 8.0) * 0.01;
-    
     gl_Position = viewProj * vec4(pos, 1.0);
     TexCoord = texCoord;
     FragPos = pos;
@@ -638,33 +631,26 @@ uniform float time;
 uniform sampler2D reflectionTexture;
 uniform float poolSize;
 void main() {
-    // Calculate distance from center for edge fading
+    
     float dist = length(FragPos.xz) / poolSize;
-    float edgeFade = 1.0 - smoothstep(0.7, 0.95, dist);
+    float edgeFade = smoothstep(0.95, 0.75, dist);  
     
-    // Animated water ripples
-    vec2 rippleCoord = TexCoord * 5.0; // Scale for smaller ripples
     
-    // Add time-based movement to the texture coordinates
+    vec3 waterColor = vec3(0.2, 0.5, 0.8);  
+    
+    
+    vec2 rippleCoord = TexCoord * 5.0;
     rippleCoord.x += sin(time * 0.5) * 0.1;
     rippleCoord.y += cos(time * 0.3) * 0.1;
     
-    // Create ripple effect
     float ripple1 = sin(rippleCoord.x * 10.0 + time * 3.0) * 0.5 + 0.5;
     float ripple2 = sin(rippleCoord.y * 8.0 + time * 2.5) * 0.5 + 0.5;
-    float rippleValue = mix(ripple1, ripple2, 0.5) * 0.15;
+    float rippleValue = mix(ripple1, ripple2, 0.5) * 0.3;  
     
-    // Base water color (blue)
-    vec3 waterColor = vec3(0.1, 0.3, 0.5);
-    
-    // Add highlights based on ripple
     vec3 highlight = vec3(0.8, 0.9, 1.0) * rippleValue;
-    
-    // Combine for final color
     vec3 finalColor = waterColor + highlight;
     
-    // Apply edge fading
-    fragColor = vec4(finalColor, 0.7 * edgeFade);
+    fragColor = vec4(finalColor, 0.85 * edgeFade);  
 }
 )";
 #endif
@@ -740,11 +726,18 @@ void main() {
         SDL_FreeSurface(waterSurface);
         
         poolSize = 0.2f;  
-        maxPoolSize = 2.0f;  
+        maxPoolSize = 3.0f;  
+        this->indices = indices;
     }
     
     void update(float deltaTime, int raindropsHit) {
-        float growAmount = raindropsHit * 0.005f * deltaTime;  
+        
+        float growAmount = raindropsHit * 0.002f * deltaTime;  
+        
+        if (poolSize > maxPoolSize * 0.5f) {
+            growAmount *= (maxPoolSize - poolSize) / (maxPoolSize * 0.5f);
+        }
+        
         poolSize += growAmount;
         if (poolSize > maxPoolSize)
             poolSize = maxPoolSize;
@@ -797,8 +790,8 @@ private:
     GLuint vao = 0, vbo = 0, ebo = 0;
     GLuint textureId = 0;
     gl::ShaderProgram shader;
-    float poolSize = 0.5f;
-    float maxPoolSize = 2.0f;
+    float poolSize = 0.2f;  
+    float maxPoolSize = 3.0f;  
     std::vector<unsigned int> indices;
 };
 
@@ -824,7 +817,7 @@ public:
     }
 
     void draw(gl::GLWindow *win) override {
-        glClearColor(0.05f, 0.05f, 0.15f, 1.0f);
+        glClearColor(0.18f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
         Uint32 currentTime = SDL_GetTicks();
@@ -931,16 +924,21 @@ public:
 };
 
 MainWindow *main_w = nullptr;
-
 void eventProc() {
     main_w->proc();
 }
 
 int main(int argc, char **argv) {
-#ifdef __EMSCRIPTEN__
-    MainWindow main_window("/", 960, 720);
-    main_w =&main_window;
-    emscripten_set_main_loop(eventProc, 0, 1);
+#ifdef __EMSCRIPTEN__  
+    try {
+        MainWindow main_window("",1920, 1080);
+        main_w = &main_window;
+        emscripten_set_main_loop(eventProc, 0, 1);
+    } catch(const mx::Exception &e) {
+        mx::system_err << "mx: Exception: " << e.text() << "\n";
+        mx::system_err.flush();
+        exit(EXIT_FAILURE);
+    }           
 #else
     Arguments args = proc_args(argc, argv);
     try {
