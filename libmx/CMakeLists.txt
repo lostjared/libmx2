@@ -191,6 +191,7 @@ if(EXAMPLES)
     add_subdirectory(gl_rain)
     add_subdirectory(gl_room)
     add_subdirectory(gl_matrix)
+    add_subdirectory(gl_obj_explode)
   endif()
 
 #disable for now
