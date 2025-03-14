@@ -830,9 +830,15 @@ void eventProc() {
 
 int main(int argc, char **argv) {
 #ifdef __EMSCRIPTEN__
-    MainWindow main_window("/", 1920, 1080);
-    main_w =&main_window;
-    emscripten_set_main_loop(eventProc, 0, 1);
+    try {
+        MainWindow main_window("/", 1920, 1080);
+        main_w =&main_window;
+        emscripten_set_main_loop(eventProc, 0, 1);
+    } catch(mx::Exception &e) {
+        mx::system_err << "mx: Exception: " << e.text() << "\n";
+        mx::system_err.flush();
+        exit(EXIT_FAILURE);
+    }
 #else
     Arguments args = proc_args(argc, argv);
     try {
