@@ -74,6 +74,60 @@ Current Options:
 * -DMOLTEN_PATH=/usr/local/opt/molten-vk  (or path you installed molten-vk)
 
 
+# WebAssembly Demos
+
+https://lostsidedead.biz/acidcam.web
+
+https://lostsidedead.biz/acidcam.webgl
+
+https://lostsidedead.biz/game/3DBreak
+
+https://lostsidedead.biz/Breakout
+
+https://lostsidedead.biz/3DPong
+
+https://lostsidedead.biz/3DPong
+
+https://lostsidedead.biz/Space
+
+https://lostsidedead.biz/game/Space3D
+
+https://lostsidedead.biz/asetroids
+
+https://lostsidedead.biz/Blocks
+
+https://lostsidedead.biz/KnightsTour
+
+https://lostsidedead.biz/point-sprites
+
+https://lostsidedead.biz/point-sprites/stars3d.html
+
+https://lostsidedead.biz/Phong
+
+https://lostsidedead.biz/Torus
+
+https://lostsidedead.biz/Light
+
+https://lostsidedead.biz/Shadow
+
+https://lostsidedead.biz/Skybox
+
+https://lostsidedead.biz/DrawBox
+
+https://lostsidedead.biz/MouseSkybox
+
+https://lostsidedead.biz/BoxOfRain
+
+https://lostsidedead.biz/Rain
+
+https://lostsidedead.biz/3DWalk
+
+https://lostsidedead.biz/Nova
+
+https://lostsidedead.biz/Fire
+
+https://lostsidedead.biz/Winter
+
 ## Usage
 
 Include the `libmx2` headers in your project and link against the compiled library.
