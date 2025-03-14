@@ -103,11 +103,11 @@ namespace gl {
    
     class GLWindow {
     public:
-        GLWindow(const std::string &text, int width, int height) : glContext{nullptr}, window{nullptr} { 
-            initGL(text, width, height);
-        };
+        GLWindow(const std::string &text, int width, int height, bool resize_ = true) : glContext{nullptr}, window{nullptr} { 
+            initGL(text, width, height, resize_);
+        }
         virtual ~GLWindow();
-        void initGL(const std::string &title, int width, int height);
+        void initGL(const std::string &title, int width, int height, bool resize_ = true);
         void updateViewport();
         void swap();
 
@@ -128,6 +128,7 @@ namespace gl {
         std::unique_ptr<gl::GLObject> object;
         mx::mxUtil util;
         int w = 0, h = 0;
+        SDL_Window *getWindow() { return window; }
 #ifdef WITH_MIXER
         mx::Mixer mixer;
 #endif
