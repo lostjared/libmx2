@@ -240,17 +240,12 @@ public:
         }
 
         for (auto& p : particles) {
-            // Generate stars at greater distances (5-20 is too close)
             float radius = generateRandomFloat(10.0f, 30.0f);
             float theta = generateRandomFloat(0.0f, 2.0f * M_PI);
             float phi = generateRandomFloat(0.0f, M_PI);
-            
-            // Convert spherical coordinates to Cartesian
             p.x = radius * sin(phi) * cos(theta);
             p.y = radius * sin(phi) * sin(theta);
             p.z = radius * cos(phi);
-            
-            // Small random movement
             p.vx = generateRandomFloat(-0.01f, 0.01f);
             p.vy = generateRandomFloat(-0.01f, 0.01f);
             p.vz = generateRandomFloat(-0.01f, 0.01f);
@@ -301,7 +296,6 @@ public:
 
         program.useProgram();
 
-        // Use the matrices passed from Game
         glm::mat4 MVP = projectionMatrix * viewMatrix * glm::mat4(1.0f);
         program.setUniform("MVP", MVP);
         program.setUniform("spriteTexture", 0);
@@ -326,17 +320,17 @@ public:
             p.y += p.vy * deltaTime;
             p.z += p.vz * deltaTime;
             if (p.z > 20.0f || p.z < -20.0f || p.x > 20.0f || p.x < -20.0f || p.y > 20.0f || p.y < -20.0f) {
-                // Use spherical coordinates to distribute stars evenly in all directions
+                
                 float radius = generateRandomFloat(15.0f, 20.0f);
                 float theta = generateRandomFloat(0.0f, 2.0f * M_PI);
                 float phi = generateRandomFloat(0.0f, M_PI);
                 
-                // Convert spherical coordinates to Cartesian for even distribution around sphere
+                
                 p.x = radius * sin(phi) * cos(theta);
                 p.y = radius * sin(phi) * sin(theta);
                 p.z = radius * cos(phi);
                 
-                // Small random movement in all directions
+                
                 float speed = generateRandomFloat(0.01f, 0.05f);
                 theta = generateRandomFloat(0.0f, 2.0f * M_PI);
                 phi = generateRandomFloat(0.0f, M_PI);
@@ -372,13 +366,11 @@ public:
         glBufferSubData(GL_ARRAY_BUFFER, 0, colors.size() * sizeof(float), colors.data());
     }
 
-    // In StarField class, add these methods to accept camera parameters
     void setViewProjectionMatrices(const glm::mat4& view, const glm::mat4& projection) {
         this->projectionMatrix = projection;
         this->viewMatrix = view;
     }
-
-    // Add member variables
+    
 private:
     glm::mat4 projectionMatrix{1.0f};
     glm::mat4 viewMatrix{1.0f};
@@ -832,7 +824,7 @@ int main(int argc, char **argv) {
 #ifdef __EMSCRIPTEN__
     try {
         MainWindow main_window("/", 1920, 1080);
-        main_w =&main_window;
+        main_w = &main_window;
         emscripten_set_main_loop(eventProc, 0, 1);
     } catch(mx::Exception &e) {
         mx::system_err << "mx: Exception: " << e.text() << "\n";
