@@ -617,7 +617,6 @@ private:
     float lastX = 0.0f, lastY = 0.0f;
     float yaw = -90.0f; 
     float pitch = 0.0f;
-    bool firstMouse = true;
     bool mouseCapture = true;
     float mouseSensitivity = 0.15f;
     bool showFPS = true;

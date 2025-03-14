@@ -266,9 +266,7 @@ private:
     
     std::vector<CharInfo> charAtlas;
     int atlasSize;
-    float charWidth, charHeight;
-    int numColumns, numRows;
-    
+    float charWidth, charHeight;  
     
     std::vector<std::pair<int, int>> codepointRanges = {
         {0x3040, 0x309F},  
