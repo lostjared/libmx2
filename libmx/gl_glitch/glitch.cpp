@@ -63,16 +63,58 @@ void main()
 )";
 
 const char *g_fSource = R"(#version 300 es
-precision highp float;
-in vec3 vertexColor;
-in vec2 TexCoords;
-uniform sampler2D texture1;  
-out vec4 FragColor;
+        precision highp float;
+        in vec3 vertexColor;
+        in vec2 TexCoords;
+        uniform sampler2D texture1;  
+        out vec4 FragColor;
 
-void main()
-{
-    FragColor = vec4(vertexColor, 1.0) * texture(texture1, TexCoords);
-}
+        uniform float time_f;
+
+        vec4 alphaXor(vec4 color) {
+            ivec3 source;
+            for (int i = 0; i < 3; ++i) {
+                source[i] = int(255.0 * clamp(color[i], 0.0, 1.0));
+            }
+            
+            float time_mod = mod(time_f, 10.0); 
+            ivec3 time_factors = ivec3(
+                int(255.0 * time_mod / 10.0), 
+                int(127.0 * time_mod / 10.0), 
+                int(63.0 * time_mod / 10.0)
+            );
+            
+            
+            ivec3 int_color;
+            for (int i = 0; i < 3; ++i) {
+                int_color[i] = int(255.0 * clamp(color[i], 0.0, 1.0));
+                int_color[i] = int_color[i] ^ (source[i] + time_factors[i % 3]);
+                int_color[i] = int_color[i] % 256; 
+                color[i] = float(int_color[i]) / 255.0;
+            }
+            return color;
+        }
+
+        vec4 distort(vec2 tc, float time_t, sampler2D tex) {
+            vec4 ctx;
+            float xDistort = cos(tc.y * 10.0 + time_f) * 0.1;
+                float yDistort = sin(tc.x * 10.0 + time_f) * 0.1;
+                float tanDistortX = tan(tc.x * 5.0 + time_f) * 0.05;
+                float tanDistortY = tan(tc.y * 5.0 + time_f) * 0.05;
+                vec2 distortedTC = tc + vec2(xDistort + tanDistortX, yDistort + tanDistortY);
+                distortedTC = fract(distortedTC);
+                ctx = texture(tex, distortedTC);
+                return ctx;
+        }
+
+
+        void main()
+        {
+            FragColor = vec4(vertexColor, 1.0) * texture(texture1, TexCoords);
+            vec4 ctx = distort(TexCoords, time_f, texture1);
+            FragColor = alphaXor(ctx);
+            FragColor.a = 1.0;
+        }
 )";
 #else
 const char *g_vSource = R"(#version 330 core
@@ -119,9 +161,51 @@ const char *g_fSource = R"(#version 330 core
         uniform sampler2D texture1;  
         out vec4 FragColor;
 
+        uniform float time_f;
+
+        vec4 alphaXor(vec4 color) {
+            ivec3 source;
+            for (int i = 0; i < 3; ++i) {
+                source[i] = int(255.0 * clamp(color[i], 0.0, 1.0));
+            }
+            
+            float time_mod = mod(time_f, 10.0); 
+            ivec3 time_factors = ivec3(
+                int(255.0 * time_mod / 10.0), 
+                int(127.0 * time_mod / 10.0), 
+                int(63.0 * time_mod / 10.0)
+            );
+            
+            
+            ivec3 int_color;
+            for (int i = 0; i < 3; ++i) {
+                int_color[i] = int(255.0 * clamp(color[i], 0.0, 1.0));
+                int_color[i] = int_color[i] ^ (source[i] + time_factors[i % 3]);
+                int_color[i] = int_color[i] % 256; 
+                color[i] = float(int_color[i]) / 255.0;
+            }
+            return color;
+        }
+
+        vec4 distort(vec2 tc, float time_t, sampler2D tex) {
+            vec4 ctx;
+            float xDistort = cos(tc.y * 10.0 + time_f) * 0.1;
+                float yDistort = sin(tc.x * 10.0 + time_f) * 0.1;
+                float tanDistortX = tan(tc.x * 5.0 + time_f) * 0.05;
+                float tanDistortY = tan(tc.y * 5.0 + time_f) * 0.05;
+                vec2 distortedTC = tc + vec2(xDistort + tanDistortX, yDistort + tanDistortY);
+                distortedTC = fract(distortedTC);
+                ctx = texture(tex, distortedTC);
+                return ctx;
+        }
+
+
         void main()
         {
             FragColor = vec4(vertexColor, 1.0) * texture(texture1, TexCoords);
+            vec4 ctx = distort(TexCoords, time_f, texture1);
+            FragColor = alphaXor(ctx);
+            FragColor.a = 1.0;
         }
 )";
 #endif
@@ -756,6 +840,8 @@ public:
         
         static float rotationAngle = 0.0f;
         rotationAngle += deltaTime * 30.0f; 
+        static float time_f = 0.0f;
+        time_f += deltaTime;
         
         float camX = cameraDistance * sin(glm::radians(cameraRotationY)) * cos(glm::radians(cameraRotationX));
         float camY = cameraDistance * sin(glm::radians(cameraRotationX));
@@ -789,12 +875,11 @@ public:
             glUniformMatrix4fv(glGetUniformLocation(saturn_shader.id(), "model"), 1, GL_FALSE, glm::value_ptr(modelMatrix));
             glUniformMatrix4fv(glGetUniformLocation(saturn_shader.id(), "view"), 1, GL_FALSE, glm::value_ptr(viewMatrix));
             glUniformMatrix4fv(glGetUniformLocation(saturn_shader.id(), "projection"), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
-            
             glUniform3f(glGetUniformLocation(saturn_shader.id(), "lightPos"), lightPos.x, lightPos.y, lightPos.z);
             glUniform3f(glGetUniformLocation(saturn_shader.id(), "viewPos"), cameraPosition.x, cameraPosition.y, cameraPosition.z);
             glUniform3f(glGetUniformLocation(saturn_shader.id(), "lightColor"), 1.0f, 1.0f, 1.0f);
             glUniform3f(glGetUniformLocation(saturn_shader.id(), "objectColor"), 1.0f, 1.0f, 1.0f); 
-            
+            saturn_shader.setUniform("time_f", time_f);
             saturn.drawArrays();
         }
         
