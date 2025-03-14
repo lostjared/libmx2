@@ -193,6 +193,7 @@ if(EXAMPLES)
     add_subdirectory(gl_matrix)
     add_subdirectory(gl_obj_explode)
     add_subdirectory(gl_fog)
+    add_subdirectory(gl_glitch)
   endif()
 
 #disable for now
