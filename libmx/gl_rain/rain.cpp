@@ -806,8 +806,6 @@ class Game : public gl::GLObject {
     float zoomSpeed = 0.2f;        
     float cameraRotation = 0.0f;   
     float rotationSpeed = 0.1f;
-    float rainAccumulation = 0.0f;
-    
 public:
     Game() = default;
     virtual ~Game() override {}
