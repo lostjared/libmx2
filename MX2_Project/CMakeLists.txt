@@ -18,6 +18,10 @@ target_include_directories(mx2_app PRIVATE
     ${SDL2_INCLUDE_DIRS} 
     ${SDL2_TTF_INCLUDE_DIRS}
     ${SDL2_MIXER_INCLUDE_DIRS}
+    /usr/include
+    /usr/local/include
+    /opt/homebrew/include
+    ${CMAKE_PREFIX_PATH}
 )
 
 target_link_libraries(mx2_app PRIVATE 
