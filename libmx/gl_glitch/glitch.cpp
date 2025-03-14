@@ -419,37 +419,6 @@ public:
     }
 )";
 
-/*
-
-        const char* particleFS = R"(#version 330 core
-    in float intensity;
-    
-    out vec4 FragColor;
-    
-    uniform sampler2D particleTexture;
-    
-    void main() {
-        vec2 texCoord = gl_PointCoord;
-        vec4 texColor = texture(particleTexture, texCoord);
-        vec3 startColor = vec3(1.0, 0.6, 0.2); 
-        vec3 endColor = vec3(0.8, 0.2, 0.1);   
-        vec3 glowColor = mix(endColor, startColor, intensity);
-        glowColor = mix(glowColor, texColor.rgb, 0.4);
-        float alpha = texColor.a * intensity;
-        float dist = length(gl_PointCoord - vec2(0.5));
-        alpha *= smoothstep(0.5, 0.3, dist);
-        FragColor = vec4(glowColor, alpha);
-        if(alpha < 0.1) {
-            discard;
-        }
-        if(FragColor.r < 0.1 && FragColor.g < 0.1 && FragColor.b < 0.1) {
-            discard;
-        }
-    }
-)";
-
-*/
-
 const char *particleFS = R"(#version 330 core
 
 in float intensity;
@@ -534,28 +503,59 @@ void main() {
     const char* particleFS = R"(#version 300 es
 precision highp float;
 in float intensity;
-
 out vec4 FragColor;
 
 uniform sampler2D particleTexture;
+uniform float time_f;
+
+vec4 alphaXor(vec4 color) {
+    // Convert float colors to ints more safely for ES
+    ivec3 source;
+    for (int i = 0; i < 3; ++i) {
+        source[i] = int(255.0 * clamp(color[i], 0.0, 1.0));
+    }
+    
+    float time_mod = mod(time_f, 10.0); 
+    ivec3 time_factors = ivec3(
+        int(255.0 * time_mod / 10.0), 
+        int(127.0 * time_mod / 10.0), 
+        int(63.0 * time_mod / 10.0)
+    );
+    
+    
+    ivec3 int_color;
+    for (int i = 0; i < 3; ++i) {
+        int_color[i] = int(255.0 * clamp(color[i], 0.0, 1.0));
+        int_color[i] = int_color[i] ^ (source[i] + time_factors[i % 3]);
+        int_color[i] = int_color[i] % 256; 
+        color[i] = float(int_color[i]) / 255.0;
+    }
+    return color;
+}
 
 void main() {
     vec2 texCoord = gl_PointCoord;
     vec4 texColor = texture(particleTexture, texCoord);
+    
     vec3 startColor = vec3(1.0, 0.6, 0.2); 
     vec3 endColor = vec3(0.8, 0.2, 0.1);   
     vec3 glowColor = mix(endColor, startColor, intensity);
     glowColor = mix(glowColor, texColor.rgb, 0.4);
+    
     float alpha = texColor.a * intensity;
-    float dist = length(gl_PointCoord - vec2(0.5));
+    float dist = length(texCoord - vec2(0.5));
     alpha *= smoothstep(0.5, 0.3, dist);
-    FragColor = vec4(glowColor, alpha);
-    if(alpha < 0.1) {
+    
+    vec4 combinedColor = vec4(glowColor, alpha);
+    
+    if(alpha < 0.1)
         discard;
-    }
-    if(FragColor.r < 0.1 && FragColor.g < 0.1 && FragColor.b < 0.1) {
+    if(combinedColor.r < 0.1 && combinedColor.g < 0.1 && combinedColor.b < 0.1)
         discard;
-    }
+    
+    vec4 finalColor = alphaXor(combinedColor);
+    finalColor.a = 1.0;
+    FragColor = finalColor; 
 }
 )";
 #endif
