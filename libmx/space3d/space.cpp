@@ -1222,10 +1222,20 @@ public:
 
     void update(gl::GLWindow *win, float deltaTime) {
 
-        checkInput(win, deltaTime);
-        updateSpin(deltaTime);
+        const float TARGET_FPS = 60.0f;
+        const float TARGET_FRAME_TIME = 1.0f / TARGET_FPS;
+        float normalizedDeltaTime = deltaTime;
 
-        ex_emiter.update(win, deltaTime);
+        if (normalizedDeltaTime < TARGET_FRAME_TIME) {
+            normalizedDeltaTime = TARGET_FRAME_TIME;
+        } else if (normalizedDeltaTime > 0.1f) {
+            normalizedDeltaTime = 0.1f;
+        }
+
+        checkInput(win, normalizedDeltaTime);
+        updateSpin(normalizedDeltaTime);
+
+        ex_emiter.update(win, normalizedDeltaTime);
 
         if(ready == true) {
             ex_emiter.explode(win, ship_pos, glm::vec4(1.0f, 0.0f, 1.0f, 1.0f), false);
@@ -1235,9 +1245,9 @@ public:
             return;
         }
 
-        exhaust.updateExhaustParticles(deltaTime);
+        exhaust.updateExhaustParticles(normalizedDeltaTime);
        
-        projectileRotation += 50.0f * deltaTime;
+        projectileRotation += 50.0f * normalizedDeltaTime;
         if(projectileRotation >= 360.0f) {
             projectileRotation -= 360.0f;
         }
@@ -1245,8 +1255,8 @@ public:
        
         if(!projectiles.empty()) {
             for (int i = (int)projectiles.size() - 1; i >= 0; i--) {
-                std::get<0>(projectiles[i]).y += projectileSpeed * deltaTime;
-                std::get<1>(projectiles[i]).y += projectileSpeed * deltaTime;
+                std::get<0>(projectiles[i]).y += projectileSpeed * normalizedDeltaTime;
+                std::get<1>(projectiles[i]).y += projectileSpeed * normalizedDeltaTime;
                 if ((std::get<0>(projectiles[i]).y > (std::get<3>(screenx) + projectileLifetime)) || (std::get<1>(projectiles[i]).y > (std::get<3>(screenx) + projectileLifetime))) {
                     projectiles.erase(projectiles.begin() + i);
                 }
@@ -1259,7 +1269,7 @@ public:
 
 
          if (isBarrelRolling) {
-           barrelRollAngle += barrelRollSpeed * deltaTime;
+           barrelRollAngle += barrelRollSpeed * normalizedDeltaTime;
             if (barrelRollAngle >= 360.0f) {
                 barrelRollAngle = 0.0f;
                 isBarrelRolling = false;
@@ -1267,14 +1277,14 @@ public:
         }
 
        
-        enemyReleaseTimer += deltaTime;
+        enemyReleaseTimer += normalizedDeltaTime;
         if (enemyReleaseTimer >= enemyReleaseInterval) {
             releaseEnemy(win);             
             enemyReleaseTimer = 0.0f;   
         }
         if(!enemies.empty()) {
             for(int i = (int)enemies.size() -1; i >= 0; i--) {
-                enemies[i]->move(deltaTime, enemySpeed);
+                enemies[i]->move(normalizedDeltaTime, enemySpeed);
                 if (enemies[i]->getType() != EnemyType::SHIP && enemies[i]->getType() != EnemyType::TRIANGLE && enemies[i]->object_pos.y < (std::get<2>(screenx))) {
                     isSpinning = true;
                     if(!win->mixer.isPlaying(2)) {
@@ -1289,12 +1299,12 @@ public:
         }
 
         if(boss.active) {
-            boss.move(deltaTime, enemySpeed);
+            boss.move(normalizedDeltaTime, enemySpeed);
             boss.reverseDirection(std::get<2>(screenx), std::get<3>(screenx));
         }
 
         for (int i = (int)enemies.size() - 1; i >= 0; i--) {
-            enemies[i]->updateSpin(deltaTime);
+            enemies[i]->updateSpin(normalizedDeltaTime);
             if (enemies[i]->ready) {
                 ex_emiter.explode(win, enemies[i]->object_pos, enemies[i]->particleColor, false);
                 enemies.erase(enemies.begin() + i);
@@ -1302,7 +1312,7 @@ public:
             }
         }
         if(boss.active) {
-            boss.updateSpin(deltaTime);
+            boss.updateSpin(normalizedDeltaTime);
         }
         if(boss.ready) {
             ex_emiter.explode(win, boss.object_pos, boss.particleColor, true); 
