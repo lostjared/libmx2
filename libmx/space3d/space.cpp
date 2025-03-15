@@ -1222,16 +1222,14 @@ public:
 
     void update(gl::GLWindow *win, float deltaTime) {
 
-        const float TARGET_FPS = 60.0f;
-        const float TARGET_FRAME_TIME = 1.0f / TARGET_FPS;
-        float normalizedDeltaTime = deltaTime;
-
-        if (normalizedDeltaTime < TARGET_FRAME_TIME) {
-            normalizedDeltaTime = TARGET_FRAME_TIME;
-        } else if (normalizedDeltaTime > 0.1f) {
-            normalizedDeltaTime = 0.1f;
+        const float FIXED_TIME_STEP = 1.0f / 60.0f;  
+        float normalizedDeltaTime = FIXED_TIME_STEP;  
+        
+        
+        if (deltaTime > 0.1f) {
+            deltaTime = 0.1f;
         }
-
+        
         checkInput(win, normalizedDeltaTime);
         updateSpin(normalizedDeltaTime);
 
