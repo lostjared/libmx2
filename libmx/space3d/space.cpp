@@ -1619,7 +1619,7 @@ public:
     }
 	
     void delay_() {
-#if !defined(__EMSCRIPTEN__) && !defined(__linux__)
+#ifdef __APPLE__
         const int frameDelay = 1000 / 60;
         int frameTime = SDL_GetTicks() - fstart;
         if (frameDelay > frameTime) {
