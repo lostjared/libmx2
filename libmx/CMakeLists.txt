@@ -4,7 +4,7 @@ project(libmx2 VERSION 1.5.0)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-
+set(OpenGL_GL_PREFERENCE "GLVND")
 
 option(DEBUG_MODE "Debug mode" OFF)
 
@@ -121,7 +121,7 @@ if(JPEG)
 else()
   message(STATUS "JPEG Disabled")
   set(IMG_LIB ${PNG_LIBRARIES} ${ZLIB_LIBRARIES})
-  set(IMG_INCLUDE ${ZLIB_INCLUDE_DIRS} ${PNG_INCLUDE_DIRS})
+  set(IMG_INCLUDE /usr/local/incude/libpng16 ${ZLIB_INCLUDE_DIRS} ${PNG_INCLUDE_DIRS})
 endif()
 
 add_subdirectory(libmx)
