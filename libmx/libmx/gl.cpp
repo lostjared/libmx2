@@ -157,7 +157,7 @@ namespace gl {
     }
 
     void GLWindow::delay() {
-#ifndef __EMSCRIPTEN__
+#if !defined(__EMSCRIPTEN__) && !defined(__linux__)
         const int frameDelay = 1000 / 60;
         Uint32 frameStart = SDL_GetTicks();
         int frameTime = SDL_GetTicks() - frameStart;
