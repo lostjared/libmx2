@@ -195,6 +195,7 @@ if(EXAMPLES)
     add_subdirectory(gl_fog)
     add_subdirectory(gl_glitch)
     add_subdirectory(gl_glitch_cube)
+    add_subdirectory(gl_glitch_cube2)
   endif()
 
 #disable for now
