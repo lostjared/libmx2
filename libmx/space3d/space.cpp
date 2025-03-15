@@ -1221,7 +1221,22 @@ public:
     }
 
     void update(gl::GLWindow *win, float deltaTime) {
-
+        float actualDeltaTime = deltaTime;
+        if (actualDeltaTime > 0.1f) {
+            actualDeltaTime = 0.1f;
+        }
+        
+        
+        checkInput(win, actualDeltaTime);
+        updateSpin(actualDeltaTime);
+        
+        ex_emiter.update(win, actualDeltaTime);
+        
+        exhaust.updateExhaustParticles(actualDeltaTime);
+        exhaust.updateExhaustParticles(actualDeltaTime);
+        
+        projectileRotation += 50.0f * actualDeltaTime;
+        
         const float FIXED_TIME_STEP = 1.0f / 60.0f;  
         float normalizedDeltaTime = FIXED_TIME_STEP;  
         
@@ -1625,15 +1640,14 @@ public:
         swap();
         delay_();
     }
-	
+    
     void delay_() {
-#ifdef __APPLE__
+        // Apply frame rate limiting on all platforms
         const int frameDelay = 1000 / 60;
         int frameTime = SDL_GetTicks() - fstart;
         if (frameDelay > frameTime) {
             SDL_Delay(frameDelay - frameTime);
         }
-#endif 
      }    
 
 private:
