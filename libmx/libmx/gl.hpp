@@ -138,6 +138,7 @@ namespace gl {
         SDL_Window *window;
         bool active = false;
         SDL_Event e;
+	Uint32 frameStart = 0;
     };
 
     class GLObject {
