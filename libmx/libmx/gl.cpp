@@ -156,16 +156,7 @@ namespace gl {
         }
     }
 
-    void GLWindow::delay() {
-/*
-#if !defined(__EMSCRIPTEN__) && !defined(__linux__)
-        const int frameDelay = 1000 / 60;
-        int frameTime = SDL_GetTicks() - frameStart;
-        if (frameDelay > frameTime) {
-            SDL_Delay(frameDelay - frameTime);
-        }
-#endif */
-    }
+    void GLWindow::delay() {}
 
     void GLWindow::proc() {
         if(!object) {
@@ -185,7 +176,6 @@ namespace gl {
                 object->event(this, e);
             }
         }
-        frameStart = SDL_GetTicks();
         draw();
     }
 
