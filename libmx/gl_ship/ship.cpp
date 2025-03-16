@@ -54,7 +54,7 @@ void main()
     float shininess = 64.0;          // Increase this value for a tighter, shinier highlight
     vec3 viewDir = normalize(viewPos - vec3(worldPos));
     vec3 reflectDir = reflect(-lightDir, norm);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), shininess);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), float(shininess));
     vec3 specular = specularStrength * spec * lightColor;
     vec3 finalColor = (ambient + diffuse + specular) * objectColor;
     vertexColor = finalColor;
@@ -147,7 +147,7 @@ const char *g_vSource = R"(#version 330 core
         float shininess = 64.0;          // Increase this value for a tighter, shinier highlight
         vec3 viewDir = normalize(viewPos - vec3(worldPos));
         vec3 reflectDir = reflect(-lightDir, norm);
-        float spec = pow(max(dot(viewDir, reflectDir), 0.0), shininess);
+        float spec = pow(max(dot(viewDir, reflectDir), 0.0), float(shininess));
         vec3 specular = specularStrength * spec * lightColor;
         vec3 finalColor = (ambient + diffuse + specular) * objectColor;
         vertexColor = finalColor;
@@ -978,7 +978,7 @@ void main() {
     float specularStrength = 0.5;
     vec3 viewDir = normalize(viewPos - FragPos);
     vec3 reflectDir = reflect(-lightDir, norm);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0); 
     vec3 specular = specularStrength * spec * vec3(1.0, 1.0, 1.0);
     
     vec4 texColor = texture(starTexture, TexCoords);
@@ -1308,7 +1308,7 @@ public:
         glm::vec3 idealCameraPos = position - forward * cameraDistance + glm::vec3(0.0f, cameraHeight, 0.0f);
         
         
-        cameraPosition = glm::mix(cameraPosition, idealCameraPos, 1.0f - pow(cameraLag, deltaTime * 60.0f));
+        cameraPosition = glm::mix(cameraPosition, idealCameraPos, 1.0f - exp(-deltaTime * 10.0f));
     }
     
     glm::mat4 getViewMatrix() {
@@ -1503,11 +1503,12 @@ public:
         }
         
         emiter.draw(win);
-        emiter.update(deltaTime);
-
         win->text.setColor({255,255,255,255});
         win->text.printText_Solid(font,25.0f,25.0f, "Ship X,Y,Z: " + std::to_string(ship.position.x) + ", " + std::to_string(ship.position.y) + ", " + std::to_string(ship.position.z));
         win->text.printText_Solid(font,25.0f,50.0f, "Velocity X,Y,Z: " + std::to_string(ship.velocity.x) + ", " + std::to_string(ship.velocity.y) + ", " + std::to_string(ship.velocity.z)); 
+        win->text.printText_Solid(font,25.0f,75.0f, "FPS: " + std::to_string(1.0f / deltaTime));
+        win->text.printText_Solid(font,25.0f, 100.0f, "Left, Right Arrow Keys: Yaw, Up, Down Arrow Keys: Move Forward, Backward");
+        win->text.printText_Solid(font,25.0f, 125.0f, "W, S Keys: Pitch");
     }
     
     void handleInput(gl::GLWindow* win, float deltaTime) {
