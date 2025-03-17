@@ -208,10 +208,12 @@ public:
                     case SDLK_a:
                        zoom -= 1.0f;
                        if (zoom < 10.0f) zoom = 10.0f; 
+                       outsideFOV = zoom;
                     break;
                     case SDLK_s:
                        zoom += 1.0f;
                         if (zoom > 90.0f) zoom = 90.0f; 
+                        outsideFOV = zoom;
                     break;
                     case SDLK_k:
                         std::get<0>(light) += stepSize; 
@@ -249,7 +251,7 @@ public:
 private:
     bool insideCube = false;
     glm::vec3 outsideCameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
-    float outsideFOV = 45.0f;
+    float outsideFOV = zoom;
 };
 
 class MainWindow : public gl::GLWindow {
