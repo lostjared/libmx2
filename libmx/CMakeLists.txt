@@ -197,6 +197,7 @@ if(EXAMPLES)
     add_subdirectory(gl_glitch_cube)
     add_subdirectory(gl_glitch_cube2)
     add_subdirectory(gl_ship)
+    add_subdirectory(gl_texture_map)
   endif()
 
 #disable for now
