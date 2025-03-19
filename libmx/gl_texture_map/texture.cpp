@@ -1,3 +1,4 @@
+#define NO_TEXT
 #include"mx.hpp"
 #include"argz.hpp"
 
@@ -274,6 +275,8 @@ public:
         float deltaTime = (currentTime - lastUpdateTime) / 1000.0f; 
         lastUpdateTime = currentTime;
         
+        update(deltaTime);
+        
         static float time_f = 0.0f;
         time_f += deltaTime;
 
@@ -316,13 +319,13 @@ public:
         shader_program.setUniform("lightColor", glm::vec3(1.2f, 1.2f, 1.2f)); 
         shader_program.setUniform("time", time_f);
         model.drawArrays();
-
+#ifndef NO_TEXT
         win->text.setColor({255,255,255,255});
         win->text.printText_Solid(font, 10, 10, "Up/Down: Zoom: " + std::to_string(zoom));
         win->text.printText_Solid(font, 10, 40, "S/D: Shininess: " + std::to_string(shininess));
         win->text.printText_Solid(font, 10, 70, "B/V: Specular Strength: " + std::to_string(specularStrength));
-        win->text.printText_Solid(font, 10, 100, "Left/Right: Camera Angle: " + 
-            std::to_string((int)(cameraAngle * 180.0f / M_PI) % 360) + " degrees");
+        win->text.printText_Solid(font, 10, 100, "Left/Right: Camera Angle: " + std::to_string((int)(cameraAngle * 180.0f / M_PI) % 360) + " degrees");
+#endif
 
     }
     
@@ -335,7 +338,6 @@ public:
                     zoom -= 2.0f;
                     if (zoom <= 0.0f) zoom = 1.0f; 
                     break;
-
                     
                 case SDLK_DOWN:
                 case SDLK_MINUS:
@@ -367,25 +369,26 @@ public:
                     specularStrength -= 0.1f;
                     if (specularStrength < 0.1f) specularStrength = 0.1f;
                     break;
-                    
-                case SDLK_LEFT:
-                    cameraAngle += 0.1f;
-                    if (cameraAngle > 2.0f * M_PI)
-                        cameraAngle -= 2.0f * M_PI; 
-                    break;
-                    
-                case SDLK_RIGHT:
-                    cameraAngle -= 0.1f; 
-                    if (cameraAngle < 0.0f)
-                        cameraAngle += 2.0f * M_PI; 
-                    break;
-            }
+               }
         }
     }
     
     void update(float deltaTime) {
         if(deltaTime > 0.1f) {
             deltaTime = 0.1f;
+        }
+        const Uint8* keyState = SDL_GetKeyboardState(NULL);
+        float rotationSpeed = 2.0f; 
+        if (keyState[SDL_SCANCODE_LEFT]) {
+            cameraAngle += rotationSpeed * deltaTime;
+            if (cameraAngle > 2.0f * M_PI)
+                cameraAngle -= 2.0f * M_PI;
+        }
+        
+        if (keyState[SDL_SCANCODE_RIGHT]) {
+            cameraAngle -= rotationSpeed * deltaTime;
+            if (cameraAngle < 0.0f)
+                cameraAngle += 2.0f * M_PI;
         }
     }
 private:
@@ -432,7 +435,7 @@ int main(int argc, char **argv) {
 #ifdef __EMSCRIPTEN__
     try {
         MainWindow main_window("", 1920, 1080);
-        main_w =&main_window;
+        main_w = &main_window;
         emscripten_set_main_loop(eventProc, 0, 1);
     } catch(const mx::Exception &e) {
         mx::system_err << "mx: Exception: " << e.text() << "\n";
