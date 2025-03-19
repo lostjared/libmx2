@@ -1,4 +1,3 @@
-#define NO_TEXT
 #include"mx.hpp"
 #include"argz.hpp"
 
@@ -235,12 +234,43 @@ void main() {
 #endif
 
 class Game : public gl::GLObject {
-public:
+    
+    struct Rotation {
+        float x = 0.0f;
+        float y = 0.0f;
+        float z = 0.0f;
+
+        void flip() {
+            flip_f(x);
+            flip_f(y);
+            flip_f(z);
+        }
+        void flipX() {
+            flip_f(x);
+        }
+        void flipY() {
+            flip_f(y);
+        }
+        void flipZ() {
+            flip_f(z);
+        }
+
+        void flip_f(float &f) {
+            if(f == 0.0f)
+                f = 1.0f;
+            else
+                f = 0.0f;
+        }
+    };
+
+    Rotation rotation;
+
+    public:
     Game() = default;
     virtual ~Game() override {}
 
     void load(gl::GLWindow *win) override {
-        font.loadFont(win->util.getFilePath("data/font.ttf"), 36);
+        font.loadFont(win->util.getFilePath("data/font.ttf"), 30);
         if(!shader_program.loadProgramFromText(vSource, fSource)) {
             throw mx::Exception("Failed to load shader program");
         }
@@ -283,9 +313,9 @@ public:
         
         glm::mat4 model_matrix = glm::mat4(1.0f);
         model_matrix = glm::scale(model_matrix, glm::vec3(0.5f, 0.5f, 0.5f));
-        model_matrix = glm::rotate(model_matrix, (float)(currentTime / 1000.0f), glm::vec3(1.0f, 1.0f, 0.0f));
-        
-        
+        if(rotation.x != 0.0f || rotation.y != 0.0f || rotation.z != 0.0f)
+            model_matrix = glm::rotate(model_matrix, (float)(currentTime / 1000.0f), glm::vec3(rotation.x, rotation.y, rotation.z));
+
         float cameraDistance = 5.0f; 
         float cameraX = cameraDistance * sin(cameraAngle);
         float cameraZ = cameraDistance * cos(cameraAngle);
@@ -310,23 +340,22 @@ public:
         shader_program.setUniform("specularStrength", 1.2f);   
         shader_program.setUniform("shininess", 128.0f);
         
-
         float lightX = 3.0f * sin(currentTime / 1000.0f);
         float lightZ = 3.0f * cos(currentTime / 1000.0f);
         shader_program.setUniform("lightPos", glm::vec3(lightX, 2.0f, lightZ + 2.0f));
-
-        
         shader_program.setUniform("lightColor", glm::vec3(1.2f, 1.2f, 1.2f)); 
         shader_program.setUniform("time", time_f);
         model.drawArrays();
-#ifndef NO_TEXT
-        win->text.setColor({255,255,255,255});
-        win->text.printText_Solid(font, 10, 10, "Up/Down: Zoom: " + std::to_string(zoom));
-        win->text.printText_Solid(font, 10, 40, "S/D: Shininess: " + std::to_string(shininess));
-        win->text.printText_Solid(font, 10, 70, "B/V: Specular Strength: " + std::to_string(specularStrength));
-        win->text.printText_Solid(font, 10, 100, "Left/Right: Camera Angle: " + std::to_string((int)(cameraAngle * 180.0f / M_PI) % 360) + " degrees");
-#endif
 
+        if(show_menu) {
+            win->text.setColor({255,255,255,255});
+            win->text.printText_Solid(font, 10, 10, "Up/Down Keys: Zoom: " + std::to_string(zoom));
+            win->text.printText_Solid(font, 10, 40, "S/D Keys: Shininess: " + std::to_string(shininess));
+            win->text.printText_Solid(font, 10, 70, "B/V Keys: Specular Strength: " + std::to_string(specularStrength));
+            win->text.printText_Solid(font, 10, 100, "Left/Right Keys: Camera Angle: " + std::to_string((int)(cameraAngle * 180.0f / M_PI) % 360) + " degrees");
+            win->text.printText_Solid(font, 10, 130, "X,Y,Z Keys: Rotation: X: " + std::to_string((int)rotation.x) + " Y: " + std::to_string((int)rotation.y) + " Z: " + std::to_string((int)rotation.z));  
+            win->text.printText_Solid(font, 10, 160, "Press Space to hide menu");   
+        }
     }
     
     void event(gl::GLWindow *win, SDL_Event &e) override {
@@ -337,7 +366,7 @@ public:
                 case SDLK_KP_PLUS:
                     zoom -= 2.0f;
                     if (zoom <= 0.0f) zoom = 1.0f; 
-                    break;
+                break;
                     
                 case SDLK_DOWN:
                 case SDLK_MINUS:
@@ -349,7 +378,9 @@ public:
                 case SDLK_RETURN:
                     zoom = 45.0f;
                     break;
-
+                case SDLK_SPACE:
+                    show_menu = !show_menu;
+                    break;
                 
                 case SDLK_s:
                     shininess *= 1.5f;
@@ -369,6 +400,19 @@ public:
                     specularStrength -= 0.1f;
                     if (specularStrength < 0.1f) specularStrength = 0.1f;
                     break;
+                case SDLK_x:
+                    rotation.flipX();
+                    break;
+                case SDLK_y:
+                    rotation.flipY();
+                    break;
+                case SDLK_z:
+                    rotation.flipZ();
+                    break;
+                case SDLK_a:
+                    rotation.flip();
+                    break;
+
                }
         }
     }
@@ -400,6 +444,7 @@ private:
     float shininess = 128.0f;
     float specularStrength = 1.2f; 
     float cameraAngle = 0.0f; 
+    bool show_menu = true;
 };
 
 class MainWindow : public gl::GLWindow {
