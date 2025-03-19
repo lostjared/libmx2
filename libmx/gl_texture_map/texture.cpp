@@ -28,39 +28,77 @@ in vec3 Normal;
 in vec2 TexCoord;
 
 uniform sampler2D texture1;
+uniform vec2 iResolution;
+uniform float time;
+uniform vec3 viewPos;    
+uniform vec3 lightPos;   
+uniform vec3 lightColor; 
 
+uniform float ambientStrength; 
+uniform float diffuseStrength; 
+uniform float specularStrength; 
+uniform float shininess;        
 
-uniform vec3 viewPos = vec3(0.0, 0.0, 5.0); // Camera position
-uniform vec3 lightPos = vec3(3.0, 3.0, 5.0); // Light position
-uniform vec3 lightColor = vec3(1.0, 1.0, 1.0); // White light
-
-
-uniform float ambientStrength = 0.3;
-uniform float diffuseStrength = 0.7;
-uniform float specularStrength = 0.5;
-uniform float shininess = 32.0;
 
 out vec4 FragColor;
 
-void main() {
+vec4 distort(vec2 tc, sampler2D samp, float time_f) {
+    vec2 normPos = (gl_FragCoord.xy / iResolution.xy) * 2.0 - 1.0;
+    float dist = length(normPos);
+    float phase = sin(dist * 10.0 - time_f * 4.0);
+    vec2 tcAdjusted = tc + (normPos * 0.305 * phase);
+    float dispersionScale = 0.02;
+    vec2 dispersionOffset = normPos * dist * dispersionScale;
+    vec2 tcAdjustedR = tcAdjusted + dispersionOffset * (-1.0);
+    vec2 tcAdjustedG = tcAdjusted;
+    vec2 tcAdjustedB = tcAdjusted + dispersionOffset * 1.0;
+    float r = texture(samp, tcAdjustedR).r;
+    float g = texture(samp, tcAdjustedG).g;
+    float b = texture(samp, tcAdjustedB).b;
+    vec4 color;
+    color = vec4(r, g, b, 1.0);
+    return color;
+}
+    
+vec4 distort2(vec2 tc, sampler2D samp, float time_f) {
+    float rippleSpeed = 5.0;
+    float rippleAmplitude = 0.03;
+    float rippleWavelength = 10.0;
+    float twistStrength = 1.0;
+    float radius = length(tc - vec2(0.5, 0.5));
+    float ripple = sin(tc.x * rippleWavelength + time_f * rippleSpeed) * rippleAmplitude;
+    ripple += sin(tc.y * rippleWavelength + time_f * rippleSpeed) * rippleAmplitude;
+    vec2 rippleTC = tc + vec2(ripple, ripple);
+    float angle = twistStrength * (radius - 1.0) + time_f;
+    float cosA = cos(angle);
+    float sinA = sin(angle);
+    mat2 rotationMatrix = mat2(cosA, -sinA, sinA, cosA);
+    vec2 twistedTC = (rotationMatrix * (tc - vec2(0.5, 0.5))) + vec2(0.5, 0.5);
+    vec4 originalColor = texture(samp, tc);
+    return originalColor;
+}
 
+void main() {
     vec4 texColor = texture(texture1, TexCoord);
     vec3 ambient = ambientStrength * lightColor;
     vec3 norm = normalize(Normal);
     vec3 lightDir = normalize(lightPos - FragPos);
     float diff = max(dot(norm, lightDir), 0.0);
     vec3 diffuse = diffuseStrength * diff * lightColor;
-    
     vec3 viewDir = normalize(viewPos - FragPos);
     vec3 halfwayDir = normalize(lightDir + viewDir);
     float spec = pow(max(dot(norm, halfwayDir), 0.0), shininess);
     vec3 specular = specularStrength * spec * lightColor;
-    
     float distance = length(lightPos - FragPos);
     float attenuation = 1.0 / (1.0 + 0.09 * distance + 0.032 * distance * distance);
-    
     vec3 lighting = (ambient + diffuse + specular) * attenuation;
-    FragColor = vec4(lighting * texColor.rgb, texColor.a);
+    
+    vec4 ctx = distort(TexCoord, texture1, time);
+    
+    vec4 litTexture = vec4(lighting * texColor.rgb, texColor.a);
+    FragColor = mix(ctx, litTexture, 0.5);
+    vec4 secondDistortion = distort2(TexCoord, texture1, time);
+    FragColor = FragColor + secondDistortion * 0.3; // Reduced effect strength
 }
 )";
 
@@ -99,14 +137,14 @@ in vec2 TexCoord;
 uniform sampler2D texture1;
 uniform vec2 iResolution;
 uniform float time;
-uniform vec3 viewPos = vec3(0.0, 0.0, 5.0); // Camera position
-uniform vec3 lightPos = vec3(3.0, 3.0, 5.0); // Light position
-uniform vec3 lightColor = vec3(1.0, 1.0, 1.0); // White light
+uniform vec3 viewPos;    
+uniform vec3 lightPos;   
+uniform vec3 lightColor; 
 
-uniform float ambientStrength = 0.3;
-uniform float diffuseStrength = 0.7;
-uniform float specularStrength = 0.5;
-uniform float shininess = 32.0;
+uniform float ambientStrength;
+uniform float diffuseStrength;
+uniform float specularStrength;
+uniform float shininess;       
 
 
 out vec4 FragColor;
@@ -219,6 +257,14 @@ public:
         model.setShaderProgram(&shader_program, "texture1");
         shader_program.useProgram();
         glUniform2f(glGetUniformLocation(shader_program.id(), "iResolution"), win->w, win->h);
+        
+        shader_program.setUniform("viewPos", glm::vec3(0.0f, 0.0f, 5.0f));
+        shader_program.setUniform("lightPos", glm::vec3(3.0f, 3.0f, 5.0f));
+        shader_program.setUniform("lightColor", glm::vec3(1.0f, 1.0f, 1.0f));
+        shader_program.setUniform("ambientStrength", 0.4f);
+        shader_program.setUniform("diffuseStrength", 0.9f);
+        shader_program.setUniform("specularStrength", 1.2f);
+        shader_program.setUniform("shininess", 128.0f);
     }
 
     void draw(gl::GLWindow *win) override {
@@ -236,10 +282,16 @@ public:
         model_matrix = glm::scale(model_matrix, glm::vec3(0.5f, 0.5f, 0.5f));
         model_matrix = glm::rotate(model_matrix, (float)(currentTime / 1000.0f), glm::vec3(1.0f, 1.0f, 0.0f));
         
+        
+        float cameraDistance = 5.0f; 
+        float cameraX = cameraDistance * sin(cameraAngle);
+        float cameraZ = cameraDistance * cos(cameraAngle);
+        
+        
         glm::mat4 view_matrix = glm::lookAt(
-            glm::vec3(0.0f, 0.0f, 5.0f),
-            glm::vec3(0.0f, 0.0f, 0.0f),
-            glm::vec3(0.0f, 1.0f, 0.0f)
+            glm::vec3(cameraX, 0.0f, cameraZ), 
+            glm::vec3(0.0f, 0.0f, 0.0f),       
+            glm::vec3(0.0f, 1.0f, 0.0f)        
         );
         
         float aspectRatio = static_cast<float>(win->w) / static_cast<float>(win->h);
@@ -269,6 +321,8 @@ public:
         win->text.printText_Solid(font, 10, 10, "Up/Down: Zoom: " + std::to_string(zoom));
         win->text.printText_Solid(font, 10, 40, "S/D: Shininess: " + std::to_string(shininess));
         win->text.printText_Solid(font, 10, 70, "B/V: Specular Strength: " + std::to_string(specularStrength));
+        win->text.printText_Solid(font, 10, 100, "Left/Right: Camera Angle: " + 
+            std::to_string((int)(cameraAngle * 180.0f / M_PI) % 360) + " degrees");
 
     }
     
@@ -279,7 +333,7 @@ public:
                 case SDLK_PLUS:
                 case SDLK_KP_PLUS:
                     zoom -= 2.0f;
-                    if (zoom < 2.0f) zoom = 2.0f; 
+                    if (zoom <= 0.0f) zoom = 1.0f; 
                     break;
 
                     
@@ -313,6 +367,18 @@ public:
                     specularStrength -= 0.1f;
                     if (specularStrength < 0.1f) specularStrength = 0.1f;
                     break;
+                    
+                case SDLK_LEFT:
+                    cameraAngle += 0.1f;
+                    if (cameraAngle > 2.0f * M_PI)
+                        cameraAngle -= 2.0f * M_PI; 
+                    break;
+                    
+                case SDLK_RIGHT:
+                    cameraAngle -= 0.1f; 
+                    if (cameraAngle < 0.0f)
+                        cameraAngle += 2.0f * M_PI; 
+                    break;
             }
         }
     }
@@ -330,6 +396,7 @@ private:
     Uint32 lastUpdateTime = SDL_GetTicks();
     float shininess = 128.0f;
     float specularStrength = 1.2f; 
+    float cameraAngle = 0.0f; 
 };
 
 class MainWindow : public gl::GLWindow {
@@ -363,9 +430,15 @@ void eventProc() {
 
 int main(int argc, char **argv) {
 #ifdef __EMSCRIPTEN__
-    MainWindow main_window("/", 960, 720);
-    main_w =&main_window;
-    emscripten_set_main_loop(eventProc, 0, 1);
+    try {
+        MainWindow main_window("", 1920, 1080);
+        main_w =&main_window;
+        emscripten_set_main_loop(eventProc, 0, 1);
+    } catch(const mx::Exception &e) {
+        mx::system_err << "mx: Exception: " << e.text() << "\n";
+        mx::system_err.flush();
+        exit(EXIT_FAILURE);
+    }
 #else
     Arguments args = proc_args(argc, argv);
     try {
