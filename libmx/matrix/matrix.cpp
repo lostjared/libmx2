@@ -19,7 +19,7 @@ public:
 
 
     virtual void draw(mx::mxWindow* win) override {
-        createMatrixRain(win->renderer, the_font.wrapper().unwrap(), 640, 480);
+        createMatrixRain(win->renderer, the_font.wrapper().unwrap(), 1920, 1080);
     }
 
     virtual void event(mx::mxWindow* win, SDL_Event& e) override {
@@ -208,7 +208,7 @@ class MainWindow : public mx::mxWindow {
 public:
     
     MainWindow(std::string path, int tw, int th) : mx::mxWindow("Matrix", tw, th, false) {
-        tex.createTexture(this, 640, 480);
+        tex.createTexture(this, 1920, 1080);
       	setPath(path);
         setObject(new Intro());
 		object->load(this);
@@ -265,7 +265,7 @@ int main(int argc, char **argv) {
     Argument<std::string> arg;
     std::string path;
     int value = 0;
-    int tw = 1440, th = 1080;
+    int tw = 1920, th = 1080;
     try {
         while((value = parser.proc(arg)) != -1) {
             switch(value) {
