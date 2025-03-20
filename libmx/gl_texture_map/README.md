@@ -1,4 +1,6 @@
 
-# OpenGL Example
+# Crystal Star Demo
 
-OpenGL Skeleton
+OpenGL Crystal Star Demo
+
+https://lostsidedead.biz/CrystalStar
