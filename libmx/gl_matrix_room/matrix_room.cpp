@@ -18,7 +18,7 @@ printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
 #define M_PI 3.14159265358979323846
 #endif
 
-
+#ifdef __EMSCRIPTEN__
 const char *vSource = R"(#version 300 es
 precision highp float;
 
@@ -87,7 +87,74 @@ void main() {
     FragColor = vec4(result, texColor.a);
 }
 )";
+#else
+const char *vSource = R"(#version 330 core
 
+layout(location = 0) in vec3 aPos;
+layout(location = 1) in vec3 aNormal;
+layout(location = 2) in vec2 aTexCoord;
+
+uniform mat4 model;
+uniform mat4 view;
+uniform mat4 projection;
+
+out vec3 FragPos;
+out vec3 Normal;
+out vec2 TexCoord;
+
+void main() {
+    FragPos = vec3(model * vec4(aPos, 1.0));
+    Normal = mat3(transpose(inverse(model))) * aNormal;
+    TexCoord = aTexCoord;
+    gl_Position = projection * view * model * vec4(aPos, 1.0);
+}
+)";
+
+const char *fSource = R"(#version 330 core
+
+in vec3 FragPos;
+in vec3 Normal;
+in vec2 TexCoord;
+
+uniform sampler2D texture1;
+uniform float time;
+uniform vec3 viewPos;
+
+out vec4 FragColor;
+
+void main() {
+
+    vec3 lightDir = normalize(vec3(1.0, 1.0, 1.0));
+    vec3 norm = normalize(Normal);
+    float diff = max(dot(norm, lightDir), 0.0);
+    
+
+    vec2 animatedTexCoord = TexCoord;
+    animatedTexCoord.y += sin(time * 0.5 + TexCoord.x * 10.0) * 0.02;
+    
+
+    vec4 texColor = texture(texture1, animatedTexCoord);
+    
+
+    vec3 ambient = 0.7 * texColor.rgb;
+    vec3 diffuse = diff * 0.7 * texColor.rgb;
+    
+
+    vec3 viewDir = normalize(viewPos - FragPos);
+    vec3 reflectDir = reflect(-lightDir, norm);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 16.0);
+    vec3 specular = 0.2 * spec * vec3(0.0, 1.0, 0.0); // Green specular highlight
+    
+
+    float brightness = dot(texColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+    float glow = smoothstep(0.6, 1.0, brightness) * 0.5;
+
+    vec3 result = ambient + diffuse + specular + vec3(0.0, glow, 0.0);
+    
+    FragColor = vec4(result, texColor.a);
+}
+)";
+#endif
 class Matrix {
 
 public:
@@ -387,8 +454,8 @@ public:
             int dx = tapX - lastTapX;
             int dy = tapY - lastTapY;
             int distanceSquared = dx*dx + dy*dy;
-            
-            if (currentTime - lastTapTime < DOUBLE_TAP_TIME && 
+        
+            if (static_cast<int>(currentTime - lastTapTime) < DOUBLE_TAP_TIME && 
                 distanceSquared < DOUBLE_TAP_DISTANCE * DOUBLE_TAP_DISTANCE) {
                 
                 insideCube = !insideCube;
