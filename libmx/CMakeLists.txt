@@ -200,6 +200,7 @@ if(EXAMPLES)
     add_subdirectory(gl_texture_map)
     add_subdirectory(gl_matrix_room)
     add_subdirectory(gl_matrix_glitch)
+    add_subdirectory(gl_matrix_psyche)
   endif()
 
 #disable for now
