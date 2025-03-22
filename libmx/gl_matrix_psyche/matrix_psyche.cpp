@@ -6,6 +6,7 @@
 #include <GLES3/gl3.h>
 #endif
 #include<random>
+#include<deque>
 #include"gl.hpp"
 #include"loadpng.hpp"
 #include"model.hpp"
@@ -245,6 +246,8 @@ class Matrix {
 public:
     mx::Font the_font;
     std::unordered_map<std::string, SDL_Surface*> char_textures;
+    const size_t MAX_CACHE_SIZE = 1000; 
+    std::deque<std::string> cache_access_order; 
     Matrix() = default;
     ~Matrix() {
         for(auto &it : char_textures) {
@@ -392,13 +395,26 @@ public:
                                       std::to_string(color.a);
 
                 if (char_textures.find(cache_key) == char_textures.end()) {
+                    if (char_textures.size() >= MAX_CACHE_SIZE && !cache_access_order.empty()) {
+                        std::string oldest_key = cache_access_order.front();
+                        cache_access_order.pop_front();
+                        SDL_FreeSurface(char_textures[oldest_key]);
+                        char_textures.erase(oldest_key);
+                    }
+                    
                     char_surface = TTF_RenderUTF8_Blended(font, random_char.c_str(), color);
                     if (char_surface) {
                         char_textures[cache_key] = char_surface;
+                        cache_access_order.push_back(cache_key);
                     } else {
                         continue; 
                     }
                 } else {
+                    auto it = std::find(cache_access_order.begin(), cache_access_order.end(), cache_key);
+                    if (it != cache_access_order.end()) {
+                        cache_access_order.erase(it);
+                    }
+                    cache_access_order.push_back(cache_key);
                     char_surface = char_textures[cache_key];
                 }
 
