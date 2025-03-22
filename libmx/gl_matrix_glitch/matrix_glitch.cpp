@@ -1,3 +1,4 @@
+
 #include"mx.hpp"
 #include"argz.hpp"
 
@@ -311,7 +312,7 @@ public:
         SDL_Surface *surf = matrix.createMatrixRain(matrix.the_font.wrapper().unwrap(), 1440, 1080); 
         glGenTextures(1, &texture);
         glBindTexture(GL_TEXTURE_2D, texture);
-        glTexSubImage2D(GL_TEXTURE_2D, 0, GL_RGBA, surf->w, surf->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, surf->pixels);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, surf->w, surf->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, surf->pixels);
         glGenerateMipmap(GL_TEXTURE_2D);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -336,8 +337,7 @@ public:
         SDL_Surface *matrix_surface = matrix.createMatrixRain(matrix.the_font.wrapper().unwrap(), 1440, 1080);
         mx::Texture::flipSurface(matrix_surface);
         glBindTexture(GL_TEXTURE_2D, texture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, matrix_surface->w, matrix_surface->h, 0, 
-                    GL_RGBA, GL_UNSIGNED_BYTE, matrix_surface->pixels);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, matrix_surface->w, matrix_surface->h, GL_RGBA, GL_UNSIGNED_BYTE, matrix_surface->pixels);
         glGenerateMipmap(GL_TEXTURE_2D);
 
         
