@@ -1,4 +1,3 @@
-
 #include"mx.hpp"
 #include"argz.hpp"
 
@@ -18,7 +17,7 @@ printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
-
+#include<list>
 
 
 #ifdef __EMSCRIPTEN__
@@ -149,6 +148,8 @@ class Matrix {
 public:
     mx::Font the_font;
     std::unordered_map<std::string, SDL_Surface*> char_textures;
+    std::list<std::string> cache_access_order;
+    const size_t MAX_CACHE_SIZE = 1000;
     Matrix() = default;
     ~Matrix() {
         for(auto &it : char_textures) {
@@ -264,13 +265,26 @@ public:
                                        std::to_string(color.a);
                 
                 if (char_surfaces.find(cache_key) == char_surfaces.end()) {
+                    if (char_surfaces.size() >= MAX_CACHE_SIZE && !cache_access_order.empty()) {
+                        std::string oldest_key = cache_access_order.front();
+                        cache_access_order.pop_front();
+                        SDL_FreeSurface(char_surfaces[oldest_key]);
+                        char_surfaces.erase(oldest_key);
+                    }
+                    
                     char_surface = TTF_RenderUTF8_Blended(font, random_char.c_str(), color);
                     if (char_surface) {
                         char_surfaces[cache_key] = char_surface;
+                        cache_access_order.push_back(cache_key);
                     } else {
                         continue; 
                     }
                 } else {
+                    auto it = std::find(cache_access_order.begin(), cache_access_order.end(), cache_key);
+                    if (it != cache_access_order.end()) {
+                        cache_access_order.erase(it);
+                    }
+                    cache_access_order.push_back(cache_key);
                     char_surface = char_surfaces[cache_key];
                 }
                 
