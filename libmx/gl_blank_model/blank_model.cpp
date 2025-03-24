@@ -19,7 +19,58 @@ printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
 #define M_PI 3.14159265358979323846
 #endif
 
-// Basic shader for textured model with rotation
+#ifdef __EMSCRIPTEN__
+const char *vSource = R"(#version 300 es
+precision highp float;
+
+layout (location = 0) in vec3 aPos;
+layout (location = 1) in vec3 aNormal;
+layout (location = 2) in vec2 aTexCoord;
+
+out vec2 TexCoord;
+out vec3 Normal;
+out vec3 FragPos;
+
+uniform mat4 model;
+uniform mat4 view;
+uniform mat4 projection;
+
+void main()
+{
+    FragPos = vec3(model * vec4(aPos, 1.0));
+    Normal = mat3(transpose(inverse(model))) * aNormal;
+    TexCoord = aTexCoord;
+    gl_Position = projection * view * model * vec4(aPos, 1.0);
+}
+)";
+
+const char *fSource = R"(#version 300 es
+precision highp float;
+
+in vec2 TexCoord;
+in vec3 Normal;
+in vec3 FragPos;
+
+out vec4 FragColor;
+
+uniform sampler2D texture1;
+
+void main()
+{
+    vec4 texColor = texture(texture1, TexCoord);
+    
+    // Basic lighting
+    vec3 lightDir = normalize(vec3(1.0, 1.0, 1.0));
+    vec3 norm = normalize(Normal);
+    float diff = max(dot(norm, lightDir), 0.0);
+    vec3 diffuse = diff * vec3(1.0, 1.0, 1.0);
+    vec3 ambient = vec3(0.3, 0.3, 0.3);
+    
+    vec3 result = (ambient + diffuse) * texColor.rgb;
+    FragColor = vec4(result, texColor.a);
+}
+)";
+#else
 const char *vSource = R"(#version 330 core
 
 layout (location = 0) in vec3 aPos;
@@ -68,7 +119,7 @@ void main()
     FragColor = vec4(result, texColor.a);
 }
 )";
-
+#endif
 class Game : public gl::GLObject {
 public:
     Game() = default;
