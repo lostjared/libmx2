@@ -201,6 +201,7 @@ if(EXAMPLES)
     add_subdirectory(gl_matrix_room)
     add_subdirectory(gl_matrix_glitch)
     add_subdirectory(gl_matrix_psyche)
+    add_subdirectory(gl_blank_model)
   endif()
 
 #disable for now
