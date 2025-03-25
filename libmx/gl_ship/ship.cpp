@@ -1,3 +1,4 @@
+
 #include"mx.hpp"
 #include"argz.hpp"
 
@@ -725,125 +726,125 @@ void main() {
     }
 
     void update(float deltaTime) {
-
         static float time_f = 0.0f;
         time_f += deltaTime;
-
+    
         shader.useProgram();
         shader.setUniform("time_f", time_f);
-
-        int newActiveCount = 0;
+    
+        activeParticles = 0;
+    
         for (auto& p : particles) {
             if (!p.active) continue;
-            
+    
             p.x += p.vx * deltaTime;
             p.y += p.vy * deltaTime;
             p.z += p.vz * deltaTime;
-            
-            p.vy -= 0.5f * deltaTime;
-            p.vx *= 0.99f;  
-            p.vz *= 0.99f;  
-            
+    
+            // gravity-like acceleration downward
+            p.vy -= 0.8f * deltaTime;
+    
+            // particles slow down dramatically over time
+            p.vx *= 0.90f;
+            p.vy *= 0.90f;
+            p.vz *= 0.90f;
+    
             p.life -= deltaTime;
-            
+    
             float lifeRatio = p.life / p.maxLife;
-            p.size = p.size * 0.99f;
-            if (lifeRatio < 0.7f) {
-                p.intensity = lifeRatio / 0.7f;
+    
+            // Dramatic dissolve: Shrink faster and fade quicker
+            p.size *= 0.99f;
+    
+            if (lifeRatio < 0.6f) {
+                p.intensity = lifeRatio / 0.6f;
             }
-            
-            if (p.life <= 0.0) {
+    
+            if (p.life <= 0.0f || p.size < 0.1f || p.intensity < 0.05f) {
                 p.active = false;
             } else {
-                newActiveCount++; 
+                activeParticles++;
             }
         }
-        activeParticles = newActiveCount; 
-        if(activeParticles < 100)
-            reset();
     }
+    
 
     
     void draw(gl::GLWindow *win) {
         if (activeParticles == 0) return;
-        
+    
         std::vector<float> particleData;
         particleData.reserve(activeParticles * 5);
-        
         for (const auto& p : particles) {
             if (!p.active) continue;
-            
             particleData.push_back(p.x);
             particleData.push_back(p.y);
             particleData.push_back(p.z);
             particleData.push_back(p.size);
             particleData.push_back(p.intensity);
         }
-        
     
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-        
-    
         glDepthMask(GL_FALSE);
-        
+    
         shader.useProgram();
-        
-        glUniformMatrix4fv(glGetUniformLocation(shader.id(), "projection"), 1, GL_FALSE, 
-                           glm::value_ptr(projectionMatrix));
-        glUniformMatrix4fv(glGetUniformLocation(shader.id(), "view"), 1, GL_FALSE, 
-                           glm::value_ptr(viewMatrix));
-        
+        shader.setUniform("projection", projectionMatrix);
+        shader.setUniform("view", viewMatrix);
+    
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, textureID); 
-        glUniform1i(glGetUniformLocation(shader.id(), "particleTexture"), 0);
-        
+        shader.setUniform("particleTexture", 0);
+    
         glBindVertexArray(vao);
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
         glBufferSubData(GL_ARRAY_BUFFER, 0, particleData.size() * sizeof(float), particleData.data());
-#ifndef __EMSCRIPTEN__
+    
+    #ifndef __EMSCRIPTEN__
         glEnable(GL_PROGRAM_POINT_SIZE);
-#endif
+    #endif
+    
         glDrawArrays(GL_POINTS, 0, activeParticles);
-#ifndef __EMSCRIPTEN__
+    
+    #ifndef __EMSCRIPTEN__
         glDisable(GL_PROGRAM_POINT_SIZE);
-#endif
-        
+    #endif
+    
         glBindVertexArray(0);
         glDepthMask(GL_TRUE);
         glDisable(GL_BLEND);
     }
+    
 
     
     void explode() {
         activeParticles = 0;
         for (auto& p : particles) {
-            if (activeParticles >= MAX_PARTICLES) break;  
-            
-            float radius = generateRandomFloat(0.1f, 0.5f);
+            if (activeParticles >= MAX_PARTICLES) break;
+    
+            p.x = position.x;
+            p.y = position.y;
+            p.z = position.z;
+    
             float theta = generateRandomFloat(0.0f, 2.0f * M_PI);
             float phi = generateRandomFloat(0.0f, M_PI);
-            
-            
-            p.x = position.x + radius * sin(phi) * cos(theta);
-            p.y = position.y + radius * sin(phi) * sin(theta);
-            p.z = position.z + radius * cos(phi);
-            
-            float speed = generateRandomFloat(0.4f, 1.5f);  
+            float speed = generateRandomFloat(8.0f, 20.0f); 
+    
             p.vx = speed * sin(phi) * cos(theta);
             p.vy = speed * sin(phi) * sin(theta);
             p.vz = speed * cos(phi);
-            
-            
-            p.size = generateRandomFloat(1.0f, 5.0f);  
-            p.maxLife = generateRandomFloat(3.0f, 7.0f);
+    
+            p.size = generateRandomFloat(20.0f, 30.0f);  
+            p.maxLife = generateRandomFloat(3.0f, 6.0f); 
             p.life = p.maxLife;
-            p.intensity = 0.8f; 
+            p.intensity = 1.0f;
             p.active = true;
-            
+    
             activeParticles++;
         }
     }
+    
+    
     void reset() {
         activeParticles = 0;
         for (auto& p : particles) {
@@ -1150,10 +1151,253 @@ public:
         glDrawArrays(GL_POINTS, 0, static_cast<GLsizei>(exhaustParticles.size()));
     }
 };
+class Projectiles {
+    struct Projectile {
+        glm::vec3 position;
+        glm::vec3 velocity;
+        float life;
+        float maxLife;
+    };
+
+    std::vector<Projectile> projectiles;
+    GLuint projectileVAO = 0;
+    GLuint projectileVBO[3];
+    gl::ShaderProgram projectileShader;
+    glm::mat4 viewMatrix{1.0f};
+    glm::mat4 projectionMatrix{1.0f};
+
+public:
+    GLuint texture = 0;
+
+    ~Projectiles() {
+        if(projectileVAO != 0) glDeleteVertexArrays(1, &projectileVAO);
+        if(projectileVBO[0] != 0) glDeleteBuffers(3, projectileVBO);
+        if(texture != 0) glDeleteTextures(1, &texture);
+    }
+
+    void load(gl::GLWindow *win) {
+        const char* fullProjFrag = 
+#ifdef __EMSCRIPTEN__
+        R"(#version 300 es
+        precision highp float;
+        in float intensity;
+        out vec4 FragColor;
+        uniform sampler2D particleTexture;
+        uniform float time_f;
+        
+        void main() {
+            vec2 texCoord = gl_PointCoord;
+            vec4 texColor = texture(particleTexture, texCoord);
+            
+            vec3 color = vec3(0.2, 0.7, 1.0); // Blue energy
+            float alpha = texColor.a * intensity;
+            
+            float pulse = 0.8 + 0.2 * sin(time_f * 10.0);
+            color *= pulse;
+            
+            if (alpha < 0.05) discard;
+            
+            FragColor = vec4(color, alpha);
+        })";
+#else
+        R"(#version 330 core
+        in float intensity;
+        out vec4 FragColor;
+        uniform sampler2D particleTexture;
+        uniform float time_f;
+        
+        void main() {
+            vec2 texCoord = gl_PointCoord;
+            vec4 texColor = texture(particleTexture, texCoord);
+            
+            if(texColor.r < 0.1 && texColor.g < 0.1 && texColor.b < 0.1) discard;
+
+            vec3 color = vec3(1.0, 0.1, 0.2); 
+
+            float alpha = texColor.a * intensity;
+            
+            float pulse = 0.8 + 0.2 * sin(time_f * 10.0);
+            color *= pulse;
+            
+            if (alpha < 0.05) discard;
+            
+            FragColor = vec4(color, alpha);
+        })";
+#endif
+const char* fullProjVert =
+#ifdef __EMSCRIPTEN__
+        R"(#version 300 es
+        precision highp float;
+        layout (location = 0) in vec3 aPos;
+        layout (location = 1) in float aSize;
+        layout (location = 2) in float aIntensity;
+
+        uniform mat4 MVP;
+        out float intensity;
+
+        void main() {
+            gl_Position = MVP * vec4(aPos, 1.0);
+            gl_PointSize = aSize;
+            intensity = aIntensity;
+        })";
+#else
+        R"(#version 330 core
+        layout (location = 0) in vec3 aPos;
+        layout (location = 1) in float aSize;
+        layout (location = 2) in float aIntensity;
+
+        uniform mat4 MVP;
+        out float intensity;
+
+        void main() {
+            gl_Position = MVP * vec4(aPos, 1.0);
+            gl_PointSize = aSize;
+            intensity = aIntensity;
+        })";
+#endif
+
+        if (!projectileShader.loadProgramFromText(fullProjVert, fullProjFrag)) {
+            throw mx::Exception("Failed to load projectile shader program");
+        }
+
+        texture = gl::loadTexture(win->util.getFilePath("data/ember.png"));
+
+        glGenVertexArrays(1, &projectileVAO);
+        glGenBuffers(3, projectileVBO);
+        glBindVertexArray(projectileVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, projectileVBO[0]);
+        glBufferData(GL_ARRAY_BUFFER, 100 * 3 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+        glBindBuffer(GL_ARRAY_BUFFER, projectileVBO[1]);
+        glBufferData(GL_ARRAY_BUFFER, 100 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, 0, (void*)0);
+        glBindBuffer(GL_ARRAY_BUFFER, projectileVBO[2]);
+        glBufferData(GL_ARRAY_BUFFER, 100 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, 0, (void*)0);
+        glBindVertexArray(0);
+    }
+
+    void fire(const glm::vec3& position, const glm::vec3& direction, float speed = 50.0f) {
+        Projectile projectile;
+        projectile.position = position;
+        projectile.velocity = direction * speed;
+        projectile.life = 0.0f;
+        projectile.maxLife = 1.5f; 
+        projectiles.push_back(projectile);
+        
+        if (projectiles.size() > 100) {
+            projectiles.erase(projectiles.begin());
+        }
+    }
+
+    void setMatrices(const glm::mat4& view, const glm::mat4& projection) {
+        viewMatrix = view;
+        projectionMatrix = projection;
+    }
+
+    void draw(gl::GLWindow *win) {
+        if (projectiles.empty()) return;
+        
+        
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+        glDepthMask(GL_FALSE);
+        
+        
+        std::vector<float> positions;
+        std::vector<float> sizes;
+        std::vector<float> intensities;
+        
+        positions.reserve(projectiles.size() * 3);
+        sizes.reserve(projectiles.size());
+        intensities.reserve(projectiles.size());
+        
+        for (const auto& projectile : projectiles) {
+            positions.push_back(projectile.position.x);
+            positions.push_back(projectile.position.y);
+            positions.push_back(projectile.position.z);
+            
+        
+            float sizeMultiplier = 1.0f + (projectile.life / projectile.maxLife) * 0.5f;
+            sizes.push_back(32.0f * sizeMultiplier); 
+            
+        
+            float lifeFactor = 1.0f - (projectile.life / projectile.maxLife);
+            intensities.push_back(lifeFactor * lifeFactor); 
+        }
+        
+        
+        glBindBuffer(GL_ARRAY_BUFFER, projectileVBO[0]);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, positions.size() * sizeof(float), positions.data());
+        
+        glBindBuffer(GL_ARRAY_BUFFER, projectileVBO[1]);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, sizes.size() * sizeof(float), sizes.data());
+        
+        glBindBuffer(GL_ARRAY_BUFFER, projectileVBO[2]);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, intensities.size() * sizeof(float), intensities.data());
+        
+        projectileShader.useProgram();
+        float time_f = SDL_GetTicks() / 1000.0f;
+        projectileShader.setUniform("time_f", time_f);
+        
+        glm::mat4 MVP = projectionMatrix * viewMatrix;
+        projectileShader.setUniform("MVP", MVP);
+        projectileShader.setUniform("particleTexture", 0);
+        
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texture);
+
+#ifndef __EMSCRIPTEN__
+        glEnable(GL_PROGRAM_POINT_SIZE);
+#endif
+        
+        glBindVertexArray(projectileVAO);
+        glDrawArrays(GL_POINTS, 0, static_cast<GLsizei>(projectiles.size()));
+        
+#ifndef __EMSCRIPTEN__
+        glDisable(GL_PROGRAM_POINT_SIZE);
+#endif
+        glDepthMask(GL_TRUE);
+        glDisable(GL_BLEND);
+    }
+
+    void update(float deltaTime) {
+        for (auto& projectile : projectiles) {
+            projectile.position += projectile.velocity * deltaTime;
+            projectile.life += deltaTime;
+        }
+        
+        projectiles.erase(
+            std::remove_if(projectiles.begin(), projectiles.end(),
+                [](const Projectile& p) { return p.life >= p.maxLife; }),
+            projectiles.end()
+        );
+    }
     
+    bool checkCollision(const glm::vec3& position, float radius) {
+        for (auto it = projectiles.begin(); it != projectiles.end(); ) {
+            if (glm::length(it->position - position) < radius) {
+                it = projectiles.erase(it);
+                return true;
+            } else {
+                ++it;
+            }
+        }
+        return false;
+    }
+    
+    void clear() {
+        projectiles.clear();
+    }
+};
+
 class StarFighter {
 public:
     Exhaust exhaust;
+    Projectiles projectiles;
     GLuint exhaustTexture = 0;
     
     float minSpeed = 0.1f;
@@ -1196,6 +1440,7 @@ public:
         if (exhaustTexture == 0) {
             throw mx::Exception("Failed to load exhaust texture");
         }
+        projectiles.load(win);
     }
 
     void moveForward(float deltaTime) {
@@ -1281,6 +1526,7 @@ public:
         }
         
         exhaust.updateExhaustParticles(deltaTime);
+        projectiles.update(deltaTime);
     }
 
     void increaseSpeed(float deltaTime) {
@@ -1312,7 +1558,6 @@ public:
     }
     
     glm::mat4 getViewMatrix() {
-        
         return glm::lookAt(
             cameraPosition,                      
             position,                            
@@ -1321,10 +1566,7 @@ public:
     }
 
     void draw(gl::GLWindow *win, const glm::mat4& projection, const glm::vec3& lightPos) {
-        
-        glm::mat4 viewMatrix = getViewMatrix();
-        
-        
+        glm::mat4 viewMatrix = getViewMatrix();     
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE);
         glDepthMask(GL_FALSE);
@@ -1340,7 +1582,6 @@ public:
 #endif
         glDepthMask(GL_TRUE);
         glDisable(GL_BLEND);
-        
         
         shader.useProgram();
         
@@ -1358,8 +1599,20 @@ public:
         shader.setUniform("projection", projection);
         shader.setUniform("lightPos", lightPos);
         shader.setUniform("viewPos", cameraPosition);
-        
         model.drawArrays();
+        projectiles.setMatrices(viewMatrix, projection);
+        projectiles.draw(win);
+    }
+
+    void fireProjectile() {
+        glm::vec3 forward = glm::normalize(glm::vec3(
+            -sin(glm::radians(rotation.y)),
+            sin(glm::radians(rotation.x)),
+            -cos(glm::radians(rotation.y)) * cos(glm::radians(rotation.x))
+        ));
+        
+        glm::vec3 projectilePos = position + forward * 0.6f;
+        projectiles.fire(projectilePos, forward, 50.0f + currentSpeed);
     }
 
 protected:
@@ -1494,14 +1747,15 @@ public:
         
         
         if (!planet.isDestroyed) {
-            float distance = glm::length(ship.position - planet.position);
-            if (distance < planet.radius + 1.0f) { 
+            if (ship.projectiles.checkCollision(planet.position, planet.radius)) {
                 emiter.reset();
+                emiter.position = planet.position;
                 emiter.explode();
                 planet.isDestroyed = true;
             }
         }
-        
+
+        emiter.update(deltaTime);
         emiter.draw(win);
         win->text.setColor({255,255,255,255});
         win->text.printText_Solid(font,25.0f,25.0f, "Ship X,Y,Z: " + std::to_string(ship.position.x) + ", " + std::to_string(ship.position.y) + ", " + std::to_string(ship.position.z));
@@ -1543,11 +1797,9 @@ public:
             ship.pitch(1.0f, deltaTime); 
         }
         
-        if (state[SDL_SCANCODE_SPACE] && !spacePressed && !planet.isDestroyed) {
+        if (state[SDL_SCANCODE_SPACE] && !spacePressed) {
             spacePressed = true;
-            emiter.position = planet.position;
-            emiter.explode();
-            planet.isDestroyed = true;
+            ship.fireProjectile();
         } 
         else if (!state[SDL_SCANCODE_SPACE]) {
             spacePressed = false;
@@ -1563,19 +1815,11 @@ public:
     void event(gl::GLWindow *win, SDL_Event &e) override {
         switch(e.type) {
             case SDL_KEYDOWN:
-                if(e.key.keysym.sym == SDLK_SPACE) {
-                    emiter.explode();
-                }
                 break;
         }
         switch(e.type) {
             case SDL_KEYDOWN:
-                if(e.key.keysym.sym == SDLK_SPACE && !planet.isDestroyed) {
-                    emiter.position = planet.position;
-                    emiter.explode();
-                    planet.isDestroyed = true;
-                }
-                else if(e.key.keysym.sym == SDLK_RETURN && planet.isDestroyed) {
+                if(e.key.keysym.sym == SDLK_RETURN && planet.isDestroyed) {
                     planet.reset();
                     emiter.reset();
                 }
