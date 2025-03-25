@@ -1671,9 +1671,7 @@ public:
           scale(other.scale),
           time_f(other.time_f),
           isDestroyed(other.isDestroyed),
-          radius(other.radius),
-          model(std::move(other.model)),
-          shader(std::move(other.shader)) {}
+          radius(other.radius) {}
           
     Planet& operator=(Planet&& other) noexcept {
         if (this != &other) {
@@ -1684,8 +1682,6 @@ public:
             time_f = other.time_f;
             isDestroyed = other.isDestroyed;
             radius = other.radius;
-            model = std::move(other.model);
-            shader = std::move(other.shader);
         }
         return *this;
     }
@@ -1702,18 +1698,21 @@ public:
     float radius = 5.0f; 
 
     void load(gl::GLWindow *win) {
-        if(!model.openModel(win->util.getFilePath("data/saturn.mxmod.z"))) {
-                throw mx::Exception("Failed to load planet model");
+        static bool loaded = false;
+        if(loaded == false) {
+            model = std::make_unique<mx::Model>();
+            if(!model->openModel(win->util.getFilePath("data/saturn.mxmod.z"))) {
+                    throw mx::Exception("Failed to load planet model");
+            }
+            model->setTextures(win, win->util.getFilePath("data/planet.tex"), win->util.getFilePath("data"));
+            shader = std::make_unique<gl::ShaderProgram>();
+            if(!shader->loadProgramFromText(g_vSource, g_fSource)) {
+                throw mx::Exception("Failed to load planet shader program");
+            }    
+            model->setShaderProgram(shader.get(), "texture1");
+            loaded = true;
         }
-        if(!shader.loadProgramFromText(g_vSource, g_fSource)) {
-            throw mx::Exception("Failed to load planet shader program");
-        }
-        model.setTextures(win, win->util.getFilePath("data/planet.tex"), win->util.getFilePath("data"));
-        model.setShaderProgram(&shader, "texture1");
-        
-        shader.useProgram();
-        shader.setUniform("lightColor", glm::vec3(1.0f, 1.0f, 1.0f));
-        shader.setUniform("objectColor", glm::vec3(1.0f, 1.0f, 1.0f));
+        shader->useProgram();
     }
 
     void update(float deltaTime) {
@@ -1735,19 +1734,19 @@ public:
             apparentScale = scale * (1.0f + (distance - 100.0f) * 0.01f);
         }
         
-        shader.useProgram();
+        shader->useProgram();
         
         glm::mat4 modelMatrix = glm::mat4(1.0f);
         modelMatrix = glm::translate(modelMatrix, position);
         modelMatrix = glm::rotate(modelMatrix, glm::radians(rotationAngle), glm::vec3(0.0f, 1.0f, 0.0f));
         modelMatrix = glm::scale(modelMatrix, glm::vec3(apparentScale, apparentScale, apparentScale));
         
-        shader.setUniform("model", modelMatrix);
-        shader.setUniform("view", view);
-        shader.setUniform("projection", projection);
-        shader.setUniform("time_f", time_f);
+        shader->setUniform("model", modelMatrix);
+        shader->setUniform("view", view);
+        shader->setUniform("projection", projection);
+        shader->setUniform("time_f", time_f);
         
-        model.drawArrays();
+        model->drawArrays();
     }
 
     void reset() {
@@ -1755,9 +1754,12 @@ public:
     }
 
 private:
-    mx::Model model;
-    gl::ShaderProgram shader;
+    static std::unique_ptr<mx::Model> model;
+    static std::unique_ptr<gl::ShaderProgram> shader;
 };
+
+std::unique_ptr<mx::Model> Planet::model = nullptr;
+std::unique_ptr<gl::ShaderProgram> Planet::shader = nullptr;
 
 class Game : public gl::GLObject {
     ExplodeEmiter emiter;
