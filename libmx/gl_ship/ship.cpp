@@ -535,7 +535,7 @@ public:
         bool active;
     };
 
-    // Add position property
+    
     glm::vec3 position{0.0f, 0.0f, 0.0f};
 
     void load(gl::GLWindow *win) {
@@ -1660,6 +1660,36 @@ protected:
 class Planet {
 public:
     Planet() = default;
+    
+    Planet(const Planet&) = delete;
+    Planet& operator=(const Planet&) = delete;
+    
+    Planet(Planet&& other) noexcept 
+        : position(other.position), 
+          rotationSpeed(other.rotationSpeed),
+          rotationAngle(other.rotationAngle),
+          scale(other.scale),
+          time_f(other.time_f),
+          isDestroyed(other.isDestroyed),
+          radius(other.radius),
+          model(std::move(other.model)),
+          shader(std::move(other.shader)) {}
+          
+    Planet& operator=(Planet&& other) noexcept {
+        if (this != &other) {
+            position = other.position;
+            rotationSpeed = other.rotationSpeed;
+            rotationAngle = other.rotationAngle;
+            scale = other.scale;
+            time_f = other.time_f;
+            isDestroyed = other.isDestroyed;
+            radius = other.radius;
+            model = std::move(other.model);
+            shader = std::move(other.shader);
+        }
+        return *this;
+    }
+    
     ~Planet() = default;
 
     glm::vec3 position{0.0f, 0.0f, -30.0f}; 
@@ -1696,22 +1726,28 @@ public:
     }
 
     void draw(const glm::mat4& view, const glm::mat4& projection, const glm::vec3& lightPos, const glm::vec3& viewPos) {
-        shader.useProgram();
+        if (isDestroyed) return;
+
+        float distance = glm::length(position - viewPos);
+        if (distance > 280.0f) return;
+        float apparentScale = scale;
+        if (distance > 100.0f) {
+            apparentScale = scale * (1.0f + (distance - 100.0f) * 0.01f);
+        }
         
+        shader.useProgram();
         
         glm::mat4 modelMatrix = glm::mat4(1.0f);
         modelMatrix = glm::translate(modelMatrix, position);
         modelMatrix = glm::rotate(modelMatrix, glm::radians(rotationAngle), glm::vec3(0.0f, 1.0f, 0.0f));
-        modelMatrix = glm::scale(modelMatrix, glm::vec3(scale, scale, scale));
-        
+        modelMatrix = glm::scale(modelMatrix, glm::vec3(apparentScale, apparentScale, apparentScale));
         
         shader.setUniform("model", modelMatrix);
         shader.setUniform("view", view);
         shader.setUniform("projection", projection);
-        shader.setUniform("time_f", time_f); 
+        shader.setUniform("time_f", time_f);
         
-        if(isDestroyed == false)
-            model.drawArrays();
+        model.drawArrays();
     }
 
     void reset() {
@@ -1727,7 +1763,8 @@ class Game : public gl::GLObject {
     ExplodeEmiter emiter;
     StarField field;
     StarFighter ship;  
-    Planet planet;     
+    std::vector<Planet> planets;    
+    static const int NUM_PLANETS = 5;
     GLuint texture = 0;
     bool spacePressed = false;  
     
@@ -1741,16 +1778,62 @@ public:
     void load(gl::GLWindow *win) override {
         font.loadFont(win->util.getFilePath("data/font.ttf"), 22);
         emiter.load(win);
-        emiter.setTextureID(gl::loadTexture(win->util.getFilePath("data/ember.png")));        
+        emiter.setTextureID(gl::loadTexture(win->util.getFilePath("data/star.png")));        
         field.load(win);
         ship.load(win);  
-        planet.load(win); 
+        
+        planets.resize(NUM_PLANETS);
+        for (auto& planet : planets) {
+            planet.load(win);
+        }
+        
+        randomizePlanetPositions();
+        
         field.repositionStarsAroundCamera(ship.cameraPosition);
+    }
+    
+    void randomizePlanetPositions() {
+        const float minX = -100.0f, maxX = 100.0f;
+        const float minY = -50.0f, maxY = 50.0f;
+        const float minZ = -100.0f, maxZ = 100.0f;
+        const float minDistanceBetweenPlanets = 20.0f;
+        
+        for (int i = 0; i < static_cast<int>(planets.size()); i++) {
+            bool validPosition = false;
+            glm::vec3 newPos;
+            
+            while (!validPosition) {
+                newPos = glm::vec3(
+                    generateRandomFloat(minX, maxX),
+                    generateRandomFloat(minY, maxY),
+                    generateRandomFloat(minZ, maxZ)
+                );
+                
+                if (glm::length(newPos - ship.position) < 30.0f) {
+                    continue;
+                }
+                
+                validPosition = true;
+                for (int j = 0; j < i; j++) {
+                    if (glm::length(newPos - planets[j].position) < minDistanceBetweenPlanets) {
+                        validPosition = false;
+                        break;
+                    }
+                }
+            }
+            
+            planets[i].position = newPos;
+            planets[i].radius = generateRandomFloat(3.0f, 7.0f);
+            planets[i].scale = planets[i].radius;
+            planets[i].rotationSpeed = generateRandomFloat(1.0f, 5.0f);
+            planets[i].rotationAngle = generateRandomFloat(0.0f, 360.0f);
+            planets[i].isDestroyed = false;
+        }
     }
 
     void draw(gl::GLWindow *win) override {
         glEnable(GL_DEPTH_TEST);
-        glDepthFunc(GL_LESS);  
+        glDepthFunc(GL_LESS);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
         Uint32 currentTime = SDL_GetTicks();
@@ -1763,11 +1846,12 @@ public:
         
         ship.update(deltaTime);
         
-        
-        planet.update(deltaTime); 
+        for (auto& planet : planets) {
+            planet.update(deltaTime);
+        }
         
         float aspectRatio = static_cast<float>(win->w) / static_cast<float>(win->h);
-        projectionMatrix = glm::perspective(glm::radians(45.0f), aspectRatio, 0.1f, 100.0f);
+        projectionMatrix = glm::perspective(glm::radians(45.0f), aspectRatio, 0.1f, 300.0f);
         
         viewMatrix = ship.getViewMatrix();
         
@@ -1778,32 +1862,62 @@ public:
         field.draw(win);
         field.update(deltaTime);
         glEnable(GL_DEPTH_TEST);
-        planet.draw(viewMatrix, projectionMatrix, lightPos, ship.cameraPosition);
+        for (auto& planet : planets) {
+            planet.draw(viewMatrix, projectionMatrix, lightPos, ship.cameraPosition);
+        }
         
         ship.draw(win, projectionMatrix, lightPos);
         
-        
-        if (!planet.isDestroyed) {
-            if (ship.projectiles.checkCollision(planet.position, planet.radius)) {
-                emiter.reset();
-                emiter.position = planet.position;
-                emiter.explode();
-                planet.isDestroyed = true;
+        for (auto& planet : planets) {
+            if (!planet.isDestroyed) {
+                if (ship.projectiles.checkCollision(planet.position, planet.radius)) {
+                    emiter.reset();
+                    emiter.position = planet.position;
+                    emiter.explode();
+                    planet.isDestroyed = true;
+                }
+                
+                float distance = glm::length(ship.position - planet.position);
+                if (distance < planet.radius + 1.0f) {
+                    emiter.reset();
+                    emiter.position = planet.position;
+                    emiter.explode();
+                    planet.isDestroyed = true;
+                }
             }
         }
 
         emiter.update(deltaTime);
         emiter.draw(win);
+        
         win->text.setColor({255,255,255,255});
         win->text.printText_Solid(font,25.0f,25.0f, "Ship X,Y,Z: " + std::to_string(ship.position.x) + ", " + std::to_string(ship.position.y) + ", " + std::to_string(ship.position.z));
         win->text.printText_Solid(font,25.0f,50.0f, "Velocity X,Y,Z: " + std::to_string(ship.velocity.x) + ", " + std::to_string(ship.velocity.y) + ", " + std::to_string(ship.velocity.z)); 
         win->text.printText_Solid(font,25.0f,75.0f, "FPS: " + std::to_string(1.0f / deltaTime));
-        win->text.printText_Solid(font,25.0f, 100.0f, "Left, Right Arrow Keys: Yaw, Up, Down Arrow Keys: Move Forward, Backward");
-        win->text.printText_Solid(font,25.0f, 125.0f, "W, S Keys: Pitch");
+        
+        int destroyedCount = 0;
+        for (const auto& planet : planets) {
+            if (planet.isDestroyed) destroyedCount++;
+        }
+        win->text.printText_Solid(font,25.0f,100.0f, "Planets destroyed: " + std::to_string(destroyedCount) + "/" + std::to_string(NUM_PLANETS));
+        win->text.printText_Solid(font,25.0f,125.0f, "Controls: Arrows to move, SPACE to shoot");
+        
+        if (!planets.empty()) {
+            float closestPlanet = 999999.0f;
+            float farthestPlanet = 0.0f;
+            
+            for (const auto& planet : planets) {
+                float dist = glm::length(ship.position - planet.position);
+                closestPlanet = std::min(closestPlanet, dist);
+                farthestPlanet = std::max(farthestPlanet, dist);
+            }
+            
+            win->text.printText_Solid(font,25.0f,150.0f, "Nearest planet: " + std::to_string(closestPlanet));
+            win->text.printText_Solid(font,25.0f,175.0f, "Farthest planet: " + std::to_string(farthestPlanet));
+        }
     }
     
     void handleInput(gl::GLWindow* win, float deltaTime) {
-        
         const Uint8* state = SDL_GetKeyboardState(NULL);
         
         if (state[SDL_SCANCODE_UP]) {
@@ -1812,7 +1926,6 @@ public:
         if (state[SDL_SCANCODE_DOWN]) {
             ship.moveBackward(deltaTime);
         }
-        
         
         if (state[SDL_SCANCODE_LEFT]) {
             ship.yaw(1.0f, deltaTime);
@@ -1825,7 +1938,6 @@ public:
         else {
             ship.roll(0.0f, deltaTime);   
         }
-        
         
         if (state[SDL_SCANCODE_W]) {
             ship.pitch(-1.0f, deltaTime); 
@@ -1842,9 +1954,8 @@ public:
             spacePressed = false;
         }
         
-        
-        if (state[SDL_SCANCODE_RETURN] && planet.isDestroyed) {
-            planet.reset();
+        if (state[SDL_SCANCODE_RETURN]) {
+            randomizePlanetPositions();
             emiter.reset();
         }
     }
@@ -1852,12 +1963,8 @@ public:
     void event(gl::GLWindow *win, SDL_Event &e) override {
         switch(e.type) {
             case SDL_KEYDOWN:
-                break;
-        }
-        switch(e.type) {
-            case SDL_KEYDOWN:
-                if(e.key.keysym.sym == SDLK_RETURN && planet.isDestroyed) {
-                    planet.reset();
+                if(e.key.keysym.sym == SDLK_RETURN) {
+                    randomizePlanetPositions();
                     emiter.reset();
                 }
                 break;
@@ -1874,7 +1981,7 @@ private:
 
 class MainWindow : public gl::GLWindow {
 public:
-    MainWindow(std::string path, int tw, int th) : gl::GLWindow("Skeleton", tw, th) {
+    MainWindow(std::string path, int tw, int th) : gl::GLWindow("Outer Space", tw, th) {
         setPath(path);
         setObject(new Game());
         object->load(this);
