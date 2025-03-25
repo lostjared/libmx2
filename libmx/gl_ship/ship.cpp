@@ -1,4 +1,3 @@
-
 #include"mx.hpp"
 #include"argz.hpp"
 
@@ -728,38 +727,50 @@ void main() {
     void update(float deltaTime) {
         static float time_f = 0.0f;
         time_f += deltaTime;
-    
+        
         shader.useProgram();
         shader.setUniform("time_f", time_f);
-    
+        
         activeParticles = 0;
-    
+        
         for (auto& p : particles) {
             if (!p.active) continue;
-    
+            
+            
             p.x += p.vx * deltaTime;
             p.y += p.vy * deltaTime;
             p.z += p.vz * deltaTime;
-    
-            // gravity-like acceleration downward
-            p.vy -= 0.8f * deltaTime;
-    
-            // particles slow down dramatically over time
-            p.vx *= 0.90f;
-            p.vy *= 0.90f;
-            p.vz *= 0.90f;
-    
+            
+            
+            p.vx *= 0.98f;  
+            p.vy *= 0.98f;
+            p.vz *= 0.98f;
+            
+            
+            p.vy -= 0.3f * deltaTime;  
+            
             p.life -= deltaTime;
-    
             float lifeRatio = p.life / p.maxLife;
-    
-            // Dramatic dissolve: Shrink faster and fade quicker
-            p.size *= 0.99f;
-    
-            if (lifeRatio < 0.6f) {
-                p.intensity = lifeRatio / 0.6f;
+            
+            
+            if (lifeRatio > 0.8f) {
+            
+                p.intensity = (1.0f - lifeRatio) * 5.0f;
+            } else if (lifeRatio < 0.3f) {
+            
+                p.intensity = lifeRatio / 0.3f;
+            } else {
+            
+                p.intensity = 1.0f;
             }
-    
+            
+            
+            if (lifeRatio > 0.7f) {
+                p.size *= 1.01f;  
+            } else {
+                p.size *= 0.99f;  
+            }
+            
             if (p.life <= 0.0f || p.size < 0.1f || p.intensity < 0.05f) {
                 p.active = false;
             } else {
@@ -767,9 +778,7 @@ void main() {
             }
         }
     }
-    
-
-    
+        
     void draw(gl::GLWindow *win) {
         if (activeParticles == 0) return;
     
@@ -816,32 +825,59 @@ void main() {
     }
     
 
-    
+        
     void explode() {
+        
         activeParticles = 0;
-        for (auto& p : particles) {
-            if (activeParticles >= MAX_PARTICLES) break;
-    
-            p.x = position.x;
-            p.y = position.y;
-            p.z = position.z;
-    
-            float theta = generateRandomFloat(0.0f, 2.0f * M_PI);
-            float phi = generateRandomFloat(0.0f, M_PI);
-            float speed = generateRandomFloat(8.0f, 20.0f); 
-    
-            p.vx = speed * sin(phi) * cos(theta);
-            p.vy = speed * sin(phi) * sin(theta);
-            p.vz = speed * cos(phi);
-    
-            p.size = generateRandomFloat(20.0f, 30.0f);  
-            p.maxLife = generateRandomFloat(3.0f, 6.0f); 
-            p.life = p.maxLife;
-            p.intensity = 1.0f;
-            p.active = true;
-    
-            activeParticles++;
+        
+        
+        const int WAVE_COUNT = 3;
+        int particlesPerWave = MAX_PARTICLES / WAVE_COUNT;
+        
+        for (int wave = 0; wave < WAVE_COUNT; wave++) {
+            for (int i = 0; i < particlesPerWave && activeParticles < MAX_PARTICLES; i++) {
+                auto& p = particles[activeParticles];
+                
+        
+                float theta = generateRandomFloat(0.0f, 2.0f * M_PI);
+                float phi = generateRandomFloat(0.0f, M_PI);
+                
+        
+                float x = sin(phi) * cos(theta);
+                float y = sin(phi) * sin(theta);
+                float z = cos(phi);
+                
+                float offset = (wave == 0) ? 0.1f : (wave == 1) ? 0.5f : 0.9f;
+                float radiusScale = 5.0f * offset;
+                
+                p.x = position.x + x * radiusScale; 
+                p.y = position.y + y * radiusScale;
+                p.z = position.z + z * radiusScale;
+                
+                float speed = (wave == 0) ? generateRandomFloat(30.0f, 40.0f) : 
+                            (wave == 1) ? generateRandomFloat(20.0f, 30.0f) :
+                                            generateRandomFloat(10.0f, 20.0f);
+                
+                p.vx = x * speed;
+                p.vy = y * speed;
+                p.vz = z * speed;
+                
+                p.size = (wave == 0) ? generateRandomFloat(25.0f, 35.0f) :
+                        (wave == 1) ? generateRandomFloat(15.0f, 25.0f) :
+                                    generateRandomFloat(10.0f, 20.0f);
+                                    
+                p.maxLife = (wave == 0) ? generateRandomFloat(1.0f, 2.0f) :
+                        (wave == 1) ? generateRandomFloat(2.0f, 3.0f) :
+                                        generateRandomFloat(3.0f, 4.0f);
+                                        
+                p.life = p.maxLife;
+                p.intensity = 1.0f;
+                p.active = true;
+                
+                activeParticles++;
+            }
         }
+    
     }
     
     
@@ -1188,12 +1224,13 @@ public:
         void main() {
             vec2 texCoord = gl_PointCoord;
             vec4 texColor = texture(particleTexture, texCoord);
-            
-            vec3 color = vec3(0.2, 0.7, 1.0); // Blue energy
+            if(texColor.r < 0.1 && texColor.g < 0.1 && texColor.b < 0.1) discard;
+            vec3 color = vec3(1.0, 0.1, 0.2); 
             float alpha = texColor.a * intensity;
             
             float pulse = 0.8 + 0.2 * sin(time_f * 10.0);
             color *= pulse;
+
             
             if (alpha < 0.05) discard;
             
@@ -1260,7 +1297,7 @@ const char* fullProjVert =
             throw mx::Exception("Failed to load projectile shader program");
         }
 
-        texture = gl::loadTexture(win->util.getFilePath("data/ember.png"));
+        texture = gl::loadTexture(win->util.getFilePath("data/star.png"));
 
         glGenVertexArrays(1, &projectileVAO);
         glGenBuffers(3, projectileVBO);
