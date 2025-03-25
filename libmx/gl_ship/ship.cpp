@@ -517,7 +517,7 @@ private:
     
 class ExplodeEmiter {
 public:
-    static constexpr int MAX_PARTICLES = 40000;
+    static constexpr int MAX_PARTICLES = 80000;
 
     ExplodeEmiter() = default;
     ~ExplodeEmiter() {
@@ -567,55 +567,17 @@ in float intensity;
 out vec4 FragColor;
 
 uniform sampler2D particleTexture;
-uniform float time_f;
-
-vec4 alphaXor(vec4 color) {
-    ivec3 source;
-    for (int i = 0; i < 3; ++i) {
-        source[i] = int(255 * color[i]);
-    }
-    color[0] *= int(time_f);
-    color[1] *= int(time_f);
-    color[2] *= int(time_f);
-    
-    ivec3 int_color;
-    for (int i = 0; i < 3; ++i) {
-        int_color[i] = int(255 * color[i]);
-        int_color[i] = int_color[i] ^ source[i];
-        if (int_color[i] > 255)
-            int_color[i] = int_color[i] % 255;
-        color[i] = float(int_color[i]) / 255;
-    }
-    return color;
-}
 
 void main() {
 
     vec2 texCoord = gl_PointCoord;
     vec4 texColor = texture(particleTexture, texCoord);
-    
 
-    vec3 startColor = vec3(1.0, 0.6, 0.2); 
-    vec3 endColor   = vec3(0.8, 0.2, 0.1);   
-    vec3 glowColor  = mix(endColor, startColor, intensity);
-    glowColor = mix(glowColor, texColor.rgb, 0.4);
-    
-
-    float alpha = texColor.a * intensity;
-    float dist  = length(texCoord - vec2(0.5));
-    alpha *= smoothstep(0.5, 0.3, dist);
-    
-    vec4 combinedColor = vec4(glowColor, alpha);
-    
-    if(alpha < 0.1)
+    if(texColor.r < 0.1 && texColor.g < 0.1 && texColor.b < 0.1)
         discard;
-    if(combinedColor.r < 0.1 && combinedColor.g < 0.1 && combinedColor.b < 0.1)
-        discard;
-        
 
-    vec4 finalColor = alphaXor(combinedColor);
-    finalColor.a = 1.0;
-    
+    vec3 startColor = vec3(1.0, 0.6, 0.2) * intensity; 
+    vec4 finalColor = vec4(startColor, 1.0) * texColor;
     FragColor = finalColor;
 }
 )";
@@ -630,7 +592,7 @@ out float intensity;
 
 uniform mat4 projection;
 uniform mat4 view;
-
+float time_f = 0.5;
 void main() {
     vec4 viewPos = view * vec4(aPos, 1.0);
     gl_Position = projection * viewPos;
@@ -648,56 +610,18 @@ in float intensity;
 out vec4 FragColor;
 
 uniform sampler2D particleTexture;
-uniform float time_f;
-
-vec4 alphaXor(vec4 color) {
-    // Convert float colors to ints more safely for ES
-    ivec3 source;
-    for (int i = 0; i < 3; ++i) {
-        source[i] = int(255.0 * clamp(color[i], 0.0, 1.0));
-    }
-    
-    float time_mod = mod(time_f, 10.0); 
-    ivec3 time_factors = ivec3(
-        int(255.0 * time_mod / 10.0), 
-        int(127.0 * time_mod / 10.0), 
-        int(63.0 * time_mod / 10.0)
-    );
-    
-    
-    ivec3 int_color;
-    for (int i = 0; i < 3; ++i) {
-        int_color[i] = int(255.0 * clamp(color[i], 0.0, 1.0));
-        int_color[i] = int_color[i] ^ (source[i] + time_factors[i % 3]);
-        int_color[i] = int_color[i] % 256; 
-        color[i] = float(int_color[i]) / 255.0;
-    }
-    return color;
-}
 
 void main() {
+
     vec2 texCoord = gl_PointCoord;
     vec4 texColor = texture(particleTexture, texCoord);
-    
-    vec3 startColor = vec3(1.0, 0.6, 0.2); 
-    vec3 endColor = vec3(0.8, 0.2, 0.1);   
-    vec3 glowColor = mix(endColor, startColor, intensity);
-    glowColor = mix(glowColor, texColor.rgb, 0.4);
-    
-    float alpha = texColor.a * intensity;
-    float dist = length(texCoord - vec2(0.5));
-    alpha *= smoothstep(0.5, 0.3, dist);
-    
-    vec4 combinedColor = vec4(glowColor, alpha);
-    
-    if(alpha < 0.1)
+
+    if(texColor.r < 0.1 && texColor.g < 0.1 && texColor.b < 0.1)
         discard;
-    if(combinedColor.r < 0.1 && combinedColor.g < 0.1 && combinedColor.b < 0.1)
-        discard;
-    
-    vec4 finalColor = alphaXor(combinedColor);
-    finalColor.a = 1.0;
-    FragColor = finalColor; 
+
+    vec3 startColor = vec3(1.0, 0.6, 0.2) * intensity; 
+    vec4 finalColor = vec4(startColor, 1.0) * texColor;
+    FragColor = finalColor;
 }
 )";
 #endif
@@ -725,12 +649,7 @@ void main() {
     }
 
     void update(float deltaTime) {
-        static float time_f = 0.0f;
-        time_f += deltaTime;
-        
         shader.useProgram();
-        shader.setUniform("time_f", time_f);
-        
         activeParticles = 0;
         
         for (auto& p : particles) {
@@ -962,7 +881,6 @@ void main() {
 }
 )";
 #else
-// GLES 3.0 versions with precision qualifiers
 const char* star_vSource = R"(#version 300 es
 precision highp float;
 layout (location = 0) in vec3 aPos;
@@ -1219,46 +1137,28 @@ public:
         in float intensity;
         out vec4 FragColor;
         uniform sampler2D particleTexture;
-        uniform float time_f;
-        
+                
         void main() {
             vec2 texCoord = gl_PointCoord;
             vec4 texColor = texture(particleTexture, texCoord);
+            vec3 color = vec3(1.0, 0.2, 0.5);
             if(texColor.r < 0.1 && texColor.g < 0.1 && texColor.b < 0.1) discard;
-            vec3 color = vec3(1.0, 0.1, 0.2); 
-            float alpha = texColor.a * intensity;
-            
-            float pulse = 0.8 + 0.2 * sin(time_f * 10.0);
-            color *= pulse;
 
-            
-            if (alpha < 0.05) discard;
-            
-            FragColor = vec4(color, alpha);
+            FragColor = vec4(texColor.rgb * color, texColor.a * intensity);
         })";
 #else
         R"(#version 330 core
         in float intensity;
         out vec4 FragColor;
         uniform sampler2D particleTexture;
-        uniform float time_f;
-        
+                
         void main() {
             vec2 texCoord = gl_PointCoord;
             vec4 texColor = texture(particleTexture, texCoord);
-            
+            vec3 color = vec3(1.0, 0.2, 0.5);
             if(texColor.r < 0.1 && texColor.g < 0.1 && texColor.b < 0.1) discard;
 
-            vec3 color = vec3(1.0, 0.1, 0.2); 
-
-            float alpha = texColor.a * intensity;
-            
-            float pulse = 0.8 + 0.2 * sin(time_f * 10.0);
-            color *= pulse;
-            
-            if (alpha < 0.05) discard;
-            
-            FragColor = vec4(color, alpha);
+            FragColor = vec4(texColor.rgb * color, texColor.a * intensity);
         })";
 #endif
 const char* fullProjVert =
@@ -1377,8 +1277,6 @@ const char* fullProjVert =
         glBufferSubData(GL_ARRAY_BUFFER, 0, intensities.size() * sizeof(float), intensities.data());
         
         projectileShader.useProgram();
-        float time_f = SDL_GetTicks() / 1000.0f;
-        projectileShader.setUniform("time_f", time_f);
         
         glm::mat4 MVP = projectionMatrix * viewMatrix;
         projectileShader.setUniform("MVP", MVP);
@@ -1572,7 +1470,7 @@ public:
             currentSpeed = maxSpeed;
         }
     }
-    
+
     void decreaseSpeed(float deltaTime) {
         currentSpeed -= speed * deltaTime * 2.0f;
         if (currentSpeed < minSpeed) {
@@ -1902,7 +1800,7 @@ public:
             if (planet.isDestroyed) destroyedCount++;
         }
         win->text.printText_Solid(font,25.0f,100.0f, "Planets destroyed: " + std::to_string(destroyedCount) + "/" + std::to_string(NUM_PLANETS));
-        win->text.printText_Solid(font,25.0f,125.0f, "Controls: Arrows to move, SPACE to shoot");
+        win->text.printText_Solid(font,25.0f,125.0f, "Controls: Arrows to Move, W,S Tilt Up/Down - SPACE to shoot");
         
         if (!planets.empty()) {
             float closestPlanet = 999999.0f;
@@ -1917,17 +1815,29 @@ public:
             win->text.printText_Solid(font,25.0f,150.0f, "Nearest planet: " + std::to_string(closestPlanet));
             win->text.printText_Solid(font,25.0f,175.0f, "Farthest planet: " + std::to_string(farthestPlanet));
         }
+        win->text.printText_Solid(font, 25.0f, 200.0f, 
+            "Speed: " + std::to_string(ship.currentSpeed) + " / " + std::to_string(ship.maxSpeed));
     }
     
     void handleInput(gl::GLWindow* win, float deltaTime) {
         const Uint8* state = SDL_GetKeyboardState(NULL);
         
         if (state[SDL_SCANCODE_UP]) {
-            ship.moveForward(deltaTime);
+            ship.increaseSpeed(deltaTime); 
         }
-        if (state[SDL_SCANCODE_DOWN]) {
-            ship.moveBackward(deltaTime);
+        else if (state[SDL_SCANCODE_DOWN]) {
+            ship.decreaseSpeed(deltaTime); 
         }
+        else {
+            
+            if (ship.currentSpeed > 5.0f) {
+                ship.decreaseSpeed(deltaTime * 0.5f);
+            }
+            else if (ship.currentSpeed < 5.0f) {
+                ship.increaseSpeed(deltaTime * 0.5f);
+            }
+        }
+        
         
         if (state[SDL_SCANCODE_LEFT]) {
             ship.yaw(1.0f, deltaTime);
