@@ -11,10 +11,14 @@
 #include"model.hpp"
 #include<random>
 
+#ifdef DEBUG_MODE
 #define CHECK_GL_ERROR() \
 { GLenum err = glGetError(); \
 if (err != GL_NO_ERROR) \
 printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
+#else
+#define CHECK_GL_ERROR()
+#endif
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
