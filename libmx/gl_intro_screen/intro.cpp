@@ -72,7 +72,6 @@ void main() {
 #ifdef __EMSCRIPTEN__
 const char *fragSource = R"(#version 300 es
 precision highp float;
-
 in vec2 TexCoord;
 in vec3 Normal;
 in vec3 FragPos;
@@ -82,7 +81,7 @@ out vec4 FragColor;
 uniform sampler2D texture1;
 uniform vec3 lightPos;
 uniform vec3 viewPos;
-
+uniform float time_f;
 void main() {
     // Ambient lighting
     float ambientStrength = 0.3;
@@ -102,10 +101,13 @@ void main() {
     vec3 specular = specularStrength * spec * vec3(1.0, 1.0, 1.0);
     
     // Texture sampling
-    vec4 texColor = texture(texture1, TexCoord);
     
-    // Final color calculation
-    FragColor = texColor * vec4(ambient + diffuse + specular, 1.0);
+    vec2 uv = TexCoord * 2.0 - 1.0;
+    float len = length(uv);
+    float bubble = smoothstep(0.8, 1.0, 1.0 - len);
+    vec2 distort = uv * (1.0 + 0.1 * sin(time_f + len * 20.0));
+    vec4 texColor = texture(texture1, distort * 0.5 + 0.5);
+    FragColor = mix(texColor, vec4(1.0, 1.0, 1.0, 1.0), bubble);
 }
 )";
 #else
