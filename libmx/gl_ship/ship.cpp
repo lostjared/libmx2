@@ -54,8 +54,8 @@ void main()
     vec3 ambient = ambientStrength * lightColor;
     float diff = max(dot(norm, lightDir), 0.0);
     vec3 diffuse = diff * lightColor;
-    float specularStrength = 1.0;    // Increase from 0.5 to 1.0 for more shine
-    float shininess = 64.0;          // Increase this value for a tighter, shinier highlight
+    float specularStrength = 1.0;    
+    float shininess = 64.0;          
     vec3 viewDir = normalize(viewPos - vec3(worldPos));
     vec3 reflectDir = reflect(-lightDir, norm);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), float(shininess));
@@ -147,8 +147,8 @@ const char *g_vSource = R"(#version 330 core
         vec3 ambient = ambientStrength * lightColor;
         float diff = max(dot(norm, lightDir), 0.0);
         vec3 diffuse = diff * lightColor;
-        float specularStrength = 1.0;    // Increase from 0.5 to 1.0 for more shine
-        float shininess = 64.0;          // Increase this value for a tighter, shinier highlight
+        float specularStrength = 1.0;    
+        float shininess = 64.0;          
         vec3 viewDir = normalize(viewPos - vec3(worldPos));
         vec3 reflectDir = reflect(-lightDir, norm);
         float spec = pow(max(dot(viewDir, reflectDir), 0.0), float(shininess));
@@ -528,7 +528,7 @@ private:
     
 class ExplodeEmiter {
 public:
-    static constexpr int MAX_PARTICLES = 80000;
+    static constexpr int MAX_PARTICLES = 10000;
 
     ExplodeEmiter() = default;
     ~ExplodeEmiter() {
@@ -537,286 +537,313 @@ public:
     }
 
     struct Particle {
-        float x, y, z;
-        float vx, vy, vz;
-        float intensity;
-        float size;
-        float life;
-        float maxLife;
-        bool active;
+        float x, y, z;         
+        float vx, vy, vz;      
+        float r, g, b;         
+        float alpha;           
+        float size;            
+        float life;            
+        float maxLife;         
+        bool active;           
     };
 
     
     glm::vec3 position{0.0f, 0.0f, 0.0f};
-
+    
     void load(gl::GLWindow *win) {
+        
 #ifndef __EMSCRIPTEN__
         const char* particleVS = R"(#version 330 core
-    layout (location = 0) in vec3 aPos;
-    layout (location = 1) in float aSize;
-    layout (location = 2) in float aIntensity;
-    
-    out float intensity;
-    
-    uniform mat4 projection;
-    uniform mat4 view;
-    
-    void main() {
-        vec4 viewPos = view * vec4(aPos, 1.0);
-        gl_Position = projection * viewPos;
+        layout (location = 0) in vec3 aPos;
+        layout (location = 1) in vec4 aColor;
+        layout (location = 2) in float aSize;
         
-        float distance = length(viewPos.xyz);
-        gl_PointSize = aSize / (distance) * 5.0; 
+        out vec4 Color;
         
-        intensity = aIntensity;
-    }
-)";
+        uniform mat4 projection;
+        uniform mat4 view;
+        
+        void main() {
+            vec4 viewPos = view * vec4(aPos, 1.0);
+            gl_Position = projection * viewPos;
+            
+            float distance = length(viewPos.xyz);
+            gl_PointSize = aSize / (distance * 0.1); 
+            Color = aColor;
+        }
+        )";
 
-const char *particleFS = R"(#version 330 core
-
-in float intensity;
-out vec4 FragColor;
-
-uniform sampler2D particleTexture;
-
-void main() {
-
-    vec2 texCoord = gl_PointCoord;
-    vec4 texColor = texture(particleTexture, texCoord);
-
-    if(texColor.r < 0.1 && texColor.g < 0.1 && texColor.b < 0.1)
-        discard;
-
-    vec3 startColor = vec3(1.0, 0.6, 0.2) * intensity; 
-    vec4 finalColor = vec4(startColor, 1.0) * texColor;
-    FragColor = finalColor;
-}
-)";
+        const char* particleFS = R"(#version 330 core
+        in vec4 Color;
+        out vec4 FragColor;
+        
+        uniform sampler2D particleTexture;
+        
+        void main() {
+            vec2 texCoord = gl_PointCoord;
+            vec4 texColor = texture(particleTexture, texCoord);
+            if(texColor.r < 0.1 && texColor.g < 0.1 && texColor.b < 0.1) {
+                discard;
+            }
+            vec4 finalColor = texColor * Color;
+            float dist = length(texCoord - vec2(0.5));
+            float alpha = smoothstep(0.5, 0.4, dist) * finalColor.a;
+            
+            if (alpha < 0.01)
+                discard;
+                
+            FragColor = vec4(finalColor.rgb, alpha);
+        }
+        )";
 #else
-const char* particleVS = R"(#version 300 es
-precision highp float;
-layout (location = 0) in vec3 aPos;
-layout (location = 1) in float aSize;
-layout (location = 2) in float aIntensity;
+        const char* particleVS = R"(#version 300 es
+        precision highp float;
+        layout (location = 0) in vec3 aPos;
+        layout (location = 1) in vec4 aColor;
+        layout (location = 2) in float aSize;
+        
+        out vec4 Color;
+        
+        uniform mat4 projection;
+        uniform mat4 view;
+        
+        void main() {
+            vec4 viewPos = view * vec4(aPos, 1.0);
+            gl_Position = projection * viewPos;
+            
+            float distance = length(viewPos.xyz);
+            gl_PointSize = aSize / (distance * 0.1);
+            Color = aColor;
+        }
+        )";
 
-out float intensity;
-
-uniform mat4 projection;
-uniform mat4 view;
-float time_f = 0.5;
-void main() {
-    vec4 viewPos = view * vec4(aPos, 1.0);
-    gl_Position = projection * viewPos;
-    
-    float distance = length(viewPos.xyz);
-    gl_PointSize = aSize / (distance) * 5.0; 
-    
-    intensity = aIntensity;
-}
-)";
-
-    const char* particleFS = R"(#version 300 es
-precision highp float;
-in float intensity;
-out vec4 FragColor;
-
-uniform sampler2D particleTexture;
-
-void main() {
-
-    vec2 texCoord = gl_PointCoord;
-    vec4 texColor = texture(particleTexture, texCoord);
-
-    if(texColor.r < 0.1 && texColor.g < 0.1 && texColor.b < 0.1)
-        discard;
-
-    vec3 startColor = vec3(1.0, 0.6, 0.2) * intensity; 
-    vec4 finalColor = vec4(startColor, 1.0) * texColor;
-    FragColor = finalColor;
-}
-)";
+        const char* particleFS = R"(#version 300 es
+        precision highp float;
+        in vec4 Color;
+        out vec4 FragColor;
+        
+        uniform sampler2D particleTexture;
+        
+        void main() {
+            vec2 texCoord = gl_PointCoord;
+            vec4 texColor = texture(particleTexture, texCoord);
+            if(texColor.r < 0.1 && texColor.g < 0.1 && texColor.b < 0.1) {
+                discard;
+            }
+            vec4 finalColor = texColor * Color;
+            
+            float dist = length(texCoord - vec2(0.5));
+            float alpha = smoothstep(0.5, 0.4, dist) * finalColor.a;
+            
+            if (alpha < 0.01)
+                discard;
+                
+            FragColor = vec4(finalColor.rgb, alpha);
+        }
+        )";
 #endif
         if (!shader.loadProgramFromText(particleVS, particleFS)) {
             throw mx::Exception("Failed to load particle shader program");
         }
 
+        
         particles.resize(MAX_PARTICLES); 
         for (auto& p : particles) {
             p.active = false;
         }
+
+        
         glGenVertexArrays(1, &vao);
         glGenBuffers(1, &vbo);
+        
         glBindVertexArray(vao);
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        glBufferData(GL_ARRAY_BUFFER, particles.size() * 5 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+        
+        glBufferData(GL_ARRAY_BUFFER, MAX_PARTICLES * 8 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
         glEnableVertexAttribArray(1);
-        glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(4 * sizeof(float)));
+        
+        glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(7 * sizeof(float)));
         glEnableVertexAttribArray(2);
         
         glBindVertexArray(0);
     }
 
     void update(float deltaTime) {
-        shader.useProgram();
-        activeParticles = 0;
+        if (activeParticles == 0) return;
+        
+        int newActiveCount = 0;
         
         for (auto& p : particles) {
             if (!p.active) continue;
-            
             
             p.x += p.vx * deltaTime;
             p.y += p.vy * deltaTime;
             p.z += p.vz * deltaTime;
             
-            
-            p.vx *= 0.98f;  
+            p.vx *= 0.98f;
             p.vy *= 0.98f;
             p.vz *= 0.98f;
             
+            p.vy -= 0.5f * deltaTime;
             
-            p.vy -= 0.3f * deltaTime;  
-            
-            p.life -= deltaTime;
+            p.life += deltaTime;
             float lifeRatio = p.life / p.maxLife;
             
-            
-            if (lifeRatio > 0.8f) {
-            
-                p.intensity = (1.0f - lifeRatio) * 5.0f;
-            } else if (lifeRatio < 0.3f) {
-            
-                p.intensity = lifeRatio / 0.3f;
+            if (lifeRatio < 0.2f) {
+                p.alpha = lifeRatio / 0.2f;
+            } else if (lifeRatio > 0.8f) {
+                p.alpha = (1.0f - lifeRatio) / 0.2f;
             } else {
-            
-                p.intensity = 1.0f;
+                p.alpha = 1.0f;
             }
             
-            
-            if (lifeRatio > 0.7f) {
-                p.size *= 1.01f;  
+            if (lifeRatio < 0.3f) {
+                p.size *= 1.01f;
             } else {
-                p.size *= 0.99f;  
+                p.size *= 0.99f;
             }
             
-            if (p.life <= 0.0f || p.size < 0.1f || p.intensity < 0.05f) {
+            if (lifeRatio > 0.6f) {
+                p.r = 1.0f - (lifeRatio - 0.6f) * 2.0f; 
+                p.g = 0.6f * (1.0f - (lifeRatio - 0.6f) * 2.5f);
+                p.b = 0.0f;
+            }
+        
+            if (p.life >= p.maxLife || p.alpha < 0.01f) {
                 p.active = false;
             } else {
-                activeParticles++;
+                newActiveCount++;
             }
         }
-    }
         
+        activeParticles = newActiveCount;
+    }
+
     void draw(gl::GLWindow *win) {
         if (activeParticles == 0) return;
-    
+        
+        
         std::vector<float> particleData;
-        particleData.reserve(activeParticles * 5);
+        particleData.reserve(activeParticles * 8); 
+        
         for (const auto& p : particles) {
             if (!p.active) continue;
+            
+            
             particleData.push_back(p.x);
             particleData.push_back(p.y);
             particleData.push_back(p.z);
+            
+            
+            particleData.push_back(p.r);
+            particleData.push_back(p.g);
+            particleData.push_back(p.b);
+            particleData.push_back(p.alpha);
+            
+            
             particleData.push_back(p.size);
-            particleData.push_back(p.intensity);
         }
-    
+        
+        
         glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-        glDepthMask(GL_FALSE);
-    
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE); 
+        glDepthMask(GL_FALSE); 
+        
         shader.useProgram();
         shader.setUniform("projection", projectionMatrix);
         shader.setUniform("view", viewMatrix);
-    
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, textureID); 
         shader.setUniform("particleTexture", 0);
-    
+        
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, textureID);
+        
+        
         glBindVertexArray(vao);
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
         glBufferSubData(GL_ARRAY_BUFFER, 0, particleData.size() * sizeof(float), particleData.data());
-    
-    #ifndef __EMSCRIPTEN__
+        
+        
+#ifndef __EMSCRIPTEN__
         glEnable(GL_PROGRAM_POINT_SIZE);
-    #endif
-    
+#endif
         glDrawArrays(GL_POINTS, 0, activeParticles);
-    
-    #ifndef __EMSCRIPTEN__
+#ifndef __EMSCRIPTEN__
         glDisable(GL_PROGRAM_POINT_SIZE);
-    #endif
-    
+#endif
+        
+        
         glBindVertexArray(0);
         glDepthMask(GL_TRUE);
         glDisable(GL_BLEND);
     }
-    
 
-        
     void explode() {
         
-        activeParticles = 0;
+        reset();
         
-        
-        const int WAVE_COUNT = 3;
+        const int WAVE_COUNT = 4;
         int particlesPerWave = MAX_PARTICLES / WAVE_COUNT;
         
-        for (int wave = 0; wave < WAVE_COUNT; wave++) {
-            for (int i = 0; i < particlesPerWave && activeParticles < MAX_PARTICLES; i++) {
-                auto& p = particles[activeParticles];
-                
+        struct WaveParams {
+            float minSpeed, maxSpeed;
+            float minSize, maxSize;
+            float minLife, maxLife;
+            glm::vec3 baseColor;
+        };
         
+        WaveParams waves[WAVE_COUNT] = {
+            {40.0f, 60.0f, 25.0f, 40.0f, 1.5f, 2.5f, {1.0f, 0.9f, 0.3f}},
+            {30.0f, 45.0f, 20.0f, 30.0f, 2.0f, 3.0f, {1.0f, 0.6f, 0.2f}},
+            {20.0f, 35.0f, 15.0f, 25.0f, 2.5f, 3.5f, {1.0f, 0.3f, 0.1f}},
+            {10.0f, 25.0f, 5.0f, 15.0f, 3.0f, 4.0f, {0.8f, 0.2f, 0.1f}}
+        };
+        
+        int particleIndex = 0;
+        
+        for (int wave = 0; wave < WAVE_COUNT; wave++) {
+            for (int i = 0; i < particlesPerWave && particleIndex < MAX_PARTICLES; i++) {
                 float theta = generateRandomFloat(0.0f, 2.0f * M_PI);
                 float phi = generateRandomFloat(0.0f, M_PI);
-                
-        
                 float x = sin(phi) * cos(theta);
                 float y = sin(phi) * sin(theta);
-                float z = cos(phi);
-                
-                float offset = (wave == 0) ? 0.1f : (wave == 1) ? 0.5f : 0.9f;
-                float radiusScale = 5.0f * offset;
-                
-                p.x = position.x + x * radiusScale; 
-                p.y = position.y + y * radiusScale;
-                p.z = position.z + z * radiusScale;
-                
-                float speed = (wave == 0) ? generateRandomFloat(30.0f, 40.0f) : 
-                            (wave == 1) ? generateRandomFloat(20.0f, 30.0f) :
-                                            generateRandomFloat(10.0f, 20.0f);
-                
+                float z = cos(phi);        
+                auto& p = particles[particleIndex++];
+                float offset = 0.8f + 0.2f * static_cast<float>(wave) / WAVE_COUNT;
+                p.x = position.x + x * offset;
+                p.y = position.y + y * offset;
+                p.z = position.z + z * offset;
+                float speed = generateRandomFloat(waves[wave].minSpeed, waves[wave].maxSpeed);
                 p.vx = x * speed;
                 p.vy = y * speed;
                 p.vz = z * speed;
-                
-                p.size = (wave == 0) ? generateRandomFloat(25.0f, 35.0f) :
-                        (wave == 1) ? generateRandomFloat(15.0f, 25.0f) :
-                                    generateRandomFloat(10.0f, 20.0f);
-                                    
-                p.maxLife = (wave == 0) ? generateRandomFloat(1.0f, 2.0f) :
-                        (wave == 1) ? generateRandomFloat(2.0f, 3.0f) :
-                                        generateRandomFloat(3.0f, 4.0f);
-                                        
-                p.life = p.maxLife;
-                p.intensity = 1.0f;
+                p.vx += generateRandomFloat(-5.0f, 5.0f);
+                p.vy += generateRandomFloat(-5.0f, 5.0f);
+                p.vz += generateRandomFloat(-5.0f, 5.0f);
+                const auto& baseColor = waves[wave].baseColor;
+                p.r = baseColor.r * generateRandomFloat(0.9f, 1.1f);
+                p.g = baseColor.g * generateRandomFloat(0.9f, 1.1f);
+                p.b = baseColor.b * generateRandomFloat(0.9f, 1.1f);
+                p.alpha = 0.1f; 
+                p.size = generateRandomFloat(waves[wave].minSize, waves[wave].maxSize);
+                p.maxLife = generateRandomFloat(waves[wave].minLife, waves[wave].maxLife);
+                p.life = 0.0f; 
                 p.active = true;
-                
-                activeParticles++;
             }
         }
-    
+        activeParticles = particleIndex;
     }
     
-    
     void reset() {
-        activeParticles = 0;
         for (auto& p : particles) {
             p.active = false;
         }
+        activeParticles = 0;
     }
+    
     void setProjectionMatrix(const glm::mat4& proj) { projectionMatrix = proj; }
     void setViewMatrix(const glm::mat4& view) { viewMatrix = view; }
     void setTextureID(GLuint id) { textureID = id; }
@@ -869,17 +896,14 @@ uniform vec3 viewPos;
 uniform sampler2D starTexture;
 
 void main() {
-    // Ambient
     float ambientStrength = 0.3;
     vec3 ambient = ambientStrength * vec3(1.0, 1.0, 1.0);
-    
-    // Diffuse
+
     vec3 norm = normalize(Normal);
     vec3 lightDir = normalize(lightPos - FragPos);
     float diff = max(dot(norm, lightDir), 0.0);
     vec3 diffuse = diff * vec3(1.0, 1.0, 1.0);
-    
-    // Specular
+
     float specularStrength = 0.5;
     vec3 viewDir = normalize(viewPos - FragPos);
     vec3 reflectDir = reflect(-lightDir, norm);
@@ -930,17 +954,16 @@ uniform vec3 viewPos;
 uniform sampler2D starTexture;
 
 void main() {
-    // Ambient
+    
     float ambientStrength = 0.3;
     vec3 ambient = ambientStrength * vec3(1.0, 1.0, 1.0);
     
-    // Diffuse
+    
     vec3 norm = normalize(Normal);
     vec3 lightDir = normalize(lightPos - FragPos);
     float diff = max(dot(norm, lightDir), 0.0);
     vec3 diffuse = diff * vec3(1.0, 1.0, 1.0);
     
-    // Specular
     float specularStrength = 0.5;
     vec3 viewDir = normalize(viewPos - FragPos);
     vec3 reflectDir = reflect(-lightDir, norm);
@@ -1786,6 +1809,7 @@ public:
                     emiter.position = planet.position;
                     emiter.explode();
                     planet.isDestroyed = true;
+                    
                 }
                 
                 float distance = glm::length(ship.position - planet.position);
@@ -1794,6 +1818,7 @@ public:
                     emiter.position = planet.position;
                     emiter.explode();
                     planet.isDestroyed = true;
+                    
                 }
             }
         }
