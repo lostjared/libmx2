@@ -414,6 +414,8 @@ public:
             lastCameraPos = cameraPos;
         }
 
+        CHECK_GL_ERROR();
+
         std::vector<float> positions;
         std::vector<float> sizes;
         std::vector<float> colors;
@@ -474,15 +476,20 @@ public:
             colors.push_back(alpha);
         }
 
-        
+        CHECK_GL_ERROR();
+
         glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
         glBufferSubData(GL_ARRAY_BUFFER, 0, positions.size() * sizeof(float), positions.data());
 
         glBindBuffer(GL_ARRAY_BUFFER, VBO[1]);
         glBufferSubData(GL_ARRAY_BUFFER, 0, sizes.size() * sizeof(float), sizes.data());
 
+        CHECK_GL_ERROR();
+
         glBindBuffer(GL_ARRAY_BUFFER, VBO[2]);
         glBufferSubData(GL_ARRAY_BUFFER, 0, colors.size() * sizeof(float), colors.data());
+
+        CHECK_GL_ERROR();
     }
 
     void repositionStarsAroundCamera(const glm::vec3& cameraPos) {
