@@ -296,6 +296,14 @@ float generateRandomFloat(float min, float max) {
     return dist(eng);
 }
 
+int generateRandomInt(int min, int max) {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<int> dist(min, max);
+    return dist(gen);
+}
+
+
 class StarField : public gl::GLObject {
 public:
     struct Particle {
@@ -1625,25 +1633,44 @@ public:
     float rotationAngle = 0.0f;
     float scale = 5.0f;                     
     float time_f = 0.0f;  
-    
+    int planet_type = 0;
     bool isDestroyed = false;
-    float radius = 5.0f; 
+    float radius = 5.0f;
+
+    float getRadius() const {
+         return radius;
+    }
 
     void load(gl::GLWindow *win) {
         static bool loaded = false;
         if(loaded == false) {
-            model = std::make_unique<mx::Model>();
-            if(!model->openModel(win->util.getFilePath("data/saturn.mxmod.z"))) {
+            models[0] = std::make_unique<mx::Model>();
+            if(!models[0]->openModel(win->util.getFilePath("data/saturn.mxmod.z"))) {
                     throw mx::Exception("Failed to load planet model");
             }
-            model->setTextures(win, win->util.getFilePath("data/planet.tex"), win->util.getFilePath("data"));
+            models[0]->setTextures(win, win->util.getFilePath("data/planet.tex"), win->util.getFilePath("data"));
+            models[1] = std::make_unique<mx::Model>();
+            if(!models[1]->openModel(win->util.getFilePath("data/star.mxmod.z"))) {
+                    throw mx::Exception("Failed to load star planet model");
+            }
+            models[1]->setTextures(win, win->util.getFilePath("data/star.tex"), win->util.getFilePath("data"));
+            models[2] = std::make_unique<mx::Model>();
+            if(!models[2]->openModel(win->util.getFilePath("data/torus.mxmod.z"))) {
+                    throw mx::Exception("Failed to load star planet model");
+            }
+            models[2]->setTextures(win, win->util.getFilePath("data/star.tex"), win->util.getFilePath("data"));
+        
+        
             shader = std::make_unique<gl::ShaderProgram>();
             if(!shader->loadProgramFromText(g_vSource, g_fSource)) {
                 throw mx::Exception("Failed to load planet shader program");
             }    
-            model->setShaderProgram(shader.get(), "texture1");
+            models[0]->setShaderProgram(shader.get(), "texture1");
+            models[1]->setShaderProgram(shader.get(), "texture1");
+            models[2]->setShaderProgram(shader.get(), "texture1");
             loaded = true;
         }
+        planet_type = generateRandomInt(0, 2);
         shader->useProgram();
     }
 
@@ -1665,20 +1692,22 @@ public:
         if (distance > 100.0f) {
             apparentScale = scale * (1.0f + (distance - 100.0f) * 0.01f);
         }
+
+        float modelScale = (planet_type == 2) ? (apparentScale / 6.0f) : apparentScale;
         
         shader->useProgram();
         
         glm::mat4 modelMatrix = glm::mat4(1.0f);
         modelMatrix = glm::translate(modelMatrix, position);
         modelMatrix = glm::rotate(modelMatrix, glm::radians(rotationAngle), glm::vec3(0.0f, 1.0f, 0.0f));
-        modelMatrix = glm::scale(modelMatrix, glm::vec3(apparentScale, apparentScale, apparentScale));
+        modelMatrix = glm::scale(modelMatrix, glm::vec3(modelScale, modelScale, modelScale));
         
         shader->setUniform("model", modelMatrix);
         shader->setUniform("view", view);
         shader->setUniform("projection", projection);
         shader->setUniform("time_f", time_f);
         
-        model->drawArrays();
+        models[planet_type]->drawArrays();
     }
 
     void reset() {
@@ -1686,11 +1715,11 @@ public:
     }
 
 private:
-    static std::unique_ptr<mx::Model> model;
+    static std::unique_ptr<mx::Model> models[3];
     static std::unique_ptr<gl::ShaderProgram> shader;
 };
 
-std::unique_ptr<mx::Model> Planet::model = nullptr;
+std::unique_ptr<mx::Model> Planet::models[3] = {nullptr, nullptr, nullptr};
 std::unique_ptr<gl::ShaderProgram> Planet::shader = nullptr;
 
 class Game : public gl::GLObject {
@@ -1735,7 +1764,9 @@ public:
         for (int i = 0; i < static_cast<int>(planets.size()); i++) {
             bool validPosition = false;
             glm::vec3 newPos;
-            
+        
+            planets[i].planet_type = generateRandomInt(0, 2);
+         
             while (!validPosition) {
                 newPos = glm::vec3(
                     generateRandomFloat(minX, maxX),
@@ -1804,7 +1835,7 @@ public:
         
         for (auto& planet : planets) {
             if (!planet.isDestroyed) {
-                if (ship.projectiles.checkCollision(planet.position, planet.radius)) {
+                if (ship.projectiles.checkCollision(planet.position, planet.getRadius())) {
                     emiter.reset();
                     emiter.position = planet.position;
                     emiter.explode();
@@ -1813,7 +1844,7 @@ public:
                 }
                 
                 float distance = glm::length(ship.position - planet.position);
-                if (distance < planet.radius + 1.0f) {
+                if (distance < planet.getRadius() + 1.0f) {
                     emiter.reset();
                     emiter.position = planet.position;
                     emiter.explode();
