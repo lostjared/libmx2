@@ -203,6 +203,7 @@ if(EXAMPLES)
     add_subdirectory(gl_matrix_psyche)
     add_subdirectory(gl_blank_model)
     add_subdirectory(gl_intro_screen)
+    add_subdirectory(gl_model_explode)
   endif()
 
 #disable for now
