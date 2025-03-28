@@ -13,7 +13,6 @@
 #include<vector>
 
 namespace mx {
-
     class mxUtil {
     public:
     #ifdef FOR_WASM
@@ -31,10 +30,11 @@ namespace mx {
         void closeJoystick();
         std::vector<SDL_Joystick *> stick;
     };
-
     std::vector<char> readFile(const std::string &filename);
     std::string decompressString(void *data, uLong size_);
     std::unique_ptr<char[]> compressString(const std::string &text, uLong &len);
+    float generateRandomFloat(float min, float max);
+    int generateRandomInt(int min, int max);
 }
 
 #endif

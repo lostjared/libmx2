@@ -6,8 +6,23 @@
 #include<memory>
 #include<fstream>
 #include<iostream>
+#include<random>
 
 namespace mx {
+
+    float generateRandomFloat(float min, float max) {
+        static std::random_device rd; 
+        static std::default_random_engine eng(rd()); 
+        std::uniform_real_distribution<float> dist(min, max);
+        return dist(eng);
+    }
+    
+    int generateRandomInt(int min, int max) {
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<int> dist(min, max);
+        return dist(gen);
+    }
 
     std::unique_ptr<char[]> compressString(const std::string &text, uLong &len) {
         uLong sourceLen = text.size();
