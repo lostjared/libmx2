@@ -1730,7 +1730,7 @@ class Game : public gl::GLObject {
     static const int NUM_PLANETS = 5;
     GLuint texture = 0;
     bool spacePressed = false;  
-    
+    mx::Controller controller;
 public:
     Game() = default;
     virtual ~Game() override {
@@ -1888,7 +1888,30 @@ public:
     
     void handleInput(gl::GLWindow* win, float deltaTime) {
         const Uint8* state = SDL_GetKeyboardState(NULL);
+        Uint32 currentTime = SDL_GetTicks();
         
+        if (state[SDL_SCANCODE_SPACE] && !spacePressed) {
+            if (currentTime - lastFireTime >= FIRE_COOLDOWN) {
+                spacePressed = true;
+                ship.fireProjectile();
+                lastFireTime = currentTime;
+            }
+        } 
+        else if (!state[SDL_SCANCODE_SPACE]) {
+            spacePressed = false;
+        }
+
+        if (controller.getButton(SDL_CONTROLLER_BUTTON_A) && !firePressed) {
+            if (currentTime - lastFireTime >= FIRE_COOLDOWN) {
+                firePressed = true;
+                ship.fireProjectile();
+                lastFireTime = currentTime;
+            }
+        } 
+        else if (!controller.getButton(SDL_CONTROLLER_BUTTON_A)) {
+            firePressed = false;
+        }
+
         if (state[SDL_SCANCODE_UP]) {
             ship.increaseSpeed(deltaTime); 
         }
@@ -1937,6 +1960,30 @@ public:
             randomizePlanetPositions();
             emiter.reset();
         }
+
+        if(controller.getAxis(SDL_CONTROLLER_AXIS_LEFTY) < -0.5f) {
+            ship.increaseSpeed(deltaTime); 
+        }
+        else if(controller.getAxis(SDL_CONTROLLER_AXIS_LEFTY) > 0.5f) {
+            ship.decreaseSpeed(deltaTime); 
+        }
+
+        if(controller.getAxis(SDL_CONTROLLER_AXIS_RIGHTY) < -0.5f) {
+            ship.pitch(-1.0f, deltaTime); 
+        }
+        else if(controller.getAxis(SDL_CONTROLLER_AXIS_RIGHTY) > 0.5f) {
+            ship.pitch(1.0f, deltaTime);  
+        }
+
+        if(controller.getAxis(SDL_CONTROLLER_AXIS_RIGHTX) > 0.5f) {
+            ship.yaw(-1.0f, deltaTime);   
+            ship.roll(1.0f, deltaTime);   
+        }
+        else if(controller.getAxis(SDL_CONTROLLER_AXIS_RIGHTX) < -0.5f) {
+            ship.yaw(1.0f, deltaTime);    
+            ship.roll(-1.0f, deltaTime);  
+        }
+
     }
     
     void event(gl::GLWindow *win, SDL_Event &e) override {
@@ -1948,14 +1995,21 @@ public:
                 }
                 break;
         }
+
+        if(controller.connectEvent(e)) {
+            mx::system_out << "Controller connected...\n";
+        }
     }
     
 private:
     mx::Font font;
     Uint32 lastUpdateTime = SDL_GetTicks();
+    Uint32 lastFireTime = 0;           
+    const Uint32 FIRE_COOLDOWN = 200;  
     glm::mat4 viewMatrix{1.0f};
     glm::mat4 projectionMatrix{1.0f};
     glm::vec3 lightPos{10.0f, 10.0f, 10.0f};
+    bool firePressed = false;
 };
 
 class MainWindow : public gl::GLWindow {
