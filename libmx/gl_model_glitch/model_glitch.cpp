@@ -524,7 +524,7 @@ protected:
 class Game : public gl::GLObject {
     ExplodeEmiter emiter;
     GLuint textureID;
-    bool objectVisible = true;
+    
 public:
     Game() = default;
     virtual ~Game() override {
@@ -535,7 +535,7 @@ public:
     }
 
     void load(gl::GLWindow *win) override {
-        font.loadFont(win->util.getFilePath("data/font.ttf"), 20);
+        font.loadFont(win->util.getFilePath("data/font.ttf"), 12);
         if(!shader_program.loadProgramFromText(vSource, fSource)) {
             throw mx::Exception("Failed to load shader program");
         }
@@ -579,7 +579,11 @@ public:
         win->text.setColor({255, 255, 255, 255});
         win->text.printText_Solid(font, 25.0f, 25.0f, "FPS: " + calculateFPS());
         win->text.printText_Solid(font, 25.0f, 50.0f, "Press SPACE to create explosion");
-       
+#ifdef __EMSCRIPTEN__
+        win->text.printText_Solid(font, 25.0f, 75.0f, "Swipe LEFT/RIGHT to move cube");
+        win->text.printText_Solid(font, 25.0f, 100.0f, "Swipe UP/DOWN to move in/out");
+        win->text.printText_Solid(font, 25.0f, 125.0f, "Double-tap for explosion");
+#endif
 
         update(deltaTime);
     }
@@ -588,14 +592,7 @@ public:
         if (e.type == SDL_KEYDOWN) {
             switch (e.key.keysym.sym) {
                 case SDLK_SPACE: {
-                    glm::mat4 model = glm::mat4(1.0f);
-                    model = glm::translate(model, cubePosition); 
-                    model = glm::scale(model, glm::vec3(2.0f, 2.0f, 2.0f));
-                    model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 1.0f, 0.0f));
-                    glm::vec4 worldPos = model * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-                    emiter.position = glm::vec3(worldPos);
-                    emiter.explode();
-                    objectVisible = false;
+                    create_explosion();
                 }
                     break;
                 case SDLK_LEFT:
@@ -612,6 +609,47 @@ public:
                     break;
             }
         }
+
+#ifdef __EMSCRIPTEN__  
+    if (e.type == SDL_FINGERDOWN) {
+        touchStartPos.x = e.tfinger.x * win->w;
+        touchStartPos.y = e.tfinger.y * win->h;
+        isTouching = true;
+        Uint32 currentTime = SDL_GetTicks();
+        float tapDistance = glm::length(glm::vec2(touchStartPos.x - lastTapPos.x, 
+                                                  touchStartPos.y - lastTapPos.y));
+        
+        if (currentTime - lastTapTime < DOUBLE_TAP_TIME && 
+            tapDistance < TAP_DISTANCE_THRESHOLD) {
+            create_explosion();
+        }
+        lastTapTime = currentTime;
+        lastTapPos = touchStartPos;
+    }
+    else if (e.type == SDL_FINGERUP && isTouching) {
+        glm::vec2 touchEndPos(e.tfinger.x * win->w, e.tfinger.y * win->h);
+        glm::vec2 swipeVector = touchEndPos - touchStartPos;
+        float swipeLength = glm::length(swipeVector);
+        if (swipeLength > SWIPE_THRESHOLD) {
+            swipeVector = glm::normalize(swipeVector);
+            if (abs(swipeVector.x) > abs(swipeVector.y)) {
+                if (swipeVector.x > 0) {
+                    cubePosition.x += 0.5f;
+                } else {
+                    cubePosition.x -= 0.5f;
+                }
+            } else {
+                if (swipeVector.y > 0) {
+                    cubePosition.z += 0.5f;
+                } else {
+                    cubePosition.z -= 0.5f;
+                }
+            }
+        }
+        
+        isTouching = false;
+    }
+#endif
     }
     void update(float deltaTime) {
         angle += 25.0f * deltaTime;
@@ -626,7 +664,13 @@ private:
     gl::ShaderProgram shader_program;
     glm::vec3 cubePosition{0.0f, 0.0f, 0.0f};
     float moveSpeed = 5.0f; 
- 
+    glm::vec2 touchStartPos{0.0f, 0.0f};
+    Uint32 lastTapTime = 0;
+    bool isTouching = false;
+    glm::vec2 lastTapPos{0.0f, 0.0f};
+    const float SWIPE_THRESHOLD = 50.0f; 
+    const Uint32 DOUBLE_TAP_TIME = 300;  
+    const float TAP_DISTANCE_THRESHOLD = 30.0f;
 
     std::string calculateFPS() {
         static int frameCount = 0;
@@ -645,6 +689,17 @@ private:
         std::stringstream ss;
         ss << std::fixed << std::setprecision(1) << current_FPS;
         return ss.str();
+    }
+
+    void create_explosion() {
+        glm::mat4 model = glm::mat4(1.0f);
+        model = glm::translate(model, cubePosition);
+        model = glm::scale(model, glm::vec3(2.0f, 2.0f, 2.0f));
+        model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 1.0f, 0.0f));
+        
+        glm::vec4 worldPos = model * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+        emiter.position = glm::vec3(worldPos);
+        emiter.explode();
     }
 };
 
