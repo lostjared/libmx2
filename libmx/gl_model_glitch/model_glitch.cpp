@@ -663,7 +663,7 @@ private:
     mx::Model object_file;
     gl::ShaderProgram shader_program;
     glm::vec3 cubePosition{0.0f, 0.0f, 0.0f};
-    float moveSpeed = 5.0f; 
+#ifdef __EMSCRIPTEN__
     glm::vec2 touchStartPos{0.0f, 0.0f};
     Uint32 lastTapTime = 0;
     bool isTouching = false;
@@ -671,7 +671,7 @@ private:
     const float SWIPE_THRESHOLD = 50.0f; 
     const Uint32 DOUBLE_TAP_TIME = 300;  
     const float TAP_DISTANCE_THRESHOLD = 30.0f;
-
+#endif
     std::string calculateFPS() {
         static int frameCount = 0;
         static float timeElapsed = 0.0f;
