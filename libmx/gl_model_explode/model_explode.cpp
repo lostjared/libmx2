@@ -574,7 +574,6 @@ private:
     mx::Model object_file;
     gl::ShaderProgram shader_program;
     glm::vec3 cubePosition{0.0f, 0.0f, 0.0f};
-    float moveSpeed = 5.0f; 
  
 
     std::string calculateFPS() {
