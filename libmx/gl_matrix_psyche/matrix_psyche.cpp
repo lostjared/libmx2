@@ -707,7 +707,6 @@ private:
     const int DOUBLE_TAP_TIME = 300; 
     const int DOUBLE_TAP_DISTANCE = 30; 
     bool menu_shown = true;
-    int frameCounter = 0;
 };
 
 class MainWindow : public gl::GLWindow {
