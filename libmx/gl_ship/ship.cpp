@@ -1179,27 +1179,24 @@ public:
         in float intensity;
         out vec4 FragColor;
         uniform sampler2D particleTexture;
-                
+            
         void main() {
             vec2 texCoord = gl_PointCoord;
             vec4 texColor = texture(particleTexture, texCoord);
-            vec3 color = vec3(1.0, 0.0, 0.8);
             if(texColor.r < 0.7 && texColor.g < 0.7 && texColor.b < 0.7) discard;
-            FragColor = vec4(texColor.rgb * color, texColor.a * intensity);
+            FragColor = vec4(texColor.rgb * intensity, texColor.a * intensity);
         })";
 #else
         R"(#version 330 core
         in float intensity;
         out vec4 FragColor;
         uniform sampler2D particleTexture;
-                
+            
         void main() {
             vec2 texCoord = gl_PointCoord;
             vec4 texColor = texture(particleTexture, texCoord);
-            vec3 color = vec3(1.0, 0.0, 0.6);
             if(texColor.r < 0.7 && texColor.g < 0.7 && texColor.b < 0.7) discard;
-
-            FragColor = vec4(texColor.rgb * color, texColor.a * intensity);
+            FragColor = vec4(texColor.rgb * intensity, texColor.a * intensity);
         })";
 #endif
 const char* fullProjVert =
@@ -1215,7 +1212,7 @@ const char* fullProjVert =
 
         void main() {
             gl_Position = MVP * vec4(aPos, 1.0);
-            gl_PointSize = aSize;
+            gl_PointSize = aSize * 2.0;
             intensity = aIntensity;
         })";
 #else
@@ -1229,7 +1226,7 @@ const char* fullProjVert =
 
         void main() {
             gl_Position = MVP * vec4(aPos, 1.0);
-            gl_PointSize = aSize;
+            gl_PointSize = aSize * 2.0;
             intensity = aIntensity;
         })";
 #endif
@@ -1238,7 +1235,7 @@ const char* fullProjVert =
             throw mx::Exception("Failed to load projectile shader program");
         }
 
-        texture = gl::loadTexture(win->util.getFilePath("data/star.png"));
+        texture = gl::loadTexture(win->util.getFilePath("data/fire.png"));
 
         glGenVertexArrays(1, &projectileVAO);
         glGenBuffers(3, projectileVBO);
@@ -1324,10 +1321,13 @@ const char* fullProjVert =
 #ifndef __EMSCRIPTEN__
             glEnable(GL_PROGRAM_POINT_SIZE);
 #endif
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+            glDepthMask(GL_FALSE);
             
             glBindVertexArray(projectileVAO);
             glDrawArrays(GL_POINTS, 0, static_cast<GLsizei>(projectiles.size()));
-            
+        
 #ifndef __EMSCRIPTEN__
             glDisable(GL_PROGRAM_POINT_SIZE);
 #endif
