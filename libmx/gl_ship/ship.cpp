@@ -289,19 +289,104 @@ void main() {
 )";
 #endif
 
-float generateRandomFloat(float min, float max) {
-    static std::random_device rd; 
-    static std::default_random_engine eng(rd()); 
-    std::uniform_real_distribution<float> dist(min, max);
-    return dist(eng);
-}
+using mx::generateRandomFloat;
+using mx::generateRandomInt;
 
-int generateRandomInt(int min, int max) {
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<int> dist(min, max);
-    return dist(gen);
-}
+class Intro : public gl::GLObject {
+public:
+
+    Intro() = default;
+
+    virtual ~Intro() {
+
+    }
+
+    virtual void load(gl::GLWindow *win) {
+
+#if defined(__EMSCRIPTEN__) 
+    const char *vSource = R"(#version 300 es
+            precision mediump float;
+            layout (location = 0) in vec3 aPos;
+            layout (location = 1) in vec2 aTexCoord;
+
+            out vec2 TexCoord;
+
+            void main() {
+                gl_Position = vec4(aPos, 1.0); 
+                TexCoord = aTexCoord;         
+            }
+    )";
+    const char *fSource = R"(#version 300 es
+    precision highp float;
+    out vec4 FragColor;
+    in vec2 TexCoord;
+    
+    uniform sampler2D textTexture;
+    uniform float time_f;
+    uniform float alpha;
+    
+    void main(void) {
+        vec2 uv = TexCoord * 2.0 - 1.0;
+        float len = length(uv);
+        float bubble = smoothstep(0.8, 1.0, 1.0 - len);
+        vec2 distort = uv * (1.0 + 0.1 * sin(time_f + len * 20.0));
+        vec4 texColor = texture(textTexture, distort * 0.5 + 0.5);
+        FragColor = mix(texColor, vec4(1.0, 1.0, 1.0, 1.0), bubble);
+        FragColor = FragColor * alpha;
+    }
+    )";
+    
+#else
+    const char *vSource = R"(#version 330 core
+        layout (location = 0) in vec3 aPos;
+        layout (location = 1) in vec2 aTexCoord;
+        out vec2 TexCoord;
+        void main() {
+            gl_Position = vec4(aPos, 1.0); 
+            TexCoord = aTexCoord;        
+        }
+    )";
+    const char *fSource = R"(#version 330 core
+        out vec4 FragColor;
+        in vec2 TexCoord;
+        uniform sampler2D textTexture;
+        uniform float time_f;
+        uniform float alpha;
+        void main(void) {
+            vec2 uv = TexCoord * 2.0 - 1.0;
+            float len = length(uv);
+            float bubble = smoothstep(0.8, 1.0, 1.0 - len);
+            vec2 distort = uv * (1.0 + 0.1 * sin(time_f + len * 20.0));
+            vec4 texColor = texture(textTexture, distort * 0.5 + 0.5);
+            FragColor = mix(texColor, vec4(1.0, 1.0, 1.0, 1.0), bubble);
+            FragColor = FragColor * alpha;
+        }
+    )";
+#endif
+        if(!shader.loadProgramFromText(vSource, fSource)) {
+            throw mx::Exception("Error loading Intro shader");
+        }   
+
+        intro.initSize(win->w, win->h);
+        intro.loadTexture(&shader, win->util.getFilePath("data/intro.png"), 0.0f, 0.0f, win->w, win->h);
+    }
+
+    virtual void draw(gl::GLWindow *win);
+    virtual void event(gl::GLWindow *win, SDL_Event &e) {
+
+    }
+
+    void update(float deltaTime) {
+        if (deltaTime > 0.1f) {
+            deltaTime = 0.1f;
+        }
+    }
+protected:
+    gl::GLSprite intro;
+    gl::ShaderProgram shader;
+    Uint32 lastUpdateTime = 0;
+    float fade = 1.0f;
+};
 
 
 class StarField : public gl::GLObject {
@@ -1984,7 +2069,7 @@ class MainWindow : public gl::GLWindow {
 public:
     MainWindow(std::string path, int tw, int th) : gl::GLWindow("Outer Space", tw, th) {
         setPath(path);
-        setObject(new Game());
+        setObject(new Intro());
         object->load(this);
     }
     
@@ -2002,6 +2087,30 @@ public:
         delay();
     }
 };
+
+void Intro::draw(gl::GLWindow *win) {
+    glDisable(GL_DEPTH_TEST);
+    #ifndef __EMSCRIPTEN__
+        Uint32 currentTime = SDL_GetTicks();
+    #else
+        double currentTime = emscripten_get_now();
+    #endif
+        shader.useProgram();
+        shader.setUniform("alpha", fade);
+        shader.setUniform("time_f", SDL_GetTicks() / 1000.0f);
+        intro.draw();
+        if((currentTime - lastUpdateTime) > 25) {
+            lastUpdateTime = currentTime;
+            fade -= .01;
+        }
+        if(fade <= 0.1) {
+            win->setObject(new Game());
+            win->object->load(win);
+            return;
+        }
+        intro.draw();
+}
+
 
 MainWindow *main_w = nullptr;
 
