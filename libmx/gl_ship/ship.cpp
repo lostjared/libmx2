@@ -1183,9 +1183,8 @@ public:
         void main() {
             vec2 texCoord = gl_PointCoord;
             vec4 texColor = texture(particleTexture, texCoord);
-            vec3 color = vec3(1.0, 0.2, 0.5);
-            if(texColor.r < 0.1 && texColor.g < 0.1 && texColor.b < 0.1) discard;
-
+            vec3 color = vec3(1.0, 0.0, 0.8);
+            if(texColor.r < 0.7 && texColor.g < 0.7 && texColor.b < 0.7) discard;
             FragColor = vec4(texColor.rgb * color, texColor.a * intensity);
         })";
 #else
@@ -1197,8 +1196,8 @@ public:
         void main() {
             vec2 texCoord = gl_PointCoord;
             vec4 texColor = texture(particleTexture, texCoord);
-            vec3 color = vec3(1.0, 0.2, 0.5);
-            if(texColor.r < 0.1 && texColor.g < 0.1 && texColor.b < 0.1) discard;
+            vec3 color = vec3(1.0, 0.0, 0.6);
+            if(texColor.r < 0.7 && texColor.g < 0.7 && texColor.b < 0.7) discard;
 
             FragColor = vec4(texColor.rgb * color, texColor.a * intensity);
         })";
@@ -1280,12 +1279,6 @@ const char* fullProjVert =
     void draw(gl::GLWindow *win) {
         if (projectiles.empty()) return;
         
-        
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-        glDepthMask(GL_FALSE);
-        
-        
         std::vector<float> positions;
         std::vector<float> sizes;
         std::vector<float> intensities;
@@ -1309,36 +1302,38 @@ const char* fullProjVert =
         }
         
         
-        glBindBuffer(GL_ARRAY_BUFFER, projectileVBO[0]);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, positions.size() * sizeof(float), positions.data());
-        
-        glBindBuffer(GL_ARRAY_BUFFER, projectileVBO[1]);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, sizes.size() * sizeof(float), sizes.data());
-        
-        glBindBuffer(GL_ARRAY_BUFFER, projectileVBO[2]);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, intensities.size() * sizeof(float), intensities.data());
-        
-        projectileShader.useProgram();
-        
-        glm::mat4 MVP = projectionMatrix * viewMatrix;
-        projectileShader.setUniform("MVP", MVP);
-        projectileShader.setUniform("particleTexture", 0);
-        
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texture);
+        if (!positions.empty() && !sizes.empty() && !intensities.empty()) {
+            glBindBuffer(GL_ARRAY_BUFFER, projectileVBO[0]);
+            glBufferSubData(GL_ARRAY_BUFFER, 0, positions.size() * sizeof(float), positions.data());
+            
+            glBindBuffer(GL_ARRAY_BUFFER, projectileVBO[1]);
+            glBufferSubData(GL_ARRAY_BUFFER, 0, sizes.size() * sizeof(float), sizes.data());
+            
+            glBindBuffer(GL_ARRAY_BUFFER, projectileVBO[2]);
+            glBufferSubData(GL_ARRAY_BUFFER, 0, intensities.size() * sizeof(float), intensities.data());
+            
+            projectileShader.useProgram();
+            
+            glm::mat4 MVP = projectionMatrix * viewMatrix;
+            projectileShader.setUniform("MVP", MVP);
+            projectileShader.setUniform("particleTexture", 0);
+            
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, texture);
 
 #ifndef __EMSCRIPTEN__
-        glEnable(GL_PROGRAM_POINT_SIZE);
+            glEnable(GL_PROGRAM_POINT_SIZE);
 #endif
-        
-        glBindVertexArray(projectileVAO);
-        glDrawArrays(GL_POINTS, 0, static_cast<GLsizei>(projectiles.size()));
-        
+            
+            glBindVertexArray(projectileVAO);
+            glDrawArrays(GL_POINTS, 0, static_cast<GLsizei>(projectiles.size()));
+            
 #ifndef __EMSCRIPTEN__
-        glDisable(GL_PROGRAM_POINT_SIZE);
+            glDisable(GL_PROGRAM_POINT_SIZE);
 #endif
-        glDepthMask(GL_TRUE);
-        glDisable(GL_BLEND);
+            glDepthMask(GL_TRUE);
+            glDisable(GL_BLEND);
+        }
     }
 
     void update(float deltaTime) {
@@ -1908,7 +1903,7 @@ public:
                 lastFireTime = currentTime;
             }
         } 
-        else if (!controller.getButton(SDL_CONTROLLER_BUTTON_A)) {
+        else  {
             firePressed = false;
         }
 
