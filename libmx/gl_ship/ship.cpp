@@ -1878,6 +1878,9 @@ public:
         }
         win->text.printText_Solid(font, 25.0f, 200.0f, 
             "Speed: " + std::to_string(ship.currentSpeed) + " / " + std::to_string(ship.maxSpeed));
+        std::string con_str = controller.active() ? ("Connected: " + controller.name()) : "Disconnected";
+        win->text.printText_Solid(font, 25.0f, 225.0f, "Controller: " + con_str);
+        win->text.printText_Solid(font, 25.0f, 250.0f, "Press ENTER to randomize planets");
     }
     
     void handleInput(gl::GLWindow* win, float deltaTime) {
@@ -1895,10 +1898,10 @@ public:
                 lastFireTime = currentTime;
             }
         } 
-        if(controller.getButton(SDL_CONTROLLER_BUTTON_X)) {
+        if(controller.getButton(SDL_CONTROLLER_BUTTON_LEFTSHOULDER)) {
             ship.increaseSpeed(deltaTime); 
         }
-        else if(controller.getButton(SDL_CONTROLLER_BUTTON_Y)) {
+        else if(controller.getButton(SDL_CONTROLLER_BUTTON_RIGHTSHOULDER)) {
             ship.decreaseSpeed(deltaTime); 
         }
         if (state[SDL_SCANCODE_UP]) {
