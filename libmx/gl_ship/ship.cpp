@@ -1733,7 +1733,7 @@ public:
     }
 
     void load(gl::GLWindow *win) override {
-        font.loadFont(win->util.getFilePath("data/font.ttf"), 22);
+        font.loadFont(win->util.getFilePath("data/font.ttf"), 18);
         emiter.load(win);
         emiter.setTextureID(gl::loadTexture(win->util.getFilePath("data/star.png")));        
         field.load(win);
