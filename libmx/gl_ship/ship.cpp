@@ -1883,29 +1883,31 @@ public:
     void handleInput(gl::GLWindow* win, float deltaTime) {
         const Uint8* state = SDL_GetKeyboardState(NULL);
         Uint32 currentTime = SDL_GetTicks();
-        
         if (state[SDL_SCANCODE_SPACE]) {
             if (currentTime - lastFireTime >= FIRE_COOLDOWN) {
                 ship.fireProjectile();
                 lastFireTime = currentTime;
             }
-        } 
-        
+        }
         if (controller.getButton(SDL_CONTROLLER_BUTTON_A)) {
             if (currentTime - lastFireTime >= FIRE_COOLDOWN) {        
                 ship.fireProjectile();
                 lastFireTime = currentTime;
             }
         } 
-        
+        if(controller.getButton(SDL_CONTROLLER_BUTTON_X)) {
+            ship.increaseSpeed(deltaTime); 
+        }
+        else if(controller.getButton(SDL_CONTROLLER_BUTTON_Y)) {
+            ship.decreaseSpeed(deltaTime); 
+        }
         if (state[SDL_SCANCODE_UP]) {
             ship.increaseSpeed(deltaTime); 
         }
         else if (state[SDL_SCANCODE_DOWN]) {
             ship.decreaseSpeed(deltaTime); 
         }
-        else {
-            
+        else {   
             if (ship.currentSpeed > 5.0f) {
                 ship.decreaseSpeed(deltaTime * 0.5f);
             }
@@ -1913,8 +1915,6 @@ public:
                 ship.increaseSpeed(deltaTime * 0.5f);
             }
         }
-        
-        
         if (state[SDL_SCANCODE_LEFT]) {
             ship.yaw(1.0f, deltaTime);
             ship.roll(-1.0f, deltaTime);  
@@ -1926,43 +1926,30 @@ public:
         else {
             ship.roll(0.0f, deltaTime);   
         }
-        
         if (state[SDL_SCANCODE_W]) {
             ship.pitch(-1.0f, deltaTime); 
         }
         if (state[SDL_SCANCODE_S]) {
             ship.pitch(1.0f, deltaTime); 
         }
-        
-        
         if (state[SDL_SCANCODE_RETURN]) {
             randomizePlanetPositions();
             emiter.reset();
         }
-
-        if(controller.getAxis(SDL_CONTROLLER_AXIS_LEFTY) < -0.5f) {
-            ship.increaseSpeed(deltaTime); 
-        }
-        else if(controller.getAxis(SDL_CONTROLLER_AXIS_LEFTY) > 0.5f) {
-            ship.decreaseSpeed(deltaTime); 
-        }
-
         if(controller.getAxis(SDL_CONTROLLER_AXIS_RIGHTY) < -0.5f) {
             ship.pitch(-1.0f, deltaTime); 
         }
         else if(controller.getAxis(SDL_CONTROLLER_AXIS_RIGHTY) > 0.5f) {
             ship.pitch(1.0f, deltaTime);  
         }
-
-        if(controller.getAxis(SDL_CONTROLLER_AXIS_RIGHTX) > 0.5f) {
+        if(controller.getAxis(SDL_CONTROLLER_AXIS_LEFTX) > 0.5f) {
             ship.yaw(-1.0f, deltaTime);   
             ship.roll(1.0f, deltaTime);   
         }
-        else if(controller.getAxis(SDL_CONTROLLER_AXIS_RIGHTX) < -0.5f) {
+        else if(controller.getAxis(SDL_CONTROLLER_AXIS_LEFTX) < -0.5f) {
             ship.yaw(1.0f, deltaTime);    
             ship.roll(-1.0f, deltaTime);  
         }
-
     }
     
     void event(gl::GLWindow *win, SDL_Event &e) override {
