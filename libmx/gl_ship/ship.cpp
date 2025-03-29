@@ -1724,7 +1724,6 @@ class Game : public gl::GLObject {
     std::vector<Planet> planets;    
     static const int NUM_PLANETS = 5;
     GLuint texture = 0;
-    bool spacePressed = false;  
     mx::Controller controller;
 public:
     Game() = default;
@@ -1885,28 +1884,20 @@ public:
         const Uint8* state = SDL_GetKeyboardState(NULL);
         Uint32 currentTime = SDL_GetTicks();
         
-        if (state[SDL_SCANCODE_SPACE] && !spacePressed) {
+        if (state[SDL_SCANCODE_SPACE]) {
             if (currentTime - lastFireTime >= FIRE_COOLDOWN) {
-                spacePressed = true;
                 ship.fireProjectile();
                 lastFireTime = currentTime;
             }
         } 
-        else if (!state[SDL_SCANCODE_SPACE]) {
-            spacePressed = false;
-        }
-
-        if (controller.getButton(SDL_CONTROLLER_BUTTON_A) && !firePressed) {
-            if (currentTime - lastFireTime >= FIRE_COOLDOWN) {
-                firePressed = true;
+        
+        if (controller.getButton(SDL_CONTROLLER_BUTTON_A)) {
+            if (currentTime - lastFireTime >= FIRE_COOLDOWN) {        
                 ship.fireProjectile();
                 lastFireTime = currentTime;
             }
         } 
-        else  {
-            firePressed = false;
-        }
-
+        
         if (state[SDL_SCANCODE_UP]) {
             ship.increaseSpeed(deltaTime); 
         }
@@ -1943,13 +1934,6 @@ public:
             ship.pitch(1.0f, deltaTime); 
         }
         
-        if (state[SDL_SCANCODE_SPACE] && !spacePressed) {
-            spacePressed = true;
-            ship.fireProjectile();
-        } 
-        else if (!state[SDL_SCANCODE_SPACE]) {
-            spacePressed = false;
-        }
         
         if (state[SDL_SCANCODE_RETURN]) {
             randomizePlanetPositions();
@@ -2004,7 +1988,6 @@ private:
     glm::mat4 viewMatrix{1.0f};
     glm::mat4 projectionMatrix{1.0f};
     glm::vec3 lightPos{10.0f, 10.0f, 10.0f};
-    bool firePressed = false;
 };
 
 class MainWindow : public gl::GLWindow {
