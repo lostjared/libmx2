@@ -24,6 +24,8 @@ printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
 #define M_PI 3.14159265358979323846
 #endif
 
+using mx::generateRandomFloat;
+using mx::generateRandomInt;
 
 #if defined(__EMSCRIPTEN__) || defined(__ANDOIRD__)
 
@@ -297,9 +299,6 @@ void main() {
 }
 )";
 #endif
-
-using mx::generateRandomFloat;
-using mx::generateRandomInt;
 
 class Intro : public gl::GLObject {
 public:
@@ -1721,7 +1720,7 @@ public:
     ~Planet() = default;
 
     glm::vec3 position{0.0f, 0.0f, -30.0f}; 
-    float rotationSpeed = 2.0f;             
+    float rotationSpeed = 75.0f;             
     float rotationAngle = 0.0f;
     float scale = 5.0f;                     
     float time_f = 0.0f;  
@@ -1756,8 +1755,7 @@ public:
                     throw mx::Exception("Failed to load star planet model");
             }
             models[3]->setTextures(win, win->util.getFilePath("data/rock.tex"), win->util.getFilePath("data"));
-        
-        
+              
             shader = std::make_unique<gl::ShaderProgram>();
             if(!shader->loadProgramFromText(g_vSource, g_fSource)) {
                 throw mx::Exception("Failed to load planet shader program");
@@ -1953,37 +1951,38 @@ public:
 
         emiter.update(deltaTime);
         emiter.draw(win);
-        
-        win->text.setColor({255,255,255,255});
-        win->text.printText_Solid(font,25.0f,25.0f, "Ship X,Y,Z: " + std::to_string(ship.position.x) + ", " + std::to_string(ship.position.y) + ", " + std::to_string(ship.position.z));
-        win->text.printText_Solid(font,25.0f,50.0f, "Velocity X,Y,Z: " + std::to_string(ship.velocity.x) + ", " + std::to_string(ship.velocity.y) + ", " + std::to_string(ship.velocity.z)); 
-        win->text.printText_Solid(font,25.0f,75.0f, "FPS: " + std::to_string(1.0f / deltaTime));
-        
-        int destroyedCount = 0;
-        for (const auto& planet : planets) {
-            if (planet.isDestroyed) destroyedCount++;
-        }
-        win->text.printText_Solid(font,25.0f,100.0f, "Planets destroyed: " + std::to_string(destroyedCount) + "/" + std::to_string(NUM_PLANETS));
-        win->text.printText_Solid(font,25.0f,125.0f, "Controls: Arrows to Move, W,S Tilt Up/Down - SPACE to shoot");
-        
-        if (!planets.empty()) {
-            float closestPlanet = 999999.0f;
-            float farthestPlanet = 0.0f;
+        if(debug_menu) {
+            win->text.setColor({255,255,255,255});
+            win->text.printText_Solid(font,25.0f,25.0f, "Ship X,Y,Z: " + std::to_string(ship.position.x) + ", " + std::to_string(ship.position.y) + ", " + std::to_string(ship.position.z));
+            win->text.printText_Solid(font,25.0f,50.0f, "Velocity X,Y,Z: " + std::to_string(ship.velocity.x) + ", " + std::to_string(ship.velocity.y) + ", " + std::to_string(ship.velocity.z)); 
+            win->text.printText_Solid(font,25.0f,75.0f, "FPS: " + std::to_string(1.0f / deltaTime));
             
+            int destroyedCount = 0;
             for (const auto& planet : planets) {
-                float dist = glm::length(ship.position - planet.position);
-                closestPlanet = std::min(closestPlanet, dist);
-                farthestPlanet = std::max(farthestPlanet, dist);
+                if (planet.isDestroyed) destroyedCount++;
             }
+            win->text.printText_Solid(font,25.0f,100.0f, "Objects destroyed: " + std::to_string(destroyedCount) + "/" + std::to_string(NUM_PLANETS));
+            win->text.printText_Solid(font,25.0f,125.0f, "Controls: Arrows to Move, W,S Tilt Up/Down - SPACE to shoot");
             
-            win->text.printText_Solid(font,25.0f,150.0f, "Nearest planet: " + std::to_string(closestPlanet));
-            win->text.printText_Solid(font,25.0f,175.0f, "Farthest planet: " + std::to_string(farthestPlanet));
+            if (!planets.empty()) {
+                float closestPlanet = 999999.0f;
+                float farthestPlanet = 0.0f;
+                
+                for (const auto& planet : planets) {
+                    float dist = glm::length(ship.position - planet.position);
+                    closestPlanet = std::min(closestPlanet, dist);
+                    farthestPlanet = std::max(farthestPlanet, dist);
+                }
+                
+                win->text.printText_Solid(font,25.0f,150.0f, "Nearest Object: " + std::to_string(closestPlanet));
+                win->text.printText_Solid(font,25.0f,175.0f, "Farthest Object: " + std::to_string(farthestPlanet));
+            }
+            win->text.printText_Solid(font, 25.0f, 200.0f, 
+                "Speed: " + std::to_string(ship.currentSpeed) + " / " + std::to_string(ship.maxSpeed));
+            std::string con_str = controller.active() ? ("Connected: " + controller.name()) : "Disconnected";
+            win->text.printText_Solid(font, 25.0f, 225.0f, "Controller: " + con_str);
+            win->text.printText_Solid(font, 25.0f, 250.0f, "Press ENTER to randomize planets");
         }
-        win->text.printText_Solid(font, 25.0f, 200.0f, 
-            "Speed: " + std::to_string(ship.currentSpeed) + " / " + std::to_string(ship.maxSpeed));
-        std::string con_str = controller.active() ? ("Connected: " + controller.name()) : "Disconnected";
-        win->text.printText_Solid(font, 25.0f, 225.0f, "Controller: " + con_str);
-        win->text.printText_Solid(font, 25.0f, 250.0f, "Press ENTER to randomize planets");
     }
     
     void handleInput(gl::GLWindow* win, float deltaTime) {
@@ -2064,6 +2063,8 @@ public:
                 if(e.key.keysym.sym == SDLK_RETURN) {
                     randomizePlanetPositions();
                     emiter.reset();
+                } else if(e.key.keysym.sym == SDLK_F1) {
+                    debug_menu = !debug_menu;
                 }
                 break;
         }
@@ -2081,6 +2082,7 @@ private:
     glm::mat4 viewMatrix{1.0f};
     glm::mat4 projectionMatrix{1.0f};
     glm::vec3 lightPos{10.0f, 10.0f, 10.0f};
+    bool debug_menu = true;
 };
 
 class MainWindow : public gl::GLWindow {
@@ -2121,18 +2123,17 @@ void Intro::draw(gl::GLWindow *win) {
             lastUpdateTime = currentTime;
             fade -= .01;
         }
-        if(fade <= 0.1) {
+        if(fade <= 0.0) {
             win->setObject(new Game());
             win->object->load(win);
             return;
         }
         intro.draw();
-        if(fade <= 0.2) {
+        if(fade <= 0.1) {
             win->text.setColor({255,255,255,255});
             win->text.printText_Solid(font, 25.0f, 25.0f, "Loading ...");
         }
 }
-
 
 MainWindow *main_w = nullptr;
 
