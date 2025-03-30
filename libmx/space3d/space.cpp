@@ -1638,17 +1638,7 @@ public:
         fstart = SDL_GetTicks();
         object->draw(this);
         swap();
-        delay_();
-    }
-    
-    void delay_() {
-        // Apply frame rate limiting on all platforms
-        const int frameDelay = 1000 / 60;
-        int frameTime = SDL_GetTicks() - fstart;
-        if (frameDelay > frameTime) {
-            SDL_Delay(frameDelay - frameTime);
-        }
-     }    
+    }  
 
 private:
 };
