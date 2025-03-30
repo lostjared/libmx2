@@ -3,7 +3,7 @@
 
 Fly a spaceship through outer space
 
-https://lostsidedead.biz/SpaceShooter
+https://lostsidedead.biz/game/Space3D_Expanse
 
 
 ![Screenshot 2025-03-25 190051](https://github.com/user-attachments/assets/d3857c6e-9184-4135-b3f8-b6284ace73fa)
