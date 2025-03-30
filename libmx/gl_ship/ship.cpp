@@ -74,6 +74,7 @@ const char *g_fSource = R"(#version 300 es
         out vec4 FragColor;
 
         uniform float time_f;
+        uniform int effect_type;
 
         vec4 alphaXor(vec4 color) {
             ivec3 source;
@@ -114,10 +115,14 @@ const char *g_fSource = R"(#version 300 es
 
         void main()
         {
-            FragColor = vec4(vertexColor, 1.0) * texture(texture1, TexCoords);
-            vec4 ctx = distort(TexCoords, time_f, texture1);
-            FragColor = alphaXor(ctx);
-            FragColor.a = 1.0;
+            if(effect_type != 3) {
+                FragColor = vec4(vertexColor, 1.0) * texture(texture1, TexCoords);
+                vec4 ctx = distort(TexCoords, time_f, texture1);
+                FragColor = alphaXor(ctx);
+                FragColor.a = 1.0;
+            } else {
+                FragColor = texture(texture1, TexCoords); 
+            }
         }
 )";
 #else
@@ -166,6 +171,7 @@ const char *g_fSource = R"(#version 330 core
         out vec4 FragColor;
 
         uniform float time_f;
+        uniform int effect_type;
 
         vec4 alphaXor(vec4 color) {
             ivec3 source;
@@ -204,12 +210,15 @@ const char *g_fSource = R"(#version 330 core
         }
 
 
-        void main()
-        {
-            FragColor = vec4(vertexColor, 1.0) * texture(texture1, TexCoords);
-            vec4 ctx = distort(TexCoords, time_f, texture1);
-            FragColor = alphaXor(ctx);
-            FragColor.a = 1.0;
+        void main() {
+            if(effect_type != 3) {
+                FragColor = vec4(vertexColor, 1.0) * texture(texture1, TexCoords);
+                vec4 ctx = distort(TexCoords, time_f, texture1);
+                FragColor = alphaXor(ctx);
+                FragColor.a = 1.0;
+            } else {
+                FragColor = texture(texture1, TexCoords); 
+            }
         }
 )";
 #endif
@@ -303,6 +312,8 @@ public:
 
     virtual void load(gl::GLWindow *win) {
 
+        font.loadFont(win->util.getFilePath("data/font.ttf"), 25);
+
 #if defined(__EMSCRIPTEN__) 
     const char *vSource = R"(#version 300 es
             precision mediump float;
@@ -386,6 +397,7 @@ protected:
     gl::ShaderProgram shader;
     Uint32 lastUpdateTime = 0;
     float fade = 1.0f;
+    mx::Font font;
 };
 
 
@@ -1739,6 +1751,11 @@ public:
                     throw mx::Exception("Failed to load star planet model");
             }
             models[2]->setTextures(win, win->util.getFilePath("data/star.tex"), win->util.getFilePath("data"));
+            models[3] = std::make_unique<mx::Model>();
+            if(!models[3]->openModel(win->util.getFilePath("data/asteroid.mxmod.z"))) {
+                    throw mx::Exception("Failed to load star planet model");
+            }
+            models[3]->setTextures(win, win->util.getFilePath("data/rock.tex"), win->util.getFilePath("data"));
         
         
             shader = std::make_unique<gl::ShaderProgram>();
@@ -1748,9 +1765,10 @@ public:
             models[0]->setShaderProgram(shader.get(), "texture1");
             models[1]->setShaderProgram(shader.get(), "texture1");
             models[2]->setShaderProgram(shader.get(), "texture1");
+            models[3]->setShaderProgram(shader.get(), "texture1");
             loaded = true;
         }
-        planet_type = generateRandomInt(0, 2);
+        planet_type = generateRandomInt(0, 3);
         shader->useProgram();
     }
 
@@ -1786,7 +1804,7 @@ public:
         shader->setUniform("view", view);
         shader->setUniform("projection", projection);
         shader->setUniform("time_f", time_f);
-        
+        shader->setUniform("effect_type", planet_type);
         models[planet_type]->drawArrays();
     }
 
@@ -1795,11 +1813,11 @@ public:
     }
 
 private:
-    static std::unique_ptr<mx::Model> models[3];
+    static std::unique_ptr<mx::Model> models[4];
     static std::unique_ptr<gl::ShaderProgram> shader;
 };
 
-std::unique_ptr<mx::Model> Planet::models[3] = {nullptr, nullptr, nullptr};
+std::unique_ptr<mx::Model> Planet::models[4] = {nullptr, nullptr, nullptr, nullptr};
 std::unique_ptr<gl::ShaderProgram> Planet::shader = nullptr;
 
 class Game : public gl::GLObject {
@@ -1807,7 +1825,7 @@ class Game : public gl::GLObject {
     StarField field;
     StarFighter ship;  
     std::vector<Planet> planets;    
-    static const int NUM_PLANETS = 5;
+    static const int NUM_PLANETS = 7;
     GLuint texture = 0;
     mx::Controller controller;
 public:
@@ -1844,7 +1862,7 @@ public:
             bool validPosition = false;
             glm::vec3 newPos;
         
-            planets[i].planet_type = generateRandomInt(0, 2);
+            planets[i].planet_type = generateRandomInt(0, 3);
          
             while (!validPosition) {
                 newPos = glm::vec3(
@@ -2109,6 +2127,10 @@ void Intro::draw(gl::GLWindow *win) {
             return;
         }
         intro.draw();
+        if(fade <= 0.2) {
+            win->text.setColor({255,255,255,255});
+            win->text.printText_Solid(font, 25.0f, 25.0f, "Loading ...");
+        }
 }
 
 
