@@ -580,10 +580,17 @@ public:
             colors.push_back(alpha);
         }
 
+        if (positions.empty() || sizes.empty() || colors.empty()) {
+            return; 
+        }
+
         CHECK_GL_ERROR();
+        size_t uploadSize = std::min(positions.size() * sizeof(float), size_t(NUM_PARTICLES * 3 * sizeof(float)));
 
         glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, positions.size() * sizeof(float), positions.data());
+        glBufferSubData(GL_ARRAY_BUFFER, 0, uploadSize, positions.data());
+
+        CHECK_GL_ERROR();
 
         glBindBuffer(GL_ARRAY_BUFFER, VBO[1]);
         glBufferSubData(GL_ARRAY_BUFFER, 0, sizes.size() * sizeof(float), sizes.data());
@@ -874,7 +881,9 @@ public:
 #ifndef __EMSCRIPTEN__
         glEnable(GL_PROGRAM_POINT_SIZE);
 #endif
-        glDrawArrays(GL_POINTS, 0, activeParticles);
+        int count = static_cast<int>(particleData.size() / 8);
+        glDrawArrays(GL_POINTS, 0, count);
+        CHECK_GL_ERROR();
 #ifndef __EMSCRIPTEN__
         glDisable(GL_PROGRAM_POINT_SIZE);
 #endif
@@ -951,62 +960,6 @@ public:
     void setProjectionMatrix(const glm::mat4& proj) { projectionMatrix = proj; }
     void setViewMatrix(const glm::mat4& view) { viewMatrix = view; }
     void setTextureID(GLuint id) { textureID = id; }
-
-    // Add to ExplodeEmiter class
-    void smallExplosion() {
-        // Similar to explode() but with fewer particles and different parameters
-        reset();
-        
-        const int WAVE_COUNT = 2;
-        int particlesPerWave = MAX_PARTICLES / WAVE_COUNT / 4; // Use fewer particles
-        
-        struct WaveParams {
-            float minSpeed, maxSpeed;
-            float minSize, maxSize;
-            float minLife, maxLife;
-            glm::vec3 baseColor;
-        };
-        
-        WaveParams waves[WAVE_COUNT] = {
-            {20.0f, 30.0f, 15.0f, 25.0f, 0.8f, 1.2f, {1.0f, 0.9f, 0.3f}},
-            {15.0f, 22.0f, 10.0f, 15.0f, 1.0f, 1.5f, {1.0f, 0.6f, 0.2f}}
-        };
-        
-        int particleIndex = 0;
-        
-        for (int wave = 0; wave < WAVE_COUNT; wave++) {
-            for (int i = 0; i < particlesPerWave && particleIndex < MAX_PARTICLES; i++) {
-                float theta = generateRandomFloat(0.0f, 2.0f * M_PI);
-                float phi = generateRandomFloat(0.0f, M_PI);
-                float x = sin(phi) * cos(theta);
-                float y = sin(phi) * sin(theta);
-                float z = cos(phi);        
-                auto& p = particles[particleIndex++];
-                float offset = 0.8f + 0.2f * static_cast<float>(wave) / WAVE_COUNT;
-                p.x = position.x + x * offset;
-                p.y = position.y + y * offset;
-                p.z = position.z + z * offset;
-                float speed = generateRandomFloat(waves[wave].minSpeed, waves[wave].maxSpeed);
-                p.vx = x * speed;
-                p.vy = y * speed;
-                p.vz = z * speed;
-                p.vx += generateRandomFloat(-5.0f, 5.0f);
-                p.vy += generateRandomFloat(-5.0f, 5.0f);
-                p.vz += generateRandomFloat(-5.0f, 5.0f);
-                const auto& baseColor = waves[wave].baseColor;
-                p.r = baseColor.r * generateRandomFloat(0.9f, 1.1f);
-                p.g = baseColor.g * generateRandomFloat(0.9f, 1.1f);
-                p.b = baseColor.b * generateRandomFloat(0.9f, 1.1f);
-                p.alpha = 0.1f; 
-                p.size = generateRandomFloat(waves[wave].minSize, waves[wave].maxSize);
-                p.maxLife = generateRandomFloat(waves[wave].minLife, waves[wave].maxLife);
-                p.life = 0.0f; 
-                p.active = true;
-            }
-        }
-        
-        activeParticles = particleIndex;
-    }
     
 protected:
     gl::ShaderProgram shader;
@@ -1981,6 +1934,8 @@ class Game : public gl::GLObject {
     bool shipExploding = false;
     float shipExplosionTimer = 0.0f;
     const float SHIP_EXPLOSION_DURATION = 2.5f;
+    int lives = 5;
+    int score = 0;
 public:
     Game() = default;
     virtual ~Game() override {
@@ -2006,6 +1961,8 @@ public:
     }
     
     void randomizePlanetPositions() {
+        lives = 5;
+        score = 0;
         const float minX = -100.0f, maxX = 100.0f;
         const float minY = -50.0f, maxY = 50.0f;
         const float minZ = -100.0f, maxZ = 100.0f;
@@ -2096,11 +2053,13 @@ public:
                     if (planet.generation >= Planet::MAX_GENERATIONS) {
                         emiter.explode();
                         planet.isDestroyed = true;
+                        score += 100;
                     } else {
                     
-                        emiter.smallExplosion(); 
+                        emiter.explode(); 
                         planet.spawnChildAsteroids(planets);
                         planet.isDestroyed = true;
+                        score += 10;
                     }
                 }
                 
@@ -2127,11 +2086,20 @@ public:
                 ship.currentSpeed = ship.minSpeed;
                 ship.visible = true;
                 ship.cameraPosition = glm::vec3(0.0f, ship.cameraHeight, ship.cameraDistance);
+                lives--;
+                if(lives <= 0) {
+                    randomizePlanetPositions();
+                }
             }
         }
 
         emiter.update(deltaTime);
         emiter.draw(win);
+
+        win->text.setColor({255,255,255,255});
+        win->text.printText_Solid(font, win->w-225.0f, 25.0f, "Score: " + std::to_string(score));
+        win->text.printText_Solid(font, win->w-225.0f, 50.0f, "Lives: " + std::to_string(lives));
+
         if(debug_menu) {
             win->text.setColor({255,255,255,255});
             win->text.printText_Solid(font,25.0f,25.0f, "Ship X,Y,Z: " + std::to_string(ship.position.x) + ", " + std::to_string(ship.position.y) + ", " + std::to_string(ship.position.z));
