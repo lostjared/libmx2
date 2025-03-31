@@ -859,30 +859,50 @@ public:
             particleData.push_back(p.size);
         }
         
-        
+        if (particleData.empty() || particleData.size() % 8 != 0) {
+            return;
+        }
+
+        int count = static_cast<int>(particleData.size() / 8);
+        size_t maxBytes = MAX_PARTICLES * 8 * sizeof(float);
+        size_t dataBytes = particleData.size() * sizeof(float);
+        if (dataBytes > maxBytes) {
+            dataBytes = maxBytes; 
+            count = MAX_PARTICLES;
+        }
+        if (count >= MAX_PARTICLES) {
+            count = MAX_PARTICLES;
+            dataBytes = MAX_PARTICLES * 8 * sizeof(float);
+        } else {
+            dataBytes = count * 8 * sizeof(float);
+        }
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE); 
         glDepthMask(GL_FALSE); 
-        
+        CHECK_GL_ERROR();
         shader.useProgram();
+        CHECK_GL_ERROR();
         shader.setUniform("projection", projectionMatrix);
         shader.setUniform("view", viewMatrix);
         shader.setUniform("particleTexture", 0);
-        
+        CHECK_GL_ERROR();
         glActiveTexture(GL_TEXTURE0);
+        CHECK_GL_ERROR();
         glBindTexture(GL_TEXTURE_2D, textureID);
-        
-        
+        CHECK_GL_ERROR();
         glBindVertexArray(vao);
+        CHECK_GL_ERROR();
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, particleData.size() * sizeof(float), particleData.data());
-        
-        
+        CHECK_GL_ERROR();   
+        glBufferSubData(GL_ARRAY_BUFFER, 0, dataBytes, particleData.data());
+        CHECK_GL_ERROR();
 #ifndef __EMSCRIPTEN__
         glEnable(GL_PROGRAM_POINT_SIZE);
 #endif
-        int count = static_cast<int>(particleData.size() / 8);
-        glDrawArrays(GL_POINTS, 0, count);
+        
+        if(count > 0) {
+            glDrawArrays(GL_POINTS, 0, count);
+        }
         CHECK_GL_ERROR();
 #ifndef __EMSCRIPTEN__
         glDisable(GL_PROGRAM_POINT_SIZE);
@@ -924,6 +944,10 @@ public:
                 float x = sin(phi) * cos(theta);
                 float y = sin(phi) * sin(theta);
                 float z = cos(phi);        
+
+                if (particleIndex >= MAX_PARTICLES) 
+                    break;
+
                 auto& p = particles[particleIndex++];
                 float offset = 0.8f + 0.2f * static_cast<float>(wave) / WAVE_COUNT;
                 p.x = position.x + x * offset;
