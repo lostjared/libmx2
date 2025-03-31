@@ -2268,7 +2268,7 @@ private:
 
 class MainWindow : public gl::GLWindow {
 public:
-    MainWindow(std::string path, int tw, int th) : gl::GLWindow("Outer Space", tw, th) {
+    MainWindow(std::string path, int tw, int th) : gl::GLWindow("3D Asteroids", tw, th) {
         setPath(path);
         setObject(new Intro());
         object->load(this);
