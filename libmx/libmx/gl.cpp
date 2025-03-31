@@ -596,8 +596,17 @@ namespace gl {
         color = col;
     }
 
-    GLuint GLText::createText(const std::string &text, TTF_Font *font, SDL_Color color, int &textWidth, int &textHeight) {
-        SDL_Surface *surface = TTF_RenderText_Blended(font, text.c_str(), color);
+    GLuint GLText::createText(const std::string &text, TTF_Font *font, SDL_Color color, int &textWidth, int &textHeight, bool solid) {
+        if (!font) {
+            throw mx::Exception("Error font is null in createText");
+            return 0;
+        }
+        SDL_Surface *surface = nullptr;
+        if(solid)
+            surface = TTF_RenderText_Solid(font, text.c_str(), color);
+        else
+            surface = TTF_RenderText_Blended(font, text.c_str(), color);
+
         if (!surface) {
             mx::system_err << "Failed to create text surface: " << TTF_GetError() << std::endl;
             return 0;
@@ -626,6 +635,7 @@ namespace gl {
         SDL_FreeSurface(surface);
         return texture;
     }
+    
     
     void GLText::renderText(GLuint texture, float x, float y, int textWidth, int textHeight, int screenWidth, int screenHeight) {
         float ndcX = (x / screenWidth) * 2.0f - 1.0f;       
@@ -659,12 +669,27 @@ namespace gl {
     }
 
     void GLText::printText_Solid(const mx::Font &f, float x, float y, const std::string &text) {
+        if(text.empty()) return;
         glDisable(GL_DEPTH_TEST);
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         textShader.useProgram();
         int textWidth = 0, textHeight = 0;
-        GLuint textTexture= createText(text, f.wrapper().unwrap(), color, textWidth, textHeight);
+        GLuint textTexture = createText(text, f.wrapper().unwrap(), color, textWidth, textHeight);
+        renderText(textTexture, x, y, textWidth, textHeight, w,h);
+        glDeleteTextures(1, &textTexture);
+        glDisable(GL_BLEND);
+        glEnable(GL_DEPTH_TEST);
+    }
+
+    void GLText::printText_Blended(const mx::Font &f, float x, float y, const std::string &text) {
+        if(text.empty()) return;
+        glDisable(GL_DEPTH_TEST);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        textShader.useProgram();
+        int textWidth = 0, textHeight = 0;
+        GLuint textTexture= createText(text, f.wrapper().unwrap(), color, textWidth, textHeight, false);
         renderText(textTexture, x, y, textWidth, textHeight, w,h);
         glDeleteTextures(1, &textTexture);
         glDisable(GL_BLEND);

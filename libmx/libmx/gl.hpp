@@ -66,9 +66,10 @@ namespace gl {
     public:
         GLText();
         void init(int w, int h);
-        GLuint createText(const std::string &text, TTF_Font *font, SDL_Color color, int &textWidth, int &textHeight);
+        GLuint createText(const std::string &text, TTF_Font *font, SDL_Color color, int &textWidth, int &textHeight, bool solid = true);
         void renderText(GLuint texture, float x, float y, int textWidth, int textHeight, int screenWidth, int screenHeight);
         void printText_Solid(const mx::Font &f, float x, float y, const std::string &text);
+        void printText_Blended(const mx::Font &f, float x, float y, const std::string &text);
         void setColor(SDL_Color col);
     private:
         ShaderProgram textShader;
