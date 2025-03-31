@@ -2119,7 +2119,7 @@ void Intro::draw(gl::GLWindow *win) {
         shader.setUniform("alpha", fade);
         shader.setUniform("time_f", SDL_GetTicks() / 1000.0f);
         intro.draw();
-        if((currentTime - lastUpdateTime) > 25) {
+        if((currentTime - lastUpdateTime) > 35) {
             lastUpdateTime = currentTime;
             fade -= .01;
         }
