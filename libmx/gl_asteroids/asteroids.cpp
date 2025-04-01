@@ -383,7 +383,9 @@ public:
 
     virtual void draw(gl::GLWindow *win);
     virtual void event(gl::GLWindow *win, SDL_Event &e) {
-
+        if(e.key.keysym.sym == SDLK_SPACE || e.key.keysym.sym == SDLK_RETURN) {
+            fade = 0.01f;
+        }
     }
 
     void update(float deltaTime) {
@@ -1735,7 +1737,9 @@ const float BOUNDARY_Y_MAX = 100.0f;
 const float BOUNDARY_Z_MIN = -150.0f;
 const float BOUNDARY_Z_MAX = 150.0f;
 const float BOUNDARY_BOUNCE_FACTOR = 1.2f;
-
+constexpr int MAX_GENERATIONS = 2;
+constexpr int CHILDREN_PER_SPAWN = 2;
+constexpr int MAX_PLANETS = 7 * (1 + CHILDREN_PER_SPAWN + CHILDREN_PER_SPAWN * CHILDREN_PER_SPAWN);
 class Planet {
 public:
     Planet() = default;
@@ -1777,10 +1781,10 @@ public:
     float scale = 5.0f;                     
     float time_f = 0.0f;  
     int planet_type = 0;
-    bool isDestroyed = false;
+    bool isDestroyed = true;
+    bool isActive = false;
     float radius = 5.0f;
     int generation = 0;  
-    static constexpr int MAX_GENERATIONS = 2;  
     glm::vec3 velocity{0.0f, 0.0f, 0.0f};  
 
     float getRadius() const {
@@ -1860,7 +1864,6 @@ public:
                 velocity = glm::normalize(velocity) * 2.0f;
             }
         }
-        
     
         if (glm::length(velocity) > 0.01f) {
             velocity *= 0.995f; 
@@ -1900,42 +1903,44 @@ public:
     }
 
     void reset() {
-        isDestroyed = false;
+        isDestroyed = true;
+        isActive = false;
     }
     void spawnChildAsteroids(std::vector<Planet>& planets) {
-        if (generation >= MAX_GENERATIONS) {
-            return; 
-        }
+        if (generation >= MAX_GENERATIONS) return;
         
-        for (int i = 0; i < 2; i++) {
-            Planet* child = nullptr;
+        std::cout << "Asteroid splitting: gen " << generation << " -> " << generation + 1 << std::endl;
+        for (int i = 0; i < CHILDREN_PER_SPAWN; ++i) {
+            int availCount = 0;
+            for (const auto& p : planets) {
+                if (!p.isActive && p.isDestroyed) availCount++;
+            }
+            std::cout << "Available planets: " << availCount << "/" << planets.size() << std::endl;
             
-            for (auto& p : planets) {
-                if (p.isDestroyed) {
-                    child = &p;
-                    break;
-                }
+            auto it = std::find_if(planets.begin(), planets.end(),
+                [](const Planet& p) { return !p.isActive && p.isDestroyed; });
+            
+            if (it == planets.end()) {
+                std::cerr << "Planet pool exhausted! Increase MAX_PLANETS." << std::endl;
+                return;
             }
             
-            if (!child) {
-                planets.push_back(Planet());
-                child = &planets.back();
-                child->load(nullptr); 
-            }
-            
-            child->position = position;
-            float offsetDistance = radius * 0.5f;
-            child->position.x += generateRandomFloat(-offsetDistance, offsetDistance);
-            child->position.y += generateRandomFloat(-offsetDistance, offsetDistance);
-            child->position.z += generateRandomFloat(-offsetDistance, offsetDistance);
-            child->scale = scale * 0.6f;
-            child->radius = radius * 0.6f;
-            child->rotationSpeed = rotationSpeed * generateRandomFloat(0.8f, 1.5f);
-            child->rotationAngle = generateRandomFloat(0.0f, 360.0f);
-            child->generation = generation + 1;
-            child->isDestroyed = false;
-            child->velocity = glm::normalize(child->position - position) * 
-                              generateRandomFloat(2.0f, 5.0f);
+            Planet& child = *it;
+            child.isDestroyed = false;
+            child.isActive = true;
+            child.planet_type = 3;
+            child.position = position;
+            float offset = radius * 0.5f;
+            child.position.x += generateRandomFloat(-offset, offset);
+            child.position.y += generateRandomFloat(-offset, offset);
+            child.position.z += generateRandomFloat(-offset, offset);
+            child.scale = scale * 0.6f;
+            child.radius = radius * 0.6f;
+            child.rotationSpeed = rotationSpeed * generateRandomFloat(0.8f, 1.5f);
+            child.rotationAngle = generateRandomFloat(0.0f, 360.0f);
+            child.generation = generation + 1;
+            glm::vec3 directionFromParent = glm::normalize(child.position - position);
+            child.velocity = directionFromParent * generateRandomFloat(2.0f, 5.0f);
         }
     }
 
@@ -1973,10 +1978,11 @@ public:
         emiter.setTextureID(gl::loadTexture(win->util.getFilePath("data/star.png")));        
         field.load(win);
         ship.load(win);  
-        
-        planets.resize(NUM_PLANETS);
+        planets.resize(MAX_PLANETS);
         for (auto& planet : planets) {
             planet.load(win);
+            planet.isActive = false;
+            planet.isDestroyed = true;
         }
         
         randomizePlanetPositions();
@@ -1992,7 +1998,14 @@ public:
         const float minZ = -100.0f, maxZ = 100.0f;
         const float minDistanceBetweenPlanets = 20.0f;
         
-        for (int i = 0; i < static_cast<int>(planets.size()); i++) {
+        for(int i = 0; i < static_cast<int>(planets.size()); i++) {
+            planets[i].reset();
+            planets[i].isActive = false;
+            planets[i].isDestroyed = true;
+            
+        }
+
+        for (int i = 0; i < 7; i++) {
             bool validPosition = false;
             glm::vec3 newPos;
         
@@ -2024,8 +2037,14 @@ public:
             planets[i].rotationSpeed = generateRandomFloat(1.0f, 5.0f);
             planets[i].rotationAngle = generateRandomFloat(0.0f, 360.0f);
             planets[i].isDestroyed = false;
+            planets[i].isActive = true;       
             planets[i].generation = 0; 
             planets[i].velocity = glm::vec3(0.0f); 
+            int availablePlanets = 0;
+            for (const auto& p : planets) {
+                if (!p.isActive && p.isDestroyed) availablePlanets++;
+            }
+            std::cout << "Available planets after initialization: " << availablePlanets << "/" << planets.size() << std::endl;
         }
     }
 
@@ -2074,7 +2093,7 @@ public:
                     emiter.position = planet.position;
                     
                     
-                    if (planet.generation >= Planet::MAX_GENERATIONS) {
+                    if (planet.generation >= MAX_GENERATIONS) {
                         emiter.explode();
                         planet.isDestroyed = true;
                         score += 100;
@@ -2123,6 +2142,17 @@ public:
         win->text.setColor({255,255,255,255});
         win->text.printText_Solid(font, win->w-225.0f, 25.0f, "Score: " + std::to_string(score));
         win->text.printText_Solid(font, win->w-225.0f, 50.0f, "Lives: " + std::to_string(lives));
+
+         int numPlanets = 0;
+         for(auto &p : planets) {
+             if(!p.isDestroyed) numPlanets++;
+         }
+
+         if(numPlanets == 0) {
+            randomizePlanetPositions();
+         }
+
+         win->text.printText_Solid(font, win->w-225.0f, 75.0f, "Asteroids: " + std::to_string(numPlanets));
 
         if(debug_menu) {
             win->text.setColor({255,255,255,255});
