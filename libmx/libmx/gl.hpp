@@ -126,7 +126,7 @@ namespace gl {
         void setWindowSize(int w, int h);
         void setWindowIcon(SDL_Surface *ico);
         void setFullScreen(bool full);
-        std::unique_ptr<gl::GLObject> object;
+        std::unique_ptr<gl::GLObject> object = nullptr;
         mx::mxUtil util;
         int w = 0, h = 0;
         SDL_Window *getWindow() { return window; }
@@ -136,7 +136,7 @@ namespace gl {
         GLText text;  
     private:
         SDL_GLContext glContext;
-        SDL_Window *window;
+        SDL_Window *window = nullptr;
         bool active = false;
         SDL_Event e;
     };

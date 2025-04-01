@@ -22,8 +22,8 @@ namespace mx {
         std::vector<GLfloat> norm;
         std::vector<GLuint> indices;
 
-        GLuint shape_type;
-        GLuint texture;
+        GLuint shape_type = 0;
+        GLuint texture = 0;
 
         void compressIndices();
         void generateBuffers();
@@ -32,10 +32,10 @@ namespace mx {
         void drawWithForcedTexture(gl::ShaderProgram &shader, GLuint texture, const std::string texture_name);
         void setShapeType(GLuint type);
         void bindTexture(gl::ShaderProgram &shader, const std::string texture_name);
-        GLuint EBO, VAO, positionVBO, normalVBO, texCoordVBO;
-        size_t vertIndex;
-        size_t texIndex;
-        size_t normIndex;
+        GLuint EBO = 0, VAO = 0, positionVBO = 0, normalVBO = 0, texCoordVBO = 0;
+        size_t vertIndex = 0;
+        size_t texIndex = 0;
+        size_t normIndex = 0;
         Mesh()
                : shape_type(GL_TRIANGLES),texture{0},
                  EBO(0), VAO(0), positionVBO(0), normalVBO(0), texCoordVBO(0),

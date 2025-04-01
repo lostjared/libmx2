@@ -103,10 +103,6 @@ namespace mx {
     }
 
     void Mesh::cleanup() {
-        if (VAO) {
-            glDeleteVertexArrays(1, &VAO);
-            VAO = 0;
-        }
         if (positionVBO) {
             glDeleteBuffers(1, &positionVBO);
             positionVBO = 0;
@@ -125,6 +121,10 @@ namespace mx {
         }
         if(texture) {
              glDeleteTextures(1, &texture);
+        }
+        if (VAO) {
+            glDeleteVertexArrays(1, &VAO);
+            VAO = 0;
         }
     }
 
