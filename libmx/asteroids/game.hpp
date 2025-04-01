@@ -159,7 +159,7 @@ private:
             float maxRadius = 0.0f;
             for (int i = 0; i < num_points; i++) {
                 float angle = 2 * M_PI * i / num_points;
-                float offset = ((static_cast<float>(std::rand()) / RAND_MAX) - 0.5f) * 0.6f * radius;
+                float offset = ((mx::generateRandomFloat(-0.3f, 0.3f)) * radius);
                 float r = radius + offset;
                 vertices[i].x = static_cast<int>(r * std::cos(angle));
                 vertices[i].y = static_cast<int>(r * std::sin(angle));
