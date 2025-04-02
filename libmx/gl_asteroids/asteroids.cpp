@@ -1784,7 +1784,9 @@ public:
     bool isDestroyed = true;
     bool isActive = false;
     float radius = 5.0f;
-    int generation = 0;  
+    int generation = 0;
+    int asteroid_type = 0;
+
     glm::vec3 velocity{0.0f, 0.0f, 0.0f};  
 
     float getRadius() const {
@@ -1799,11 +1801,28 @@ public:
                     throw mx::Exception("Failed to load planet model");
             }
             models[0]->setTextures(win, win->util.getFilePath("data/rock.tex"), win->util.getFilePath("data"));
+
+            models[1] = std::make_unique<mx::Model>();
+            if(!models[1]->openModel(win->util.getFilePath("data/asteroid2.mxmod.z"))) {
+                    throw mx::Exception("Failed to load planet model");
+            }
+            models[1]->setTextures(win, win->util.getFilePath("data/rock.tex"), win->util.getFilePath("data"));
+           
+
+            models[2] = std::make_unique<mx::Model>();
+            if(!models[2]->openModel(win->util.getFilePath("data/asteroid3.mxmod.z"))) {
+                    throw mx::Exception("Failed to load planet model");
+            }
+            models[2]->setTextures(win, win->util.getFilePath("data/rock.tex"), win->util.getFilePath("data"));
+           
+
             shader = std::make_unique<gl::ShaderProgram>();
             if(!shader->loadProgramFromText(g_vSource, g_fSource)) {
                 throw mx::Exception("Failed to load planet shader program");
             }
             models[0]->setShaderProgram(shader.get(), "texture1");
+            models[1]->setShaderProgram(shader.get(), "texture1");
+            models[2]->setShaderProgram(shader.get(), "texture1");
             loaded = true;
         }
         planet_type = 3;
@@ -1899,7 +1918,7 @@ public:
         shader->setUniform("projection", projection);
         shader->setUniform("time_f", time_f);
         shader->setUniform("effect_type", planet_type);
-        models[0]->drawArrays();
+        models[asteroid_type]->drawArrays();
     }
 
     void reset() {
@@ -1938,6 +1957,7 @@ public:
             child.radius = radius * 0.6f;
             child.rotationSpeed = rotationSpeed * generateRandomFloat(0.8f, 1.5f);
             child.rotationAngle = generateRandomFloat(0.0f, 360.0f);
+            child.asteroid_type = generateRandomInt(0, 2);
             child.generation = generation + 1;
             glm::vec3 directionFromParent = glm::normalize(child.position - position);
             child.velocity = directionFromParent * generateRandomFloat(2.0f, 5.0f);
@@ -1945,11 +1965,11 @@ public:
     }
 
 private:
-    static std::unique_ptr<mx::Model> models[1];
+    static std::unique_ptr<mx::Model> models[3];
     static std::unique_ptr<gl::ShaderProgram> shader;
 };
 
-std::unique_ptr<mx::Model> Planet::models[1] = {nullptr};
+std::unique_ptr<mx::Model> Planet::models[3] = {nullptr,nullptr,nullptr};
 std::unique_ptr<gl::ShaderProgram> Planet::shader = nullptr;
 
 class Game : public gl::GLObject {
@@ -2039,7 +2059,8 @@ public:
             planets[i].isDestroyed = false;
             planets[i].isActive = true;       
             planets[i].generation = 0; 
-            planets[i].velocity = glm::vec3(0.0f); 
+            planets[i].velocity = glm::vec3(0.0f);
+            planets[i].asteroid_type = generateRandomInt(0, 2);
             int availablePlanets = 0;
             for (const auto& p : planets) {
                 if (!p.isActive && p.isDestroyed) availablePlanets++;
