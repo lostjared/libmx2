@@ -1934,13 +1934,13 @@ public:
             for (const auto& p : planets) {
                 if (!p.isActive && p.isDestroyed) availCount++;
             }
-            std::cout << "Available planets: " << availCount << "/" << planets.size() << std::endl;
+            std::cout << "Available asteroids: " << availCount << "/" << planets.size() << std::endl;
             
             auto it = std::find_if(planets.begin(), planets.end(),
                 [](const Planet& p) { return !p.isActive && p.isDestroyed; });
             
             if (it == planets.end()) {
-                std::cerr << "Planet pool exhausted! Increase MAX_PLANETS." << std::endl;
+                std::cerr << "Astertoid pool exhausted! Increase MAX_PLANETS." << std::endl;
                 return;
             }
             
@@ -2065,7 +2065,7 @@ public:
             for (const auto& p : planets) {
                 if (!p.isActive && p.isDestroyed) availablePlanets++;
             }
-            std::cout << "Available planets after initialization: " << availablePlanets << "/" << planets.size() << std::endl;
+            std::cout << "Available asterpods after initialization: " << availablePlanets << "/" << planets.size() << std::endl;
         }
     }
 
@@ -2174,7 +2174,7 @@ public:
          }
 
          win->text.printText_Solid(font, win->w-225.0f, 75.0f, "Asteroids: " + std::to_string(numPlanets));
-
+         win->text.printText_Solid(font, win->w-225.0f, 100.0f, "[F1 for Debug]");
         if(debug_menu) {
             win->text.setColor({255,255,255,255});
             win->text.printText_Solid(font,25.0f,25.0f, "Ship X,Y,Z: " + std::to_string(ship.position.x) + ", " + std::to_string(ship.position.y) + ", " + std::to_string(ship.position.z));
@@ -2185,7 +2185,7 @@ public:
             for (const auto& planet : planets) {
                 if (planet.isDestroyed) destroyedCount++;
             }
-            win->text.printText_Solid(font,25.0f,100.0f, "Objects destroyed: " + std::to_string(destroyedCount));
+            win->text.printText_Solid(font,25.0f,100.0f, "Aseroids destroyed: " + std::to_string(destroyedCount));
             win->text.printText_Solid(font,25.0f,125.0f, "Controls: Arrows to Move, W,S Tilt Up/Down - SPACE to shoot");
             
             if (!planets.empty()) {
@@ -2205,7 +2205,7 @@ public:
                 "Speed: " + std::to_string(ship.currentSpeed) + " / " + std::to_string(ship.maxSpeed));
             std::string con_str = controller.active() ? ("Connected: " + controller.name()) : "Disconnected";
             win->text.printText_Solid(font, 25.0f, 225.0f, "Controller: " + con_str);
-            win->text.printText_Solid(font, 25.0f, 250.0f, "Press ENTER to randomize planets [F1 to toggle debug]");
+            win->text.printText_Solid(font, 25.0f, 250.0f, "Press ENTER to randomize asteroids");
         }
     }
     
@@ -2306,7 +2306,7 @@ private:
     glm::mat4 viewMatrix{1.0f};
     glm::mat4 projectionMatrix{1.0f};
     glm::vec3 lightPos{10.0f, 10.0f, 10.0f};
-    bool debug_menu = true;
+    bool debug_menu = false;
 };
 
 class MainWindow : public gl::GLWindow {
