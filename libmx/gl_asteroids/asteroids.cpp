@@ -1035,7 +1035,7 @@ uniform vec3 viewPos;
 uniform sampler2D starTexture;
 
 void main() {
-    float ambientStrength = 0.3;
+    float ambientStrength = 0.4;
     vec3 ambient = ambientStrength * vec3(1.0, 1.0, 1.0);
 
     vec3 norm = normalize(Normal);
@@ -1581,10 +1581,22 @@ public:
     }
     
     void yaw(float amount, float deltaTime) {
-        rotation.y += amount * turnSpeed * deltaTime;
+        float absPitch = fabs(rotation.x);
         
-        if (rotation.y > 360.0f) rotation.y -= 360.0f;
-        if (rotation.y < 0.0f) rotation.y += 360.0f;
+        if (absPitch > 70.0f) {
+            float transferFactor = (absPitch - 70.0f) / 10.0f; // 0 to 1 between 70° and 80°
+            transferFactor = glm::clamp(transferFactor, 0.0f, 1.0f);
+            
+            rotation.y += amount * turnSpeed * deltaTime * (1.0f - transferFactor);
+            
+            float rollDirection = (rotation.x > 0) ? -1.0f : 1.0f;
+            roll(amount * rollDirection * transferFactor, deltaTime);
+        } else {
+            rotation.y += amount * turnSpeed * deltaTime;
+        }
+        
+        while (rotation.y > 360.0f) rotation.y -= 360.0f;
+        while (rotation.y < 0.0f) rotation.y += 360.0f;
     }
     
     void pitch(float amount, float deltaTime) {
@@ -1593,9 +1605,10 @@ public:
     }
     
     void roll(float amount, float deltaTime) {
-        rotation.z += amount * turnSpeed * deltaTime;
         
-        if (amount == 0.0f) {
+        rotation.z += amount * turnSpeed * deltaTime;
+        float absPitch = fabs(rotation.x);
+        if (amount == 0.0f && absPitch < 70.0f) {
             if (fabs(rotation.z) < 1.0f) {
                 rotation.z = 0.0f;
             } else if (rotation.z > 0.0f) {
@@ -1605,7 +1618,8 @@ public:
             }
         }
         
-        rotation.z = glm::clamp(rotation.z, -45.0f, 45.0f);
+        while (rotation.z > 360.0f) rotation.z -= 360.0f;
+        while (rotation.z < -360.0f) rotation.z += 360.0f;
     }
 
     void update(float deltaTime) {
