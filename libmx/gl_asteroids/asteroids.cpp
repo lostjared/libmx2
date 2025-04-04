@@ -2250,11 +2250,19 @@ public:
         }
         if (state[SDL_SCANCODE_LEFT]) {
             ship.yaw(1.0f, deltaTime);
-            ship.roll(-1.0f, deltaTime);  
+            if (ship.rotation.z < -15.0f) {
+                ship.roll(1.0f, deltaTime);  
+            } else {
+                ship.roll(-1.0f, deltaTime);  
+            } 
         }
         else if (state[SDL_SCANCODE_RIGHT]) {
             ship.yaw(-1.0f, deltaTime);
-            ship.roll(1.0f, deltaTime);   
+            if (ship.rotation.z > 15.0f) {
+                ship.roll(-1.0f, deltaTime);  // Roll left to level the wings
+            } else {
+                ship.roll(1.0f, deltaTime);   // Normal right roll
+            }
         }
         else {
             ship.roll(0.0f, deltaTime);   
@@ -2276,12 +2284,22 @@ public:
             ship.pitch(1.0f, deltaTime);  
         }
         if(controller.getAxis(SDL_CONTROLLER_AXIS_LEFTX) > 0.5f) {
-            ship.yaw(-1.0f, deltaTime);   
-            ship.roll(1.0f, deltaTime);   
+            ship.yaw(-1.0f, deltaTime);  
+            if (ship.rotation.z > 15.0f) {
+                ship.roll(-1.0f, deltaTime);  
+            } else {
+                ship.roll(1.0f, deltaTime); 
+            }  
         }
         else if(controller.getAxis(SDL_CONTROLLER_AXIS_LEFTX) < -0.5f) {
-            ship.yaw(1.0f, deltaTime);    
-            ship.roll(-1.0f, deltaTime);  
+            ship.yaw(1.0f, deltaTime);
+            if (ship.rotation.z < -15.0f) {
+                ship.roll(1.0f, deltaTime);   
+            } else {
+                ship.roll(-1.0f, deltaTime);  
+            }
+        } else {
+            ship.roll(0.0f, deltaTime);
         }
     }
     
