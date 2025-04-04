@@ -1443,7 +1443,7 @@ const char* fullProjVert =
         projectile.position = position;
         projectile.velocity = direction * speed;
         projectile.life = 0.0f;
-        projectile.maxLife = 1.5f; 
+        projectile.maxLife = 3.0f; 
         projectiles.push_back(projectile);
         
         if (projectiles.size() > 100) {
@@ -1782,7 +1782,7 @@ public:
         ));
         
         glm::vec3 projectilePos = position + forward * 0.6f;
-        projectiles.fire(projectilePos, forward, 50.0f + currentSpeed);
+        projectiles.fire(projectilePos, forward, 80.0f + currentSpeed);
     }
 
 protected:
