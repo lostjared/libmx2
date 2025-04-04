@@ -485,7 +485,7 @@ public:
         glBlendFunc(GL_SRC_ALPHA, GL_ONE);
 
         Uint32 currentTime = SDL_GetTicks();
-        float deltaTime = (currentTime - lastUpdateTime) / 1000.0f; // seconds
+        float deltaTime = (currentTime - lastUpdateTime) / 1000.0f; 
         lastUpdateTime = currentTime;
 
         update(deltaTime);
@@ -641,9 +641,25 @@ private:
     
 class ExplodeEmiter {
 public:
-    static constexpr int MAX_PARTICLES = 10000;
+    static constexpr int MAX_PARTICLES = 40000; 
+    static constexpr int MAX_EXPLOSIONS = 5;    
 
-    ExplodeEmiter() = default;
+    
+    struct Explosion {
+        glm::vec3 position;
+        float startTime;
+        float lifeTime;
+        bool active;
+        
+        Explosion() : position(0.0f), startTime(0.0f), lifeTime(3.0f), active(false) {}
+    };
+    
+    std::vector<Explosion> explosions;
+    
+    ExplodeEmiter() {
+        explosions.resize(MAX_EXPLOSIONS);
+    }
+
     ~ExplodeEmiter() {
         if (vao != 0) glDeleteVertexArrays(1, &vao);
         if (vbo != 0) glDeleteBuffers(1, &vbo);
@@ -785,57 +801,6 @@ public:
         glBindVertexArray(0);
     }
 
-    void update(float deltaTime) {
-        if (activeParticles == 0) return;
-        
-        int newActiveCount = 0;
-        
-        for (auto& p : particles) {
-            if (!p.active) continue;
-            
-            p.x += p.vx * deltaTime;
-            p.y += p.vy * deltaTime;
-            p.z += p.vz * deltaTime;
-            
-            p.vx *= 0.98f;
-            p.vy *= 0.98f;
-            p.vz *= 0.98f;
-            
-            p.vy -= 0.5f * deltaTime;
-            
-            p.life += deltaTime;
-            float lifeRatio = p.life / p.maxLife;
-            
-            if (lifeRatio < 0.2f) {
-                p.alpha = lifeRatio / 0.2f;
-            } else if (lifeRatio > 0.8f) {
-                p.alpha = (1.0f - lifeRatio) / 0.2f;
-            } else {
-                p.alpha = 1.0f;
-            }
-            
-            if (lifeRatio < 0.3f) {
-                p.size *= 1.01f;
-            } else {
-                p.size *= 0.99f;
-            }
-            
-            if (lifeRatio > 0.6f) {
-                p.r = 1.0f - (lifeRatio - 0.6f) * 2.0f; 
-                p.g = 0.6f * (1.0f - (lifeRatio - 0.6f) * 2.5f);
-                p.b = 0.0f;
-            }
-        
-            if (p.life >= p.maxLife || p.alpha < 0.01f) {
-                p.active = false;
-            } else {
-                newActiveCount++;
-            }
-        }
-        
-        activeParticles = newActiveCount;
-    }
-
     void draw(gl::GLWindow *win) {
         if (activeParticles == 0) return;
         
@@ -916,13 +881,40 @@ public:
         glDisable(GL_BLEND);
     }
 
-    void explode() {
+    void explode(const glm::vec3& position) {
         
-        reset();
+        for (auto& explosion : explosions) {
+            if (!explosion.active) {
+                explosion.position = position;
+                explosion.startTime = 0.0f;
+                explosion.active = true;
+                
+                createExplosionParticles(explosion);
+                return;
+            }
+        }
         
+        float oldestTime = 0.0f;
+        Explosion* oldestExplosion = nullptr;
+        
+        for (auto& explosion : explosions) {
+            if (oldestExplosion == nullptr || explosion.startTime > oldestTime) {
+                oldestExplosion = &explosion;
+                oldestTime = explosion.startTime;
+            }
+        }
+        
+        if (oldestExplosion) {
+            oldestExplosion->position = position;
+            oldestExplosion->startTime = 0.0f;
+            oldestExplosion->active = true;
+            createExplosionParticles(*oldestExplosion);
+        }
+    }
+
+    void createExplosionParticles(Explosion& explosion) {
         const int WAVE_COUNT = 4;
-        int particlesPerWave = MAX_PARTICLES / WAVE_COUNT;
-        
+        int particlesPerWave = MAX_PARTICLES / (WAVE_COUNT * MAX_EXPLOSIONS);
         struct WaveParams {
             float minSpeed, maxSpeed;
             float minSize, maxSize;
@@ -952,9 +944,9 @@ public:
 
                 auto& p = particles[particleIndex++];
                 float offset = 0.8f + 0.2f * static_cast<float>(wave) / WAVE_COUNT;
-                p.x = position.x + x * offset;
-                p.y = position.y + y * offset;
-                p.z = position.z + z * offset;
+                p.x = explosion.position.x + x * offset;
+                p.y = explosion.position.y + y * offset;
+                p.z = explosion.position.z + z * offset;
                 float speed = generateRandomFloat(waves[wave].minSpeed, waves[wave].maxSpeed);
                 p.vx = x * speed;
                 p.vy = y * speed;
@@ -976,6 +968,66 @@ public:
         activeParticles = particleIndex;
     }
     
+    void update(float deltaTime) {
+        for (auto& explosion : explosions) {
+            if (explosion.active) {
+                explosion.startTime += deltaTime;
+                if (explosion.startTime >= explosion.lifeTime) {
+                    explosion.active = false;
+                }
+            }
+        }
+        
+        if (activeParticles == 0) return;
+        
+        int newActiveCount = 0;
+        
+        for (auto& p : particles) {
+            if (!p.active) continue;
+            
+            p.x += p.vx * deltaTime;
+            p.y += p.vy * deltaTime;
+            p.z += p.vz * deltaTime;
+            
+            p.vx *= 0.98f;
+            p.vy *= 0.98f;
+            p.vz *= 0.98f;
+            
+            p.vy -= 0.5f * deltaTime;
+            
+            p.life += deltaTime;
+            float lifeRatio = p.life / p.maxLife;
+            
+            if (lifeRatio < 0.2f) {
+                p.alpha = lifeRatio / 0.2f;
+            } else if (lifeRatio > 0.8f) {
+                p.alpha = (1.0f - lifeRatio) / 0.2f;
+            } else {
+                p.alpha = 1.0f;
+            }
+            
+            if (lifeRatio < 0.3f) {
+                p.size *= 1.01f;
+            } else {
+                p.size *= 0.99f;
+            }
+            
+            if (lifeRatio > 0.6f) {
+                p.r = 1.0f - (lifeRatio - 0.6f) * 2.0f; 
+                p.g = 0.6f * (1.0f - (lifeRatio - 0.6f) * 2.5f);
+                p.b = 0.0f;
+            }
+        
+            if (p.life >= p.maxLife || p.alpha < 0.01f) {
+                p.active = false;
+            } else {
+                newActiveCount++;
+            }
+        }
+        
+        activeParticles = newActiveCount;
+    }
+
     void reset() {
         for (auto& p : particles) {
             p.active = false;
@@ -1549,8 +1601,8 @@ public:
 
     void moveForward(float deltaTime) {
         glm::mat4 rotationMatrix(1.0f);
-        rotationMatrix = glm::rotate(rotationMatrix, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f)); // Yaw
-        rotationMatrix = glm::rotate(rotationMatrix, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f)); // Pitch
+        rotationMatrix = glm::rotate(rotationMatrix, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f)); 
+        rotationMatrix = glm::rotate(rotationMatrix, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
         
         glm::vec3 forward = glm::normalize(glm::vec3(
             -sin(glm::radians(rotation.y)),
@@ -2115,18 +2167,14 @@ public:
         for (auto& planet : planets) {
             if (!planet.isDestroyed) {
                 if (ship.projectiles.checkCollision(planet.position, planet.getRadius())) {
-                    
-                    emiter.reset();
                     emiter.position = planet.position;
                     
-                    
                     if (planet.generation >= MAX_GENERATIONS) {
-                        emiter.explode();
+                        emiter.explode(planet.position);
                         planet.isDestroyed = true;
                         score += 100;
                     } else {
-                    
-                        emiter.explode(); 
+                        emiter.explode(planet.position);
                         planet.spawnChildAsteroids(planets);
                         planet.isDestroyed = true;
                         score += 10;
@@ -2135,10 +2183,8 @@ public:
                 
                 float distance = glm::length(ship.position - planet.position);
                 if (distance < planet.getRadius() + 1.0f) {
-                    
-                    emiter.reset();
                     emiter.position = ship.position;
-                    emiter.explode();
+                    emiter.explode(ship.position);
                     shipExploding = true;
                     shipExplosionTimer = 0.0f;
                     ship.visible = false;
