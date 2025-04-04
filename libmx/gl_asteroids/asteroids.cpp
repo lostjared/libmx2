@@ -1,3 +1,4 @@
+#define ASTEROIDS_VERSION "v1.0"
 #include"mx.hpp"
 #include"argz.hpp"
 
@@ -2080,7 +2081,6 @@ public:
             planets[i].reset();
             planets[i].isActive = false;
             planets[i].isDestroyed = true;
-            
         }
 
         for (int i = 0; i < 7; i++) {
@@ -2108,7 +2108,7 @@ public:
                     }
                 }
             }
-            
+
             planets[i].position = newPos;
             planets[i].radius = generateRandomFloat(3.0f, 7.0f);
             planets[i].scale = planets[i].radius;
@@ -2212,10 +2212,12 @@ public:
         emiter.update(deltaTime);
         emiter.draw(win);
 
+        win->text.setColor({0xBD, 0, 0, 255});
+        win->text.printText_Solid(font, win->w-225.0f, 25.0f, "MX2 Asteroids " + std::string(ASTEROIDS_VERSION));
         win->text.setColor({255,255,255,255});
-        win->text.printText_Solid(font, win->w-225.0f, 25.0f, "Score: " + std::to_string(score));
-        win->text.printText_Solid(font, win->w-225.0f, 50.0f, "Lives: " + std::to_string(lives));
-
+        win->text.printText_Solid(font, win->w-225.0f, 50.0f, "Score: " + std::to_string(score));
+        win->text.printText_Solid(font, win->w-225.0f, 75.0f, "Lives: " + std::to_string(lives));
+        
          int numPlanets = 0;
          for(auto &p : planets) {
              if(!p.isDestroyed) numPlanets++;
@@ -2225,8 +2227,8 @@ public:
             randomizePlanetPositions();
          }
 
-         win->text.printText_Solid(font, win->w-225.0f, 75.0f, "Asteroids: " + std::to_string(numPlanets));
-         win->text.printText_Solid(font, win->w-225.0f, 100.0f, "[F1 for Debug]");
+         win->text.printText_Solid(font, win->w-225.0f, 100.0f, "Asteroids: " + std::to_string(numPlanets));
+         win->text.printText_Solid(font, win->w-225.0f, 125.0f, "[F1 for Debug]");
         if(debug_menu) {
             win->text.setColor({255,255,255,255});
             win->text.printText_Solid(font,25.0f,25.0f, "Ship X,Y,Z: " + std::to_string(ship.position.x) + ", " + std::to_string(ship.position.y) + ", " + std::to_string(ship.position.z));
