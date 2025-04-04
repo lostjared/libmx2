@@ -1582,22 +1582,17 @@ public:
     
     void yaw(float amount, float deltaTime) {
         float absPitch = fabs(rotation.x);
-        
-        if (absPitch > 70.0f) {
-            float transferFactor = (absPitch - 70.0f) / 10.0f; // 0 to 1 between 70° and 80°
-            transferFactor = glm::clamp(transferFactor, 0.0f, 1.0f);
-            
-            rotation.y += amount * turnSpeed * deltaTime * (1.0f - transferFactor);
-            
-            float rollDirection = (rotation.x > 0) ? -1.0f : 1.0f;
-            roll(amount * rollDirection * transferFactor, deltaTime);
+        if (absPitch >= 75.0f) {
+             float rollDirection = (rotation.x > 0) ? -1.0f : 1.0f;
+             roll(amount * rollDirection * turnSpeed * deltaTime, deltaTime);
         } else {
-            rotation.y += amount * turnSpeed * deltaTime;
+             rotation.y += amount * turnSpeed * deltaTime;
         }
         
-        while (rotation.y > 360.0f) rotation.y -= 360.0f;
+        while (rotation.y >= 360.0f) rotation.y -= 360.0f;
         while (rotation.y < 0.0f) rotation.y += 360.0f;
     }
+    
     
     void pitch(float amount, float deltaTime) {
         rotation.x += amount * turnSpeed * deltaTime;
@@ -1605,22 +1600,11 @@ public:
     }
     
     void roll(float amount, float deltaTime) {
-        
         rotation.z += amount * turnSpeed * deltaTime;
-        float absPitch = fabs(rotation.x);
-        if (amount == 0.0f && absPitch < 70.0f) {
-            if (fabs(rotation.z) < 1.0f) {
-                rotation.z = 0.0f;
-            } else if (rotation.z > 0.0f) {
-                rotation.z -= 50.0f * deltaTime;
-            } else {
-                rotation.z += 50.0f * deltaTime;
-            }
-        }
-        
         while (rotation.z > 360.0f) rotation.z -= 360.0f;
         while (rotation.z < -360.0f) rotation.z += 360.0f;
     }
+    
 
     void update(float deltaTime) {
         glm::vec3 forward = glm::normalize(glm::vec3(
@@ -1631,6 +1615,14 @@ public:
         velocity = forward * currentSpeed;
         position += velocity * deltaTime;
     
+        if (fabs(rotation.z) > 3.0f) {  
+            float bankFactor = rotation.z / 45.0f;  
+            float turnRate = 15.0f * bankFactor * (currentSpeed / maxSpeed);
+            rotation.y -= turnRate * deltaTime;
+            while (rotation.y > 360.0f) rotation.y -= 360.0f;
+            while (rotation.y < 0.0f) rotation.y += 360.0f;
+        }
+        
         updateCamera(deltaTime);
         
         static float exhaustTimer = 0.0f;
@@ -1821,14 +1813,12 @@ public:
                     throw mx::Exception("Failed to load planet model");
             }
             models[1]->setTextures(win, win->util.getFilePath("data/rock.tex"), win->util.getFilePath("data"));
-           
 
             models[2] = std::make_unique<mx::Model>();
             if(!models[2]->openModel(win->util.getFilePath("data/asteroid3.mxmod.z"))) {
                     throw mx::Exception("Failed to load planet model");
             }
             models[2]->setTextures(win, win->util.getFilePath("data/rock.tex"), win->util.getFilePath("data"));
-           
 
             shader = std::make_unique<gl::ShaderProgram>();
             if(!shader->loadProgramFromText(g_vSource, g_fSource)) {
