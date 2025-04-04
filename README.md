@@ -2,7 +2,8 @@
 
 ![planet xeon 3](https://github.com/user-attachments/assets/dc9e0b50-d57a-4bc3-a02f-3b61ab9a6d7a)
 ![breakout-3d](https://github.com/user-attachments/assets/bd0a7d5d-fdfb-4118-aaa5-6b5975129fd5)
-![Screenshot 2025-03-25 190341](https://github.com/user-attachments/assets/18e0ac62-bffc-44bd-a261-9859649d97bb)
+![vlcsnap-2025-04-04-16h54m33s924](https://github.com/user-attachments/assets/9bf63d65-1318-49a9-9104-db3d506b0082)
+
 
 libmx2 is a cross-platform library that facilitates cross-platform SDL2/OpenGL development using C++20.
 It provides a collection of utilities and abstractions to streamline the creation of multimedia applications.
