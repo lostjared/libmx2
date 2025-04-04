@@ -2011,8 +2011,8 @@ public:
             child.position.x += generateRandomFloat(-offset, offset);
             child.position.y += generateRandomFloat(-offset, offset);
             child.position.z += generateRandomFloat(-offset, offset);
-            child.scale = scale * 0.6f;
-            child.radius = radius * 0.6f;
+            child.scale = scale * 0.4f;
+            child.radius = radius * 0.4f;
             child.rotationSpeed = rotationSpeed * generateRandomFloat(0.8f, 1.5f);
             child.rotationAngle = generateRandomFloat(0.0f, 360.0f);
             child.asteroid_type = generateRandomInt(0, 2);
