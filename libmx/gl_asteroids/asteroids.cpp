@@ -1637,6 +1637,8 @@ public:
         
         exhaust.updateExhaustParticles(deltaTime);
         projectiles.update(deltaTime);
+
+        
     }
 
     void increaseSpeed(float deltaTime) {
@@ -2248,25 +2250,93 @@ public:
                 ship.increaseSpeed(deltaTime * 0.5f);
             }
         }
+
+        bool rollingInput = false;
+
         if (state[SDL_SCANCODE_LEFT]) {
             ship.yaw(1.0f, deltaTime);
-            if (ship.rotation.z < -15.0f) {
-                ship.roll(1.0f, deltaTime);  
+            
+         
+            float targetRoll = -30.0f; 
+            float rollInput;
+            
+            if (ship.rotation.z > targetRoll + 5.0f) {
+                
+                rollInput = -1.0f;
+            } else if (ship.rotation.z < targetRoll - 5.0f) {
+                
+                rollInput = 0.5f;
             } else {
-                ship.roll(-1.0f, deltaTime);  
-            } 
+                
+                rollInput = (targetRoll - ship.rotation.z) * 0.05f;
+            }
+            
+            ship.roll(rollInput, deltaTime);
+            rollingInput = true;
         }
         else if (state[SDL_SCANCODE_RIGHT]) {
             ship.yaw(-1.0f, deltaTime);
-            if (ship.rotation.z > 15.0f) {
-                ship.roll(-1.0f, deltaTime);  
+            
+            float targetRoll = 30.0f; 
+            float rollInput;
+            
+            if (ship.rotation.z < targetRoll - 5.0f) {
+                
+                rollInput = 1.0f;
+            } else if (ship.rotation.z > targetRoll + 5.0f) {
+                
+                rollInput = -0.5f;
             } else {
-                ship.roll(1.0f, deltaTime);   
+                
+                rollInput = (targetRoll - ship.rotation.z) * 0.05f;
             }
+            
+            ship.roll(rollInput, deltaTime);
+            rollingInput = true;
         }
-        else {
-            ship.roll(0.0f, deltaTime);   
+
+        if(controller.getAxis(SDL_CONTROLLER_AXIS_LEFTX) > 0.5f) {
+            ship.yaw(-1.0f, deltaTime);
+            
+            float targetRoll = 30.0f; 
+            float rollInput;
+            
+            if (ship.rotation.z < targetRoll - 5.0f) {
+                rollInput = 1.0f;
+            } else if (ship.rotation.z > targetRoll + 5.0f) {
+                rollInput = -0.5f;
+            } else {
+                rollInput = (targetRoll - ship.rotation.z) * 0.05f;
+            }
+            
+            ship.roll(rollInput, deltaTime);
+            rollingInput = true;
         }
+        else if(controller.getAxis(SDL_CONTROLLER_AXIS_LEFTX) < -0.5f) {
+            ship.yaw(1.0f, deltaTime);
+            
+            float targetRoll = -30.0f; 
+            float rollInput;
+            
+            if (ship.rotation.z > targetRoll + 5.0f) {
+                rollInput = -1.0f;
+            } else if (ship.rotation.z < targetRoll - 5.0f) {
+                rollInput = 0.5f;
+            } else {
+                rollInput = (targetRoll - ship.rotation.z) * 0.05f;
+            }
+            
+            ship.roll(rollInput, deltaTime);
+            rollingInput = true;
+        }
+
+        if (!rollingInput) {
+            while (ship.rotation.z > 180.0f) ship.rotation.z -= 360.0f;
+            while (ship.rotation.z < -180.0f) ship.rotation.z += 360.0f;    
+            float wingLevelingSpeed = 2.0f;
+            ship.rotation.z = glm::mix(ship.rotation.z, 0.0f, wingLevelingSpeed * deltaTime);
+        }
+        
         if (state[SDL_SCANCODE_W]) {
             ship.pitch(-1.0f, deltaTime); 
         }
@@ -2283,24 +2353,7 @@ public:
         else if(controller.getAxis(SDL_CONTROLLER_AXIS_RIGHTY) > 0.5f) {
             ship.pitch(1.0f, deltaTime);  
         }
-        if(controller.getAxis(SDL_CONTROLLER_AXIS_LEFTX) > 0.5f) {
-            ship.yaw(-1.0f, deltaTime);  
-            if (ship.rotation.z > 15.0f) {
-                ship.roll(-1.0f, deltaTime);  
-            } else {
-                ship.roll(1.0f, deltaTime); 
-            }  
-        }
-        else if(controller.getAxis(SDL_CONTROLLER_AXIS_LEFTX) < -0.5f) {
-            ship.yaw(1.0f, deltaTime);
-            if (ship.rotation.z < -15.0f) {
-                ship.roll(1.0f, deltaTime);   
-            } else {
-                ship.roll(-1.0f, deltaTime);  
-            }
-        } else {
-            ship.roll(0.0f, deltaTime);
-        }
+        
     }
     
     void event(gl::GLWindow *win, SDL_Event &e) override {
