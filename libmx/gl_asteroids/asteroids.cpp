@@ -2259,9 +2259,9 @@ public:
         else if (state[SDL_SCANCODE_RIGHT]) {
             ship.yaw(-1.0f, deltaTime);
             if (ship.rotation.z > 15.0f) {
-                ship.roll(-1.0f, deltaTime);  // Roll left to level the wings
+                ship.roll(-1.0f, deltaTime);  
             } else {
-                ship.roll(1.0f, deltaTime);   // Normal right roll
+                ship.roll(1.0f, deltaTime);   
             }
         }
         else {
