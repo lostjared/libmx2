@@ -301,6 +301,84 @@ void main() {
 )";
 #endif
 
+const char* cell_fSource = 
+#ifdef __EMSCRIPTEN__
+R"(#version 300 es
+precision highp float;
+in vec3 Normal;
+in vec3 FragPos;
+in vec2 TexCoords;
+
+out vec4 FragColor;
+
+uniform vec3 lightPos;
+uniform vec3 viewPos;
+uniform sampler2D texture1;
+
+void main() {
+    
+    vec3 simpsonGray = vec3(0.75, 0.74, 0.72);
+    vec3 norm = normalize(Normal);
+    vec3 lightDir = normalize(lightPos - FragPos);
+    vec3 viewDir = normalize(viewPos - FragPos);
+    float diff = max(dot(norm, lightDir), 0.0);
+    float lightIntensity;
+    if (diff > 0.5) {
+        lightIntensity = 1.0; 
+    } else {
+        lightIntensity = 0.7; 
+    }
+    float outline = 1.0;
+    float NdotV = dot(norm, viewDir);
+    if (NdotV < 0.25) {
+        outline = 0.0; // Thick black outline
+    }
+    vec3 finalColor = simpsonGray * lightIntensity * outline;
+    vec4 texColor = texture(texture1, TexCoords);
+    finalColor = mix(finalColor, finalColor * (texColor.rgb * 0.5 + 0.5), 0.1);
+    float rimEffect = pow(1.0 - NdotV, 3.0) * 0.3;
+    finalColor += vec3(rimEffect);
+    FragColor = vec4(finalColor, 1.0);
+}))";
+#else
+R"(#version 330 core
+in vec3 Normal;
+in vec3 FragPos;
+in vec2 TexCoords;
+
+out vec4 FragColor;
+
+uniform vec3 lightPos;
+uniform vec3 viewPos;
+uniform sampler2D texture1;
+
+void main() {
+    
+    vec3 simpsonGray = vec3(0.75, 0.74, 0.72);
+    vec3 norm = normalize(Normal);
+    vec3 lightDir = normalize(lightPos - FragPos);
+    vec3 viewDir = normalize(viewPos - FragPos);
+    float diff = max(dot(norm, lightDir), 0.0);
+    float lightIntensity;
+    if (diff > 0.5) {
+        lightIntensity = 1.0; 
+    } else {
+        lightIntensity = 0.7; 
+    }
+    float outline = 1.0;
+    float NdotV = dot(norm, viewDir);
+    if (NdotV < 0.25) {
+        outline = 0.0; // Thick black outline
+    }
+    vec3 finalColor = simpsonGray * lightIntensity * outline;
+    vec4 texColor = texture(texture1, TexCoords);
+    finalColor = mix(finalColor, finalColor * (texColor.rgb * 0.5 + 0.5), 0.1);
+    float rimEffect = pow(1.0 - NdotV, 3.0) * 0.3;
+    finalColor += vec3(rimEffect);
+    FragColor = vec4(finalColor, 1.0);
+})";
+#endif
+
 class Intro : public gl::GLObject {
 public:
 
@@ -1096,7 +1174,7 @@ void main() {
     float diff = max(dot(norm, lightDir), 0.0);
     vec3 diffuse = diff * vec3(1.0, 1.0, 1.0);
 
-    float specularStrength = 0.5;
+    float specularStrength = 0.8;
     vec3 viewDir = normalize(viewPos - FragPos);
     vec3 reflectDir = reflect(-lightDir, norm);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
@@ -1147,7 +1225,7 @@ uniform sampler2D starTexture;
 
 void main() {
     
-    float ambientStrength = 0.3;
+    float ambientStrength = 0.8;
     vec3 ambient = ambientStrength * vec3(1.0, 1.0, 1.0);
     
     
@@ -2234,7 +2312,6 @@ public:
             win->text.printText_Solid(font,25.0f,25.0f, "Ship X,Y,Z: " + std::to_string(ship.position.x) + ", " + std::to_string(ship.position.y) + ", " + std::to_string(ship.position.z));
             win->text.printText_Solid(font,25.0f,50.0f, "Velocity X,Y,Z: " + std::to_string(ship.velocity.x) + ", " + std::to_string(ship.velocity.y) + ", " + std::to_string(ship.velocity.z)); 
             win->text.printText_Solid(font,25.0f,75.0f, "FPS: " + std::to_string(1.0f / deltaTime));
-            
             int destroyedCount = 0;
             for (const auto& planet : planets) {
                 if (planet.isDestroyed) destroyedCount++;
