@@ -1,4 +1,4 @@
-#define ASTEROIDS_VERSION "v1.0"
+#define ASTEROIDS_VERSION "v1.01"
 #include"mx.hpp"
 #include"argz.hpp"
 
@@ -1896,8 +1896,8 @@ public:
     float radius = 5.0f;
     int generation = 0;
     int asteroid_type = 0;
-
     glm::vec3 velocity{0.0f, 0.0f, 0.0f};  
+    
 
     float getRadius() const {
          return radius;
@@ -2106,6 +2106,7 @@ class Game : public gl::GLObject {
     const float SHIP_EXPLOSION_DURATION = 2.5f;
     int lives = 5;
     int score = 0;
+    bool inverted_controls = true;
 public:
     Game() = default;
     virtual ~Game() override {
@@ -2231,13 +2232,11 @@ public:
                 auto hits = ship.projectiles.checkCollisions(planet.position, planet.getRadius(), deltaTime);
                 if (!hits.empty()) {
                     
-                    float impactForce = 1.0f + (hits.size() * 0.5f);  
-                    
                     emiter.position = planet.position;
-                    
+                    emiter.explode(planet.position);                       
                     if (planet.generation >= MAX_GENERATIONS) {
                         emiter.explode(planet.position);
-                        planet.isDestroyed = true;
+                        planet.isDestroyed = true;                                                                                                                      
                         score += 100 * hits.size();  
                     } else {
                         emiter.explode(planet.position);
@@ -2279,10 +2278,10 @@ public:
         emiter.draw(win);
 
         win->text.setColor({0xBD, 0, 0, 255});
-        win->text.printText_Solid(font, win->w-225.0f, 25.0f, "MX2 Asteroids " + std::string(ASTEROIDS_VERSION));
+        win->text.printText_Solid(font, win->w-250.0f, 25.0f, "MX2 Asteroids " + std::string(ASTEROIDS_VERSION));
         win->text.setColor({255,255,255,255});
-        win->text.printText_Solid(font, win->w-225.0f, 50.0f, "Score: " + std::to_string(score));
-        win->text.printText_Solid(font, win->w-225.0f, 75.0f, "Lives: " + std::to_string(lives));
+        win->text.printText_Solid(font, win->w-250.0f, 50.0f, "Score: " + std::to_string(score));
+        win->text.printText_Solid(font, win->w-250.0f, 75.0f, "Lives: " + std::to_string(lives));
         
          int numPlanets = 0;
          for(auto &p : planets) {
@@ -2293,8 +2292,14 @@ public:
             randomizePlanetPositions();
          }
 
-         win->text.printText_Solid(font, win->w-225.0f, 100.0f, "Asteroids: " + std::to_string(numPlanets));
-         win->text.printText_Solid(font, win->w-225.0f, 125.0f, "[F1 for Debug]");
+         win->text.printText_Solid(font, win->w-250.0f, 100.0f, "Asteroids: " + std::to_string(numPlanets));
+         win->text.printText_Solid(font, win->w-250.0f, 125.0f, "[F1 for Debug]");
+         if(inverted_controls) {
+            win->text.printText_Solid(font, win->w-250.0f, 150.0f, "[F2 invert controls]");
+         } else {
+            win->text.printText_Solid(font, win->w-250.0f, 150.0f, "[F2 restore controls]");
+         }
+
         if(debug_menu) {
             win->text.setColor({255,255,255,255});
             win->text.printText_Solid(font,25.0f,25.0f, "Ship X,Y,Z: " + std::to_string(ship.position.x) + ", " + std::to_string(ship.position.y) + ", " + std::to_string(ship.position.z));
@@ -2450,23 +2455,41 @@ public:
             ship.rotation.z = glm::mix(ship.rotation.z, 0.0f, wingLevelingSpeed * deltaTime);
         }
         
-        if (state[SDL_SCANCODE_W]) {
-            ship.pitch(-1.0f, deltaTime); 
+        if(inverted_controls) {
+            if (state[SDL_SCANCODE_W]) {
+                ship.pitch(-1.0f, deltaTime); 
+            }
+            if (state[SDL_SCANCODE_S]) {
+                ship.pitch(1.0f, deltaTime); 
+            }
+        } else {
+            if (state[SDL_SCANCODE_S]) {
+                ship.pitch(-1.0f, deltaTime); 
+            }
+            if (state[SDL_SCANCODE_W]) {
+                ship.pitch(1.0f, deltaTime); 
+            }
         }
-        if (state[SDL_SCANCODE_S]) {
-            ship.pitch(1.0f, deltaTime); 
-        }
+
         if (state[SDL_SCANCODE_RETURN]) {
             randomizePlanetPositions();
             emiter.reset();
         }
-        if(controller.getAxis(SDL_CONTROLLER_AXIS_RIGHTY) < -0.5f) {
-            ship.pitch(-1.0f, deltaTime); 
+        if(inverted_controls) {
+            if(controller.getAxis(SDL_CONTROLLER_AXIS_RIGHTY) < -0.5f) {
+                ship.pitch(-1.0f, deltaTime); 
+            }
+            else if(controller.getAxis(SDL_CONTROLLER_AXIS_RIGHTY) > 0.5f) {
+                ship.pitch(1.0f, deltaTime);  
+            }
+        } else {
+            if(controller.getAxis(SDL_CONTROLLER_AXIS_RIGHTY) < -0.5f) {
+                ship.pitch(1.0f, deltaTime); 
+            }
+            else if(controller.getAxis(SDL_CONTROLLER_AXIS_RIGHTY) > 0.5f) {
+                ship.pitch(-1.0f, deltaTime);  
+            }
         }
-        else if(controller.getAxis(SDL_CONTROLLER_AXIS_RIGHTY) > 0.5f) {
-            ship.pitch(1.0f, deltaTime);  
-        }
-        
     }
     
     void event(gl::GLWindow *win, SDL_Event &e) override {
@@ -2477,6 +2500,8 @@ public:
                     emiter.reset();
                 } else if(e.key.keysym.sym == SDLK_F1) {
                     debug_menu = !debug_menu;
+                } else if(e.key.keysym.sym == SDLK_F2) {
+                    inverted_controls = !inverted_controls;
                 }
                 break;
         }
