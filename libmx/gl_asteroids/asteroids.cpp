@@ -1334,9 +1334,11 @@ public:
 class Projectiles {
     struct Projectile {
         glm::vec3 position;
+        glm::vec3  prevPosition;
         glm::vec3 velocity;
         float life;
         float maxLife;
+        float radius = 0.5f; 
     };
 
     std::vector<Projectile> projectiles;
@@ -1522,6 +1524,7 @@ const char* fullProjVert =
 
     void update(float deltaTime) {
         for (auto& projectile : projectiles) {
+            projectile.prevPosition = projectile.position;
             projectile.position += projectile.velocity * deltaTime;
             projectile.life += deltaTime;
         }
@@ -1533,16 +1536,62 @@ const char* fullProjVert =
         );
     }
     
-    bool checkCollision(const glm::vec3& position, float radius) {
-        for (auto it = projectiles.begin(); it != projectiles.end(); ) {
-            if (glm::length(it->position - position) < radius) {
-                it = projectiles.erase(it);
-                return true;
-            } else {
-                ++it;
+    std::vector<size_t> checkCollisions(const glm::vec3& asteroidPosition, float asteroidRadius, float deltaTime) {
+        std::vector<size_t> hitIndices;
+        
+        for (size_t i = 0; i < projectiles.size(); ++i) {
+            const auto& proj = projectiles[i];
+            
+            
+            const float MAX_COLLISION_DISTANCE = 20.0f;
+            if (glm::length(proj.position - asteroidPosition) > 
+                MAX_COLLISION_DISTANCE + asteroidRadius + proj.radius) {
+                continue; 
+            }
+
+            
+            glm::vec3 prevPos = proj.prevPosition;
+            glm::vec3 rayDir = glm::normalize(proj.position - prevPos);
+            glm::vec3 toSphere = asteroidPosition - prevPos;
+            
+            float rayDirDotToSphere = glm::dot(rayDir, toSphere);
+            
+            
+            if (rayDirDotToSphere < 0.0f)
+                continue;
+                
+            
+            float d = glm::length(toSphere - rayDir * rayDirDotToSphere);
+            
+            
+            if (d > (asteroidRadius + proj.radius))
+                continue;
+                
+            
+            float distToClosest = rayDirDotToSphere;
+            
+            
+            float discriminant = pow(asteroidRadius + proj.radius, 2) - pow(d, 2);
+            if (discriminant < 0)
+                continue;
+                
+            
+            float distToIntersection = distToClosest - sqrt(discriminant);
+            
+            
+            float rayLength = glm::length(proj.position - prevPos);
+            if (distToIntersection <= rayLength) {
+                hitIndices.push_back(i);
             }
         }
-        return false;
+        
+        
+        std::sort(hitIndices.begin(), hitIndices.end(), std::greater<size_t>());
+        for (auto idx : hitIndices) {
+            projectiles.erase(projectiles.begin() + idx);
+        }
+        
+        return hitIndices;
     }
     
     void clear() {
@@ -1861,26 +1910,22 @@ public:
             if(!models[0]->openModel(win->util.getFilePath("data/asteroid.mxmod.z"))) {
                     throw mx::Exception("Failed to load planet model");
             }
-
             int rnd_color = generateRandomInt(0, 1);
             if(rnd_color == 0) {
                 models[0]->setTextures(win, win->util.getFilePath("data/rock.tex"), win->util.getFilePath("data"));
             } else {
                 models[0]->setTextures(win, win->util.getFilePath("data/rock2.tex"), win->util.getFilePath("data"));
             }
-            
             models[1] = std::make_unique<mx::Model>();
             if(!models[1]->openModel(win->util.getFilePath("data/asteroid2.mxmod.z"))) {
                     throw mx::Exception("Failed to load planet model");
             }
-
             rnd_color = generateRandomInt(0, 1);
             if(rnd_color == 0) {
                 models[1]->setTextures(win, win->util.getFilePath("data/rock.tex"), win->util.getFilePath("data"));
             } else {
                 models[1]->setTextures(win, win->util.getFilePath("data/rock2.tex"), win->util.getFilePath("data"));
             }
-
             models[2] = std::make_unique<mx::Model>();
             if(!models[2]->openModel(win->util.getFilePath("data/asteroid3.mxmod.z"))) {
                     throw mx::Exception("Failed to load planet model");
@@ -2183,18 +2228,22 @@ public:
         
         for (auto& planet : planets) {
             if (!planet.isDestroyed) {
-                if (ship.projectiles.checkCollision(planet.position, planet.getRadius())) {
+                auto hits = ship.projectiles.checkCollisions(planet.position, planet.getRadius(), deltaTime);
+                if (!hits.empty()) {
+                    
+                    float impactForce = 1.0f + (hits.size() * 0.5f);  
+                    
                     emiter.position = planet.position;
                     
                     if (planet.generation >= MAX_GENERATIONS) {
                         emiter.explode(planet.position);
                         planet.isDestroyed = true;
-                        score += 100;
+                        score += 100 * hits.size();  
                     } else {
                         emiter.explode(planet.position);
                         planet.spawnChildAsteroids(planets);
                         planet.isDestroyed = true;
-                        score += 10;
+                        score += 10 * hits.size();
                     }
                 }
                 
@@ -2320,7 +2369,7 @@ public:
         if (state[SDL_SCANCODE_LEFT]) {
             ship.yaw(1.0f, deltaTime);
             
-         
+                      
             float targetRoll = -30.0f; 
             float rollInput;
             
