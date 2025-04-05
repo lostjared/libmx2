@@ -1861,20 +1861,37 @@ public:
             if(!models[0]->openModel(win->util.getFilePath("data/asteroid.mxmod.z"))) {
                     throw mx::Exception("Failed to load planet model");
             }
-            models[0]->setTextures(win, win->util.getFilePath("data/rock.tex"), win->util.getFilePath("data"));
 
+            int rnd_color = generateRandomInt(0, 1);
+            if(rnd_color == 0) {
+                models[0]->setTextures(win, win->util.getFilePath("data/rock.tex"), win->util.getFilePath("data"));
+            } else {
+                models[0]->setTextures(win, win->util.getFilePath("data/rock2.tex"), win->util.getFilePath("data"));
+            }
+            
             models[1] = std::make_unique<mx::Model>();
             if(!models[1]->openModel(win->util.getFilePath("data/asteroid2.mxmod.z"))) {
                     throw mx::Exception("Failed to load planet model");
             }
-            models[1]->setTextures(win, win->util.getFilePath("data/rock.tex"), win->util.getFilePath("data"));
+
+            rnd_color = generateRandomInt(0, 1);
+            if(rnd_color == 0) {
+                models[1]->setTextures(win, win->util.getFilePath("data/rock.tex"), win->util.getFilePath("data"));
+            } else {
+                models[1]->setTextures(win, win->util.getFilePath("data/rock2.tex"), win->util.getFilePath("data"));
+            }
 
             models[2] = std::make_unique<mx::Model>();
             if(!models[2]->openModel(win->util.getFilePath("data/asteroid3.mxmod.z"))) {
                     throw mx::Exception("Failed to load planet model");
             }
-            models[2]->setTextures(win, win->util.getFilePath("data/rock.tex"), win->util.getFilePath("data"));
-
+            rnd_color = generateRandomInt(0, 1);
+            if(rnd_color == 0) {
+                models[2]->setTextures(win, win->util.getFilePath("data/rock.tex"), win->util.getFilePath("data"));
+            } else {
+                models[2]->setTextures(win, win->util.getFilePath("data/rock2.tex"), win->util.getFilePath("data"));
+            }
+            
             shader = std::make_unique<gl::ShaderProgram>();
             if(!shader->loadProgramFromText(g_vSource, g_fSource)) {
                 throw mx::Exception("Failed to load planet shader program");
