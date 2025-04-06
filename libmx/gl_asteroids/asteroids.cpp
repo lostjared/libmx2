@@ -402,7 +402,6 @@ protected:
     mx::Font font;
 };
 
-
 class StarField : public gl::GLObject {
 public:
     struct Particle {
@@ -610,13 +609,11 @@ public:
         for (auto& p : particles) {
             float radius = generateRandomFloat(10.0f, starFieldRadius);
             float theta = generateRandomFloat(0.0f, 2.0f * M_PI);
-            float phi = generateRandomFloat(0.0f, M_PI);
-            
+            float phi = generateRandomFloat(0.0f, M_PI);    
             p.x = cameraPos.x + radius * sin(phi) * cos(theta);
             p.y = cameraPos.y + radius * sin(phi) * sin(theta);
             p.z = cameraPos.z + radius * cos(phi);
         }
-        
         lastCameraPos = cameraPos;
     }
 
@@ -2584,6 +2581,9 @@ void eventProc() {
 }
 
 int main(int argc, char **argv) {
+    mx::system_out << "MX2 Asteroids " << ASTEROIDS_VERSION << "\n";
+    mx::system_out << "MX2 Engine: v" << PROJECT_VERSION_MAJOR << "." << PROJECT_VERSION_MINOR << "\n";
+    mx::system_out << "https://lostsidedead.biz\n"; 
 #ifdef __EMSCRIPTEN__
     try {
         MainWindow main_window("", 1920, 1080);
@@ -2602,9 +2602,8 @@ int main(int argc, char **argv) {
 		    main_window.setFullScreen(true);
             SDL_ShowCursor(SDL_DISABLE);
         }
-        
         main_window.loop();
-        
+  
         if(args.fullscreen) 
             SDL_ShowCursor(SDL_ENABLE);
     } catch(const mx::Exception &e) {
