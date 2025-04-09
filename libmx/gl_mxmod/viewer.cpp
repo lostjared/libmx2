@@ -284,7 +284,8 @@ void eventProc() {
 }
 
 int main(int argc, char **argv) {
-    
+    fflush(stdout);
+    fflush(stdin);
 #ifdef __EMSCRIPTEN__
     MainWindow main_window("/", "globe.mxmod", "metal.tex", 1440, 1080);
     main_w =&main_window;
