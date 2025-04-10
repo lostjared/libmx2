@@ -1,7 +1,8 @@
 #include"model_view.hpp"
 #include<QProcess>
-void MainWindow::initWindow()
-{
+#include<QMessageBox>
+
+void MainWindow::initWindow() {
     setWindowTitle("Model Viewer");
     setGeometry(100, 100, 800, 600);
     setMinimumSize(800, 600);
@@ -10,8 +11,21 @@ void MainWindow::initWindow()
     setupFileSelectionUI();
 }
 
-void MainWindow::setupFileSelectionUI()
-{
+void MainWindow::closeEvent(QCloseEvent *event) {
+    if (activeProcess && activeProcess->state() != QProcess::NotRunning) {
+        QMessageBox msgBox;
+        msgBox.setIcon(QMessageBox::Warning);
+        msgBox.setText("The model viewer is still running.");
+        msgBox.setInformativeText("Please close the model viewer program before exiting this application.");
+        msgBox.setStandardButtons(QMessageBox::Ok);
+        msgBox.exec();
+        event->ignore();
+    } else {
+        event->accept();
+    }
+}
+
+void MainWindow::setupFileSelectionUI() {
     QWidget *centralWidget = new QWidget(this);
     setCentralWidget(centralWidget);
     QVBoxLayout *mainLayout = new QVBoxLayout(centralWidget);
@@ -64,7 +78,7 @@ void MainWindow::setupFileSelectionUI()
     outputLayout->addWidget(consoleOutput);
     outputLayout->setContentsMargins(5, 5, 5, 5); 
     mainLayout->addWidget(outputGroup, 1);
-    QPushButton *openButton = new QPushButton("Open", this);
+    openButton = new QPushButton("Open", this);
     openButton->setMinimumHeight(40);
     connect(openButton, &QPushButton::clicked, this, &MainWindow::openModelWithTextures);
     mainLayout->addSpacing(10);
@@ -72,8 +86,7 @@ void MainWindow::setupFileSelectionUI()
     mainLayout->setContentsMargins(10, 10, 10, 10);
 }
 
-void MainWindow::browseModelFile()
-{
+void MainWindow::browseModelFile() {
     QString fileName = QFileDialog::getOpenFileName(this,
         tr("Open Model File"), "", tr("Model Files (*.mxmod *.mxmod.z);;All Files (*)"));
     
@@ -82,8 +95,7 @@ void MainWindow::browseModelFile()
     }
 }
 
-void MainWindow::browseTextureFile()
-{
+void MainWindow::browseTextureFile() {
     QString fileName = QFileDialog::getOpenFileName(this,
         tr("Open Texture File"), "", tr("Texture Files (*.tex *.png );;All Files (*)"));
     
@@ -92,8 +104,7 @@ void MainWindow::browseTextureFile()
     }
 }
 
-void MainWindow::browseTextureDirectory()
-{
+void MainWindow::browseTextureDirectory() {
     QString dirName = QFileDialog::getExistingDirectory(this,
         tr("Select Texture Directory"), "",
         QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
@@ -103,8 +114,7 @@ void MainWindow::browseTextureDirectory()
     }
 }
 
-void MainWindow::openModelWithTextures()
-{
+void MainWindow::openModelWithTextures() {
     QString modelPath = modelLineEdit->text();
     QString texturePath = textureLineEdit->text();
     QString textureDir = textureDirLineEdit->text();
@@ -144,28 +154,23 @@ void MainWindow::openModelWithTextures()
         return;
     }
     
-    
-    QProcess *process = new QProcess(this);
-    
+    activeProcess = new QProcess(this);
+    QProcess *process = activeProcess;
     
     consoleOutput->clear();
     consoleOutput->appendPlainText("Starting model viewer...");
-    
     
     connect(process, &QProcess::readyReadStandardOutput, [this, process]() {
         QByteArray output = process->readAllStandardOutput();
         consoleOutput->appendPlainText(QString::fromLocal8Bit(output).trimmed());
         
-    
         QScrollBar *scrollBar = consoleOutput->verticalScrollBar();
         scrollBar->setValue(scrollBar->maximum());
     });
     
-    
     connect(process, &QProcess::readyReadStandardError, [this, process]() {
         QByteArray error = process->readAllStandardError();
         
-    
         QTextCharFormat originalFormat = consoleOutput->currentCharFormat();
         QTextCharFormat errorFormat = originalFormat;
         errorFormat.setForeground(Qt::red);
@@ -174,12 +179,10 @@ void MainWindow::openModelWithTextures()
         consoleOutput->appendPlainText(QString::fromLocal8Bit(error).trimmed());
         consoleOutput->setCurrentCharFormat(originalFormat);
         
-        
         QScrollBar *scrollBar = consoleOutput->verticalScrollBar();
         scrollBar->setValue(scrollBar->maximum());
     });
     
-
     connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
             [this, process](int exitCode, QProcess::ExitStatus) {
                 if (exitCode != 0) {
@@ -196,13 +199,23 @@ void MainWindow::openModelWithTextures()
                 } else {
                     consoleOutput->appendPlainText("Process completed successfully.");
                 }
+                
+                if (activeProcess == process) {
+                    activeProcess = nullptr;
+                }
                 process->deleteLater();
+                openButton->setEnabled(true);
             });
     
-    connect(process, &QProcess::errorOccurred, [=](QProcess::ProcessError) {
+    connect(process, &QProcess::errorOccurred, [this, process](QProcess::ProcessError) {
         QMessageBox::critical(this, tr("Process Error"), 
             tr("Failed to start model viewer: %1").arg(process->errorString()));
+        
+        if (activeProcess == process) {
+            activeProcess = nullptr;
+        }
         process->deleteLater();
+        openButton->setEnabled(true);
     });
     
     QStringList arguments;
@@ -230,7 +243,10 @@ void MainWindow::openModelWithTextures()
         consoleOutput->appendPlainText("ERROR: Failed to start process. Check if gl_mxmod is installed and in your PATH.");
         consoleOutput->setCurrentCharFormat(originalFormat);
         
+        activeProcess = nullptr;
         process->deleteLater();
         return;
     }
+
+    openButton->setEnabled(false);
 }

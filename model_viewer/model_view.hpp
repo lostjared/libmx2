@@ -8,8 +8,10 @@
 #include<QMessageBox>
 #include<QPlainTextEdit>
 #include<QGroupBox>
-#include <QScrollBar>
-#include <QTextCharFormat>
+#include<QScrollBar>
+#include<QTextCharFormat>
+#include<QCloseEvent>
+#include<QProcess>
 
 class MainWindow : public QMainWindow
 {
@@ -28,5 +30,10 @@ private:
     QLineEdit *modelLineEdit;
     QLineEdit *textureLineEdit;
     QLineEdit *textureDirLineEdit;
-    QPlainTextEdit *consoleOutput;    
+    QPlainTextEdit *consoleOutput;  
+    QProcess *activeProcess = nullptr;
+    QPushButton *openButton;
+
+protected:
+    void closeEvent(QCloseEvent *event) override;
 };  
