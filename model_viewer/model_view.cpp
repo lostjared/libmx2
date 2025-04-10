@@ -210,6 +210,8 @@ void MainWindow::openModelWithTextures()
     arguments << "-t" << texturePath; 
     arguments << "-T" << textureDir;
     arguments << "-r" << "1280x720";
+    QString app_path = QCoreApplication::applicationDirPath();
+    arguments << "-p" << app_path;
     
     consoleOutput->appendPlainText("Command: gl_mxmod " + arguments.join(" "));
     consoleOutput->appendPlainText("---------------------------------");
