@@ -28,7 +28,7 @@ namespace console {
         clear();
         font.loadFont(fnt, size);
         
-        std::string chars = " 0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()_+[]{}|;:,.<>?`~";
+        std::string chars = " 0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()_+[]{}|;:,.<>?`~\"\'-=";
         for (char c : chars) {
             SDL_Surface *surface = TTF_RenderGlyph_Solid(font.unwrap(), c, col);
             if (surface) {
@@ -99,22 +99,25 @@ namespace console {
     void Console::keypress(char c) {
         std::string text = data.str();
         
-        if (c == 8) { // Backspace
-            // Only allow backspace if we're after the stop position
+        if (c == 8) { 
             if (cursorPos > 0 && cursorPos > stopPosition) {
                 text.erase(cursorPos - 1, 1);
                 data.str(text);
                 cursorPos--;
             }
-        } else if (c == 13) { // Enter
+        } else if (c == 13) { 
             text.insert(cursorPos, 1, '\n');
+            std::string cmd_text;
+            cmd_text = text.substr(stopPosition, cursorPos - stopPosition);
             data.str(text);
+            procCmd(cmd_text);
             cursorPos++;
+            print("$ ");
+            setStop();
         } else {
             text.insert(cursorPos, 1, c);
             data.str(text);
             cursorPos++;
-            
             checkForLineWrap();
         }
         
@@ -392,6 +395,35 @@ namespace console {
         return surface;
     }
 
+    std::vector<std::string> tokenize(const std::string& input) {
+        std::vector<std::string> tokens;
+        std::istringstream iss(input);
+        std::string token;
+        while (iss >> token) {
+            tokens.push_back(token);
+        }
+        return tokens;
+    }
+
+    void Console::procCmd(const std::string &cmd_text) {
+        std::cout << "Command: " << cmd_text << "\n";
+        std::cout.flush();
+        std::vector<std::string> tokens = tokenize(cmd_text);
+        if(tokens[0] == "setcolor" && tokens.size() == 4) {
+            SDL_Color col;
+            col.r = atoi(tokens[1].c_str());
+            col.g = atoi(tokens[2].c_str());
+            col.b = atoi(tokens[3].c_str());
+            col.a = 255;
+            c_chars.load(util->getFilePath("data/font.ttf"), 16, col); 
+        } if(tokens[0] == "about") {
+            this->print("\n - MX2 Engine LostSideDead Software\nhttps://lostsidedead.biz");
+        } else {
+            this->print("\n- Unknown command");
+        }
+        
+    }
+
     GLConsole::~GLConsole() {
         if(texture) {
             glDeleteTextures(1, &texture);
@@ -420,6 +452,7 @@ namespace console {
         int consoleHeight = (win->h / 2) - 50;
         console.create(25, 25, consoleWidth, consoleHeight);
         console.load(win->util.getFilePath("data/font.ttf"), 16, {255,255,255});
+        console.util = &win->util;
         
         if(!shader.loadProgramFromText(gl::vSource, gl::fSource)) {
             throw mx::Exception("Error loading shader");

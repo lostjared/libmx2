@@ -2139,7 +2139,7 @@ public:
         font.loadFont(win->util.getFilePath("data/font.ttf"), 18);
         console.load(win);
         console.print("Asteroids MX2\n");
-        console.print("written by LostSideDead Software\nhttps://lostsidedead.biz\n$");
+        console.print("written by LostSideDead Software\nhttps://lostsidedead.biz\n$ ");
         console.setStop();
         con = &console;
         emiter.load(win);

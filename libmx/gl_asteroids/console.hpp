@@ -28,7 +28,7 @@ namespace console {
     public:
         Console() = default;
         ~Console();
-
+        mx::mxUtil *util;
         void create(int x, int y, int w, int h);
         void load(const std::string &fnt, int size, const SDL_Color &col);
         void clear();
