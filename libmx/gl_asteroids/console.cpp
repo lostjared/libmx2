@@ -25,9 +25,10 @@ namespace console {
     }
     
     void ConsoleChars::load(const std::string &fnt, int size) {
-
+        clear();
         font.loadFont(fnt, size);
-        std::string chars = " 0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()_+[]{}|;:,.<>?`~/\\-=";
+        
+        std::string chars = " 0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()_+[]{}|;:,.<>?`~";
         for (char c : chars) {
             SDL_Surface *surface = TTF_RenderGlyph_Solid(font.unwrap(), c, {255, 255, 255});
             if (surface) {
@@ -59,7 +60,7 @@ namespace console {
         console_rect.y = y;
         console_rect.w = w;
         console_rect.h = h;
-
+    
         if(surface != nullptr) {
             SDL_FreeSurface(surface);
             surface = nullptr;
@@ -68,9 +69,6 @@ namespace console {
         surface = SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_RGBA32);
         if (!surface) {
             std::cerr << "Failed to create surface: " << SDL_GetError() << std::endl;
-        } else {
-            // Initialize with transparent black background
-            SDL_FillRect(surface, NULL, SDL_MapRGBA(surface->format, 0, 0, 0, 188));
         }
     }
 
@@ -130,6 +128,7 @@ namespace console {
         if (cursorPos == 0 || c_chars.characters.empty()) return;
         
         int x = console_rect.x;
+        int charWidth = c_chars.characters['A']->w;
         int maxWidth = console_rect.w - 50;
         
         for (size_t i = 0; i < text.length(); ++i) {
@@ -141,7 +140,7 @@ namespace console {
             } else {
                 int width = 0;
                 if (c == '\t') {
-                    width = c_chars.characters['A']->w * 4;
+                    width = charWidth * 4;
                 } else {
                     auto it = c_chars.characters.find(c);
                     if (it != c_chars.characters.end()) {
@@ -239,7 +238,7 @@ namespace console {
                     if (it != c_chars.characters.end()) {
                         width = it->second->w;
                     } else {
-                        width = charWidth;
+                        width = c_chars.characters['A']->w;
                     }
                 }
                 
@@ -281,7 +280,7 @@ namespace console {
                             if (it != c_chars.characters.end()) {
                                 width = it->second->w;
                             } else {
-                                width = charWidth;
+                                width = c_chars.characters['A']->w;
                             }
                         }
                         
@@ -382,24 +381,6 @@ namespace console {
         return surface;
     }
 
-    std::string Console::getText() const {
-        return data.str();
-    }
-
-    void Console::setText(const std::string &text) {
-        data.str(text);
-        updateCursorPosition();
-    }
-
-    size_t Console::getCursorPos() const {
-        return cursorPos;
-    }
-
-    void Console::setCursorPos(size_t pos) {
-        cursorPos = pos;
-        updateCursorPosition();
-    }
-
     GLConsole::~GLConsole() {
         if(texture) {
             glDeleteTextures(1, &texture);
@@ -427,7 +408,6 @@ namespace console {
         int consoleWidth = win->w - 50;
         int consoleHeight = (win->h / 2) - 50;
         console.create(25, 25, consoleWidth, consoleHeight);
-        
         console.load(win->util.getFilePath("data/font.ttf"), 16);
         
         if(!shader.loadProgramFromText(gl::vSource, gl::fSource)) {
@@ -436,41 +416,38 @@ namespace console {
 
         if(sprite == nullptr)
             sprite = std::make_unique<gl::GLSprite>();
-        else {
+       else
             sprite.reset(new gl::GLSprite());
-        }
 
         texture = loadTextFromSurface(console.drawText());
         sprite->initSize(win->w, win->h);
         sprite->initWithTexture(&shader, texture, 0.0f, 0.0f, win->w, win->h);
+       
+
+        
     }
 
     void GLConsole::updateTexture(GLuint tex, SDL_Surface *surf) {
+        glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, tex);
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, surf->w, surf->h, GL_RGBA, GL_UNSIGNED_BYTE, surf->pixels);
+        glBindTexture(GL_TEXTURE_2D, 0);
     }
 
     void GLConsole::draw(gl::GLWindow *win) {
         SDL_Surface *surface = console.drawText();
         if (surface) {
-        
-            glEnable(GL_BLEND);
-            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-            
             shader.useProgram();
             shader.setUniform("textTexture", 0);
-            
             flipSurface(surface);
-            glActiveTexture(GL_TEXTURE0);
-            sprite->updateTexture(surface);
-        
+            updateTexture(texture, surface);
+            
             int consoleWidth = win->w - 50;
             int consoleHeight = (win->h / 2) - 50;
             sprite->draw(texture, 25.0f, 25.0f, consoleWidth, consoleHeight);
-            glUseProgram(0);
-            glBindTexture(GL_TEXTURE_2D, 0);
+        } else {
+            std::cerr << "Failed to draw text." << std::endl;
         }
-        glDisable(GL_BLEND);
     }
 
     void GLConsole::print(const std::string &data) {
@@ -487,7 +464,7 @@ namespace console {
                 console.keypress(8);
             } else if(e.key.keysym.sym == SDLK_TAB) {
                 console.keypress('\t');
-            }
+            } 
         }
         else if(e.type == SDL_TEXTINPUT) {
             console.keypress(e.text.text[0]);

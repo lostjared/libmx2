@@ -39,9 +39,11 @@ namespace console {
         void setText(const std::string& text);        
         size_t getCursorPos() const;
         void setCursorPos(size_t pos);
+        void procCmd(const std::string &cmd);
     protected:
         ConsoleChars c_chars;
         std::ostringstream data;
+        std::string input_text;
         SDL_Surface *surface = nullptr;
         SDL_Rect console_rect;
         
