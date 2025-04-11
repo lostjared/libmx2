@@ -205,6 +205,7 @@ if(EXAMPLES)
     add_subdirectory(gl_model_explode)
     add_subdirectory(gl_model_glitch)
     add_subdirectory(gl_asteroids)
+    add_subdirectory(gl_console)
   endif()
 
 #disable for now
