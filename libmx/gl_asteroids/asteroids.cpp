@@ -11,6 +11,8 @@
 #include"loadpng.hpp"
 #include"model.hpp"
 #include<random>
+#include"console.hpp"
+
 
 #ifdef DEBUG_MODE
 #define CHECK_GL_ERROR() \
@@ -1704,6 +1706,11 @@ public:
         while (rotation.z < -360.0f) rotation.z += 360.0f;
     }
     
+    bool pause = false;
+
+    void setPause(bool pause1) {
+        pause = pause1;
+    }
 
     void update(float deltaTime) {
         glm::vec3 forward = glm::normalize(glm::vec3(
@@ -1711,9 +1718,11 @@ public:
             sin(glm::radians(rotation.x)),
             -cos(glm::radians(rotation.y)) * cos(glm::radians(rotation.x))
         ));
-        velocity = forward * currentSpeed;
-        position += velocity * deltaTime;
-    
+
+        if(pause == false) {
+            velocity = forward * currentSpeed;
+            position += velocity * deltaTime;
+        }
         if (fabs(rotation.z) > 3.0f) {  
             float bankFactor = rotation.z / 45.0f;  
             float turnRate = 15.0f * bankFactor * (currentSpeed / maxSpeed);
@@ -1735,9 +1744,7 @@ public:
         }
         
         exhaust.updateExhaustParticles(deltaTime);
-        projectiles.update(deltaTime);
-
-        
+        projectiles.update(deltaTime);      
     }
 
     void increaseSpeed(float deltaTime) {
@@ -1847,6 +1854,9 @@ const float BOUNDARY_BOUNCE_FACTOR = 1.2f;
 constexpr int MAX_GENERATIONS = 2;
 constexpr int CHILDREN_PER_SPAWN = 2;
 constexpr int MAX_PLANETS = 7 * (1 + CHILDREN_PER_SPAWN + CHILDREN_PER_SPAWN * CHILDREN_PER_SPAWN);
+
+console::GLConsole *con = nullptr;
+
 class Planet {
 public:
     Planet() = default;
@@ -2043,22 +2053,35 @@ public:
         isDestroyed = true;
         isActive = false;
     }
+
+    
+
     void spawnChildAsteroids(std::vector<Planet>& planets) {
         if (generation >= MAX_GENERATIONS) return;
         
-        std::cout << "Asteroid splitting: gen " << generation << " -> " << generation + 1 << std::endl;
+        std::ostringstream out;
+
+        out << "Asteroid splitting: gen " << generation << " -> " << generation + 1 << std::endl;
+
+        con->print(out.str());
+        out.str("");
+
         for (int i = 0; i < CHILDREN_PER_SPAWN; ++i) {
             int availCount = 0;
             for (const auto& p : planets) {
                 if (!p.isActive && p.isDestroyed) availCount++;
             }
-            std::cout << "Available asteroids: " << availCount << "/" << planets.size() << std::endl;
+            out << "Available asteroids: " << availCount << "/" << planets.size() << std::endl;
+            con->print(out.str());
+            out.str("");
             
             auto it = std::find_if(planets.begin(), planets.end(),
                 [](const Planet& p) { return !p.isActive && p.isDestroyed; });
             
             if (it == planets.end()) {
-                std::cerr << "Astertoid pool exhausted! Increase MAX_PLANETS." << std::endl;
+                out << "Astertoid pool exhausted! Increase MAX_PLANETS." << std::endl;
+                con->print(out.str());
+                out.str("");
                 return;
             }
             
@@ -2104,15 +2127,20 @@ class Game : public gl::GLObject {
     int lives = 5;
     int score = 0;
     bool inverted_controls = true;
+    console::GLConsole console;
+    bool console_visible = false;
 public:
     Game() = default;
     virtual ~Game() override {
         if(texture)
             glDeleteTextures(1, &texture);
     }
-
     void load(gl::GLWindow *win) override {
         font.loadFont(win->util.getFilePath("data/font.ttf"), 18);
+        console.load(win);
+        console.print("Asteroids MX2\n");
+        console.print("written by LostSideDead Software\nhttps://lostsidedead.biz\n");
+        con = &console;
         emiter.load(win);
         emiter.setTextureID(gl::loadTexture(win->util.getFilePath("data/star.png")));        
         field.load(win);
@@ -2200,7 +2228,12 @@ public:
         
         handleInput(win, deltaTime);
         
-        ship.update(deltaTime);
+        if(console_visible == true)
+            ship.setPause(true);
+        else 
+            ship.setPause(false);
+
+             ship.update(deltaTime);
         
         for (auto& planet : planets) {
             planet.update(deltaTime);
@@ -2296,6 +2329,7 @@ public:
          } else {
             win->text.printText_Solid(font, win->w-250.0f, 150.0f, "[F2 restore controls]");
          }
+         win->text.printText_Solid(font, win->w-250.0f, 175.0f, "[F3 for Console]");
 
         if(debug_menu) {
             win->text.setColor({255,255,255,255});
@@ -2328,9 +2362,23 @@ public:
             win->text.printText_Solid(font, 25.0f, 225.0f, "Controller: " + con_str);
             win->text.printText_Solid(font, 25.0f, 250.0f, "Press ENTER to randomize asteroids");
         }
+
+        if(console_visible) {
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glDepthMask(GL_FALSE);
+            console.draw(win);
+            glDepthMask(GL_TRUE);
+            glDisable(GL_BLEND);
+        }
     }
     
     void handleInput(gl::GLWindow* win, float deltaTime) {
+
+        if(console_visible == true) {
+            return;
+        }
+
         const Uint8* state = SDL_GetKeyboardState(NULL);
         Uint32 currentTime = SDL_GetTicks();
         if (state[SDL_SCANCODE_SPACE]) {
@@ -2499,15 +2547,26 @@ public:
                     debug_menu = !debug_menu;
                 } else if(e.key.keysym.sym == SDLK_F2) {
                     inverted_controls = !inverted_controls;
+                } else if(e.key.keysym.sym == SDLK_F3) {
+                    console_visible = !console_visible;
                 }
                 break;
         }
 
         if(controller.connectEvent(e)) {
             mx::system_out << "Controller connected...\n";
+            console.print(" - Controller connected\n");
+        }
+
+        if(console_visible) {
+            console.event(win, e);
         }
     }
     
+    virtual void resize(gl::GLWindow *win, int w, int h) override {
+        console.resize(win, w , h);   
+    }
+
 private:
     mx::Font font;
     Uint32 lastUpdateTime = SDL_GetTicks();
@@ -2534,7 +2593,15 @@ public:
     
     ~MainWindow() override {}
     
-    virtual void event(SDL_Event &e) override {}
+    virtual void event(SDL_Event &e) override {
+
+        if (e.type == SDL_WINDOWEVENT) {
+            if (e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+                updateViewport();
+            }
+        }
+
+    }
     
     virtual void draw() override {
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
