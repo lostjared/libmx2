@@ -74,6 +74,7 @@ namespace console {
 
     void Console::load(const std::string &fnt, int size, const SDL_Color &col) {
         c_chars.load(fnt, size, col);
+        scrollToBottom();
     }
     
     void Console::clear() {
@@ -99,6 +100,7 @@ namespace console {
                 std::string cmd = inputBuffer;
                 inputBuffer.clear();
                 procCmd(cmd);
+
             } else {
                 inputBuffer.push_back(c);
             }
