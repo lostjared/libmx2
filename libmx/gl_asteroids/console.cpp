@@ -99,13 +99,14 @@ namespace console {
     void Console::keypress(char c) {
         std::string text = data.str();
         
-        if (c == 8) { 
-            if (cursorPos > 0) {
+        if (c == 8) { // Backspace
+            // Only allow backspace if we're after the stop position
+            if (cursorPos > 0 && cursorPos > stopPosition) {
                 text.erase(cursorPos - 1, 1);
                 data.str(text);
                 cursorPos--;
             }
-        } else if (c == 13) { 
+        } else if (c == 13) { // Enter
             text.insert(cursorPos, 1, '\n');
             data.str(text);
             cursorPos++;
@@ -114,10 +115,8 @@ namespace console {
             data.str(text);
             cursorPos++;
             
-            
             checkForLineWrap();
         }
-        
         
         checkScroll();
         updateCursorPosition();
@@ -209,6 +208,10 @@ namespace console {
         
         cursorX = x;
         cursorY = y;
+    }
+
+    void Console::setStop() {
+        stopPosition = cursorPos;
     }
 
     void Console::checkScroll() {
@@ -308,6 +311,7 @@ namespace console {
                 size_t charsRemoved = pos;
                 text = text.substr(pos);
                 data.str(text);
+            
                 if (cursorAtEnd) {
                     cursorPos = text.length();
                 } else {
@@ -317,9 +321,16 @@ namespace console {
                         cursorPos = 0;
                     }
                 }
+            
+                if (stopPosition > charsRemoved) {
+                    stopPosition -= charsRemoved;
+                } else {
+                    stopPosition = 0;
+                }
             } else {
                 data.str("");
                 cursorPos = 0;
+                stopPosition = 0;  
             }
         }
     }
@@ -470,5 +481,9 @@ namespace console {
 
     void GLConsole::resize(gl::GLWindow *win, int w, int h) {
         load(win);
+    }
+
+    void GLConsole::setStop() {
+        console.setStop();
     }
 }

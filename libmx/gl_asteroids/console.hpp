@@ -40,6 +40,7 @@ namespace console {
         size_t getCursorPos() const;
         void setCursorPos(size_t pos);
         void procCmd(const std::string &cmd);
+        void setStop();
     protected:
         ConsoleChars c_chars;
         std::ostringstream data;
@@ -47,7 +48,9 @@ namespace console {
         SDL_Surface *surface = nullptr;
         SDL_Rect console_rect;
         
-        size_t cursorPos = 0;   
+        size_t cursorPos = 0;
+        size_t stopPosition = 0;
+
         int cursorX = 0;        
         int cursorY = 0;        
         bool cursorVisible = true;
@@ -68,6 +71,7 @@ namespace console {
         void event(gl::GLWindow *win, SDL_Event &e);
         void print(const std::string &data);
         void resize(gl::GLWindow *win, int w, int h);
+        void setStop();
     protected:
         Console console;
         std::unique_ptr<gl::GLSprite> sprite = nullptr;

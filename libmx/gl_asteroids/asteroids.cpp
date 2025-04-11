@@ -2139,7 +2139,8 @@ public:
         font.loadFont(win->util.getFilePath("data/font.ttf"), 18);
         console.load(win);
         console.print("Asteroids MX2\n");
-        console.print("written by LostSideDead Software\nhttps://lostsidedead.biz\n");
+        console.print("written by LostSideDead Software\nhttps://lostsidedead.biz\n$");
+        console.setStop();
         con = &console;
         emiter.load(win);
         emiter.setTextureID(gl::loadTexture(win->util.getFilePath("data/star.png")));        
@@ -2540,7 +2541,7 @@ public:
     void event(gl::GLWindow *win, SDL_Event &e) override {
         switch(e.type) {
             case SDL_KEYDOWN:
-                if(e.key.keysym.sym == SDLK_RETURN) {
+                if(console_visible == false && e.key.keysym.sym == SDLK_RETURN) {
                     randomizePlanetPositions();
                     emiter.reset();
                 } else if(e.key.keysym.sym == SDLK_F1) {
