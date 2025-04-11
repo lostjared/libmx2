@@ -40,7 +40,9 @@ namespace console {
         size_t getCursorPos() const;
         void setCursorPos(size_t pos);
         void procCmd(const std::string &cmd);
-        void setStop();
+        void setPrompt(const std::string &text);
+        void scrollToBottom();
+        std::string promptText = "$ "; 
     protected:
         ConsoleChars c_chars;
         std::ostringstream data;
@@ -55,10 +57,12 @@ namespace console {
         int cursorY = 0;        
         bool cursorVisible = true;
         Uint32 cursorBlinkTime = 0;
-
+        std::string inputBuffer;
+        bool showInput = true;  
         void checkScroll();
         void updateCursorPosition();
         void checkForLineWrap();
+        
     };
 
     class GLConsole {
@@ -70,8 +74,10 @@ namespace console {
         void draw(gl::GLWindow *win);
         void event(gl::GLWindow *win, SDL_Event &e);
         void print(const std::string &data);
+        void println(const std::string &data);
         void resize(gl::GLWindow *win, int w, int h);
-        void setStop();
+        void setPrompt(const std::string &prompt);
+        
     protected:
         Console console;
         std::unique_ptr<gl::GLSprite> sprite = nullptr;

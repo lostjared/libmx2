@@ -28,7 +28,7 @@ namespace console {
         clear();
         font.loadFont(fnt, size);
         
-        std::string chars = " 0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()_+[]{}|;:,.<>?`~\"\'-=";
+        std::string chars = " 0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()_+[]{}|;:,.<>?`~\"\'/\\-=";
         for (char c : chars) {
             SDL_Surface *surface = TTF_RenderGlyph_Solid(font.unwrap(), c, col);
             if (surface) {
@@ -81,48 +81,30 @@ namespace console {
     }
     
     void Console::print(const std::string &str) {
-        
-        std::string text = data.str();
-        
-        
-        text.insert(cursorPos, str);
-        data.str(text);
-        
-        
-        cursorPos += str.length();
-        
-        
-        updateCursorPosition();
-        checkScroll();
+        std::string currentText = data.str();
+        currentText.append(str);   
+        data.str("");
+        data << currentText;
+        cursorPos = data.str().length();
+        scrollToBottom();
     }
 
     void Console::keypress(char c) {
-        std::string text = data.str();
-        
-        if (c == 8) { 
-            if (cursorPos > 0 && cursorPos > stopPosition) {
-                text.erase(cursorPos - 1, 1);
-                data.str(text);
-                cursorPos--;
+        try {
+            if (c == 8) { 
+                if (!inputBuffer.empty()) {
+                    inputBuffer.pop_back();
+                }
+            } else if (c == 13) { 
+                std::string cmd = inputBuffer;
+                inputBuffer.clear();
+                procCmd(cmd);
+            } else {
+                inputBuffer.push_back(c);
             }
-        } else if (c == 13) { 
-            text.insert(cursorPos, 1, '\n');
-            std::string cmd_text;
-            cmd_text = text.substr(stopPosition, cursorPos - stopPosition);
-            data.str(text);
-            procCmd(cmd_text);
-            cursorPos++;
-            print("$ ");
-            setStop();
-        } else {
-            text.insert(cursorPos, 1, c);
-            data.str(text);
-            cursorPos++;
-            checkForLineWrap();
+        } catch (const std::exception &e) {
+            std::cerr << "Error in keypress: " << e.what() << std::endl;
         }
-        
-        checkScroll();
-        updateCursorPosition();
     }
 
     void Console::checkForLineWrap() {
@@ -213,17 +195,16 @@ namespace console {
         cursorY = y;
     }
 
-    void Console::setStop() {
-        stopPosition = cursorPos;
-    }
-
     void Console::checkScroll() {
         if (!surface || c_chars.characters.empty()) {
             return;
         }
         
-        int lineHeight = c_chars.characters['A']->h;
-        int maxLines = (console_rect.h / lineHeight) - 1;  
+        int lineHeight = c_chars.characters['A']->h;  
+        int bottomPadding = c_chars.characters['A']->h + 10; 
+        int promptHeight = lineHeight + bottomPadding;
+        int textAreaHeight = console_rect.h - promptHeight - 5;
+        int maxLines = textAreaHeight / lineHeight;
         std::string text = data.str();
         int lineCount = 1;
         int currentLineWidth = 0;
@@ -336,32 +317,47 @@ namespace console {
                 stopPosition = 0;  
             }
         }
-    }
-
-    SDL_Surface *Console::drawText() {
-        if (!surface) {
-            std::cerr << "Surface not created." << std::endl;
-            return nullptr;
+        std::string finalText = data.str();
+        if (cursorPos > finalText.length()) {
+            cursorPos = finalText.length();
         }
-
+    }
+    SDL_Surface *Console::drawText() {
+        if (!surface) return nullptr;
+        
         SDL_FillRect(surface, 0, SDL_MapRGBA(surface->format, 0, 0, 0, 188));
-        std::string text = data.str();
+        int lineHeight = c_chars.characters['A']->h;
+        int promptHeight = lineHeight + 10; // Add some padding
+        
+        int bottomPadding = c_chars.characters['A']->h + 10; 
+        int promptY = console_rect.y + console_rect.h - lineHeight - bottomPadding;
+        SDL_Rect separatorRect = {
+            console_rect.x, 
+            promptY - 5, 
+            console_rect.w, 
+            2
+        };
+        SDL_FillRect(surface, &separatorRect, SDL_MapRGBA(surface->format, 75, 75, 75, 220));
+        int textAreaHeight = promptY - console_rect.y;
+        std::string outputText = data.str();
         int x = console_rect.x;
         int y = console_rect.y;
         int maxWidth = console_rect.w - 50;
         
-        for (size_t i = 0; i < text.length(); ++i) {
-            char c = text[i];
+        for (size_t i = 0; i < outputText.length(); ++i) {
+            if (y >= promptY - lineHeight) break;
             
+            char c = outputText[i];
             if (c == '\n') {
                 x = console_rect.x;
-                y += c_chars.characters['A']->h;
+                y += lineHeight;
                 continue;
             }
             
             if (x + c_chars.characters['A']->w > console_rect.x + maxWidth) {
                 x = console_rect.x;
-                y += c_chars.characters['A']->h;
+                y += lineHeight;
+                if (y >= promptY - lineHeight) break;
             }
             
             auto it = c_chars.characters.find(c);
@@ -373,23 +369,31 @@ namespace console {
             } else if (c == '\t') {
                 x += c_chars.characters['A']->w * 4;
             }
+        }
+        
+        x = console_rect.x;
+        std::string promptAndInput = promptText + inputBuffer;
+        for (size_t i = 0; i < promptAndInput.length(); ++i) {
+            char c = promptAndInput[i];
+            if (x + c_chars.characters['A']->w > console_rect.x + maxWidth) {
+                x = console_rect.x;
+            }
             
-            if (y + c_chars.characters['A']->h > surface->h) {
-                break;
+    
+            auto it = c_chars.characters.find(c);
+            if (it != c_chars.characters.end()) {
+                SDL_Surface *char_surface = it->second;
+                SDL_Rect dest_rect = {x, promptY, char_surface->w, char_surface->h};
+                SDL_BlitSurface(char_surface, nullptr, surface, &dest_rect);
+                x += char_surface->w;
+            } else if (c == '\t') {
+                x += c_chars.characters['A']->w * 4;
             }
         }
-        
-        Uint32 currentTime = SDL_GetTicks();
-        if (currentTime - cursorBlinkTime > 500) {
-            cursorVisible = !cursorVisible;
-            cursorBlinkTime = currentTime;
-        }
-        
+    
         if (cursorVisible) {
-            if (cursorY + c_chars.characters['A']->h <= console_rect.y + console_rect.h) {
-                SDL_Rect cursorRect = {cursorX, cursorY, 2, c_chars.characters['A']->h};
-                SDL_FillRect(surface, &cursorRect, SDL_MapRGBA(surface->format, 255, 255, 255, 255));
-            }
+            SDL_Rect cursorRect = {x, promptY, 2, lineHeight};
+            SDL_FillRect(surface, &cursorRect, SDL_MapRGBA(surface->format, 255, 255, 255, 255));
         }
         
         return surface;
@@ -405,23 +409,47 @@ namespace console {
         return tokens;
     }
 
+    void Console::scrollToBottom() {
+        cursorPos = data.str().length();
+        updateCursorPosition();
+        checkScroll();
+        std::string finalText = data.str();
+        if (cursorPos > finalText.length()) {
+            cursorPos = finalText.length();
+        }
+    }
+
     void Console::procCmd(const std::string &cmd_text) {
-        std::cout << "Command: " << cmd_text << "\n";
-        std::cout.flush();
         std::vector<std::string> tokens = tokenize(cmd_text);
-        if(tokens[0] == "setcolor" && tokens.size() == 4) {
-            SDL_Color col;
-            col.r = atoi(tokens[1].c_str());
-            col.g = atoi(tokens[2].c_str());
-            col.b = atoi(tokens[3].c_str());
-            col.a = 255;
-            c_chars.load(util->getFilePath("data/font.ttf"), 16, col); 
-        } if(tokens[0] == "about") {
-            this->print("\n - MX2 Engine LostSideDead Software\nhttps://lostsidedead.biz");
-        } else {
-            this->print("\n- Unknown command");
+        
+        if (tokens.empty()) {
+            return;
         }
         
+        if (tokens[0] == "settext" && tokens.size() == 5) {
+            SDL_Color col;
+            int size = atoi(tokens[1].c_str());
+            col.r = atoi(tokens[2].c_str());
+            col.g = atoi(tokens[3].c_str());
+            col.b = atoi(tokens[4].c_str());
+            col.a = 255;
+            if(size < 8) size = 8;
+            if(size > 64) size = 64;
+            
+            c_chars.load(util->getFilePath("data/font.ttf"), size, col);
+            
+            this->print("Font updated to size " + tokens[1] + 
+                        " color: " + tokens[2] + "," + tokens[3] + "," + tokens[4] + "\n");
+            
+        } 
+        else if (tokens[0] == "about") {
+            this->print("- MX2 Engine LostSideDead Software\nhttps://lostsidedead.biz\n");
+        }
+        else {
+            this->print("- Unknown command\n");
+        }
+        updateCursorPosition();
+        checkScroll();
     }
 
     GLConsole::~GLConsole() {
@@ -453,6 +481,7 @@ namespace console {
         console.create(25, 25, consoleWidth, consoleHeight);
         console.load(win->util.getFilePath("data/font.ttf"), 16, {255,255,255});
         console.util = &win->util;
+        console.promptText = "$ ";
         
         if(!shader.loadProgramFromText(gl::vSource, gl::fSource)) {
             throw mx::Exception("Error loading shader");
@@ -476,6 +505,7 @@ namespace console {
     }
 
     void GLConsole::draw(gl::GLWindow *win) {
+        console.scrollToBottom();
         SDL_Surface *surface = console.drawText();
         if (surface) {
             shader.useProgram();
@@ -493,6 +523,10 @@ namespace console {
 
     void GLConsole::print(const std::string &data) {
         console.print(data);
+    }
+
+    void GLConsole::println(const std::string &data) {
+        console.print(data + "\n");
     }
 
     void GLConsole::event(gl::GLWindow *win, SDL_Event &e) {
@@ -514,9 +548,5 @@ namespace console {
 
     void GLConsole::resize(gl::GLWindow *win, int w, int h) {
         load(win);
-    }
-
-    void GLConsole::setStop() {
-        console.setStop();
     }
 }

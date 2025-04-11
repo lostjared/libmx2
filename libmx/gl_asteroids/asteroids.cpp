@@ -2061,9 +2061,9 @@ public:
         
         std::ostringstream out;
 
-        out << "Asteroid splitting: gen " << generation << " -> " << generation + 1 << std::endl;
+        out << "Asteroid splitting: gen " << generation << " -> " << generation + 1;
 
-        con->print(out.str());
+        con->println(out.str());
         out.str("");
 
         for (int i = 0; i < CHILDREN_PER_SPAWN; ++i) {
@@ -2071,16 +2071,16 @@ public:
             for (const auto& p : planets) {
                 if (!p.isActive && p.isDestroyed) availCount++;
             }
-            out << "Available asteroids: " << availCount << "/" << planets.size() << std::endl;
-            con->print(out.str());
+            out << "Available asteroids: " << availCount << "/" << planets.size();
+            con->println(out.str());
             out.str("");
             
             auto it = std::find_if(planets.begin(), planets.end(),
                 [](const Planet& p) { return !p.isActive && p.isDestroyed; });
             
             if (it == planets.end()) {
-                out << "Astertoid pool exhausted! Increase MAX_PLANETS." << std::endl;
-                con->print(out.str());
+                out << "Astertoid pool exhausted! Increase MAX_PLANETS.";
+                con->println(out.str());
                 out.str("");
                 return;
             }
@@ -2138,9 +2138,9 @@ public:
     void load(gl::GLWindow *win) override {
         font.loadFont(win->util.getFilePath("data/font.ttf"), 18);
         console.load(win);
-        console.print("Asteroids MX2\n");
-        console.print("written by LostSideDead Software\nhttps://lostsidedead.biz\n$ ");
-        console.setStop();
+        console.println("Asteroids MX2");
+        console.println("written by LostSideDead Software\nhttps://lostsidedead.biz");
+        
         con = &console;
         emiter.load(win);
         emiter.setTextureID(gl::loadTexture(win->util.getFilePath("data/star.png")));        
