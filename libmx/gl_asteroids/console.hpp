@@ -16,7 +16,7 @@ namespace console {
         ConsoleChars() = default;
         ~ConsoleChars();
 
-        void load(const std::string &fnt, int size);
+        void load(const std::string &fnt, int size, const SDL_Color &c);
         void clear();
 
         std::unordered_map<char, SDL_Surface *> characters;
@@ -30,7 +30,7 @@ namespace console {
         ~Console();
 
         void create(int x, int y, int w, int h);
-        void load(const std::string &fnt, int size);
+        void load(const std::string &fnt, int size, const SDL_Color &col);
         void clear();
         void print(const std::string &str);
         void keypress(char c);

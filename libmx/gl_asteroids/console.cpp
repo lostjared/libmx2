@@ -24,13 +24,13 @@ namespace console {
         clear();
     }
     
-    void ConsoleChars::load(const std::string &fnt, int size) {
+    void ConsoleChars::load(const std::string &fnt, int size, const SDL_Color &col) {
         clear();
         font.loadFont(fnt, size);
         
         std::string chars = " 0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()_+[]{}|;:,.<>?`~";
         for (char c : chars) {
-            SDL_Surface *surface = TTF_RenderGlyph_Solid(font.unwrap(), c, {255, 255, 255});
+            SDL_Surface *surface = TTF_RenderGlyph_Solid(font.unwrap(), c, col);
             if (surface) {
                 characters[c] = surface;
             } else {
@@ -72,8 +72,8 @@ namespace console {
         }
     }
 
-    void Console::load(const std::string &fnt, int size) {
-        c_chars.load(fnt, size);
+    void Console::load(const std::string &fnt, int size, const SDL_Color &col) {
+        c_chars.load(fnt, size, col);
     }
     
     void Console::clear() {
@@ -408,7 +408,7 @@ namespace console {
         int consoleWidth = win->w - 50;
         int consoleHeight = (win->h / 2) - 50;
         console.create(25, 25, consoleWidth, consoleHeight);
-        console.load(win->util.getFilePath("data/font.ttf"), 16);
+        console.load(win->util.getFilePath("data/font.ttf"), 16, {255,255,255});
         
         if(!shader.loadProgramFromText(gl::vSource, gl::fSource)) {
             throw mx::Exception("Error loading shader");
@@ -422,9 +422,6 @@ namespace console {
         texture = loadTextFromSurface(console.drawText());
         sprite->initSize(win->w, win->h);
         sprite->initWithTexture(&shader, texture, 0.0f, 0.0f, win->w, win->h);
-       
-
-        
     }
 
     void GLConsole::updateTexture(GLuint tex, SDL_Surface *surf) {
