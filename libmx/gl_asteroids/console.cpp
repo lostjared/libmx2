@@ -100,9 +100,34 @@ namespace console {
                 std::string cmd = inputBuffer;
                 inputBuffer.clear();
                 procCmd(cmd);
-
             } else {
-                inputBuffer.push_back(c);
+                
+                if (!promptWouldWrap) {
+                    inputBuffer.push_back(c);
+                    
+                
+                    std::string promptAndInput = promptText + inputBuffer;
+                    int totalWidth = 0;
+                    
+                    for (char ch : promptAndInput) {
+                        int width = 0;
+                        if (ch == '\t') {
+                            width = c_chars.characters['A']->w * 4;
+                        } else {
+                            auto it = c_chars.characters.find(ch);
+                            width = (it != c_chars.characters.end()) ? 
+                                    it->second->w : c_chars.characters['A']->w;
+                        }
+                        totalWidth += width;
+                    }
+                    
+                    
+                    if (totalWidth > (console_rect.w - 50)) {
+                        inputBuffer.pop_back();
+                        promptWouldWrap = true;
+                    }
+                }
+                
             }
         } catch (const std::exception &e) {
             std::cerr << "Error in keypress: " << e.what() << std::endl;
@@ -372,13 +397,40 @@ namespace console {
         
         x = console_rect.x;
         std::string promptAndInput = promptText + inputBuffer;
+        
+        promptWouldWrap = false;
+        int totalPromptWidth = 0;
+        for (size_t i = 0; i < promptAndInput.length(); ++i) {
+            char c = promptAndInput[i];
+            int charWidth = 0;
+            
+            if (c == '\t') {
+                charWidth = c_chars.characters['A']->w * 4;
+            } else {
+                auto it = c_chars.characters.find(c);
+                if (it != c_chars.characters.end()) {
+                    charWidth = it->second->w;
+                } else {
+                    charWidth = c_chars.characters['A']->w;
+                }
+            }
+            
+            totalPromptWidth += charWidth;
+        }
+        
+        if (totalPromptWidth > maxWidth) {
+            promptWouldWrap = true;
+        }
+        
+        x = console_rect.x;
+        
         for (size_t i = 0; i < promptAndInput.length(); ++i) {
             char c = promptAndInput[i];
             if (x + c_chars.characters['A']->w > console_rect.x + maxWidth) {
                 x = console_rect.x;
+                promptWouldWrap = true;
             }
             
-    
             auto it = c_chars.characters.find(c);
             if (it != c_chars.characters.end()) {
                 SDL_Surface *char_surface = it->second;

@@ -49,9 +49,9 @@ namespace console {
         std::string input_text;
         SDL_Surface *surface = nullptr;
         SDL_Rect console_rect;
-        
         size_t cursorPos = 0;
         size_t stopPosition = 0;
+        bool promptWouldWrap = false;
 
         int cursorX = 0;        
         int cursorY = 0;        
