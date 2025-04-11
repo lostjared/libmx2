@@ -327,8 +327,6 @@ namespace console {
         
         SDL_FillRect(surface, 0, SDL_MapRGBA(surface->format, 0, 0, 0, 188));
         int lineHeight = c_chars.characters['A']->h;
-        int promptHeight = lineHeight + 10; // Add some padding
-        
         int bottomPadding = c_chars.characters['A']->h + 10; 
         int promptY = console_rect.y + console_rect.h - lineHeight - bottomPadding;
         SDL_Rect separatorRect = {
@@ -338,7 +336,6 @@ namespace console {
             2
         };
         SDL_FillRect(surface, &separatorRect, SDL_MapRGBA(surface->format, 75, 75, 75, 220));
-        int textAreaHeight = promptY - console_rect.y;
         std::string outputText = data.str();
         int x = console_rect.x;
         int y = console_rect.y;
