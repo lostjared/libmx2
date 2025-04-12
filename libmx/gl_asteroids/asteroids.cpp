@@ -2158,7 +2158,19 @@ public:
             if(args.size() == 1 && args[0] == "randomize") {
                 randomizePlanetPositions();
                 return true;
-            }
+            } else if(args.size() == 4 && args[0] == "setpos") {
+                float x = std::stof(args[1]);
+                float y = std::stof(args[2]);
+                float z = std::stof(args[3]);
+                ship.position = glm::vec3(x, y, z);
+                ship.rotation = glm::vec3(0.0f, 0.0f, 0.0f);
+                ship.velocity = glm::vec3(0.0f);
+                console.printf("Ship position set to: %f, %f, %f\n", x, y, z);
+                return true;
+            } else if(args.size() == 1 && args[0] == "toggle") {
+                console_visible = !console_visible;
+                return true;
+            } 
             return false;
         });
     }

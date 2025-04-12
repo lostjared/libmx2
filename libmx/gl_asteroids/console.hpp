@@ -44,8 +44,15 @@ namespace console {
         void procCmd(const std::string &cmd);
         void setPrompt(const std::string &text);
         void scrollToBottom();
-        void setCallback(std::function<bool(const std::vector<std::string> &)> callback);
+        void setCallback(std::function<bool(const std::vector<std::string> &)> callback);        
+        void moveCursorLeft();
+        void moveCursorRight();
+        void moveHistoryUp();    
+        void moveHistoryDown();  
         std::string promptText = "$ "; 
+        Uint32 cursorBlinkTime = 0;
+        bool cursorVisible = true;
+        
     protected:
         ConsoleChars c_chars;
         std::ostringstream data;
@@ -55,11 +62,9 @@ namespace console {
         size_t cursorPos = 0;
         size_t stopPosition = 0;
         bool promptWouldWrap = false;
-
+        size_t inputCursorPos = 0;
         int cursorX = 0;        
         int cursorY = 0;        
-        bool cursorVisible = true;
-        Uint32 cursorBlinkTime = 0;
         std::string inputBuffer;
         bool showInput = true;  
         void checkScroll();
@@ -67,6 +72,9 @@ namespace console {
         void checkForLineWrap();
         std::function<bool(const std::vector<std::string> &)> callback = nullptr;     
         bool callbackSet = false;
+        std::vector<std::string> commandHistory;    
+        int historyIndex = -1;                      
+        std::string tempBuffer;                     
     };
 
     class GLConsole {

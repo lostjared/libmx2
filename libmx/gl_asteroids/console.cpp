@@ -100,20 +100,20 @@ namespace console {
 
     void Console::keypress(char c) {
         try {
-            if (c == 8) { 
-                if (!inputBuffer.empty()) {
-                    inputBuffer.pop_back();
+            if (c == 8) {
+                if (!inputBuffer.empty() && inputCursorPos > 0) {
+                    inputBuffer.erase(inputCursorPos - 1, 1);
+                    inputCursorPos--;
                 }
             } else if (c == 13) { 
                 std::string cmd = inputBuffer;
                 inputBuffer.clear();
+                inputCursorPos = 0; 
                 procCmd(cmd);
             } else {
-                
                 if (!promptWouldWrap) {
-                    inputBuffer.push_back(c);
-                    
-                
+                    inputBuffer.insert(inputCursorPos, 1, c);
+                    inputCursorPos++;
                     std::string promptAndInput = promptText + inputBuffer;
                     int totalWidth = 0;
                     
@@ -128,14 +128,12 @@ namespace console {
                         }
                         totalWidth += width;
                     }
-                    
-                    
                     if (totalWidth > (console_rect.w - 50)) {
-                        inputBuffer.pop_back();
+                        inputBuffer.erase(inputCursorPos - 1, 1);
+                        inputCursorPos--;
                         promptWouldWrap = true;
                     }
                 }
-                
             }
         } catch (const std::exception &e) {
             std::cerr << "Error in keypress: " << e.what() << std::endl;
@@ -360,6 +358,8 @@ namespace console {
     SDL_Surface *Console::drawText() {
         if (!surface) return nullptr;
         
+        scrollToBottom();
+
         SDL_FillRect(surface, 0, SDL_MapRGBA(surface->format, 0, 0, 0, 188));
         int lineHeight = c_chars.characters['A']->h;
         int bottomPadding = c_chars.characters['A']->h + 10; 
@@ -406,37 +406,13 @@ namespace console {
         x = console_rect.x;
         std::string promptAndInput = promptText + inputBuffer;
         
-        promptWouldWrap = false;
-        int totalPromptWidth = 0;
-        for (size_t i = 0; i < promptAndInput.length(); ++i) {
-            char c = promptAndInput[i];
-            int charWidth = 0;
-            
-            if (c == '\t') {
-                charWidth = c_chars.characters['A']->w * 4;
-            } else {
-                auto it = c_chars.characters.find(c);
-                if (it != c_chars.characters.end()) {
-                    charWidth = it->second->w;
-                } else {
-                    charWidth = c_chars.characters['A']->w;
-                }
-            }
-            
-            totalPromptWidth += charWidth;
-        }
-        
-        if (totalPromptWidth > maxWidth) {
-            promptWouldWrap = true;
-        }
-        
-        x = console_rect.x;
+        int cursorXPos = console_rect.x;
         
         for (size_t i = 0; i < promptAndInput.length(); ++i) {
             char c = promptAndInput[i];
-            if (x + c_chars.characters['A']->w > console_rect.x + maxWidth) {
-                x = console_rect.x;
-                promptWouldWrap = true;
+            
+            if (i == promptText.length() + inputCursorPos) {
+                cursorXPos = x;
             }
             
             auto it = c_chars.characters.find(c);
@@ -449,9 +425,13 @@ namespace console {
                 x += c_chars.characters['A']->w * 4;
             }
         }
-    
+        
+        if (inputCursorPos == inputBuffer.length()) {
+            cursorXPos = x;
+        }
+        
         if (cursorVisible) {
-            SDL_Rect cursorRect = {x, promptY, 2, lineHeight};
+            SDL_Rect cursorRect = {cursorXPos, promptY, 2, c_chars.characters['A']->h};
             SDL_FillRect(surface, &cursorRect, SDL_MapRGBA(surface->format, 255, 255, 255, 255));
         }
         
@@ -476,9 +456,57 @@ namespace console {
         if (cursorPos > finalText.length()) {
             cursorPos = finalText.length();
         }
+        inputCursorPos = inputBuffer.length();
+    }
+
+    void Console::moveCursorLeft() {
+        if (inputCursorPos > 0) {
+            inputCursorPos--;
+        }
+    }
+    
+    void Console::moveCursorRight() {
+        if (inputCursorPos < inputBuffer.length()) {
+            inputCursorPos++;
+        }
+    }
+
+    void Console::moveHistoryUp() {
+        if (historyIndex == -1 && !inputBuffer.empty()) {
+            tempBuffer = inputBuffer;
+        }
+        if (!commandHistory.empty() && (historyIndex < static_cast<int>(commandHistory.size()) - 1)) {
+            historyIndex++;
+            inputBuffer = commandHistory[commandHistory.size() - 1 - historyIndex];
+            inputCursorPos = inputBuffer.length();
+        }
+    }
+
+    void Console::moveHistoryDown() {
+        if (historyIndex > 0) {
+            historyIndex--;
+            inputBuffer = commandHistory[commandHistory.size() - 1 - historyIndex];
+            inputCursorPos = inputBuffer.length();
+        }
+        else if (historyIndex == 0) {
+            historyIndex = -1;
+            inputBuffer = tempBuffer;
+            inputCursorPos = inputBuffer.length();
+        }
     }
 
     void Console::procCmd(const std::string &cmd_text) {
+        if (!cmd_text.empty()) {
+            if (commandHistory.empty() || commandHistory.back() != cmd_text) {
+                commandHistory.push_back(cmd_text);
+                const size_t MAX_HISTORY = 50;
+                if (commandHistory.size() > MAX_HISTORY) {
+                    commandHistory.erase(commandHistory.begin());
+                }
+            }
+        }
+        historyIndex = -1;
+        tempBuffer.clear();
         std::vector<std::string> tokens = tokenize(cmd_text);
         
         if (tokens.empty()) {
@@ -570,7 +598,14 @@ namespace console {
     }
 
     void GLConsole::draw(gl::GLWindow *win) {
-        console.scrollToBottom();
+        
+        
+        Uint32 currentTime = SDL_GetTicks();
+        if (currentTime - console.cursorBlinkTime > 500) {
+            console.cursorVisible = !console.cursorVisible;
+            console.cursorBlinkTime = currentTime;
+        }
+        
         SDL_Surface *surface = console.drawText();
         if (surface) {
             shader.useProgram();
@@ -604,7 +639,19 @@ namespace console {
                 console.keypress(8);
             } else if(e.key.keysym.sym == SDLK_TAB) {
                 console.keypress('\t');
-            } 
+            } else if(e.key.keysym.sym == SDLK_LEFT) {
+                console.moveCursorLeft();
+                return;
+            } else if(e.key.keysym.sym == SDLK_RIGHT) {
+                console.moveCursorRight();
+                return;
+            } else if(e.key.keysym.sym == SDLK_UP) {
+                console.moveHistoryUp();
+                return;
+            } else if(e.key.keysym.sym == SDLK_DOWN) {
+                console.moveHistoryDown();
+                return;
+            }
         }
         else if(e.type == SDL_TEXTINPUT) {
             console.keypress(e.text.text[0]);
