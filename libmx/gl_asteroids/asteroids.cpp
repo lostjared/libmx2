@@ -30,6 +30,9 @@ printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
 using mx::generateRandomFloat;
 using mx::generateRandomInt;
 
+console::GLConsole *con = nullptr;
+
+
 #if defined(__EMSCRIPTEN__) || defined(__ANDOIRD__)
 
 const char *g_vSource = R"(#version 300 es
@@ -1855,7 +1858,7 @@ constexpr int MAX_GENERATIONS = 2;
 constexpr int CHILDREN_PER_SPAWN = 2;
 constexpr int MAX_PLANETS = 7 * (1 + CHILDREN_PER_SPAWN + CHILDREN_PER_SPAWN * CHILDREN_PER_SPAWN);
 
-console::GLConsole *con = nullptr;
+
 
 class Planet {
 public:
@@ -2159,6 +2162,12 @@ public:
     }
     
     void randomizePlanetPositions() {
+
+        std::ostringstream out;
+        out << "Randomizing planet positions";
+        con->println(out.str());
+        out.str("");
+
         lives = 5;
         score = 0;
         const float minX = -100.0f, maxX = 100.0f;
@@ -2212,7 +2221,9 @@ public:
             for (const auto& p : planets) {
                 if (!p.isActive && p.isDestroyed) availablePlanets++;
             }
-            std::cout << "Available asteroids after initialization: " << availablePlanets << "/" << planets.size() << std::endl;
+            out << "Available asteroids after initialization: " << availablePlanets << "/" << planets.size();
+            con->println(out.str());
+            out.str("");    
         }
     }
 
@@ -2299,6 +2310,18 @@ public:
                 ship.visible = true;
                 ship.cameraPosition = glm::vec3(0.0f, ship.cameraHeight, ship.cameraDistance);
                 lives--;
+                if (lives <= 0) {
+                    std::ostringstream out;
+                    out << "Game Over! Final Score: " << score;
+                    con->println(out.str());
+                    out.str("");
+                    ship.visible = false;
+                } else {
+                    std::ostringstream out;
+                    out << "Ship destroyed! Lives left: " << lives;
+                    con->println(out.str());
+                    out.str("");
+                }           
                 if(lives <= 0) {
                     randomizePlanetPositions();
                 }
