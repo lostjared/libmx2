@@ -82,8 +82,11 @@ namespace console {
     }
     
     void Console::print(const std::string &str) {
+        mx::system_out << str;
+        mx::system_out.flush();
         std::string currentText = data.str();
         currentText.append(str);   
+        
         data.str("");
         data << currentText;
         cursorPos = data.str().length();

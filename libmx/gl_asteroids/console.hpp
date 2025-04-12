@@ -77,8 +77,31 @@ namespace console {
         void println(const std::string &data);
         void resize(gl::GLWindow *win, int w, int h);
         void setPrompt(const std::string &prompt);
-        
-    protected:
+      
+        std::ostringstream textval;
+            
+        void printf(const char *s) {
+            if(s == nullptr) return;
+            while(*s) {
+              textval << *s++;
+            }
+            print(textval.str());
+            textval.str("");
+        }
+    
+        template<typename T, typename... Args>
+        void printf(const char *s, T value, Args... args) {
+            while(s && *s) {
+                if(*s == '%' && *++s!='%') {
+                    textval << value;
+                    return printf(++s, args...);
+                }
+                textval << *s++;
+            }
+            print(textval.str());
+            textval.str("");
+        }
+        protected:
         Console console;
         std::unique_ptr<gl::GLSprite> sprite = nullptr;
         gl::ShaderProgram shader;

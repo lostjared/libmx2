@@ -2061,30 +2061,21 @@ public:
 
     void spawnChildAsteroids(std::vector<Planet>& planets) {
         if (generation >= MAX_GENERATIONS) return;
-        
-        std::ostringstream out;
 
-        out << "Asteroid splitting: gen " << generation << " -> " << generation + 1;
-
-        con->println(out.str());
-        out.str("");
+        con->printf("Asteroid splitting: gen %d -> %d\n", generation, generation + 1);
+        con->printf("Asteroid Position: %f. %f. %f\n", position.x, position.y, position.z);
 
         for (int i = 0; i < CHILDREN_PER_SPAWN; ++i) {
             int availCount = 0;
             for (const auto& p : planets) {
                 if (!p.isActive && p.isDestroyed) availCount++;
             }
-            out << "Available asteroids: " << availCount << "/" << planets.size();
-            con->println(out.str());
-            out.str("");
-            
+            con->printf("Available asteroids: %d/%d\n", availCount, planets.size());
             auto it = std::find_if(planets.begin(), planets.end(),
                 [](const Planet& p) { return !p.isActive && p.isDestroyed; });
             
             if (it == planets.end()) {
-                out << "Astertoid pool exhausted! Increase MAX_PLANETS.";
-                con->println(out.str());
-                out.str("");
+                con->println("Astertoid pool exhausted! Increase MAX_PLANETS.");
                 return;
             }
             
@@ -2145,6 +2136,7 @@ public:
         console.println("written by LostSideDead Software\nhttps://lostsidedead.biz");
         
         con = &console;
+        
         emiter.load(win);
         emiter.setTextureID(gl::loadTexture(win->util.getFilePath("data/star.png")));        
         field.load(win);
@@ -2157,17 +2149,11 @@ public:
         }
         
         randomizePlanetPositions();
-        
         field.repositionStarsAroundCamera(ship.cameraPosition);
     }
     
     void randomizePlanetPositions() {
-
-        std::ostringstream out;
-        out << "Randomizing planet positions";
-        con->println(out.str());
-        out.str("");
-
+        con->println("Randomizing planet positions...");
         lives = 5;
         score = 0;
         const float minX = -100.0f, maxX = 100.0f;
@@ -2221,13 +2207,12 @@ public:
             for (const auto& p : planets) {
                 if (!p.isActive && p.isDestroyed) availablePlanets++;
             }
-            out << "Available asteroids after initialization: " << availablePlanets << "/" << planets.size();
-            con->println(out.str());
-            out.str("");    
+            con->printf("Available asteroids after initialization: %s/%d\n", availablePlanets, planets.size());
         }
     }
 
-    void draw(gl::GLWindow *win) override {
+    void draw
+    (gl::GLWindow *win) override {
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LESS);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -2311,20 +2296,15 @@ public:
                 ship.cameraPosition = glm::vec3(0.0f, ship.cameraHeight, ship.cameraDistance);
                 lives--;
                 if (lives <= 0) {
-                    std::ostringstream out;
-                    out << "Game Over! Final Score: " << score;
-                    con->println(out.str());
-                    out.str("");
+                    con->printf("Game Over! Final Score: %d\n", score);
                     ship.visible = false;
                 } else {
-                    std::ostringstream out;
-                    out << "Ship destroyed! Lives left: " << lives;
-                    con->println(out.str());
-                    out.str("");
+                    con->printf("Ship destroyed! Lives left: %d\n", lives); 
                 }           
                 if(lives <= 0) {
                     randomizePlanetPositions();
                 }
+                
             }
         }
 
