@@ -1955,6 +1955,7 @@ public:
             models[1]->setShaderProgram(shader.get(), "texture1");
             models[2]->setShaderProgram(shader.get(), "texture1");
             loaded = true;
+            
         }
         planet_type = 3;
         shader->useProgram();
@@ -2150,6 +2151,16 @@ public:
         
         randomizePlanetPositions();
         field.repositionStarsAroundCamera(ship.cameraPosition);
+        console.setCallback([&](const std::vector<std::string> &args) -> bool {
+            if(args.size() == 0) {
+                return false;
+            }
+            if(args.size() == 1 && args[0] == "randomize") {
+                randomizePlanetPositions();
+                return true;
+            }
+            return false;
+        });
     }
     
     void randomizePlanetPositions() {

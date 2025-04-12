@@ -8,6 +8,8 @@
 #include<memory>
 #include"mx.hpp"
 #include"gl.hpp"
+#include<vector>
+#include<functional>
 
 namespace console {
 
@@ -42,6 +44,7 @@ namespace console {
         void procCmd(const std::string &cmd);
         void setPrompt(const std::string &text);
         void scrollToBottom();
+        void setCallback(std::function<bool(const std::vector<std::string> &)> callback);
         std::string promptText = "$ "; 
     protected:
         ConsoleChars c_chars;
@@ -62,7 +65,8 @@ namespace console {
         void checkScroll();
         void updateCursorPosition();
         void checkForLineWrap();
-        
+        std::function<bool(const std::vector<std::string> &)> callback = nullptr;     
+        bool callbackSet = false;
     };
 
     class GLConsole {
@@ -77,6 +81,7 @@ namespace console {
         void println(const std::string &data);
         void resize(gl::GLWindow *win, int w, int h);
         void setPrompt(const std::string &prompt);
+        void setCallback(std::function<bool(const std::vector<std::string> &)> callback);
       
         std::ostringstream textval;
             

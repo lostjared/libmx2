@@ -93,6 +93,11 @@ namespace console {
         scrollToBottom();
     }
 
+    void Console::setCallback(std::function<bool(const std::vector<std::string> &)> callback) {
+        this->callback = callback;
+        callbackSet = true;
+    }
+
     void Console::keypress(char c) {
         try {
             if (c == 8) { 
@@ -500,7 +505,13 @@ namespace console {
             this->print("- MX2 Engine LostSideDead Software\nhttps://lostsidedead.biz\n");
         }
         else {
-            this->print("- Unknown command\n");
+            if (callbackSet) {
+                if(!callback(tokens)) {
+                    this->print("- Unknown command: " + tokens[0] + "\n");
+                }
+            } else {
+                this->print("- Unknown command: " + tokens[0] + "\n");
+            }
         }
         updateCursorPosition();
         checkScroll();
@@ -602,5 +613,9 @@ namespace console {
 
     void GLConsole::resize(gl::GLWindow *win, int w, int h) {
         load(win);
+    }
+
+    void GLConsole::setCallback(std::function<bool(const std::vector<std::string> &)> callback) {
+        console.setCallback(callback);
     }
 }
