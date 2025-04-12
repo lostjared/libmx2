@@ -1,4 +1,4 @@
-#define ASTEROIDS_VERSION "v1.01"
+#define ASTEROIDS_VERSION "v1.1"
 #include"mx.hpp"
 #include"argz.hpp"
 

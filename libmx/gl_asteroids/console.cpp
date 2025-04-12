@@ -110,6 +110,7 @@ namespace console {
                 inputBuffer.clear();
                 inputCursorPos = 0; 
                 procCmd(cmd);
+                scrollToBottom();
             } else {
                 if (!promptWouldWrap) {
                     inputBuffer.insert(inputCursorPos, 1, c);
@@ -357,8 +358,6 @@ namespace console {
     }
     SDL_Surface *Console::drawText() {
         if (!surface) return nullptr;
-        
-        scrollToBottom();
 
         SDL_FillRect(surface, 0, SDL_MapRGBA(surface->format, 0, 0, 0, 188));
         int lineHeight = c_chars.characters['A']->h;
