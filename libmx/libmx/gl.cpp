@@ -38,6 +38,9 @@ namespace gl {
         glViewport(0, 0, this->w, this->h);
         if(object) object->resize(this, this->w, this->h);
         text.init(this->w, this->h);
+        if(console_visible) {
+            console.resize(this, this->w, this->h);
+        }
     }
 
     void GLWindow::setWindowIcon(SDL_Surface *ico) {
@@ -137,11 +140,17 @@ namespace gl {
         SDL_Delay(100);
     }
 
+    void GLWindow::activateConsole(const std::string &fnt, int size, const SDL_Color &color) {
+        console.load(this, fnt, size, color);
+        console_active = true;
+    }
+
     void GLWindow::setObject(gl::GLObject *o) {
         object.reset(o);
     }
 
     void GLWindow::swap() {
+        drawConsole();
          if (window) {
             SDL_GL_SwapWindow(window);
         }
@@ -168,20 +177,39 @@ namespace gl {
             throw mx::Exception("Requires an active Object");
         }
         while(SDL_PollEvent(&e)) {
-            if(e.type == SDL_QUIT || (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE)) {
+            if(e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_F3) {
+                if(console_active)
+                    console_visible = !console_visible;
+            } else if(e.type == SDL_QUIT || (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE)) {
                 active = false;
                 return;
-            }
-            if (e.type == SDL_WINDOWEVENT) {
+            } else if (e.type == SDL_WINDOWEVENT) {
                 if (e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
                     updateViewport();
                 }
             } else {
-                event(e);
+                if(console_visible) {
+                    console.event(this, e);
+                } else {
+                    event(e);
+                }
                 object->event(this, e);
             }
         }
         draw();
+        
+    }
+
+    void GLWindow::drawConsole() {
+        if(console_visible) {
+            glDisable(GL_DEPTH_TEST);
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glDepthMask(GL_FALSE);
+            console.draw(this);
+            glDepthMask(GL_TRUE);
+            glDisable(GL_BLEND);
+        }
     }
 
     ShaderProgram::ShaderProgram() : shader_id{0} {

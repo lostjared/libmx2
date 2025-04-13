@@ -5,7 +5,7 @@ ZLIB_INCLUDE = -s USE_ZLIB=1 #-I$(LIBS_PATH)/zlib/include
 PNG_INCLUDE = -s USE_LIBPNG=1 #-I$(LIBS_PATH)/libpng/include
 ZLIB_LIB = -s USE_ZLIB=1 #$(LIBS_PATH)/zlib/lib/libz.a
 PNG_LIB = -s USE_LIBPNG=1 #$(LIBS_PATH)/libpng/lib/libpng.a
-SOURCES = cfg.cpp exception.cpp font.cpp loadpng.cpp mx.cpp texture.cpp util.cpp joystick.cpp gl.cpp input.cpp sound.cpp model.cpp tee_stream.cpp
+SOURCES = cfg.cpp exception.cpp font.cpp loadpng.cpp mx.cpp texture.cpp util.cpp joystick.cpp gl.cpp input.cpp sound.cpp model.cpp tee_stream.cpp console.cpp
 OBJECTS = $(SOURCES:.cpp=.o)
 OUTPUT = libmx.a
 

@@ -25,6 +25,8 @@
 #include <glm/gtc/type_ptr.hpp>
 #endif
 
+#include"console.hpp"
+
 namespace gl {
 
     extern const char *vSource;
@@ -126,14 +128,20 @@ namespace gl {
         void setWindowSize(int w, int h);
         void setWindowIcon(SDL_Surface *ico);
         void setFullScreen(bool full);
+        void activateConsole(const std::string &fnt, int size, const SDL_Color &color);
+        void showConsole(bool show) { console_visible = show; }
+        void drawConsole();
         std::unique_ptr<gl::GLObject> object = nullptr;
         mx::mxUtil util;
+        console::GLConsole console;
         int w = 0, h = 0;
         SDL_Window *getWindow() { return window; }
 #ifdef WITH_MIXER
         mx::Mixer mixer;
 #endif
         GLText text;  
+        bool console_visible = false;
+        bool console_active = false;
     private:
         SDL_GLContext glContext;
         SDL_Window *window = nullptr;

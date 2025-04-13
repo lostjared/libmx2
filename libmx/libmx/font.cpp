@@ -6,8 +6,10 @@ namespace mx {
         }
 
         Font::~Font() {
-            if(the_font)
+            if(the_font != nullptr)
                 TTF_CloseFont(the_font);
+
+            the_font = nullptr;
         }
 
         Font::Font(const std::string &tf, int size) {
@@ -16,7 +18,7 @@ namespace mx {
         
         Font::Font(TTF_Font *tf) : the_font{tf} {}
         //Font::Font(const Font &f) : the_font(f.the_font) {}
-        Font::Font(Font &&f) : the_font{std::move(f.the_font)} {
+        Font::Font(Font &&f) : the_font{f.the_font} {
             f.the_font = nullptr;
         }
         
@@ -26,12 +28,22 @@ namespace mx {
         }*/
             
         Font &Font::operator=(Font && f) {
-            the_font = std::move(f.the_font);
-            f.the_font = nullptr;
+            if(this != &f) {
+                if(the_font != nullptr) {
+                    TTF_CloseFont(the_font);
+                    the_font = nullptr;
+                }
+                the_font = f.the_font;
+                f.the_font = nullptr;
+            }
             return *this;
         }
 
         bool Font::tryLoadFont(const std::string &fname, int size) {
+            if(the_font != nullptr) {
+                TTF_CloseFont(the_font);
+                the_font = nullptr;
+            }
             the_font = TTF_OpenFont(fname.c_str(), size);
             if(!the_font) {
                 mx::system_err << "mx: Error opening font: " << TTF_GetError() << "\n";
