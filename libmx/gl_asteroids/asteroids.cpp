@@ -2151,7 +2151,7 @@ public:
         
         randomizePlanetPositions();
         field.repositionStarsAroundCamera(ship.cameraPosition);
-        console.setCallback([&](const std::vector<std::string> &args) -> bool {
+        console.setCallback(win, [&](gl::GLWindow *window, const std::vector<std::string> &args) -> bool {
             if(args.size() == 0) {
                 return false;
             }
