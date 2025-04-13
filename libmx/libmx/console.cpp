@@ -105,8 +105,9 @@ namespace console {
         scrollToBottom();
     }
 
-    void Console::setCallback(std::function<bool(const std::vector<std::string> &)> callback) {
+    void Console::setCallback(gl::GLWindow *window, std::function<bool(gl::GLWindow *win, const std::vector<std::string> &)> callback) {
         this->callback = callback;
+        this->window = window;
         callbackSet = true;
     }
 
@@ -545,7 +546,7 @@ namespace console {
         }
         else {
             if (callbackSet) {
-                if(!callback(tokens)) {
+                if(!callback(this->window, tokens)) {
                     this->print("- Unknown command: " + tokens[0] + "\n");
                 }
             } else {
@@ -675,8 +676,8 @@ namespace console {
             load(win, font, font_size, color);
     }
 
-    void GLConsole::setCallback(std::function<bool(const std::vector<std::string> &)> callback) {
-        console.setCallback(callback);
+    void GLConsole::setCallback(gl::GLWindow *window, std::function<bool(gl::GLWindow *win, const std::vector<std::string> &)> callback) {
+        console.setCallback(window, callback);
     }
 
     void GLConsole::setPrompt(const std::string &p) {

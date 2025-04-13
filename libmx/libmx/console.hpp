@@ -54,7 +54,7 @@ namespace console {
         void procCmd(const std::string &cmd);
         void setPrompt(const std::string &text);
         void scrollToBottom();
-        void setCallback(std::function<bool(const std::vector<std::string> &)> callback);        
+        void setCallback(gl::GLWindow *window, std::function<bool(gl::GLWindow *win, const std::vector<std::string> &)> callback);        
         void moveCursorLeft();
         void moveCursorRight();
         void moveHistoryUp();    
@@ -62,7 +62,7 @@ namespace console {
         std::string promptText = "$ "; 
         Uint32 cursorBlinkTime = 0;
         bool cursorVisible = true;
-        
+        gl::GLWindow *window = nullptr;
     protected:
         ConsoleChars c_chars;
         std::ostringstream data;
@@ -80,7 +80,7 @@ namespace console {
         void checkScroll();
         void updateCursorPosition();
         void checkForLineWrap();
-        std::function<bool(const std::vector<std::string> &)> callback = nullptr;     
+        std::function<bool(gl::GLWindow *win, const std::vector<std::string> &)> callback = nullptr;     
         bool callbackSet = false;
         std::vector<std::string> commandHistory;    
         int historyIndex = -1;                      
@@ -99,7 +99,7 @@ namespace console {
         void println(const std::string &data);
         void resize(gl::GLWindow *win, int w, int h);
         void setPrompt(const std::string &prompt);
-        void setCallback(std::function<bool(const std::vector<std::string> &)> callback);
+        void setCallback(gl::GLWindow *window, std::function<bool(gl::GLWindow *win, const std::vector<std::string> &)> callback);
       
         std::ostringstream textval;
             
