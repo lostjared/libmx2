@@ -177,7 +177,7 @@ namespace gl {
             throw mx::Exception("Requires an active Object");
         }
         while(SDL_PollEvent(&e)) {
-            if(e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_F3) {
+            if(console_active && e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_F3) {
                 if(console_active)
                     console_visible = !console_visible;
             } else if(e.type == SDL_QUIT || (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE)) {
@@ -188,7 +188,7 @@ namespace gl {
                     updateViewport();
                 }
             } else {
-                if(console_visible) {
+                if(console_visible && console_active) {
                     console.event(this, e);
                 } else {
                     event(e);
