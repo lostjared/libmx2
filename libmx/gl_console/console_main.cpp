@@ -27,29 +27,19 @@ public:
 
     void load(gl::GLWindow *win) override {
         font.loadFont(win->util.getFilePath("data/font.ttf"), 36);
-        console.load(win);
-        console.print("Hello, World!\n");
     }
 
     void draw(gl::GLWindow *win) override {
         glDisable(GL_DEPTH_TEST);
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        glDepthMask(GL_FALSE);
-        console.draw(win);
-        glDepthMask(GL_TRUE);
-        glDisable(GL_BLEND);
-
     }
     
     void event(gl::GLWindow *win, SDL_Event &e) override {
-        console.event(win, e);
+
     }
     void update(float deltaTime) {}
 private:
     mx::Font font;
     Uint32 lastUpdateTime = SDL_GetTicks();
-    console::GLConsole console;
 };
 
 class MainWindow : public gl::GLWindow {
@@ -58,6 +48,10 @@ public:
         setPath(path);
         setObject(new Game());
         object->load(this);
+        activateConsole(util.getFilePath("data/font.ttf"), 16, {255, 255, 255, 255});
+        showConsole(true);
+        console.printf("Console Initialized\n");
+        console.setPrompt("mx> ");
     }
     
     ~MainWindow() override {}
@@ -76,7 +70,6 @@ public:
 };
 
 MainWindow *main_w = nullptr;
-
 void eventProc() {
     main_w->proc();
 }

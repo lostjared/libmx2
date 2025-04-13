@@ -1,4 +1,4 @@
-add_executable(gl_console console_main.cpp console.cpp)
+add_executable(gl_console console_main.cpp)
 target_include_directories(gl_console PRIVATE 
     ${CMAKE_SOURCE_DIR}/libmx 
     ${SDL2_INCLUDE_DIRS} 
