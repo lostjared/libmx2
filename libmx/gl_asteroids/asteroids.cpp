@@ -2564,6 +2564,7 @@ public:
     }
     
     void event(gl::GLWindow *win, SDL_Event &e) override {
+
         switch(e.type) {
             case SDL_KEYDOWN:
                 if(console_visible == false && e.key.keysym.sym == SDLK_RETURN) {
@@ -2625,7 +2626,7 @@ public:
             if (e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
                 updateViewport();
             }
-        }
+        } 
 
     }
     
