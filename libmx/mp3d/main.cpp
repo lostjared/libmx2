@@ -199,14 +199,14 @@ public:
         font.loadFont(win->util.getFilePath("data/font.ttf"), 24);
         resize(win, win->w, win->h);
         mouse_x = mouse_y = 0;
-        win->console.setCallback([&](const std::vector<std::string> &args) -> bool {
+        win->console.setCallback(win, [&](gl::GLWindow *window, const std::vector<std::string> &args) -> bool {
             if(args.size() == 1 && args[0] == "newgame") {
                 mp.newGame();
-                win->console.printf("New Game initalized");
+                window->console.printf("New Game initalized\n");
                 return true;
             } else if(args.size() == 1 && args[0] == "drop") {
                 mp.grid.game_piece.drop();
-                win->console.printf("Block dropped\n");
+                window->console.printf("Block dropped\n");
                 return true;
             }
             return false;
