@@ -2176,7 +2176,7 @@ public:
     }
     
     void randomizePlanetPositions() {
-        con->println("Randomizing planet positions...");
+        con->println("Randomizing asteroid positions...");
         lives = 5;
         score = 0;
         const float minX = -100.0f, maxX = 100.0f;
