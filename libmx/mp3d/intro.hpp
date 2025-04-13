@@ -12,6 +12,7 @@ public:
         load_shader();
         intro.initSize(win->w, win->h);
         intro.loadTexture(&program, win->util.getFilePath("data/intro.png"), 0.0f, 0.0f, win->w, win->h);
+        win->console.printf("Intro loaded\n");
     }
     void load_shader();
     virtual void event(gl::GLWindow *win, SDL_Event &e) override;

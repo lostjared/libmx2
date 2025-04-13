@@ -199,6 +199,19 @@ public:
         font.loadFont(win->util.getFilePath("data/font.ttf"), 24);
         resize(win, win->w, win->h);
         mouse_x = mouse_y = 0;
+        win->console.setCallback([&](const std::vector<std::string> &args) -> bool {
+            if(args.size() == 1 && args[0] == "newgame") {
+                mp.newGame();
+                win->console.printf("New Game initalized");
+                return true;
+            } else if(args.size() == 1 && args[0] == "drop") {
+                mp.grid.game_piece.drop();
+                win->console.printf("Block dropped\n");
+                return true;
+            }
+            return false;
+        });
+        win->console.printf("MasterPiece3D MX2 v1.0\nLostSideDead Software\nhttps://lostsidedead.biz\n");
     }
     virtual void draw(gl::GLWindow *win) override {
         Uint32 currentTime = SDL_GetTicks();
@@ -214,16 +227,18 @@ public:
         Uint32 current_time = SDL_GetTicks();
         if (current_time - previous_time >= mp.timeout) {
             if(fade_in == false) {
-                if(mp.grid.canMoveDown()) {
-                    if(mp.drop == false) {
-                        mp.grid.game_piece.moveDown();
+                if(win->console_visible == false) {
+                    if(mp.grid.canMoveDown()) {
+                        if(mp.drop == false) {
+                            mp.grid.game_piece.moveDown();
+                        }
+                        previous_time = current_time;
+                    } else if(mp.drop == false) {
+                        // Game over
+                        win->setObject(new GameOver(mp.score, mp.level));
+                        win->object->load(win);
+                        return;
                     }
-                    previous_time = current_time;
-                } else if(mp.drop == false) {
-                    // Game over
-                    win->setObject(new GameOver(mp.score, mp.level));
-                    win->object->load(win);
-                    return;
                 }
             }
         }
@@ -325,6 +340,9 @@ public:
         }
     }
     virtual void event(gl::GLWindow *win, SDL_Event &e) override {
+
+        if(win->console_visible) return;
+
         switch(e.type) {
             case SDL_KEYUP:
             if(e.key.keysym.sym == SDLK_RETURN)
@@ -591,6 +609,7 @@ public:
             SDL_FreeSurface(ico);
         }
         setObject(new Intro());
+        activateConsole(util.getFilePath("data/font.ttf"),16,{255,255,255});
         object->load(this);
         updateViewport();
     }
