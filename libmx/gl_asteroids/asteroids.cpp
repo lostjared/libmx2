@@ -2132,7 +2132,7 @@ public:
     }
     void load(gl::GLWindow *win) override {
         font.loadFont(win->util.getFilePath("data/font.ttf"), 18);
-        console.load(win);
+        console.load(win, win->util.getFilePath("data/font.ttf"),16,{255,255,255,225});
         console.println("Asteroids MX2");
         console.println("written by LostSideDead Software\nhttps://lostsidedead.biz");
         
@@ -2234,8 +2234,7 @@ public:
         }
     }
 
-    void draw
-    (gl::GLWindow *win) override {
+    void draw (gl::GLWindow *win) override {
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LESS);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);

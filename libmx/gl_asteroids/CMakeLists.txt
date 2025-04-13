@@ -1,4 +1,4 @@
-add_executable(gl_asteroids asteroids.cpp console.cpp)
+add_executable(gl_asteroids asteroids.cpp)
 target_include_directories(gl_asteroids PRIVATE 
     ${CMAKE_SOURCE_DIR}/libmx 
     ${SDL2_INCLUDE_DIRS} 
