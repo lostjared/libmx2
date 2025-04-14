@@ -216,6 +216,26 @@ public:
                 window->console.printf("Timeout set to %s\n", args[1]);
                 mp.timeout = std::stoi(args[1]);
                 return true;
+            } else if(args.size() == 1 && args[0] == "left") {
+                mp.grid.game_piece.moveLeft();
+                window->console.printf("Move left\n");
+                return true;
+            } else if(args.size() == 1 && args[0] == "right") {
+                mp.grid.game_piece.moveRight();
+                window->console.printf("Move right\n");
+                return true;
+            } else if(args.size() == 1 && args[0] == "shift") {
+                mp.grid.game_piece.shiftColors();
+                window->console.printf("Shift Colors\n");
+                return true;
+            } else if(args.size() == 1 && args[0] == "rotate") {
+                mp.grid.game_piece.shiftDirection();
+                window->console.printf("Rotate\n");
+                return true;
+            } else if(args.size() == 1 && args[0] == "down") {
+                mp.grid.game_piece.moveDown();
+                window->console.printf("Down\n");
+                return true;
             }
             return false;
         });
@@ -643,7 +663,7 @@ public:
     }
     
     virtual void event(SDL_Event &e) override {
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__EMSCRIPTEN__)
         if (e.type == SDL_WINDOWEVENT) {
             if (e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
                 updateViewport();
