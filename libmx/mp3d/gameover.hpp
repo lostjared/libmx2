@@ -14,6 +14,7 @@ public:
         game_over.initSize(win->w, win->h);
         game_over.loadTexture(&program, win->util.getFilePath("data/mp_wall.png"), 0.0f, 0.0f, win->w, win->h);
         font.loadFont(win->util.getFilePath("data/font.ttf"), 75);
+        win->console.printf("Game Over Score: %d level: %d\n", score_, level_);
     }
     void load_shader();
     virtual void event(gl::GLWindow *win, SDL_Event &e) override;

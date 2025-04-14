@@ -202,16 +202,24 @@ public:
         win->console.setCallback(win, [&](gl::GLWindow *window, const std::vector<std::string> &args) -> bool {
             if(args.size() == 1 && args[0] == "newgame") {
                 mp.newGame();
-                window->console.printf("New Game initalized\n");
+                window->console.printf("New Game started\n");
                 return true;
             } else if(args.size() == 1 && args[0] == "drop") {
                 mp.grid.game_piece.drop();
                 window->console.printf("Block dropped\n");
                 return true;
+            } else if(args.size() == 1 && args[0] == "toggle") {
+                window->console.printf("Console toggled\n");
+                window->console_visible = false;
+                return true;
+            } else if(args.size() == 2 && args[0] == "timeout") {
+                window->console.printf("Timeout set to %s\n", args[1]);
+                mp.timeout = std::stoi(args[1]);
+                return true;
             }
             return false;
         });
-        win->console.printf("MasterPiece3D MX2 v1.0\nLostSideDead Software\nhttps://lostsidedead.biz\n");
+        win->console.printf("MasterPiece3D MX2 v1.0\nLostSideDead Software\nhttps://lostsidedead.biz\nNew Game Started\n");
     }
     virtual void draw(gl::GLWindow *win) override {
         Uint32 currentTime = SDL_GetTicks();
@@ -345,8 +353,10 @@ public:
 
         switch(e.type) {
             case SDL_KEYUP:
-            if(e.key.keysym.sym == SDLK_RETURN)
+            if(e.key.keysym.sym == SDLK_RETURN) {
                 dropPiece();
+                win->console.printf("Drop Piece\n");
+            }
             break;
             case SDL_KEYDOWN:
             switch(e.key.keysym.sym) {
@@ -354,40 +364,50 @@ public:
                     mp.grid.game_piece.moveLeft();
                 break;
                 case SDLK_RIGHT:
-                    mp.grid.game_piece.moveRight();  
+                    mp.grid.game_piece.moveRight(); 
                 break;
                 case SDLK_UP:
                     mp.grid.game_piece.shiftColors();
+                    win->console.printf("Shift Colors\n");
                 break;
                 case SDLK_DOWN:
                     mp.grid.game_piece.moveDown();
                 break;
                 case SDLK_SPACE:
                     mp.grid.game_piece.shiftDirection();
+                    win->console.printf("Shift Direction\n");
                 break;
                 case SDLK_w:
                     rotateX += 0.5f;
+                    win->console.printf("RotateX: %f ", rotateX);
                 break;
                 case SDLK_s:
                     rotateX -= 0.5;
+                    win->console.printf("RotateX: %f ", rotateX);
                 break;
                 case SDLK_a:
                      rotateY -= 0.5f;
+                     win->console.printf("RotateY: %f ", rotateY);
                 break;
                 case SDLK_d:
                     rotateY += 0.5f;
+                    win->console.printf("RotateY: %f ", rotateY);
                 break;
                 case SDLK_z:
                     rotateZ -= 0.5f;
+                    win->console.printf("RotateZ: %f ", rotateZ);
                 break;
                 case SDLK_x:
                     rotateZ +=  0.5f;
+                    win->console.printf("RotateZ: %f ", rotateZ);
                 break;
                 case SDLK_EQUALS:
                     zoom += 0.5f;
+                    win->console.printf("Zoom: %f ",zoom);
                 break;
                 case SDLK_MINUS:
                     zoom -= 0.5f;
+                    win->console.printf("Zoom: %f ",zoom);
                 break;
                 case SDLK_k:
                 //std::cout << "ZOOM: " << zoom << " X,Y,Z" << rotateX << "," << rotateY << "," << rotateZ << std::endl;

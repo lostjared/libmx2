@@ -12,6 +12,7 @@ public:
         load_shader();
         start.initSize(win->w, win->h);
         start.loadTexture(&program, win->util.getFilePath("data/start.png"), 0.0f, 0.0f, win->w, win->h);
+        win->console.printf("Press any key to start\n");
     }
     void load_shader();
     virtual void event(gl::GLWindow *win, SDL_Event &e) override;
