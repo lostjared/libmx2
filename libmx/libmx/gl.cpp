@@ -38,8 +38,8 @@ namespace gl {
         glViewport(0, 0, this->w, this->h);
         if(object) object->resize(this, this->w, this->h);
         text.init(this->w, this->h);
-        if(console_visible) {
-            console.resize(this, this->w, this->h);
+        if(console_active) {
+            console.resize(this,this->w, this->h);
         }
     }
 
@@ -102,6 +102,7 @@ namespace gl {
             exit(EXIT_FAILURE);
         }
         text.init(w,  h);
+        console.resize(this, w, h);
         glViewport(0, 0, w, h);
 #ifdef __APPLE__
         if (SDL_GL_SetSwapInterval(1) != 0) {
@@ -152,7 +153,7 @@ namespace gl {
                 return false;
             });
         } 
-        
+
     }
 
     void GLWindow::swap() {
