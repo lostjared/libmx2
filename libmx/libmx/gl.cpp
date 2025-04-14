@@ -151,7 +151,8 @@ namespace gl {
             console.setCallback(this, [](gl::GLWindow *window, const std::vector<std::string> &args) -> bool {
                 return false;
             });
-        }
+        } 
+        
     }
 
     void GLWindow::swap() {
