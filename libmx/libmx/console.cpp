@@ -286,7 +286,7 @@ namespace console {
         
         if (lineCount > maxLines) {
             bool cursorAtEnd = (cursorPos == text.length());
-            int linesToRemove = lineCount - maxLines + 1;
+            int linesToRemove = lineCount - maxLines;
             size_t pos = 0;
             int linesFound = 0;
             
@@ -389,7 +389,7 @@ namespace console {
         int maxWidth = console_rect.w - 50;
         
         for (size_t i = 0; i < outputText.length(); ++i) {
-            if (y >= promptY - lineHeight) break;
+            if (y > promptY - lineHeight) break; 
             
             char c = outputText[i];
             if (c == '\n') {
@@ -401,7 +401,7 @@ namespace console {
             if (x + c_chars.characters['A']->w > console_rect.x + maxWidth) {
                 x = console_rect.x;
                 y += lineHeight;
-                if (y >= promptY - lineHeight) break;
+                if (y > promptY - lineHeight) break; 
             }
             
             auto it = c_chars.characters.find(c);
