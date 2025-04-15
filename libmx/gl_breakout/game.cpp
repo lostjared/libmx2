@@ -71,6 +71,76 @@ void BreakoutGame::load(gl::GLWindow *win) {
             block.cube.setTextures(textures);
         }
     }
+
+    #if defined(__EMSCRIPTEN__) 
+    const char *vSource = R"(#version 300 es
+            precision mediump float;
+            layout (location = 0) in vec3 aPos;
+            layout (location = 1) in vec2 aTexCoord;
+
+            out vec2 TexCoord;
+
+            void main() {
+                gl_Position = vec4(aPos, 1.0); 
+                TexCoord = aTexCoord;         
+            }
+    )";
+    const char *fSource = R"(#version 300 es
+    precision highp float;
+    out vec4 FragColor;
+    in vec2 TexCoord;
+    
+    uniform sampler2D textTexture;
+    uniform float time_f;
+    uniform float alpha;
+    
+    void main(void) {
+        vec2 uv = TexCoord * 2.0 - 1.0;
+        float len = length(uv);
+        float bubble = smoothstep(0.8, 1.0, 1.0 - len);
+        vec2 distort = uv * (1.0 + 0.1 * sin(time_f + len * 20.0));
+        vec4 texColor = texture(textTexture, distort * 0.5 + 0.5);
+        FragColor = mix(texColor, vec4(1.0, 1.0, 1.0, 1.0), bubble);
+        FragColor = FragColor * alpha;
+    }
+    )";
+    
+#else
+    const char *vSource = R"(#version 330 core
+        layout (location = 0) in vec3 aPos;
+        layout (location = 1) in vec2 aTexCoord;
+        out vec2 TexCoord;
+        void main() {
+            gl_Position = vec4(aPos, 1.0); 
+            TexCoord = aTexCoord;        
+        }
+    )";
+    const char *fSource = R"(#version 330 core
+        out vec4 FragColor;
+        in vec2 TexCoord;
+        uniform sampler2D textTexture;
+        uniform float time_f;
+        uniform float alpha;
+        void main(void) {
+            vec2 uv = TexCoord * 2.0 - 1.0;
+            float len = length(uv);
+            float bubble = smoothstep(0.8, 1.0, 1.0 - len);
+            vec2 distort = uv * (1.0 + 0.1 * sin(time_f + len * 20.0));
+            vec4 texColor = texture(textTexture, distort * 0.5 + 0.5);
+            FragColor = mix(texColor, vec4(1.0, 1.0, 1.0, 1.0), bubble);
+            FragColor = FragColor * alpha;
+        }
+    )";
+#endif
+        if (!program.loadProgramFromText(vSource, fSource)) {
+            throw mx::Exception("Failed to load shader program");
+        }
+        program.useProgram();
+        program.setUniform("textTexture", 0);
+        program.setUniform("time_f", 0.0f);
+        program.setUniform("alpha", 1.0f);
+        sprite.initSize(win->w, win->h);
+        sprite.loadTexture(&program, win->util.getFilePath("data/crystal1.png"), 0.0f, 0.0f, win->w, win->h);
 }
 
 void BreakoutGame::update(float deltaTime, gl::GLWindow *win) {
@@ -151,6 +221,13 @@ void BreakoutGame::draw(gl::GLWindow *win) {
     static Uint32 lastTime = SDL_GetTicks();
     Uint32 currentTime = SDL_GetTicks();
 #endif
+
+    glDisable(GL_DEPTH_TEST);
+    program.useProgram();
+    program.setUniform("time_f", (float)currentTime / 1000.0f);
+    program.setUniform("alpha", 0.7f);
+    sprite.draw();
+
     float deltaTime = (currentTime - lastTime) / 1000.0f;
     if (deltaTime > 0.05f) deltaTime = 0.05f; 
     lastTime = currentTime;

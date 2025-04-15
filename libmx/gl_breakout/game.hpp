@@ -12,6 +12,10 @@ public:
     gl::ShaderProgram shaderProgram;
     gl::ShaderProgram textShader;
     std::vector<GLuint> Textures;
+
+    gl::ShaderProgram program;
+    gl::GLSprite sprite;
+
     mx::Font font;
     int score = 0;
     Uint32 lastTapTime = 0; 
