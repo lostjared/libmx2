@@ -767,7 +767,7 @@ public:
         shaderProgram.useProgram();
         float aspectRatio = (float)win->w / (float)win->h;
         float fov = glm::radians(45.0f); 
-        float z = ship_pos.z; 
+        float z = ship_pos.z;   
         float height = 2.0f * glm::tan(fov / 2.0f) * std::abs(z);
         float width = height * aspectRatio;
         std::get<0>(screenx) = -width / 2.0f;
@@ -806,6 +806,60 @@ public:
 #ifndef __EMSCRIPTEN__
         glEnable(GL_PROGRAM_POINT_SIZE);
 #endif
+        win->console.setCallback(win, [&](gl::GLWindow *window, const std::vector<std::string> &args) {
+            if(args.size() == 1  && args[0] == "newgame") {
+                die();
+                newGame();
+                window->console.printf("New Game");
+                return true;
+            }   
+            if(args.size() == 2 && args[0] == "level") {
+                level = std::stoi(args[1]);
+                if(level < 1)
+                    level = 1;
+                window->console.printf("Level set to: %d\n", level);
+                return true;
+            }
+            else if(args.size() == 2 && args[0] == "max_crashed") {
+                max_crashed = std::stoi(args[1]);
+                if(max_crashed < 1)
+                    max_crashed = 1;
+                window->console.printf("Max crashed set to: %d\n", max_crashed);
+                return true;
+            }
+            else if(args.size() == 2 && args[0] == "enemies") {
+                enemies_crashed = std::stoi(args[1]);
+                if(enemies_crashed < 1)
+                    enemies_crashed = 1;
+                window->console.printf("Enemies crashed set to: %d\n", enemies_crashed);
+                return true;    
+            } else if(args.size() == 2 && args[0] == "score") {
+                score = std::stoi(args[1]);
+                if(score < 0)
+                    score = 0;
+                window->console.printf("Score set to: %d\n", score);
+                return true;
+            } else if(args.size() == 2 && args[0] == "lives") {
+                lives = std::stoi(args[1]);
+                if(lives < 0)
+                    lives = 0;
+                window->console.printf("Lives set to: %d\n", lives);
+                return true;
+            } else if(args.size() == 2 && args[0] == "boss_hits") {
+                boss.max_hits = std::stoi(args[1]);
+                if(boss.max_hits < 0)
+                    boss.max_hits = 0;
+                window->console.printf("Boss hits set to: %d\n", boss.max_hits); 
+                return true;
+            } else if(args.size() == 1 && args[0] == "die") {
+                die();
+                window->console.printf("Death");
+                return true;
+            }
+            return false;
+        });
+        
+        win->console.printf("Space3D MX2\nLostSideDead Software\nhttps://lostsidedead.biz\n");
     }
 #ifndef __EMSCRIPTEN__
     Uint32 lastUpdateTime = SDL_GetTicks();
@@ -824,9 +878,7 @@ public:
         if (deltaTime > 0.1f) 
             deltaTime = 0.1f;
         lastUpdateTime = currentTime;
-        update(win, deltaTime);
-
-      
+        update(win, deltaTime);     
         /// draw objects
         glDisable(GL_DEPTH_TEST);
         /*starsShader.useProgram();
@@ -969,7 +1021,7 @@ public:
         }
 #endif
         shaderProgram.useProgram();
-        CHECK_GL_ERROR(); // Add this line to check for errors after drawing
+        CHECK_GL_ERROR();         
     }
 
     void newGame() {
@@ -996,30 +1048,13 @@ public:
             return;
         }
 
+        if(win->console_visible)
+            return;
+
         switch(e.type) {
             case SDL_KEYDOWN:
             switch(e.key.keysym.sym) {
-#ifdef DEBUG_MODE
-                case SDLK_F4:
-                   level = 5;
-                   enemies_crashed = 60;
-                break;
-                case SDLK_F3: {
-                    level = 4;
-                    enemies_crashed = 60;
-                }
-                break;
-                case SDLK_F2:
-                    level = 3;
-                    enemies_crashed = 40;   
-                break;
-                case SDLK_F1:
-                    level = 2;
-                    enemies_crashed = 30;
-                break; 
-#endif
-
-		case SDLK_p: {
+    		case SDLK_p: {
 
 #ifndef __EMSCRIPTEN__
                     if(fill == true) {
@@ -1158,45 +1193,47 @@ public:
 
 
         if (currentTime - lastActionTime >= 15) {
-            float moveX = 0.0f; 
-            float moveY = 0.0f; 
+            if(!win->console_visible) {
+                float moveX = 0.0f;
+                float moveY = 0.0f; 
 
-               if (!isBarrelRolling && stick.getButton(mx::Input_Button::BTN_B)) {
-                    isBarrelRolling = true;
-                    barrelRollAngle = 0.0f;
-                }
+                if (!isBarrelRolling && stick.getButton(mx::Input_Button::BTN_B)) {
+                        isBarrelRolling = true;
+                        barrelRollAngle = 0.0f;
+                    }
 
-            if (stick.getButton(mx::Input_Button::BTN_D_LEFT)) {
-                moveX -= 50.0f; 
-                shipRotation = glm::clamp(shipRotation + rotationSpeed * deltaTime, -maxTiltAngle, maxTiltAngle);
-            }
-            if (stick.getButton(mx::Input_Button::BTN_D_RIGHT)) {
-                moveX += 50.0f; 
-                shipRotation = glm::clamp(shipRotation - rotationSpeed * deltaTime, -maxTiltAngle, maxTiltAngle);
-            }
-            if (stick.getButton(mx::Input_Button::BTN_D_UP)) {
-                moveY += 50.0f; 
-            }
-            if (stick.getButton(mx::Input_Button::BTN_D_DOWN)) {
-                moveY -= 50.0f; 
-            }
-            if (moveX != 0.0f || moveY != 0.0f) {
-                float magnitude = glm::sqrt(moveX * moveX + moveY * moveY);
-                moveX = (moveX / magnitude) * 50.0f * deltaTime;
-                moveY = (moveY / magnitude) * 50.0f * deltaTime;
-            }
-            ship_pos.x += moveX;
-            ship_pos.y += moveY;
-            if (moveX == 0.0f) {
-                if (shipRotation > 0.0f) {
-                    shipRotation = glm::max(shipRotation - rotationSpeed * deltaTime, 0.0f);
-                } else if (shipRotation < 0.0f) {
-                    shipRotation = glm::min(shipRotation + rotationSpeed * deltaTime, 0.0f);
+                if (stick.getButton(mx::Input_Button::BTN_D_LEFT)) {
+                    moveX -= 50.0f; 
+                    shipRotation = glm::clamp(shipRotation + rotationSpeed * deltaTime, -maxTiltAngle, maxTiltAngle);
                 }
+                if (stick.getButton(mx::Input_Button::BTN_D_RIGHT)) {
+                    moveX += 50.0f; 
+                    shipRotation = glm::clamp(shipRotation - rotationSpeed * deltaTime, -maxTiltAngle, maxTiltAngle);
+                }
+                if (stick.getButton(mx::Input_Button::BTN_D_UP)) {
+                    moveY += 50.0f; 
+                }
+                if (stick.getButton(mx::Input_Button::BTN_D_DOWN)) {
+                    moveY -= 50.0f; 
+                }
+                if (moveX != 0.0f || moveY != 0.0f) {
+                    float magnitude = glm::sqrt(moveX * moveX + moveY * moveY);
+                    moveX = (moveX / magnitude) * 50.0f * deltaTime;
+                    moveY = (moveY / magnitude) * 50.0f * deltaTime;
+                }
+                ship_pos.x += moveX;
+                ship_pos.y += moveY;
+                if (moveX == 0.0f) {
+                    if (shipRotation > 0.0f) {
+                        shipRotation = glm::max(shipRotation - rotationSpeed * deltaTime, 0.0f);
+                    } else if (shipRotation < 0.0f) {
+                        shipRotation = glm::min(shipRotation + rotationSpeed * deltaTime, 0.0f);
+                    }
+                }
+                ship_pos.x = glm::clamp(ship_pos.x, std::get<0>(screenx), std::get<1>(screenx));
+                ship_pos.y = glm::clamp(ship_pos.y, std::get<2>(screenx)+1.0f, std::get<3>(screenx) - 1.0f);
+                lastActionTime = currentTime;
             }
-            ship_pos.x = glm::clamp(ship_pos.x, std::get<0>(screenx), std::get<1>(screenx));
-            ship_pos.y = glm::clamp(ship_pos.y, std::get<2>(screenx)+1.0f, std::get<3>(screenx) - 1.0f);
-            lastActionTime = currentTime;
         }
     }
 
@@ -1221,12 +1258,15 @@ public:
     }
 
     void update(gl::GLWindow *win, float deltaTime) {
+
+
         float actualDeltaTime = deltaTime;
         if (actualDeltaTime > 0.1f) {
             actualDeltaTime = 0.1f;
         }
-        
-        
+
+        if(win->console_visible == true) return;
+
         checkInput(win, actualDeltaTime);
         updateSpin(actualDeltaTime);
         
@@ -1620,6 +1660,7 @@ public:
         mixer.init();
         setObject(new IntroScreen());
         object->load(this);
+        activateConsole(util.getFilePath("data/font.ttf"), 16, {255,255,255,255});
     }
     
     ~MainWindow() override {}
