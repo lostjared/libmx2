@@ -33,7 +33,7 @@ install(TARGETS mx
 )
 target_link_libraries(mx PUBLIC SDL2::SDL2 SDL2_ttf::SDL2_ttf ${IMG_LIB} ${GL_LIB} ${MIXER_LIB})
 
-install(FILES mx.hpp gl.hpp vk.hpp argz.hpp util.hpp jpeg.hpp loadpng.hpp object.hpp font.hpp cfg.hpp tee_stream.hpp texture.hpp exception.hpp joystick.hpp wrapper.hpp input.hpp sound.hpp model.hpp
+install(FILES mx.hpp gl.hpp vk.hpp argz.hpp util.hpp jpeg.hpp loadpng.hpp object.hpp font.hpp cfg.hpp tee_stream.hpp texture.hpp exception.hpp joystick.hpp wrapper.hpp input.hpp sound.hpp model.hpp console.hpp
     DESTINATION ${INSTALL_INCLUDE_DIR}
 )
 install(FILES include/glad/glad.h DESTINATION ${INSTALL_INCLUDE_DIR}/glad)
