@@ -810,7 +810,7 @@ public:
             if(args.size() == 1  && args[0] == "newgame") {
                 die();
                 newGame();
-                window->console.printf("New Game");
+                window->console.printf("New Game\n");
                 return true;
             }   
             if(args.size() == 2 && args[0] == "level") {
@@ -818,6 +818,7 @@ public:
                 if(level < 1)
                     level = 1;
                 window->console.printf("Level set to: %d\n", level);
+                setBoss();
                 return true;
             }
             else if(args.size() == 2 && args[0] == "max_crashed") {
@@ -1142,6 +1143,8 @@ public:
     
     void checkInput(gl::GLWindow *win, float deltaTime) {
 
+
+
      
         if(game_over == true) {
             if(stick.getButton(mx::Input_Button::BTN_START)) {
@@ -1257,6 +1260,30 @@ public:
         boss.reset();
     }
 
+    void setBoss() {
+        if(level == 1) {
+            boss.object = &enemy_ship;
+            bossRadius = 9.2f;
+            bossSize = 9.2f;
+        } else if(level == 2) {
+            boss.object = &ufo_boss;
+            bossRadius = 10.0;
+            bossSize = 25.0f;
+        } else if(level == 3) {
+            boss.object = &saucer;
+            bossRadius = 12.0f;
+            bossSize = 15.0f;
+        } else if(level == 4) {
+            boss.object = &star_boss;
+            bossRadius = 9.2f * 2;
+            bossSize = 9.2f * 2;
+        } else if (level >= 5) {
+            boss.object = &planet_boss;
+            bossRadius = 25.2f;
+            bossSize = 12.2f;
+        }
+    }
+
     void update(gl::GLWindow *win, float deltaTime) {
 
 
@@ -1265,7 +1292,6 @@ public:
             actualDeltaTime = 0.1f;
         }
 
-        if(win->console_visible == true) return;
 
         checkInput(win, actualDeltaTime);
         updateSpin(actualDeltaTime);
@@ -1329,6 +1355,8 @@ public:
             }
         }
 
+        if(win->console_visible == true) return;
+
        
         enemyReleaseTimer += normalizedDeltaTime;
         if (enemyReleaseTimer >= enemyReleaseInterval) {
@@ -1375,23 +1403,7 @@ public:
             enemies_crashed = 0;
             max_crashed += 5;
             level++;
-            if(level == 2) {
-                boss.object = &ufo_boss;
-                bossRadius = 10.0;
-                bossSize = 25.0f;
-            } else if(level == 3) {
-                boss.object = &saucer;
-                bossRadius = 12.0f;
-                bossSize = 15.0f;
-            } else if(level == 4) {
-                boss.object = &star_boss;
-                bossRadius = 9.2f * 2;
-                bossSize = 9.2f * 2;
-            } else if (level >= 5) {
-                boss.object = &planet_boss;
-                bossRadius = 25.2f;
-                bossSize = 12.2f;
-            }
+            setBoss();
        }
 
         if (!projectiles.empty() && (!enemies.empty()||boss.active == true)) {
