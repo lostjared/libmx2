@@ -1,11 +1,11 @@
 CXX = em++
 CXXFLAGS = -std=c++20 -O2 -DFOR_WASM -DWITH_MIXER -s USE_SDL=2 -s USE_SDL_TTF=2 
 LIBS_PATH = /home/jared/emscripten-libs
-ZLIB_INCLUDE = -I$(LIBS_PATH)/zlib/include
-PNG_INCLUDE = -I$(LIBS_PATH)/libpng/include
+ZLIB_INCLUDE = -s USE_ZLIB=1 # -I$(LIBS_PATH)/zlib/include
+PNG_INCLUDE = -s USE_LIBPNG=1 # -I$(LIBS_PATH)/libpng/include
 MX_INCLUDE = -I$(LIBS_PATH)/mx2/include -I/usr/include/glm 
-ZLIB_LIB = $(LIBS_PATH)/zlib/lib/libz.a
-PNG_LIB = $(LIBS_PATH)/libpng/lib/libpng.a
+ZLIB_LIB = -s USE_ZLIB=1 # $(LIBS_PATH)/zlib/lib/libz.a
+PNG_LIB = -s USE_LIBPNG=1 # $(LIBS_PATH)/libpng/lib/libpng.a
 LIBMX_LIB = $(LIBS_PATH)/mx2/lib/libmx.a 
 PRELOAD = --preload-file data
 SOURCES = breakout.cpp intro.cpp game.cpp
