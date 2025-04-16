@@ -20,6 +20,9 @@ class Intro : public gl::GLObject {
     mx::Controller stick;
     mx::Model cube;
     GLuint texture;
+    gl::GLSprite  sprite;
+    gl::ShaderProgram program;
+    mx::Font font;
 public:
     Intro() = default;
     virtual ~Intro() override {}
