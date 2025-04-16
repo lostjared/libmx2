@@ -3,8 +3,8 @@
 Play this in your browser at: https://lostsidedead.biz/game/3DBreak
 
 ![1211(1)](https://github.com/user-attachments/assets/1b0281a5-cacb-4cb0-8277-f997db8f696e)
-![image](https://github.com/user-attachments/assets/aa766888-5679-40bd-9ecb-5da8a973cd46)
-![image](https://github.com/user-attachments/assets/879c883d-4797-4c4a-b672-3fd8bb315835)
+![gl_breakout_intro](https://github.com/user-attachments/assets/61b3baa2-ade6-40be-982e-c92fe053b0e6)
+![gl_breakout2](https://github.com/user-attachments/assets/9ebb528a-106a-4094-9c3d-5f99f997c215)
 
 Controls:
 
