@@ -639,8 +639,8 @@ namespace console {
             flipSurface(surface);
             updateTexture(texture, surface);
             
-            int consoleWidth = win->w - 50;
-            int consoleHeight = (win->h / 2) - 50;
+            int consoleWidth = console.getWidth();
+            int consoleHeight = console.getHeight();
             sprite->draw(texture, 25.0f, 25.0f, consoleWidth, consoleHeight);
         } else {
             std::cerr << "Failed to draw text." << std::endl;

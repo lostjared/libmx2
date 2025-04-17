@@ -58,7 +58,9 @@ namespace console {
         void moveCursorLeft();
         void moveCursorRight();
         void moveHistoryUp();    
-        void moveHistoryDown();  
+        void moveHistoryDown();
+        int getHeight() const { return console_rect.h; }
+        int getWidth() const { return console_rect.w; }
         std::string promptText = "$ "; 
         Uint32 cursorBlinkTime = 0;
         bool cursorVisible = true;
