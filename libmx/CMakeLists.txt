@@ -207,6 +207,7 @@ if(EXAMPLES)
     add_subdirectory(gl_asteroids)
     add_subdirectory(gl_console)
     add_subdirectory(gl_console_skeleton)
+    add_subdirectory(gl_console_full)
   endif()
 
 #disable for now
