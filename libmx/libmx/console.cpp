@@ -370,9 +370,36 @@ namespace console {
         }
     }
     SDL_Surface *Console::drawText() {
+        
+        if (fadeState != FADE_NONE) {
+            Uint32 currentTime = SDL_GetTicks();
+            Uint32 elapsedTime = currentTime - fadeStartTime;
+            
+            if (fadeState == FADE_IN) {
+                if (elapsedTime >= fadeDuration) {
+                    alpha = 188; 
+                    fadeState = FADE_NONE;
+                } else {
+                    alpha = (unsigned char)(1 + (188 - 1) * elapsedTime / fadeDuration);
+                }
+            } else if (fadeState == FADE_OUT) {
+                if (elapsedTime >= fadeDuration) {
+                    alpha = 0;
+                    fadeState = FADE_NONE;
+                } else {
+                    alpha = (unsigned char)(188 * (1.0f - (float)elapsedTime / fadeDuration));
+                }
+            }
+        }
+        
         if (!surface) return nullptr;
 
-        SDL_FillRect(surface, 0, SDL_MapRGBA(surface->format, 0, 0, 0, 188));
+        SDL_FillRect(surface, 0, SDL_MapRGBA(surface->format, 0, 0, 0, alpha));
+
+        if (alpha < 5) {
+            return surface;
+        }
+        
         int lineHeight = c_chars.characters['A']->h;
         int bottomPadding = c_chars.characters['A']->h + 10; 
         int promptY = console_rect.y + console_rect.h - lineHeight - bottomPadding;
@@ -555,6 +582,34 @@ namespace console {
         }
         updateCursorPosition();
         checkScroll();
+    }
+
+    void Console::startFadeIn() {
+        fadeState = FADE_IN;
+        fadeStartTime = SDL_GetTicks();
+        if (alpha == 0) 
+            alpha = 1; 
+    }
+
+    void Console::startFadeOut() {
+        fadeState = FADE_OUT;
+        fadeStartTime = SDL_GetTicks();
+    }
+
+    void Console::show() {
+        startFadeIn();
+    }
+
+    void Console::hide() {
+        startFadeOut();
+    }
+
+    void GLConsole::show() {
+        console.startFadeIn();
+    }
+
+    void GLConsole::hide() {
+        console.startFadeOut();
     }
 
     GLConsole::~GLConsole() {

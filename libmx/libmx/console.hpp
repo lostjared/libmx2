@@ -65,6 +65,12 @@ namespace console {
         Uint32 cursorBlinkTime = 0;
         bool cursorVisible = true;
         gl::GLWindow *window = nullptr;
+        void startFadeIn();
+        void startFadeOut();
+        bool isFading() const { return fadeState != FADE_NONE; }
+        bool isVisible() const { return alpha > 0; }
+        void show();
+        void hide();
     protected:
         ConsoleChars c_chars;
         std::ostringstream data;
@@ -86,7 +92,16 @@ namespace console {
         bool callbackSet = false;
         std::vector<std::string> commandHistory;    
         int historyIndex = -1;                      
-        std::string tempBuffer;                     
+        std::string tempBuffer;   
+        unsigned char alpha = 188;                  
+        enum FadeState { 
+            FADE_NONE, 
+            FADE_IN, 
+            FADE_OUT 
+        };
+        FadeState fadeState = FADE_NONE;
+        Uint32 fadeStartTime = 0;
+        unsigned int fadeDuration = 300; 
     };
 
     class GLConsole {
@@ -102,7 +117,8 @@ namespace console {
         void resize(gl::GLWindow *win, int w, int h);
         void setPrompt(const std::string &prompt);
         void setCallback(gl::GLWindow *window, std::function<bool(gl::GLWindow *win, const std::vector<std::string> &)> callback);
-      
+        void show();
+        void hide();
         std::ostringstream textval;
             
         void printf(const char *s) {
@@ -126,6 +142,8 @@ namespace console {
             print(textval.str());
             textval.str("");
         }
+        bool isVisible() const { return console.isVisible(); }
+        bool isFading() const { return console.isFading(); }
         protected:
         Console console;
         std::unique_ptr<gl::GLSprite> sprite = nullptr;

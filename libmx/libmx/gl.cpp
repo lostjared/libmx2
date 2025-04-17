@@ -146,6 +146,11 @@ namespace gl {
         console_active = true;
     }
 
+    void GLWindow::activateConsole(const SDL_Rect &rc, const std::string &fnt, int size, const SDL_Color &color) {
+        console.load(this, rc, fnt, size, color);
+        console_active = true;
+    }
+
     void GLWindow::setObject(gl::GLObject *o) {
         object.reset(o);
         if(console_active) {
@@ -154,6 +159,11 @@ namespace gl {
             });
         } 
 
+    }
+
+    void GLWindow::showConsole(bool show) { 
+        console_visible = show; 
+        
     }
 
     void GLWindow::swap() {
@@ -185,8 +195,15 @@ namespace gl {
         }
         while(SDL_PollEvent(&e)) {
             if(console_active && e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_F3) {
-                if(console_active)
-                    console_visible = !console_visible;
+                if(console_active) {
+                    if(!console_visible) {
+                        console_visible = true;
+                        console.show();
+                    } else {
+                        hide_console = true;
+                        console.hide();
+                    }
+                }
             } else if(e.type == SDL_QUIT || (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE)) {
                 active = false;
                 return;
@@ -204,7 +221,12 @@ namespace gl {
             }
         }
         draw();
-        
+        if(console_active) {
+            if(!console.isFading() && !console.isVisible() && hide_console == true) {
+                console_visible = false;
+                hide_console = false;
+            }
+        }
     }
 
     void GLWindow::drawConsole() {
@@ -274,7 +296,6 @@ namespace gl {
             log = new char [len+1];
             glGetProgramInfoLog(p, len, &ch, log);
             mx::system_err << "Program: " << log << "\n";
-            delete [] log;
         }
     }
     bool ShaderProgram::checkError() {

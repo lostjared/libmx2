@@ -129,8 +129,10 @@ namespace gl {
         void setWindowIcon(SDL_Surface *ico);
         void setFullScreen(bool full);
         void activateConsole(const std::string &fnt, int size, const SDL_Color &color);
-        void showConsole(bool show) { console_visible = show; }
+        void activateConsole(const SDL_Rect &rc, const std::string &fnt, int size, const SDL_Color &color);
         void drawConsole();
+        void showConsole(bool show);
+        
         std::unique_ptr<gl::GLObject> object = nullptr;
         mx::mxUtil util;
         console::GLConsole console;
@@ -147,6 +149,7 @@ namespace gl {
         SDL_Window *window = nullptr;
         bool active = false;
         SDL_Event e;
+        bool hide_console = false;
     };
 
     class GLObject {
