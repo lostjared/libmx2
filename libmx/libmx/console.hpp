@@ -91,7 +91,7 @@ namespace console {
     public:
         GLConsole() = default;
         ~GLConsole();
-        
+        void load(gl::GLWindow *win, const SDL_Rect &rc, const std::string &fnt, int size, const SDL_Color &col);
         void load(gl::GLWindow *win, const std::string &fnt, int size, const SDL_Color &col);
         void draw(gl::GLWindow *win);
         void event(gl::GLWindow *win, SDL_Event &e);

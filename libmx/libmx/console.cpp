@@ -581,14 +581,12 @@ namespace console {
         return texture_id;
     }
 
-    void GLConsole::load(gl::GLWindow *win, const std::string &fnt, int size, const SDL_Color &col) {
+    void GLConsole::load(gl::GLWindow *win, const SDL_Rect &rc, const std::string &fnt, int size, const SDL_Color &col) {
         font = fnt;
         font_size = size;
         color = col;
-        int consoleWidth = win->w - 50;
-        int consoleHeight = (win->h / 2) - 50;
         console.util = &win->util;
-        console.create(25, 25, consoleWidth, consoleHeight);
+        console.create(rc.x, rc.y, rc.w, rc.h);
         console.load(fnt, size, col);
         console.promptText = "$ ";
         shader = std::make_unique<gl::ShaderProgram>();
@@ -603,6 +601,21 @@ namespace console {
         texture = loadTextFromSurface(console.drawText());
         sprite->initSize(win->w, win->h);
         sprite->initWithTexture(shader.get(), texture, 0.0f, 0.0f, win->w, win->h);
+    }
+
+    void GLConsole::load(gl::GLWindow *win, const std::string &fnt, int size, const SDL_Color &col) {
+        font = fnt;
+        font_size = size;
+        color = col;
+        int consoleWidth = win->w - 50;
+        int consoleHeight = (win->h / 2) - 50;
+        SDL_Rect rc;
+        rc.x = 25;
+        rc.y = 25;
+        rc.w = consoleWidth;
+        rc.h = consoleHeight;
+        console.util = &win->util;
+        load(win, rc, fnt, size, col);
     }
 
     void GLConsole::updateTexture(GLuint tex, SDL_Surface *surf) {
