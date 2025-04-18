@@ -377,7 +377,7 @@ namespace console {
             
             if (fadeState == FADE_IN) {
                 if (elapsedTime >= fadeDuration) {
-                    alpha = 188; 
+                    alpha = 188; // Final alpha value
                     fadeState = FADE_NONE;
                 } else {
                     alpha = (unsigned char)(1 + (188 - 1) * elapsedTime / fadeDuration);
@@ -751,4 +751,7 @@ namespace console {
     void GLConsole::setPrompt(const std::string &p) {
         console.promptText = p;
     }
+    int GLConsole::getWidth() const { return console.getWidth(); }
+    int GLConsole::getHeight() const { return console.getHeight(); }  
+        
 }

@@ -120,7 +120,8 @@ namespace console {
         void show();
         void hide();
         std::ostringstream textval;
-            
+        int getWidth() const;
+        int getHeight() const;
         void printf(const char *s) {
             if(s == nullptr) return;
             while(*s) {
