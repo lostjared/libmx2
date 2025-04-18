@@ -612,6 +612,10 @@ namespace console {
         console.startFadeOut();
     }
 
+    GLConsole::GLConsole() {
+        rc = {0, 0, 0, 0};
+    }
+
     GLConsole::~GLConsole() {
         if(texture) {
             glDeleteTextures(1, &texture);
@@ -641,6 +645,8 @@ namespace console {
         font_size = size;
         color = col;
         console.util = &win->util;
+        this->rc = rc;
+        stretch_height = 0;
         console.create(rc.x, rc.y, rc.w, rc.h);
         console.load(fnt, size, col);
         console.promptText = "$ ";
@@ -656,6 +662,7 @@ namespace console {
         texture = loadTextFromSurface(console.drawText());
         sprite->initSize(win->w, win->h);
         sprite->initWithTexture(shader.get(), texture, 0.0f, 0.0f, win->w, win->h);
+        stretch_value = true;
     }
 
     void GLConsole::load(gl::GLWindow *win, const std::string &fnt, int size, const SDL_Color &col) {
@@ -669,8 +676,11 @@ namespace console {
         rc.y = 25;
         rc.w = consoleWidth;
         rc.h = consoleHeight;
+        this->rc = rc;
         console.util = &win->util;
         load(win, rc, fnt, size, col);
+        stretch_height = 1;
+        stretch_value = true;
     }
 
     void GLConsole::updateTexture(GLuint tex, SDL_Surface *surf) {
@@ -739,9 +749,23 @@ namespace console {
         }
     }
 
+    void GLConsole::setStretchHeight(int value) {
+        stretch_height = value;
+    }
+
     void GLConsole::resize(gl::GLWindow *win, int w, int h) {
+        if(stretch_value)  {
+            rc.x = 25;
+            rc.y = 25;
+            rc.w = w - 50;
+            if(stretch_height == 1)
+                rc.h = (h / 2) - 50;
+            else
+                rc.h = h - 50;
+        }
+        
         if(!font.empty()) 
-            load(win, font, font_size, color);
+            load(win, rc, font, font_size, color);
     }
 
     void GLConsole::setCallback(gl::GLWindow *window, std::function<bool(gl::GLWindow *win, const std::vector<std::string> &)> callback) {
@@ -753,5 +777,6 @@ namespace console {
     }
     int GLConsole::getWidth() const { return console.getWidth(); }
     int GLConsole::getHeight() const { return console.getHeight(); }  
+
         
 }

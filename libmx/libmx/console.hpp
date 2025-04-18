@@ -106,7 +106,7 @@ namespace console {
 
     class GLConsole {
     public:
-        GLConsole() = default;
+        GLConsole();
         ~GLConsole();
         void load(gl::GLWindow *win, const SDL_Rect &rc, const std::string &fnt, int size, const SDL_Color &col);
         void load(gl::GLWindow *win, const std::string &fnt, int size, const SDL_Color &col);
@@ -119,6 +119,8 @@ namespace console {
         void setCallback(gl::GLWindow *window, std::function<bool(gl::GLWindow *win, const std::vector<std::string> &)> callback);
         void show();
         void hide();
+        void setStretch(bool stretch) { stretch_value = stretch; }
+    
         std::ostringstream textval;
         int getWidth() const;
         int getHeight() const;
@@ -145,8 +147,12 @@ namespace console {
         }
         bool isVisible() const { return console.isVisible(); }
         bool isFading() const { return console.isFading(); }
+        void setStretchHeight(int value);
         protected:
         Console console;
+        bool stretch_value;
+        SDL_Rect rc;
+        int stretch_height = 0;
         std::unique_ptr<gl::GLSprite> sprite = nullptr;
         std::unique_ptr<gl::ShaderProgram> shader;
         GLuint texture = 0;
