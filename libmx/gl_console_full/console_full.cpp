@@ -126,7 +126,8 @@ public:
                 window->console.printf("https://lostsidedead.biz\n");
                 return true;
             } else if(args.size() == 1 && args[0] == "info") {
-                window->console.printf("Canvas: %d, %d\n OpenGL %s\n", win->w, win->h, glGetString(GL_VERSION));
+                window->console.printf("Canvas: %d, %d\nOpenGL %s\n", window->w, window->h, glGetString(GL_VERSION));
+                return true;
             }
             return false;
         });
