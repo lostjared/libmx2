@@ -125,6 +125,8 @@ public:
                 window->console.printf("Coded by Jared Bruni\nLostSideDead Software\n");
                 window->console.printf("https://lostsidedead.biz\n");
                 return true;
+            } else if(args.size() == 1 && args[0] == "info") {
+                window->console.printf("Canvas: %d, %d\n OpenGL %s\n", win->w, win->h, glGetString(GL_VERSION));
             }
             return false;
         });
