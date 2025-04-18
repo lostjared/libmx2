@@ -84,7 +84,14 @@ namespace console {
         }
     }
 
+    void Console::reload() {
+        c_chars.load(font, font_size, color);
+    }
+
     void Console::load(const std::string &fnt, int size, const SDL_Color &col) {
+        font = fnt;
+        font_size = size;
+        color = col;
         c_chars.load(fnt, size, col);
         scrollToBottom();
     }
@@ -561,9 +568,13 @@ namespace console {
             col.a = 255;
             if(size < 8) size = 8;
             if(size > 64) size = 64;
-            
-            c_chars.load(util->getFilePath("data/font.ttf"), size, col);
-            
+            font_size = size;
+            color = col;
+            if(!font.empty())
+                c_chars.load(font, size, col);
+            else {
+                c_chars.load(util->getFilePath("data/font.ttf"), size, col);
+            }
             this->print("Font updated to size " + tokens[1] + 
                         " color: " + tokens[2] + "," + tokens[3] + "," + tokens[4] + "\n");
             
@@ -648,7 +659,11 @@ namespace console {
         this->rc = rc;
         stretch_height = 0;
         console.create(rc.x, rc.y, rc.w, rc.h);
-        console.load(fnt, size, col);
+        if(console.loaded()) {
+            console.reload();
+        } else {
+            console.load(fnt, size, col);
+        }
         console.promptText = "$ ";
         shader = std::make_unique<gl::ShaderProgram>();
         if(!shader->loadProgramFromText(gl::vSource, gl::fSource)) {

@@ -71,8 +71,13 @@ namespace console {
         bool isVisible() const { return alpha > 0; }
         void show();
         void hide();
+        void reload();
+        bool loaded() const { return c_chars.characters.size() > 0; }
     protected:
         ConsoleChars c_chars;
+        std::string font;
+        int font_size = 16;
+        SDL_Color color = {255, 255, 255, 255};
         std::ostringstream data;
         std::string input_text;
         SDL_Surface *surface = nullptr;
