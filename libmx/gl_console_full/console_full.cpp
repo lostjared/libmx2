@@ -125,12 +125,32 @@ public:
                 window->console.printf("Coded by Jared Bruni\nLostSideDead Software\n");
                 window->console.printf("https://lostsidedead.biz\n");
                 return true;
-            } else if(args.size() == 1 && args[0] == "info") {
-                window->console.printf("Canvas: %d, %d\nOpenGL %s\n", window->w, window->h, glGetString(GL_VERSION));
+            } else if(args.size() == 2 && args[0] == "stretch" && args[1] == "on") {
+                window->console.setStretch(true);
+                window->console.printf("Stretching is now ON\n");
+                return true;
+            } else if(args.size() == 2 && args[0] == "stretch" && args[1] == "off") {
+                window->console.setStretch(false);
+                window->console.printf("Stretching is now OFF\n");
+                return true;
+            } else if(args.size() == 3 && args[0] == "size") {
+                int ww = std::stoi(args[1]);
+                int hh = std::stoi(args[2]);
+                window->console.resize(window, ww, hh);
+                window->console.printf("Resizing to %d x %d\n", ww, hh);
+            } else if(args.size() == 2 && args[0] == "stretch_height") {
+                if(args[1] == "1") {
+                    window->console.setStretchHeight(1);
+                    window->console.printf("Stretch height set to 1\n");
+                } else if(args[1] == "0") {
+                    window->console.setStretchHeight(0);
+                    window->console.printf("Stretch height set to 0\n");
+                }
                 return true;
             }
             return false;
         });
+    
     }
 
     void draw(gl::GLWindow *win) override {
