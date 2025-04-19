@@ -1,46 +1,287 @@
-option(BUILD_STATIC_LIB "Build libmx2 as a static library" OFF)
+cmake_minimum_required(VERSION 3.10)
+project(libmx2 VERSION 1.7.0)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(OpenGL_GL_PREFERENCE "GLVND")
 
-if(BUILD_STATIC_LIB)
-    add_library(mx STATIC mx.cpp util.cpp loadpng.cpp font.cpp cfg.cpp texture.cpp exception.cpp joystick.cpp jpeg.cpp gl.cpp input.cpp sound.cpp model.cpp tee_stream.cpp ${GL_SRC})
-    message(STATUS "Building libmx2 as a static library.")
-else()
-    add_library(mx SHARED mx.cpp util.cpp loadpng.cpp font.cpp cfg.cpp texture.cpp exception.cpp joystick.cpp jpeg.cpp gl.cpp input.cpp sound.cpp model.cpp tee_stream.cpp ${GL_SRC})
-    message(STATUS "Building libmx2 as a shared library.")
+option(DEBUG_MODE "Debug mode" OFF)
+
+if(DEBUG_MODE)
+  add_compile_definitions(DEBUG_MODE)
+  message(STATUS "Debug Enabled")
+  set(COMPILE_FLAG "-g")
+else() 
+  set(COMPILE_FLAG "")
+  message(STATUS "Release mode enabled") 
 endif()
+
+if(UNIX AND NOT APPLE)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+endif()
+
+
+add_compile_options(-O2 -Wall ${COMPILE_FLAG}) 
+
 
 find_package(SDL2 REQUIRED)
 find_package(SDL2_ttf REQUIRED)
+find_package(ZLIB REQUIRED)
+find_package(PNG REQUIRED)
+
+set(PNG_LIBS ${PNG_LIBRARIES} ${ZLIB_LIBRARIES})
+set(PNG_DIRS ${ZLIB_INCLUDE_DIRS} ${PNG_INCLUDE_DIRS})
+set(SDL2_TTF_INCLUDE_DIRS ${SDL2_TTF_INCLUDE_DIRS})
+set(SDL2_TTF_LIBRARIES SDL2_ttf::SDL2_ttf)
+
+include(GNUInstallDirs)
+set(INSTALL_INCLUDE_DIR ${CMAKE_INSTALL_INCLUDEDIR}/mx2)
+set(INSTALL_LIB_DIR ${CMAKE_INSTALL_LIBDIR})
+
+option(EXAMPLES "Build Example Projects" ON)
+option(JPEG "Build with JPEG Support" OFF)        
+option(OPENGL "Build with OpenGL Support" ON)
+option(MIXER "Build with Sound Support" ON)
+option(VULKAN "Build with Vulkan Support" OFF)
+option(MOLTEN "Build with MoltenVK Support" OFF)
+include_directories(${CMAKE_BINARY_DIR} ${CMAKE_INSTALL_PREFIX}/include)
+
+if(MIXER)
+  find_package(SDL2_mixer REQUIRED)
+  set(MIXER_INCLUDE ${SDL2_MIXER_INCLUDE_DIRS})
+  set(MIXER_LIB SDL2_mixer::SDL2_mixer)
+  message(STATUS "Added SDL_mixer support")
+  message(STATUS "MIXER_INCLUDE: ${MIXER_INCLUDE}")
+  message(STATUS "MIXER_LIB: ${MIXER_LIB}")
+  # add_compile_definitions(WITH_MIXER)
+else()
+  message(STATUS "SDL_mixer disabled.")
+endif()
+
+if(OPENGL)
+  find_package(OpenGL REQUIRED)
+  find_package(glm REQUIRED)
+  set(GL_INCLUDE ${OpenGL_INCLUDE_DIRS} ${GLM_INCLUDE_DIRS})
+  set(GL_LIB ${OPENGL_gl_LIBRARY})
+  set(GL_SRC src/glad.c console.cpp)
+  message(STATUS "Added OpenGL/GLM Support")
+  message(STATUS "GL INCLUDE: ${GL_INCLUDE}")
+  message(STATUS "GL LIB: ${GL_LIB}")
+  # add_compile_definitions(WITH_GL)
+else()
+  message(STATUS "OpenGL Support Disabled.")
+endif()
+
+if(VULKAN)
+  if(MOLTEN)
+  message(FATAL_ERROR "Its either Vulkan or MoltenVK")
+  endif()
+  set(CMAKE_PREFIX_PATH "$ENV{VULKAN_SDK}")
+  find_package(Vulkan REQUIRED)
+  find_package(glm REQUIRED)
+  set(VK_INCLUDE ${Vulkan_INCLUDE_DIRS} ${GLM_INCLUDE_DIRS})
+  if(UNIX AND NOT APPLE)
+  set(VK_LIB Vulkan::Vulkan)
+  else()
+  set(VK_LIB "")
+  endif()
+  set(VK_SRC vk.cpp volk.c)
+  message(STATUS "Vulkan Include: ${VK_INCLUDE}")
+  message(STATUS "Vulkan Lib: ${VK_LIB}")
+else()
+  message(STATUS "Vulkan Support Disabled.")
+endif()
+
+if(MOLTEN)
+  if(VULKAN)
+  message(FATAL_ERROR "Its ethier Vulkan or MoltenVK")
+  endif()
+  if(NOT MOLTEN_PATH)
+  set(MOLTEN_PATH /usr/local/opt/molten-vk)
+  endif()
+  find_package(glm REQUIRED)
+  set(VK_INCLUDE ${MOLTEN_PATH}/include ${GLM_INCLUDE_DIRS})
+  set(VK_SRC vk.cpp)
+  set(VK_LIB "${MOLTEN_PATH}/lib/libMoltenVK.dylib")
+  message(STATUS "MoltenVK Include: ${VK_INCLUDE}")
+  message(STATUS "MoltenVK LIB: ${VK_LIB}")
+else()
+  message(STATUS "MoltenVK Disabled.")
+endif()
+
+if(JPEG)
+  find_package(JPEG REQUIRED)
+  message(STATUS "Added JPEG Support")
+  message(STATUS "JPEG Libraries: ${JPEG_LIBRARIES}")
+  message(STATUS "JPEG Include Dirs: ${JPEG_INCLUDE_DIRS}")
+  # add_compile_definitions(WITH_JPEG)
+  set(IMG_INCLUDE ${JPEG_INCLUDE_DIRS} ${ZLIB_INCLUDE_DIRS} ${PNG_INCLUDE_DIRS})
+  set(IMG_LIB ${JPEG_LIBRARIES} ${PNG_LIBRARIES} ${ZLIB_LIBRARIES})
+else()
+  message(STATUS "JPEG Disabled")
+  set(IMG_LIB ${PNG_LIBRARIES} ${ZLIB_LIBRARIES})
+  set(IMG_INCLUDE ${ZLIB_INCLUDE_DIRS} ${PNG_INCLUDE_DIRS})
+endif()
+
+add_subdirectory(libmx)
+
+if(EXAMPLES)
+  message(STATUS "Building with Example Projects")
+  add_subdirectory(test)
+  add_subdirectory(controller_test)
+  add_subdirectory(input_test)
+  add_subdirectory(image_test)
+  add_subdirectory(knights_tour)
+  add_subdirectory(pong)
+  add_subdirectory(asteroids)
+  add_subdirectory(blocks)
+  add_subdirectory(piece)
+  add_subdirectory(matrix)
+  add_subdirectory(breakout)
+  add_subdirectory(frogger)
+  add_subdirectory(mad)
+  add_subdirectory(space)
+  
+  if(MIXER)
+    add_subdirectory(sound_test)
+  endif()
+
+  if(JPEG)
+    add_subdirectory(jpeg_test)
+  endif()
+  
+  if(OPENGL)
+    add_subdirectory(gl_window)
+    add_subdirectory(gl_skeleton)
+    add_subdirectory(gl_example)
+    add_subdirectory(gl_cube)
+    add_subdirectory(gl_pong)
+    add_subdirectory(gl_animated_cube)
+    add_subdirectory(gl_breakout)
+    add_subdirectory(gl_pyramid)
+    add_subdirectory(gl_mxmod)
+    add_subdirectory(space3d)
+    add_subdirectory(gl_surface_test)
+    # add_subdirectory(gl_animation)
+    add_subdirectory(gl_ps)
+    add_subdirectory(gl_ps2)
+    add_subdirectory(gl_ps3)
+    add_subdirectory(gl_ps4)
+    add_subdirectory(gl_ps3d)
+    add_subdirectory(gl_stars3d)
+    add_subdirectory(gl_explode)
+    add_subdirectory(gl_walk)
+    add_subdirectory(gl_about)
+    add_subdirectory(mp3d)
+    add_subdirectory(gl_cubemap)
+    add_subdirectory(gl_stencil_test)
+    add_subdirectory(gl_blend_shader)
+    add_subdirectory(gl_framebuffer)
+    add_subdirectory(gl_shade1)
+    add_subdirectory(gl_shade2)
+    add_subdirectory(gl_shadow)
+    add_subdirectory(gl_skybox)
+    add_subdirectory(gl_skybox2)
+    add_subdirectory(gl_skybox3)
+    add_subdirectory(gl_curve)
+    add_subdirectory(gl_snow)
+    add_subdirectory(gl_fire)
+    add_subdirectory(gl_water)
+    add_subdirectory(gl_rain)
+    add_subdirectory(gl_room)
+    add_subdirectory(gl_matrix)
+    add_subdirectory(gl_obj_explode)
+    add_subdirectory(gl_fog)
+    add_subdirectory(gl_glitch)
+    add_subdirectory(gl_glitch_cube)
+    add_subdirectory(gl_glitch_cube2)
+    add_subdirectory(gl_ship)
+    add_subdirectory(gl_texture_map)
+    add_subdirectory(gl_matrix_room)
+    add_subdirectory(gl_matrix_glitch)
+    add_subdirectory(gl_matrix_psyche)
+    add_subdirectory(gl_blank_model)
+    add_subdirectory(gl_intro_screen)
+    add_subdirectory(gl_model_explode)
+    add_subdirectory(gl_model_glitch)
+    add_subdirectory(gl_asteroids)
+    add_subdirectory(gl_console)
+    add_subdirectory(gl_console_skeleton)
+    add_subdirectory(gl_console_full)
+  endif()
+
+#disable for now
+  if(VULKAN)
+#    add_subdirectory(vk_ex1)
+#    add_subdirectory(vk_cube)
+     add_subdirectory(vk_tex_cube) 
+  else()
+    if(MOLTEN)
+#     add_subdirectory(vk_ex1)
+#     add_subdirectory(vk_cube)
+      add_subdirectory(vk_tex_cube)
+    endif()
+  endif()
+
+else()
+  message(STATUS "Not Building Examples")
+endif()
+
+add_subdirectory(mxmod_compress)
+
+if(MIXER)
+  set(WITH_MIXER_VAL 1)
+else()
+  set(WITH_MIXER_VAL 0)
+endif()
+
+if(OPENGL)
+  set(WITH_OPENGL_VAL 1)
+else()
+  set(WITH_OPENGL_VAL 0)
+endif()
+
+if(VULKAN)
+  set(WITH_VK_VAL 1)
+else()
+  set(WITH_VK_VAL 0)
+endif()
 
 
-target_include_directories(mx PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/volk>
-    $<INSTALL_INTERFACE:${INSTALL_INCLUDE_DIR}>
-    ${SDL2_INCLUDE_DIRS}
-    ${SDL2_TTF_INCLUDE_DIRS}
-    ${IMG_INCLUDE}
-    ${GL_INCLUDE}
-    ${MIXER_INCLUDE}
-    ${VK_INCLUDE}
+if(MOLTEN)
+  set(WITH_MOLTEN_VAL 1)
+else()
+  set(WITH_MOLTEN_VAL 0)
+endif()
+
+if(JPEG)
+  set(WITH_JPEG_VAL 1)
+else()
+  set(WITH_JPEG_VAL 0)
+endif()
+
+
+
+configure_file(
+    ${CMAKE_SOURCE_DIR}/config.h.in
+    ${CMAKE_BINARY_DIR}/config.h
 )
 
-add_library(libmx2::mx ALIAS mx)
-install(TARGETS mx
-    EXPORT libmx2Targets
-    LIBRARY DESTINATION ${INSTALL_LIB_DIR}
-    INCLUDES DESTINATION ${INSTALL_INCLUDE_DIR}
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/libmx2ConfigVersion.cmake"
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY AnyNewerVersion
 )
-target_link_libraries(mx PUBLIC SDL2::SDL2 SDL2_ttf::SDL2_ttf ${IMG_LIB} ${GL_LIB} ${MIXER_LIB})
 
-install(FILES mx.hpp gl.hpp vk.hpp argz.hpp util.hpp jpeg.hpp loadpng.hpp object.hpp font.hpp cfg.hpp tee_stream.hpp texture.hpp exception.hpp joystick.hpp wrapper.hpp input.hpp sound.hpp model.hpp console.hpp
-    DESTINATION ${INSTALL_INCLUDE_DIR}
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/libmx2Config.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/libmx2Config.cmake"
+    @ONLY
 )
-install(FILES include/glad/glad.h DESTINATION ${INSTALL_INCLUDE_DIR}/glad)
-install(FILES include/KHR/khrplatform.h DESTINATION ${INSTALL_INCLUDE_DIR}/KHR)
-install(FILES ${CMAKE_BINARY_DIR}/config.h DESTINATION ${INSTALL_INCLUDE_DIR})
-install(EXPORT libmx2Targets
-    FILE libmx2Targets.cmake
-    NAMESPACE libmx2::
+
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/libmx2Config.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/libmx2ConfigVersion.cmake"
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/libmx2
 )
