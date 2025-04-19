@@ -599,7 +599,7 @@ namespace console {
         fadeState = FADE_IN;
         fadeStartTime = SDL_GetTicks();
         if (alpha == 0) 
-            alpha = 1; 
+            alpha = 1;
     }
 
     void Console::startFadeOut() {
@@ -613,6 +613,12 @@ namespace console {
 
     void Console::hide() {
         startFadeOut();
+    }
+
+    void Console::setTextAttrib(const int size, const SDL_Color &col) {
+        font_size = size;
+        color = col;
+        reload();
     }
 
     void GLConsole::show() {
@@ -679,7 +685,10 @@ namespace console {
         sprite->initWithTexture(shader.get(), texture, 0.0f, 0.0f, win->w, win->h);
         stretch_value = true;
     }
-
+    
+    void GLConsole::setTextAttrib(const int size, const SDL_Color &col) {;
+        console.setTextAttrib(size, col);
+    }
     void GLConsole::load(gl::GLWindow *win, const std::string &fnt, int size, const SDL_Color &col) {
         font = fnt;
         font_size = size;

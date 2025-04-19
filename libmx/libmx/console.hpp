@@ -73,6 +73,7 @@ namespace console {
         void hide();
         void reload();
         bool loaded() const { return c_chars.characters.size() > 0; }
+        void setTextAttrib(const int size, const SDL_Color &col);
     protected:
         ConsoleChars c_chars;
         std::string font;
@@ -125,7 +126,7 @@ namespace console {
         void show();
         void hide();
         void setStretch(bool stretch) { stretch_value = stretch; }
-    
+        void setTextAttrib(const int size, const SDL_Color &col);
         std::ostringstream textval;
         int getWidth() const;
         int getHeight() const;
