@@ -25,6 +25,8 @@
 #include <glm/gtc/type_ptr.hpp>
 #endif
 
+#include"console.hpp"
+
 namespace gl {
 
     extern const char *vSource;
@@ -66,9 +68,10 @@ namespace gl {
     public:
         GLText();
         void init(int w, int h);
-        GLuint createText(const std::string &text, TTF_Font *font, SDL_Color color, int &textWidth, int &textHeight);
+        GLuint createText(const std::string &text, TTF_Font *font, SDL_Color color, int &textWidth, int &textHeight, bool solid = true);
         void renderText(GLuint texture, float x, float y, int textWidth, int textHeight, int screenWidth, int screenHeight);
         void printText_Solid(const mx::Font &f, float x, float y, const std::string &text);
+        void printText_Blended(const mx::Font &f, float x, float y, const std::string &text);
         void setColor(SDL_Color col);
     private:
         ShaderProgram textShader;
@@ -125,17 +128,23 @@ namespace gl {
         void setWindowSize(int w, int h);
         void setWindowIcon(SDL_Surface *ico);
         void setFullScreen(bool full);
-        std::unique_ptr<gl::GLObject> object;
+        void activateConsole(const std::string &fnt, int size, const SDL_Color &color);
+        void showConsole(bool show) { console_visible = show; }
+        void drawConsole();
+        std::unique_ptr<gl::GLObject> object = nullptr;
         mx::mxUtil util;
+        console::GLConsole console;
         int w = 0, h = 0;
         SDL_Window *getWindow() { return window; }
 #ifdef WITH_MIXER
         mx::Mixer mixer;
 #endif
         GLText text;  
+        bool console_visible = false;
+        bool console_active = false;
     private:
         SDL_GLContext glContext;
-        SDL_Window *window;
+        SDL_Window *window = nullptr;
         bool active = false;
         SDL_Event e;
     };
