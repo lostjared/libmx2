@@ -1,0 +1,2 @@
+install:
+	cp -rf ./webmx/ /home/$(USER)/emscripten-libs
