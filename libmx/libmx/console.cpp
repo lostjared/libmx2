@@ -579,8 +579,25 @@ namespace console {
                         " color: " + tokens[2] + "," + tokens[3] + "," + tokens[4] + "\n");
             
         } 
-        else if (tokens[0] == "about") {
+        else if (tokens.size() == 1 && tokens[0] == "about") {
             this->print("- MX2 Engine LostSideDead Software\nhttps://lostsidedead.biz\n");
+        } else if(tokens.size() == 1  && tokens[0] == "author") {
+            this->print("- MX2 Engine Coded by Jared Bruni.\nhttps://lostsidedead.biz\n");
+        } else if(tokens.size() == 1 && (tokens[0] == "clear" || tokens[0] == "cls")) {
+            this->print("\n");
+            data.str("");
+            inputBuffer.clear();
+            inputCursorPos = 0;
+            cursorPos = 0;
+            stopPosition = 0;
+            scrollToBottom();
+        } else if (tokens.size() == 1 && tokens[0] == "help") {
+            this->print("- MX2 Console Help\n");
+            this->print("Commands:\n");
+            this->print("settext <size> <r> <g> <b>\n");
+            this->print("clear\n");
+            this->print("about\n");
+            this->print("author\n");
         }
         else {
             if (callbackSet) {
