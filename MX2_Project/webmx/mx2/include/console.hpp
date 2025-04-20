@@ -58,13 +58,27 @@ namespace console {
         void moveCursorLeft();
         void moveCursorRight();
         void moveHistoryUp();    
-        void moveHistoryDown();  
+        void moveHistoryDown();
+        int getHeight() const { return console_rect.h; }
+        int getWidth() const { return console_rect.w; }
         std::string promptText = "$ "; 
         Uint32 cursorBlinkTime = 0;
         bool cursorVisible = true;
         gl::GLWindow *window = nullptr;
+        void startFadeIn();
+        void startFadeOut();
+        bool isFading() const { return fadeState != FADE_NONE; }
+        bool isVisible() const { return alpha > 0; }
+        void show();
+        void hide();
+        void reload();
+        bool loaded() const { return c_chars.characters.size() > 0; }
+        void setTextAttrib(const int size, const SDL_Color &col);
     protected:
         ConsoleChars c_chars;
+        std::string font;
+        int font_size = 16;
+        SDL_Color color = {255, 255, 255, 255};
         std::ostringstream data;
         std::string input_text;
         SDL_Surface *surface = nullptr;
@@ -84,14 +98,23 @@ namespace console {
         bool callbackSet = false;
         std::vector<std::string> commandHistory;    
         int historyIndex = -1;                      
-        std::string tempBuffer;                     
+        std::string tempBuffer;   
+        unsigned char alpha = 188;                  
+        enum FadeState { 
+            FADE_NONE, 
+            FADE_IN, 
+            FADE_OUT 
+        };
+        FadeState fadeState = FADE_NONE;
+        Uint32 fadeStartTime = 0;
+        unsigned int fadeDuration = 300; 
     };
 
     class GLConsole {
     public:
-        GLConsole() = default;
+        GLConsole();
         ~GLConsole();
-        
+        void load(gl::GLWindow *win, const SDL_Rect &rc, const std::string &fnt, int size, const SDL_Color &col);
         void load(gl::GLWindow *win, const std::string &fnt, int size, const SDL_Color &col);
         void draw(gl::GLWindow *win);
         void event(gl::GLWindow *win, SDL_Event &e);
@@ -100,9 +123,13 @@ namespace console {
         void resize(gl::GLWindow *win, int w, int h);
         void setPrompt(const std::string &prompt);
         void setCallback(gl::GLWindow *window, std::function<bool(gl::GLWindow *win, const std::vector<std::string> &)> callback);
-      
+        void show();
+        void hide();
+        void setStretch(bool stretch) { stretch_value = stretch; }
+        void setTextAttrib(const int size, const SDL_Color &col);
         std::ostringstream textval;
-            
+        int getWidth() const;
+        int getHeight() const;
         void printf(const char *s) {
             if(s == nullptr) return;
             while(*s) {
@@ -124,8 +151,14 @@ namespace console {
             print(textval.str());
             textval.str("");
         }
+        bool isVisible() const { return console.isVisible(); }
+        bool isFading() const { return console.isFading(); }
+        void setStretchHeight(int value);
         protected:
         Console console;
+        bool stretch_value;
+        SDL_Rect rc;
+        int stretch_height = 0;
         std::unique_ptr<gl::GLSprite> sprite = nullptr;
         std::unique_ptr<gl::ShaderProgram> shader;
         GLuint texture = 0;
