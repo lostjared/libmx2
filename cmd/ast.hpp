@@ -112,7 +112,6 @@ namespace cmd {
         std::unordered_map<std::string, CommandFunction> commands;
     };
 
-    // Variable literal types
     class StringLiteral : public Node {
     public:
         StringLiteral(const std::string& value) : value(value) {}
@@ -170,7 +169,6 @@ namespace cmd {
             
             try {
                 #ifdef DEBUG_MODE
-                // Print the node type for debugging
                 if (std::dynamic_pointer_cast<cmd::Command>(node)) {
                     std::cout << "DEBUG: Node is a Command" << std::endl;
                 } else if (std::dynamic_pointer_cast<cmd::Sequence>(node)) {
@@ -226,7 +224,7 @@ namespace cmd {
         
     private:
         CommandRegistry& registry;
-        std::unordered_map<std::string, std::string> variables; // Store variable values
+        std::unordered_map<std::string, std::string> variables; 
         
         void executeNode(const std::shared_ptr<cmd::Node>& node, std::istream& input, std::ostream& output) {
             if (auto cmd = std::dynamic_pointer_cast<cmd::Command>(node)) {
