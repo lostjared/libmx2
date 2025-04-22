@@ -174,6 +174,15 @@ namespace cmd {
             registry.registerCommand("dir", cmd::listCommand);
             registry.registerCommand("find", cmd::findCommand);
             registry.registerCommand("sort", cmd::sortCommand);
+            registry.registerCommand("pwd", cmd::pwdCommand);
+            registry.registerCommand("mkdir", cmd::mkdirCommand);
+            registry.registerCommand("cp", cmd::cpCommand);
+            registry.registerCommand("mv", cmd::mvCommand);
+            registry.registerCommand("touch", cmd::touchCommand);
+            registry.registerCommand("head", cmd::headCommand);
+            registry.registerCommand("tail", cmd::tailCommand);
+            registry.registerCommand("wc", cmd::wcCommand);
+            registry.registerCommand("chmod", cmd::chmodCommand);
         }
 
         std::string getPath() const {

@@ -231,4 +231,311 @@ namespace cmd {
             output << "find: " << e.what() << std::endl;
         }
     }
+
+    void pwdCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
+        output << std::filesystem::current_path() << std::endl;
+    }
+
+    void mkdirCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
+        if (args.empty()) {
+            output << "mkdir: missing operand" << std::endl;
+            return;
+        }
+        
+        bool parents = false;
+        std::vector<std::string> dirs;
+        
+        for (const auto& arg : args) {
+            if (arg == "-p") {
+                parents = true;
+            } else {
+                dirs.push_back(arg);
+            }
+        }
+        
+        for (const auto& dir : dirs) {
+            try {
+                if (parents) {
+                    std::filesystem::create_directories(dir);
+                } else {
+                    std::filesystem::create_directory(dir);
+                }
+            } catch (const std::filesystem::filesystem_error& e) {
+                output << "mkdir: cannot create directory '" << dir << "': " << e.what() << std::endl;
+            }
+        }
+    }
+
+    void cpCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
+        if (args.size() < 2) {
+            output << "cp: missing destination file operand after '" << (args.empty() ? "cp" : args[0]) << "'" << std::endl;
+            return;
+        }
+        
+        bool recursive = false;
+        std::vector<std::string> files;
+        
+        for (const auto& arg : args) {
+            if (arg == "-r" || arg == "-R") {
+                recursive = true;
+            } else {
+                files.push_back(arg);
+            }
+        }
+        
+        if (files.size() < 2) {
+            output << "cp: missing destination file operand" << std::endl;
+            return;
+        }
+        
+        std::string dest = files.back();
+        files.pop_back();
+        
+        for (const auto& src : files) {
+            try {
+                if (recursive && std::filesystem::is_directory(src)) {
+                    std::filesystem::copy(src, dest, std::filesystem::copy_options::recursive);
+                } else {
+                    std::filesystem::copy(src, dest);
+                }
+            } catch (const std::filesystem::filesystem_error& e) {
+                output << "cp: cannot copy '" << src << "' to '" << dest << "': " << e.what() << std::endl;
+            }
+        }
+    }
+
+    void mvCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
+        if (args.size() < 2) {
+            output << "mv: missing destination file operand after '" << (args.empty() ? "mv" : args[0]) << "'" << std::endl;
+            return;
+        }
+        
+        std::string dest = args.back();
+        
+        for (size_t i = 0; i < args.size() - 1; ++i) {
+            try {
+                std::filesystem::rename(args[i], dest);
+            } catch (const std::filesystem::filesystem_error& e) {
+                output << "mv: cannot move '" << args[i] << "' to '" << dest << "': " << e.what() << std::endl;
+            }
+        }
+    }
+
+    void touchCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
+        if (args.empty()) {
+            output << "touch: missing file operand" << std::endl;
+            return;
+        }
+        
+        for (const auto& file : args) {
+            try {
+                if (!std::filesystem::exists(file)) {
+                    std::ofstream(file).close();
+                } else {
+                    auto now = std::filesystem::file_time_type::clock::now();
+                    std::filesystem::last_write_time(file, now);
+                }
+            } catch (const std::filesystem::filesystem_error& e) {
+                output << "touch: cannot touch '" << file << "': " << e.what() << std::endl;
+            }
+        }
+    }
+
+    void headCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
+        int numLines = 10;
+        std::vector<std::string> files;
+        for (size_t i = 0; i < args.size(); ++i) {
+            if (args[i] == "-n" && i + 1 < args.size()) {
+                try {
+                    numLines = std::stoi(args[++i]);
+                } catch (const std::exception& e) {
+                    output << "head: invalid number of lines: '" << args[i] << "'" << std::endl;
+                    return;
+                }
+            } else {
+                files.push_back(args[i]);
+            }
+        }
+        
+        if (files.empty()) {
+            std::string line;
+            int lineCount = 0;
+            while (std::getline(input, line) && lineCount < numLines) {
+                output << line << std::endl;
+                lineCount++;
+            }
+        } else {
+            for (const auto& file : files) {
+                if (files.size() > 1) {
+                    output << "==> " << file << " <==" << std::endl;
+                }
+                
+                std::ifstream in(file);
+                if (!in) {
+                    output << "head: cannot open '" << file << "' for reading" << std::endl;
+                    continue;
+                }
+                
+                std::string line;
+                int lineCount = 0;
+                while (std::getline(in, line) && lineCount < numLines) {
+                    output << line << std::endl;
+                    lineCount++;
+                }
+            }
+        }
+    }
+
+    void tailCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
+        int numLines = 10;  
+        std::vector<std::string> files;
+        
+        for (size_t i = 0; i < args.size(); ++i) {
+            if (args[i] == "-n" && i + 1 < args.size()) {
+                try {
+                    numLines = std::stoi(args[++i]);
+                } catch (const std::exception& e) {
+                    output << "tail: invalid number of lines: '" << args[i] << "'" << std::endl;
+                    return;
+                }
+            } else {
+                files.push_back(args[i]);
+            }
+        }
+        
+        if (files.empty()) {
+            std::vector<std::string> lines;
+            std::string line;
+            while (std::getline(input, line)) {
+                lines.push_back(line);
+            }
+            
+            size_t start = lines.size() > numLines ? lines.size() - numLines : 0;
+            for (size_t i = start; i < lines.size(); ++i) {
+                output << lines[i] << std::endl;
+            }
+        } else {
+            for (const auto& file : files) {
+                if (files.size() > 1) {
+                    output << "==> " << file << " <==" << std::endl;
+                }
+                
+                std::ifstream in(file);
+                if (!in) {
+                    output << "tail: cannot open '" << file << "' for reading" << std::endl;
+                    continue;
+                }
+                
+                std::vector<std::string> lines;
+                std::string line;
+                while (std::getline(in, line)) {
+                    lines.push_back(line);
+                }
+                
+                size_t start = lines.size() > numLines ? lines.size() - numLines : 0;
+                for (size_t i = start; i < lines.size(); ++i) {
+                    output << lines[i] << std::endl;
+                }
+            }
+        }
+    }
+
+    void wcCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
+        bool countLines = false;
+        bool countWords = false;
+        bool countChars = false;
+        std::vector<std::string> files;
+    
+        for (const auto& arg : args) {
+            if (arg == "-l") {
+                countLines = true;
+            } else if (arg == "-w") {
+                countWords = true;
+            } else if (arg == "-c") {
+                countChars = true;
+            } else {
+                files.push_back(arg);
+            }
+        }
+        
+        if (!countLines && !countWords && !countChars) {
+            countLines = countWords = countChars = true;
+        }
+        
+        int totalLines = 0;
+        int totalWords = 0;
+        int totalChars = 0;
+        
+        auto processStream = [&](std::istream& in, const std::string& name) {
+            int lineCount = 0;
+            int wordCount = 0;
+            int charCount = 0;
+            
+            std::string line;
+            while (std::getline(in, line)) {
+                lineCount++;
+                charCount += line.length() + 1;  
+                
+                std::istringstream iss(line);
+                std::string word;
+                while (iss >> word) {
+                    wordCount++;
+                }
+            }
+            
+            if (countLines) output << std::setw(8) << lineCount << " ";
+            if (countWords) output << std::setw(8) << wordCount << " ";
+            if (countChars) output << std::setw(8) << charCount << " ";
+            output << name << std::endl;
+            
+            totalLines += lineCount;
+            totalWords += wordCount;
+            totalChars += charCount;
+        };
+        
+        if (files.empty()) {
+            processStream(input, "");
+        } else {
+            for (const auto& file : files) {
+                std::ifstream in(file);
+                if (!in) {
+                    output << "wc: " << file << ": No such file or directory" << std::endl;
+                    continue;
+                }
+                processStream(in, file);
+            }
+            
+            if (files.size() > 1) {
+                if (countLines) output << std::setw(8) << totalLines << " ";
+                if (countWords) output << std::setw(8) << totalWords << " ";
+                if (countChars) output << std::setw(8) << totalChars << " ";
+                output << "total" << std::endl;
+            }
+        }
+    }
+
+    void chmodCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
+        if (args.size() < 2) {
+            output << "chmod: missing operand" << std::endl;
+            return;
+        }
+        const std::string& mode = args[0];
+        std::filesystem::perms perms;
+        try {
+            int octalMode = std::stoi(mode, nullptr, 8);
+            perms = static_cast<std::filesystem::perms>(octalMode);
+        } catch (const std::exception& e) {
+            output << "chmod: invalid mode: '" << mode << "'" << std::endl;
+            return;
+        }
+        
+        for (size_t i = 1; i < args.size(); ++i) {
+            try {
+                std::filesystem::permissions(args[i], perms, std::filesystem::perm_options::replace);
+            } catch (const std::filesystem::filesystem_error& e) {
+                output << "chmod: cannot access '" << args[i] << "': " << e.what() << std::endl;
+            }
+        }
+    }
+
 }
