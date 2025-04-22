@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.10)
 project(scanner_cxx VERSION 1.0 LANGUAGES CXX C)
 
+
+option(CMD "Build the command-line executable" OFF)
+
 find_library(Readline NAMES readline)
 find_path(Readline_INCLUDE_DIRS NAMES readline/readline.h)
 
@@ -15,19 +18,22 @@ add_library(scanner STATIC
     command.cpp
 )
 
-add_executable(scanner_test
-    cmd.cpp
-)
+if(CMD)
+    add_executable(cmd-cli
+        cmd.cpp
+    )
 
-target_include_directories(scanner_test PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${Readline_INCLUDE_DIRS}
-)
-target_link_libraries(scanner_test PRIVATE
-    scanner
-    ${Readline_LIBRARIES}
-    readline
-)
+    target_include_directories(cmd-cli PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${Readline_INCLUDE_DIRS}
+    )
+    
+    target_link_libraries(cmd-cli PRIVATE
+        scanner
+        ${Readline_LIBRARIES}
+        readline
+    )
+endif()
 
 target_include_directories(scanner PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
