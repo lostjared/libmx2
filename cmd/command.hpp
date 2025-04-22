@@ -11,5 +11,7 @@ namespace cmd {
     void catCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
     void grepCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
     void printCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
+    void cdCommand(const std::vector<std::string> &args, std::istream& input, std::ostream& output);
+    void listCommand(const std::vector<std::string> &args, std::istream& input, std::ostream& output);
 }
 #endif

@@ -163,20 +163,27 @@ namespace cmd {
 
     class AstExecutor {
     public:
-        AstExecutor() : path(std::filesystem::current_path().string()) {
+        AstExecutor() {
             registry.registerCommand("echo", cmd::echoCommand);
             registry.registerCommand("cat", cmd::catCommand);
             registry.registerCommand("grep", cmd::grepCommand);
             registry.registerCommand("exit", cmd::exitCommand);
-            registry.registerCommand("print", cmd::printCommand);         
+            registry.registerCommand("print", cmd::printCommand);
+            registry.registerCommand("cd", cmd::cdCommand);
+            registry.registerCommand("ls", cmd::listCommand);
         }
 
         std::string getPath() const {
-            return path;
+            return std::filesystem::current_path().string();
         }
 
         void setPath(const std::string& newPath) {
-            path = newPath;
+            if (std::filesystem::exists(newPath)) {
+                path = newPath;
+                std::filesystem::current_path(path);
+            } else {
+                throw std::runtime_error("Path does not exist: " + newPath);
+            }
         }
         
         void addCommand(const std::string& name, CommandFunction func) {
