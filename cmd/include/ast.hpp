@@ -299,6 +299,10 @@ namespace cmd {
             }
             
             lastExitStatus = registry.executeCommand(cmd->name, expandedArgs, input, output);
+            
+            if (lastExitStatus != 0) {
+                std::cerr << cmd->name << ": command failed with exit status " << lastExitStatus << std::endl;
+            }
         }
         
         void executeSequence(const std::shared_ptr<cmd::Sequence>& seq, std::istream& input, std::ostream& output) {
@@ -313,11 +317,20 @@ namespace cmd {
                 std::stringstream nextBuffer;
                 auto cmd = pipe->commands[i];
                 std::istream* currentInput = (i == 0) ? &input : &buffer;
-                registry.executeCommand(cmd->name, cmd->args, *currentInput, nextBuffer);
+                lastExitStatus = registry.executeCommand(cmd->name, cmd->args, *currentInput, nextBuffer);
+                
+                if (lastExitStatus != 0) {
+                    std::cerr << cmd->name << ": command failed with exit status " << lastExitStatus << std::endl;
+                }
+                
                 buffer = std::move(nextBuffer);
             }
             auto lastCmd = pipe->commands.back();
-            registry.executeCommand(lastCmd->name, lastCmd->args, buffer, output);
+            lastExitStatus = registry.executeCommand(lastCmd->name, lastCmd->args, buffer, output);
+            
+            if (lastExitStatus != 0) {
+                std::cerr << lastCmd->name << ": command failed with exit status " << lastExitStatus << std::endl;
+            }
         }
         
         void executeRedirection(const std::shared_ptr<cmd::Redirection>& redir, std::istream& input, std::ostream& output) {
