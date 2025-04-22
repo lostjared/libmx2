@@ -1,6 +1,7 @@
 #include"command.hpp"
 #include<fstream>
 #include <filesystem>
+#include <regex>
 
 namespace cmd {
     void exitCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
@@ -48,12 +49,77 @@ namespace cmd {
             return;
         }
         
-        const std::string& pattern = args[0];
-        std::string line;
+        bool useRegex = false;
+        int patternIndex = 0;
         
-        while (std::getline(input, line)) {
-            if (line.find(pattern) != std::string::npos) {
-                output << line << std::endl;
+        if (!args.empty() && (args[0] == "-r" || args[0] == "-e")) {
+            useRegex = true;
+            patternIndex = 1;
+            
+            if (args.size() <= patternIndex) {
+                std::cerr << "grep: missing pattern after " << args[0] << std::endl;
+                return;
+            }
+        }
+        
+        const std::string& pattern = args[patternIndex];
+        std::vector<std::string> fileNames;
+        
+        for (size_t i = patternIndex + 1; i < args.size(); i++) {
+            fileNames.push_back(args[i]);
+        }
+        
+        if (useRegex) {
+            try {
+                std::regex re(pattern, std::regex::extended);
+                std::string line;
+                
+                if (!fileNames.empty()) {
+                    for (const auto& fileName : fileNames) {
+                        std::ifstream file(fileName);
+                        if (!file) {
+                            std::cerr << "grep: " << fileName << ": No such file" << std::endl;
+                            continue;
+                        }
+                        
+                        while (std::getline(file, line)) {
+                            if (std::regex_search(line, re)) {
+                                output << line << std::endl;
+                            }
+                        }
+                    }
+                } else {
+                    while (std::getline(input, line)) {
+                        if (std::regex_search(line, re)) {
+                            output << line << std::endl;
+                        }
+                    }
+                }
+            } catch (const std::regex_error& e) {
+                std::cerr << "grep: invalid regex pattern: " << pattern << " - " << e.what() << std::endl;
+            }
+        } else {
+            std::string line;
+            if (!fileNames.empty()) {
+                for (const auto& fileName : fileNames) {
+                    std::ifstream file(fileName);
+                    if (!file) {
+                        std::cerr << "grep: " << fileName << ": No such file" << std::endl;
+                        continue;
+                    }
+                    
+                    while (std::getline(file, line)) {
+                        if (line.find(pattern) != std::string::npos) {
+                            output << line << std::endl;
+                        }
+                    }
+                }
+            } else {
+                while (std::getline(input, line)) {
+                    if (line.find(pattern) != std::string::npos) {
+                        output << line << std::endl;
+                    }
+                }
             }
         }
     }
@@ -63,9 +129,29 @@ namespace cmd {
             std::cerr << "print: missing variable name" << std::endl;
             return;
         }
+
+        bool output_integer = false;
         
         for (const auto& arg : args) {
-            output << arg << std::endl;
+            if (arg == "-i") {
+                output_integer = true;
+                continue;
+            } else if(arg == "-f") {
+                output_integer = false;
+                continue;
+            } 
+            else {
+                if(output_integer == true) {
+                    try {
+                        output << std::stoi(arg) << std::endl;
+                        output_integer = false;
+                    } catch (const std::exception& e) {
+                        std::cerr << "print: can't convert '" << arg << "' to integer" << std::endl;
+                    }
+                } else {
+                    output << arg << std::endl;
+                }
+            }
         }
     }
 

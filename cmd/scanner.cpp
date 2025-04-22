@@ -1,4 +1,4 @@
- #include"scanner.hpp"
+#include"scanner.hpp"
 #include<set>
 
 namespace scan {
@@ -140,7 +140,6 @@ namespace scan {
         if(ch.has_value()) {
             auto ch_t = token_map.lookup_int8(*ch);
             decltype(token.getTokenValue()) tok_value;
-
             while(true) {
                 ch = string_buffer.getch();
                 if(!ch.has_value()) break;
@@ -211,8 +210,72 @@ namespace scan {
         auto pos = string_buffer.cur_line();
 
         auto ch = string_buffer.getch();
-         if (ch.has_value()) {
+        if (ch.has_value()) {
             tok_value += *ch;
+            
+            
+            if (*ch == '-') {
+            
+                auto next_ch = string_buffer.peekch(0);
+                if (next_ch.has_value() && *next_ch == '-') {
+                    tok_value += *next_ch;
+                    string_buffer.forward_step(1); 
+                    int look = 0;
+                    std::string arg_name;
+                    while (true) {
+                        auto temp = string_buffer.peekch(look);
+                        if (!temp.has_value()) break;
+                        
+                        auto temp_type = token_map.lookup_int8(*temp);
+                        if ((temp_type == types::CharType::TT_CHAR) || 
+                            (temp_type == types::CharType::TT_DIGIT) ||
+                            (*temp == '-')) {
+                            arg_name += *temp;
+                            look++;
+                        } else {
+                            break;
+                        }
+                    }
+                    
+                    if (!arg_name.empty()) {
+                        tok_value += arg_name;
+                        string_buffer.forward_step(look);
+                        token.set_pos(pos);
+                        token.set_filename(filename);
+                        token.setToken(types::TokenType::TT_ARG, tok_value);
+                        return token;
+                    }
+                }
+                else {
+                    
+                    int look = 0;
+                    std::string arg_name;
+                    while (true) {
+                        auto temp = string_buffer.peekch(look);
+                        if (!temp.has_value()) break;
+                        
+                        auto temp_type = token_map.lookup_int8(*temp);
+                        
+                        if ((temp_type == types::CharType::TT_CHAR) || 
+                            (temp_type == types::CharType::TT_DIGIT)) {
+                            arg_name += *temp;
+                            look++;
+                        } else {
+                            break;
+                        }
+                    }
+                    
+                    if (!arg_name.empty()) {
+                        tok_value += arg_name;
+                        string_buffer.forward_step(look);
+                        token.set_pos(pos);
+                        token.set_filename(filename);
+                        token.setToken(types::TokenType::TT_ARG, tok_value);
+                        return token;
+                    }
+                }
+            }
+            
             std::string temp_value = tok_value;
             int look = 0;
             bool found = false;

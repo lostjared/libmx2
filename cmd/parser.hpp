@@ -145,7 +145,11 @@ namespace cmd {
                 while (!isAtEnd() && 
                     (peek().getTokenType() == types::TokenType::TT_ID ||
                      peek().getTokenType() == types::TokenType::TT_STR ||
-                     peek().getTokenType() == types::TokenType::TT_NUM)) {
+                     peek().getTokenType() == types::TokenType::TT_NUM ||
+                     peek().getTokenType() == types::TokenType::TT_ARG ||  // Add this line
+                     (peek().getTokenType() == types::TokenType::TT_SYM && 
+                      peek().getTokenValue().size() > 0 &&
+                      peek().getTokenValue()[0] == '-'))) {  
                     
                     auto token = advance();
                     std::string value = token.getTokenValue();
