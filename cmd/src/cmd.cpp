@@ -11,8 +11,6 @@
 #include<memory>
 #include<functional>
 #include<unordered_map>
-
-// Add readline includes
 #include <readline/readline.h>
 #include <readline/history.h>
 
