@@ -1,7 +1,7 @@
 #ifndef __AST_HPP_X_
 #define __AST_HPP_X_
 
-#define DEBUG_MODE 
+//#define DEBUG_MODE 
 
 #include"scanner.hpp"
 #include<memory>
@@ -12,6 +12,8 @@
 #include<unordered_map>
 #include<fstream>
 #include<iostream>
+#include<filesystem>
+#include"command.hpp"
 
 namespace cmd {
 
@@ -161,7 +163,25 @@ namespace cmd {
 
     class AstExecutor {
     public:
-        AstExecutor(CommandRegistry& registry) : registry(registry) {}
+        AstExecutor() : path(std::filesystem::current_path().string()) {
+            registry.registerCommand("echo", cmd::echoCommand);
+            registry.registerCommand("cat", cmd::catCommand);
+            registry.registerCommand("grep", cmd::grepCommand);
+            registry.registerCommand("exit", cmd::exitCommand);
+            registry.registerCommand("print", cmd::printCommand);         
+        }
+
+        std::string getPath() const {
+            return path;
+        }
+
+        void setPath(const std::string& newPath) {
+            path = newPath;
+        }
+        
+        void addCommand(const std::string& name, CommandFunction func) {
+            registry.registerCommand(name, func);
+        }
         
         void execute(const std::shared_ptr<cmd::Node>& node) {
             std::istream& defaultInput = std::cin;
@@ -223,8 +243,9 @@ namespace cmd {
         }
         
     private:
-        CommandRegistry& registry;
+        CommandRegistry registry;
         std::unordered_map<std::string, std::string> variables; 
+        std::string path;
         
         void executeNode(const std::shared_ptr<cmd::Node>& node, std::istream& input, std::ostream& output) {
             if (auto cmd = std::dynamic_pointer_cast<cmd::Command>(node)) {
@@ -316,71 +337,7 @@ namespace cmd {
         }
     };
 
-    void exitCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
-        std::exit(0);
-    }
-    
-    void echoCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
-        for (size_t i = 0; i < args.size(); i++) {
-            output << args[i];
-            if (i < args.size() - 1) {
-                output << " ";
-            }
-        }
-        output << std::endl;
-    }
-
-    
-    void catCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
-        if (args.empty()) {
-    
-            std::string line;
-            while (std::getline(input, line)) {
-                output << line << std::endl;
-            }
-        } else {
-    
-            for (const auto& filename : args) {
-                std::ifstream file(filename);
-                if (!file) {
-                    std::cerr << "cat: " << filename << ": No such file" << std::endl;
-                    continue;
-                }
-                std::string line;
-                while (std::getline(file, line)) {
-                    output << line << std::endl;
-                }
-            }
-        }
-    }
-
-    
-    void grepCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
-        if (args.empty()) {
-            std::cerr << "grep: missing pattern" << std::endl;
-            return;
-        }
-        
-        const std::string& pattern = args[0];
-        std::string line;
-        
-        while (std::getline(input, line)) {
-            if (line.find(pattern) != std::string::npos) {
-                output << line << std::endl;
-            }
-        }
-    }
-
-    void printCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
-        if (args.empty()) {
-            std::cerr << "print: missing variable name" << std::endl;
-            return;
-        }
-        
-        for (const auto& arg : args) {
-            output << arg << std::endl;
-        }
-    }
+   
 }
 
 #endif

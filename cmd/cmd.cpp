@@ -15,18 +15,12 @@
 int main(int argc, char **argv) {
     bool active = true;
     try {
-        cmd::CommandRegistry registry;
-        registry.registerCommand("echo", cmd::echoCommand);
-        registry.registerCommand("cat", cmd::catCommand);
-        registry.registerCommand("grep", cmd::grepCommand);
-        registry.registerCommand("exit", cmd::exitCommand);
-        registry.registerCommand("print", cmd::printCommand);
-        
-        cmd::AstExecutor executor(registry);
+       
+        cmd::AstExecutor executor{};
         while(active) {
             try {
                 std::string command_data;
-                std::cout << "=)> ";
+                std::cout << executor.getPath() << "> ";
                 std::getline(std::cin, command_data);
                 scan::TString string_buffer(command_data);
                 scan::Scanner scanner(string_buffer);
