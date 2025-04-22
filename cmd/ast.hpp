@@ -1,6 +1,8 @@
 #ifndef __AST_HPP_X_
 #define __AST_HPP_X_
 
+#define DEBUG_MODE 
+
 #include"scanner.hpp"
 #include<memory>
 #include<functional>
@@ -110,18 +112,121 @@ namespace cmd {
         std::unordered_map<std::string, CommandFunction> commands;
     };
 
+    // Variable literal types
+    class StringLiteral : public Node {
+    public:
+        StringLiteral(const std::string& value) : value(value) {}
+        std::string value;
+        
+        void print(int indent = 0) const override {
+            std::string spaces(indent, ' ');
+            std::cout << spaces << "StringLiteral: " << value << std::endl;
+        }
+    };
+
+    class NumberLiteral : public Node {
+    public:
+        NumberLiteral(double value) : value(value) {}
+        double value;
+        
+        void print(int indent = 0) const override {
+            std::string spaces(indent, ' ');
+            std::cout << spaces << "NumberLiteral: " << value << std::endl;
+        }
+    };
+
+    class VariableReference : public Node {
+    public:
+        VariableReference(const std::string& name) : name(name) {}
+        std::string name;
+        
+        void print(int indent = 0) const override {
+            std::string spaces(indent, ' ');
+            std::cout << spaces << "VariableReference: " << name << std::endl;
+        }
+    };
+
+    class VariableAssignment : public Node {
+    public:
+        VariableAssignment(const std::string& name, std::shared_ptr<Node> value) 
+            : name(name), value(value) {}
+        std::string name;
+        std::shared_ptr<Node> value;
+        
+        void print(int indent = 0) const override {
+            std::string spaces(indent, ' ');
+            std::cout << spaces << "VariableAssignment: " << name << " =" << std::endl;
+            value->print(indent + 2);
+        }
+    };
+
     class AstExecutor {
     public:
-        AstExecutor(const CommandRegistry& registry) : registry(registry) {}
+        AstExecutor(CommandRegistry& registry) : registry(registry) {}
         
         void execute(const std::shared_ptr<cmd::Node>& node) {
             std::istream& defaultInput = std::cin;
-            std::ostream& defaultOutput = std::cout;   
-            executeNode(node, defaultInput, defaultOutput);
+            std::ostream& defaultOutput = std::cout;
+            
+            try {
+                #ifdef DEBUG_MODE
+                // Print the node type for debugging
+                if (std::dynamic_pointer_cast<cmd::Command>(node)) {
+                    std::cout << "DEBUG: Node is a Command" << std::endl;
+                } else if (std::dynamic_pointer_cast<cmd::Sequence>(node)) {
+                    std::cout << "DEBUG: Node is a Sequence" << std::endl;
+                } else if (std::dynamic_pointer_cast<cmd::Pipeline>(node)) {
+                    std::cout << "DEBUG: Node is a Pipeline" << std::endl;
+                } else if (std::dynamic_pointer_cast<cmd::Redirection>(node)) {
+                    std::cout << "DEBUG: Node is a Redirection" << std::endl;
+                } else if (std::dynamic_pointer_cast<cmd::VariableAssignment>(node)) {
+                    std::cout << "DEBUG: Node is a VariableAssignment" << std::endl;
+                } else {
+                    std::cout << "DEBUG: Node is of UNKNOWN type" << std::endl;
+                }
+                #endif
+                executeNode(node, defaultInput, defaultOutput);
+            } catch (const std::exception& e) {
+                std::cerr << "Error: " << e.what() << std::endl;
+            }
+        }
+
+        void setVariable(const std::string& name, const std::string& value) {
+            variables[name] = value;
+        }
+        
+        std::optional<std::string> getVariable(const std::string& name) const {
+            auto it = variables.find(name);
+            if (it != variables.end()) {
+                return it->second;
+            }
+            return std::nullopt;
+        }
+
+        std::string expandVariables(const std::string& input) const {
+            std::string result = input;
+            size_t pos = 0;
+            
+            while ((pos = result.find("${", pos)) != std::string::npos) {
+                size_t end = result.find("}", pos);
+                if (end == std::string::npos) break;
+                
+                std::string varName = result.substr(pos + 2, end - pos - 2);
+                auto value = getVariable(varName);
+                
+                if (value) {
+                    result.replace(pos, end - pos + 1, *value);
+                } else {
+                    result.replace(pos, end - pos + 1, "");
+                }
+            }
+            
+            return result;
         }
         
     private:
-        const CommandRegistry& registry;
+        CommandRegistry& registry;
+        std::unordered_map<std::string, std::string> variables; // Store variable values
         
         void executeNode(const std::shared_ptr<cmd::Node>& node, std::istream& input, std::ostream& output) {
             if (auto cmd = std::dynamic_pointer_cast<cmd::Command>(node)) {
@@ -136,13 +241,21 @@ namespace cmd {
             else if (auto redir = std::dynamic_pointer_cast<cmd::Redirection>(node)) {
                 executeRedirection(redir, input, output);
             }
+            else if (auto varAssign = std::dynamic_pointer_cast<cmd::VariableAssignment>(node)) {
+                executeVariableAssignment(varAssign, input, output);
+            }
             else {
                 throw std::runtime_error("Unknown node type");
             }
         }
         
         void executeCommand(const std::shared_ptr<cmd::Command>& cmd, std::istream& input, std::ostream& output) {
-            registry.executeCommand(cmd->name, cmd->args, input, output);
+            std::vector<std::string> expandedArgs;
+            for (const auto& arg : cmd->args) {
+                expandedArgs.push_back(expandVariables(arg));
+            }
+            
+            registry.executeCommand(cmd->name, expandedArgs, input, output);
         }
         
         void executeSequence(const std::shared_ptr<cmd::Sequence>& seq, std::istream& input, std::ostream& output) {
@@ -153,8 +266,6 @@ namespace cmd {
         
         void executePipeline(const std::shared_ptr<cmd::Pipeline>& pipe, std::istream& input, std::ostream& output) {
             std::stringstream buffer;
-            
-            
             for (size_t i = 0; i < pipe->commands.size() - 1; i++) {
                 std::stringstream nextBuffer;
                 auto cmd = pipe->commands[i];
@@ -188,6 +299,22 @@ namespace cmd {
                 }
                 executeNode(redir->command, input, fileOutput);
             }
+        }
+
+        void executeVariableAssignment(const std::shared_ptr<cmd::VariableAssignment>& varAssign, 
+                                       std::istream& input, std::ostream& output) {
+            std::string value;
+            
+            if (auto strLiteral = std::dynamic_pointer_cast<cmd::StringLiteral>(varAssign->value)) {
+                value = strLiteral->value;
+            } else if (auto numLiteral = std::dynamic_pointer_cast<cmd::NumberLiteral>(varAssign->value)) {
+                value = std::to_string(numLiteral->value);
+            } else if (auto varRef = std::dynamic_pointer_cast<cmd::VariableReference>(varAssign->value)) {
+                auto existingValue = getVariable(varRef->name);
+                value = existingValue.value_or("");
+            }
+            
+            setVariable(varAssign->name, value);
         }
     };
 
@@ -243,6 +370,17 @@ namespace cmd {
             if (line.find(pattern) != std::string::npos) {
                 output << line << std::endl;
             }
+        }
+    }
+
+    void printCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
+        if (args.empty()) {
+            std::cerr << "print: missing variable name" << std::endl;
+            return;
+        }
+        
+        for (const auto& arg : args) {
+            output << arg << std::endl;
         }
     }
 }
