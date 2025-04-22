@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(scanner_cxx VERSION 1.0 LANGUAGES CXX)
+project(scanner_cxx VERSION 1.0 LANGUAGES CXX C)
 
 
 set(CMAKE_CXX_STANDARD 20)
@@ -10,6 +10,7 @@ add_library(scanner STATIC
     scanner.cpp
     string_buffer.cpp
     types.cpp
+    linenoise.c
     command.cpp
 )
 
@@ -31,7 +32,7 @@ target_include_directories(scanner PUBLIC
 set_target_properties(scanner PROPERTIES
     VERSION ${PROJECT_VERSION}
     SOVERSION ${PROJECT_VERSION_MAJOR}
-    PUBLIC_HEADER "scanner.hpp;string_buffer.hpp;types.hpp;parser.hpp;command.hpp"
+    PUBLIC_HEADER "scanner.hpp;string_buffer.hpp;types.hpp;parser.hpp;command.hpp;lienoise.h"
 )
 
 install(TARGETS scanner

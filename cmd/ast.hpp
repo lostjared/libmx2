@@ -172,6 +172,8 @@ namespace cmd {
             registry.registerCommand("cd", cmd::cdCommand);
             registry.registerCommand("ls", cmd::listCommand);
             registry.registerCommand("dir", cmd::listCommand);
+            registry.registerCommand("find", cmd::findCommand);
+            registry.registerCommand("sort", cmd::sortCommand);
         }
 
         std::string getPath() const {

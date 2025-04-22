@@ -183,4 +183,52 @@ namespace cmd {
             output << "ls: " << e.what() << std::endl;
         }
     }
+
+    void sortCommand(const std::vector<std::string> &args, std::istream& input, std::ostream& output) {
+        std::vector<std::string> lines;
+        std::string line;
+        
+        if (args.empty()) {
+            while (std::getline(input, line)) {
+                lines.push_back(line);
+            }
+        } else {
+            for (const auto& filename : args) {
+                std::ifstream file(filename);
+                if (!file) {
+                    output << "sort: " << filename << ": No such file" << std::endl;
+                    return;
+                }
+                
+                while (std::getline(file, line)) {
+                    lines.push_back(line);
+                }
+            }
+        }
+        
+        std::sort(lines.begin(), lines.end());
+        
+        for (const auto& sortedLine : lines) {
+            output << sortedLine << std::endl;
+        }
+    }
+
+    void findCommand(const std::vector<std::string> &args, std::istream& input, std::ostream& output) {
+        if (args.size() < 2) {
+            output << "find: expected at least two arguments" << std::endl;
+            return;
+        }
+        const std::string& path = args[0];
+        const std::string& pattern = args[1];
+        
+        try {
+            for (const auto& entry : std::filesystem::recursive_directory_iterator(path)) {
+                if (entry.path().filename().string().find(pattern) != std::string::npos) {
+                    output << entry.path() << std::endl;
+                }
+            }
+        } catch (const std::filesystem::filesystem_error& e) {
+            output << "find: " << e.what() << std::endl;
+        }
+    }
 }
