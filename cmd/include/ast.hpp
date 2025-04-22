@@ -161,6 +161,22 @@ namespace cmd {
         }
     };
 
+    class LogicalAnd : public Node {
+    public:
+        LogicalAnd(std::shared_ptr<Node> left, std::shared_ptr<Node> right) 
+            : left(std::move(left)), right(std::move(right)) {}
+
+        void print(int indent = 0) const override {
+            std::string spaces(indent, ' ');
+            std::cout << spaces << "LogicalAnd:" << std::endl;
+            left->print(indent + 2);
+            right->print(indent + 2);
+        }
+
+        std::shared_ptr<Node> left;
+        std::shared_ptr<Node> right;
+    };
+
     class AstExecutor {
     public:
         AstExecutor() {
@@ -287,6 +303,9 @@ namespace cmd {
             else if (auto varAssign = std::dynamic_pointer_cast<cmd::VariableAssignment>(node)) {
                 executeVariableAssignment(varAssign, input, output);
             }
+            else if (auto logicalAnd = std::dynamic_pointer_cast<cmd::LogicalAnd>(node)) {
+                executeLogicalAnd(logicalAnd, input, output);
+            }
             else {
                 throw std::runtime_error("Unknown node type");
             }
@@ -371,6 +390,13 @@ namespace cmd {
             }
             
             setVariable(varAssign->name, value);
+        }
+
+        void executeLogicalAnd(const std::shared_ptr<cmd::LogicalAnd>& logicalAnd, std::istream& input, std::ostream& output) {
+            executeNode(logicalAnd->left, input, output);
+            if (lastExitStatus == 0) {
+                executeNode(logicalAnd->right, input, output);
+            }
         }
     };
 

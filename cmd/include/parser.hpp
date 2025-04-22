@@ -2,6 +2,8 @@
 #define _PARSER_X_H__P
 
 #include"scanner.hpp"
+#include"ast.hpp"
+#include<memory>
 
 namespace cmd {
     
@@ -102,6 +104,9 @@ namespace cmd {
                     }
                     
                     return std::make_shared<cmd::Pipeline>(commands);
+                } else if (match("&&")) {
+                    auto rightCmd = parsePipeline(); 
+                    return std::make_shared<cmd::LogicalAnd>(leftCmd, rightCmd);
                 }
                 
                 return leftCmd;
