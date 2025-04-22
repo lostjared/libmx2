@@ -30,7 +30,7 @@ target_include_directories(scanner PUBLIC
 set_target_properties(scanner PROPERTIES
     VERSION ${PROJECT_VERSION}
     SOVERSION ${PROJECT_VERSION_MAJOR}
-    PUBLIC_HEADER "scanner.hpp;string_buffer.hpp;types.hpp"
+    PUBLIC_HEADER "scanner.hpp;string_buffer.hpp;types.hpp;parser.hpp;"
 )
 
 install(TARGETS scanner
