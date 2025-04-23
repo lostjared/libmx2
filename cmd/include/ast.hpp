@@ -14,7 +14,7 @@
 #include<filesystem>
 #include<sstream>
 #include"command.hpp"
-
+#include<set>
 namespace cmd {
 
     class Node {
@@ -221,6 +221,7 @@ namespace cmd {
 
                 
 
+
         void execute(std::istream &defaultInput, std::ostream &defaultOutput, const std::shared_ptr<cmd::Node>& node) {
             
             try {
@@ -257,24 +258,31 @@ namespace cmd {
             return std::nullopt;
         }
 
-        std::string expandVariables(const std::string& input) const {
+        std::string expandVariables(const std::string& input, 
+                                    std::set<std::string> expandingVars = {}) const {
             std::string result = input;
             size_t pos = 0;
-            
             while ((pos = result.find("${", pos)) != std::string::npos) {
                 size_t end = result.find("}", pos);
                 if (end == std::string::npos) break;
-                
                 std::string varName = result.substr(pos + 2, end - pos - 2);
+                if (expandingVars.find(varName) != expandingVars.end()) {
+                    result.replace(pos, end - pos + 1, "[circular reference]");
+                    pos += 20;
+                    throw std::runtime_error("Circular reference detected for variable: " + varName); 
+                    continue;
+                }   
                 auto value = getVariable(varName);
-                
                 if (value) {
-                    result.replace(pos, end - pos + 1, *value);
+                    std::set<std::string> newExpandingVars = expandingVars;
+                    newExpandingVars.insert(varName);
+                    std::string expandedValue = expandVariables(*value, newExpandingVars);
+                    result.replace(pos, end - pos + 1, expandedValue);
+                    pos += expandedValue.length();
                 } else {
                     result.replace(pos, end - pos + 1, "");
                 }
             }
-            
             return result;
         }
 
