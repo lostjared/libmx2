@@ -757,6 +757,7 @@ namespace console {
 
     void GLConsole::event(gl::GLWindow *win, SDL_Event &e) {
         if(e.type == SDL_KEYDOWN) {
+            console.needsRedraw = true;
             if(e.key.keysym.sym == SDLK_ESCAPE) {
                 win->quit();
             } else if(e.key.keysym.sym == SDLK_RETURN) {
