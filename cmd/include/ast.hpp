@@ -217,10 +217,10 @@ namespace cmd {
         void addCommand(const std::string& name, CommandFunction func) {
             registry.registerCommand(name, func);
         }
-        
-        void execute(const std::shared_ptr<cmd::Node>& node) {
-            std::istream& defaultInput = std::cin;
-            std::ostream& defaultOutput = std::cout;
+
+                
+
+        void execute(std::istream &defaultInput, std::ostream &defaultOutput, const std::shared_ptr<cmd::Node>& node) {
             
             try {
                 #ifdef DEBUG_MODE
@@ -240,7 +240,7 @@ namespace cmd {
                 #endif
                 executeNode(node, defaultInput, defaultOutput);
             } catch (const std::exception& e) {
-                std::cerr << "Error: " << e.what() << std::endl;
+                defaultOutput << "Error: " << e.what() << std::endl;
             }
         }
 
@@ -320,7 +320,7 @@ namespace cmd {
             lastExitStatus = registry.executeCommand(cmd->name, expandedArgs, input, output);
             
             if (lastExitStatus != 0) {
-                std::cerr << cmd->name << ": command failed with exit status " << lastExitStatus << std::endl;
+                output << cmd->name << ": command failed with exit status " << lastExitStatus << std::endl;
             }
         }
         
@@ -339,7 +339,7 @@ namespace cmd {
                 lastExitStatus = registry.executeCommand(cmd->name, cmd->args, *currentInput, nextBuffer);
                 
                 if (lastExitStatus != 0) {
-                    std::cerr << cmd->name << ": command failed with exit status " << lastExitStatus << std::endl;
+                    output << cmd->name << ": command failed with exit status " << lastExitStatus << std::endl;
                 }
                 
                 buffer = std::move(nextBuffer);
@@ -348,7 +348,7 @@ namespace cmd {
             lastExitStatus = registry.executeCommand(lastCmd->name, lastCmd->args, buffer, output);
             
             if (lastExitStatus != 0) {
-                std::cerr << lastCmd->name << ": command failed with exit status " << lastExitStatus << std::endl;
+                output << lastCmd->name << ": command failed with exit status " << lastExitStatus << std::endl;
             }
         }
         

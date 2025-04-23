@@ -5,8 +5,8 @@
 
 namespace cmd {
     int exitCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
-        std::exit(0); // This will terminate the program
-        return 0;     // Never reached, but needed for compilation
+        std::exit(0); 
+        return 0;     
     }
     
     int echoCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
@@ -17,7 +17,7 @@ namespace cmd {
             }
         }
         output << std::endl;
-        return 0; // Success
+        return 0; 
     }
 
     int catCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
@@ -26,13 +26,13 @@ namespace cmd {
             while (std::getline(input, line)) {
                 output << line << std::endl;
             }
-            return 0; // Success
+            return 0; 
         } else {
             bool success = true;
             for (const auto& filename : args) {
                 std::ifstream file(filename);
                 if (!file) {
-                    std::cerr << "cat: " << filename << ": No such file" << std::endl;
+                    output << "cat: " << filename << ": No such file" << std::endl;
                     success = false;
                     continue;
                 }
@@ -41,13 +41,13 @@ namespace cmd {
                     output << line << std::endl;
                 }
             }
-            return success ? 0 : 1; // Return 0 if all files processed, 1 if any failed
+            return success ? 0 : 1; 
         }
     }
 
     int grepCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
         if (args.empty()) {
-            std::cerr << "grep: missing pattern" << std::endl;
+            output << "grep: missing pattern" << std::endl;
             return 1;
         }
         
@@ -60,7 +60,7 @@ namespace cmd {
             patternIndex = 1;
             
             if (args.size() <= patternIndex) {
-                std::cerr << "grep: missing pattern after " << args[0] << std::endl;
+                output << "grep: missing pattern after " << args[0] << std::endl;
                 return 1;
             }
         }
@@ -81,7 +81,7 @@ namespace cmd {
                     for (const auto& fileName : fileNames) {
                         std::ifstream file(fileName);
                         if (!file) {
-                            std::cerr << "grep: " << fileName << ": No such file" << std::endl;
+                            output << "grep: " << fileName << ": No such file" << std::endl;
                             success = false;
                             continue;
                         }
@@ -100,7 +100,7 @@ namespace cmd {
                     }
                 }
             } catch (const std::regex_error& e) {
-                std::cerr << "grep: invalid regex pattern: " << pattern << " - " << e.what() << std::endl;
+                output << "grep: invalid regex pattern: " << pattern << " - " << e.what() << std::endl;
                 return 1;
             }
         } else {
@@ -109,7 +109,7 @@ namespace cmd {
                 for (const auto& fileName : fileNames) {
                     std::ifstream file(fileName);
                     if (!file) {
-                        std::cerr << "grep: " << fileName << ": No such file" << std::endl;
+                        output << "grep: " << fileName << ": No such file" << std::endl;
                         success = false;
                         continue;
                     }
@@ -134,7 +134,7 @@ namespace cmd {
 
     int printCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
         if (args.empty()) {
-            std::cerr << "print: missing variable name" << std::endl;
+            output << "print: missing variable name" << std::endl;
             return 1;
         }
 
@@ -155,7 +155,7 @@ namespace cmd {
                         output << std::stoi(arg) << std::endl;
                         output_integer = false;
                     } catch (const std::exception& e) {
-                        std::cerr << "print: can't convert '" << arg << "' to integer" << std::endl;
+                        output << "print: can't convert '" << arg << "' to integer" << std::endl;
                         success = false;
                     }
                 } else {

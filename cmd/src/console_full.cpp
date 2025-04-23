@@ -1,6 +1,10 @@
 #include"mx.hpp"
 #include"argz.hpp"
-
+#include"ast.hpp"
+#include"parser.hpp"
+#include"scanner.hpp"
+#include"types.hpp"
+#include"string_buffer.hpp"
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 #include <GLES3/gl3.h>
@@ -24,10 +28,24 @@ public:
     Game() = default;
     virtual ~Game() override {}
 
+    cmd::AstExecutor executor{};
+    std::ostream *output;
+
     void load(gl::GLWindow *win) override {
         font.loadFont(win->util.getFilePath("data/font.ttf"), 36);
         win->console.printf("Console Skeleton Example\nLostSideDead Software\nhttps://lostsidedead.biz\n");
         win->console.setPrompt("mx> ");
+        output = &win->console.bufferData();
+        win->console.setInputCallback([&](const std::string &text) -> int {
+            std::cout << "Executing: " << text << std::endl;
+            std::stringstream input_stream(text);
+            scan::TString string_buffer(text);
+            scan::Scanner scanner(string_buffer);
+            cmd::Parser parser(scanner);
+            auto ast = parser.parse();
+            executor.execute(input_stream, *output, ast);
+            return 0;
+        });
 #if defined(__EMSCRIPTEN__) 
     const char *vSource = R"(#version 300 es
             precision mediump float;
@@ -117,40 +135,6 @@ public:
         program.setUniform("alpha", 1.0f);
         logo.initSize(win->w, win->h);
         logo.loadTexture(&program, win->util.getFilePath("data/crystal_red.png"), 0.0f, 0.0f, win->w, win->h);
-        win->console.setCallback(win, [&](gl::GLWindow *window, const std::vector<std::string> &args) -> bool {
-            if (args.size() == 1 && args[0] == "exit") {
-                window->quit();
-                return true;
-            } else if(args.size() == 1 && args[0] == "author") {
-                window->console.printf("Coded by Jared Bruni\nLostSideDead Software\n");
-                window->console.printf("https://lostsidedead.biz\n");
-                return true;
-            } else if(args.size() == 2 && args[0] == "stretch" && args[1] == "on") {
-                window->console.setStretch(true);
-                window->console.printf("Stretching is now ON\n");
-                return true;
-            } else if(args.size() == 2 && args[0] == "stretch" && args[1] == "off") {
-                window->console.setStretch(false);
-                window->console.printf("Stretching is now OFF\n");
-                return true;
-            } else if(args.size() == 3 && args[0] == "size") {
-                int ww = std::stoi(args[1]);
-                int hh = std::stoi(args[2]);
-                window->console.resize(window, ww, hh);
-                window->console.printf("Resizing to %d x %d\n", ww, hh);
-            } else if(args.size() == 2 && args[0] == "stretch_height") {
-                if(args[1] == "1") {
-                    window->console.setStretchHeight(1);
-                    window->console.printf("Stretch height set to 1\n");
-                } else if(args[1] == "0") {
-                    window->console.setStretchHeight(0);
-                    window->console.printf("Stretch height set to 0\n");
-                }
-                return true;
-            }
-            return false;
-        });
-    
     }
 
     void draw(gl::GLWindow *win) override {

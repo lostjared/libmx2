@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
                     scan::Scanner scanner(string_buffer);
                     cmd::Parser parser(scanner);
                     auto ast = parser.parse();
-                    executor.execute(ast);
+                    executor.execute(std::cin, std::cout, ast);
                 }
                 
             } catch (const scan::ScanExcept &e) {

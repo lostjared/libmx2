@@ -3,6 +3,7 @@ project(scanner_cxx VERSION 1.0 LANGUAGES CXX C)
 
 
 option(CMD "Build the command-line executable" OFF)
+option(CONSOLE "Build the MX2 console app" OFF)
 
 find_library(Readline NAMES readline)
 find_path(Readline_INCLUDE_DIRS NAMES readline/readline.h)
@@ -17,6 +18,8 @@ add_library(scanner STATIC
     src/types.cpp
     src/command.cpp
 )
+
+include_directories(${PROJECT_SOURCE_DIR}/include)
 
 if(CMD)
     add_executable(cmd-cli
@@ -36,9 +39,39 @@ if(CMD)
     )
 endif()
 
+if(CONSOLE)
+    find_package(SDL2 REQUIRED)
+    find_package(SDL2_ttf REQUIRED)
+    find_package(SDL2_mixer REQUIRED)
+    find_package(libmx2 REQUIRED)
+    add_executable(cmd-console
+        src/console_full.cpp
+    )
+    target_include_directories(cmd-console PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+	    ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${libmx2_INCLUDE_DIRS}
+        ${SDL2_INCLUDE_DIRS} 
+        ${SDL2_TTF_INCLUDE_DIRS}
+        ${SDL2_MIXER_INCLUDE_DIRS}
+        /usr/include
+        /usr/local/include
+        /opt/homebrew/include
+        ${CMAKE_PREFIX_PATH}
+    )
+    target_link_libraries(cmd-console PRIVATE
+        scanner
+        libmx2::mx 
+        ${SDL2_LIBRARIES} 
+        ${SDL2_TTF_LIBRARIES} 
+        ${SDL2_MIXER_LIBRARIES}    
+    )
+endif()
+
 target_include_directories(scanner PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+
 )
 
 set_target_properties(scanner PROPERTIES
