@@ -390,6 +390,7 @@ namespace cmd {
             }
             
             setVariable(varAssign->name, value);
+            output << varAssign->name << " = " << value << "\n";
         }
 
         void executeLogicalAnd(const std::shared_ptr<cmd::LogicalAnd>& logicalAnd, std::istream& input, std::ostream& output) {

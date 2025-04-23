@@ -30,6 +30,7 @@ public:
 
     cmd::AstExecutor executor{};
     std::ostream *output;
+    bool cmd_echo = false;
 
     void load(gl::GLWindow *win) override {
         font.loadFont(win->util.getFilePath("data/font.ttf"), 36);
@@ -39,6 +40,18 @@ public:
         win->console.setInputCallback([&](const std::string &text) -> int {
             try {
                     std::cout << "Executing: " << text << std::endl;
+                    if(text == "@echo_on") {
+                        cmd_echo = true;
+                        *output << "Echoing commands on." << "\n";
+                        return 0;
+                    } else if(text == "@echo_off") {
+                        cmd_echo = false;
+                        *output << "Echoing commands off." << "\n";
+                        return 0;
+                    }
+                    if(cmd_echo) {
+                        *output << "$ " << text << "\n";
+                    }
                     std::stringstream input_stream(text);
                     scan::TString string_buffer(text);
                     scan::Scanner scanner(string_buffer);
