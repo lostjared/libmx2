@@ -387,7 +387,7 @@ namespace console {
         SDL_FillRect(surface, &separatorRect, SDL_MapRGBA(surface->format, 75, 75, 75, 220));
         
         int maxVisibleLines = (promptY - console_rect.y) / lineHeight;
-        maxVisibleLines -= 2; 
+        maxVisibleLines -= 1; 
         if (maxVisibleLines < 1) maxVisibleLines = 1;  
     
         size_t startLine = 0;
