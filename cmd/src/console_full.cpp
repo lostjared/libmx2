@@ -37,13 +37,25 @@ public:
         win->console.setPrompt("mx> ");
         output = &win->console.bufferData();
         win->console.setInputCallback([&](const std::string &text) -> int {
-            std::cout << "Executing: " << text << std::endl;
-            std::stringstream input_stream(text);
-            scan::TString string_buffer(text);
-            scan::Scanner scanner(string_buffer);
-            cmd::Parser parser(scanner);
-            auto ast = parser.parse();
-            executor.execute(input_stream, *output, ast);
+            try {
+                    std::cout << "Executing: " << text << std::endl;
+                    std::stringstream input_stream(text);
+                    scan::TString string_buffer(text);
+                    scan::Scanner scanner(string_buffer);
+                    cmd::Parser parser(scanner);
+                    auto ast = parser.parse();
+                    executor.execute(input_stream, *output, ast);
+                    return 0;
+            } catch(const scan::ScanExcept &e) {
+                *output << "Scan error: " << e.why() << std::endl;
+                return 1;
+            } catch(const std::exception &e) { 
+                *output << "Error: " << e.what() << std::endl;
+                return 1;
+            } catch(...) {
+                *output << "Unknown error occurred." << std::endl;
+                return 1;
+            }
             return 0;
         });
 #if defined(__EMSCRIPTEN__) 
