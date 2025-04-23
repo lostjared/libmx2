@@ -109,7 +109,8 @@ namespace console {
         data.str("");
         data << currentText;
         cursorPos = data.str().length();
-        needsReflow = true;  // Mark for reflow
+        needsReflow = true; 
+        needsRedraw = true;
         scrollToBottom();
     }
 
@@ -120,6 +121,7 @@ namespace console {
     }
 
     void Console::keypress(char c) {
+        needsRedraw = true;
         try {
             if (c == 8) {
                 if (!inputBuffer.empty() && inputCursorPos > 0) {
@@ -334,25 +336,33 @@ namespace console {
         if (fadeState != FADE_NONE) {
             Uint32 currentTime = SDL_GetTicks();
             Uint32 elapsedTime = currentTime - fadeStartTime;
-            
+
             if (fadeState == FADE_IN) {
                 if (elapsedTime >= fadeDuration) {
-                    alpha = 188; 
+                    alpha = 188;
                     fadeState = FADE_NONE;
                 } else {
-                    alpha = (unsigned char)(1 + (188 - 1) * elapsedTime / fadeDuration);
+                    float t = (float)elapsedTime / (float)fadeDuration;
+                    if (t < 0.0f) t = 0.0f;
+                    if (t > 1.0f) t = 1.0f;
+                    alpha = (unsigned char)(1 + (188 - 1) * t);
                 }
             } else if (fadeState == FADE_OUT) {
                 if (elapsedTime >= fadeDuration) {
                     alpha = 0;
                     fadeState = FADE_NONE;
                 } else {
-                    alpha = (unsigned char)(188 * (1.0f - (float)elapsedTime / fadeDuration));
+                    float t = (float)elapsedTime / (float)fadeDuration;
+                    if (t < 0.0f) t = 0.0f;
+                    if (t > 1.0f) t = 1.0f;
+                    alpha = (unsigned char)(188 * (1.0f - t));
                 }
-            }
+            } 
+            needsRedraw = true;
         }
-        
+    
         if (!surface) return nullptr;
+        if(!needsRedraw && fadeState == FADE_NONE && surface) return surface;
 
         SDL_FillRect(surface, 0, SDL_MapRGBA(surface->format, 0, 0, 0, alpha));
 
@@ -436,7 +446,8 @@ namespace console {
             SDL_Rect cursorRect = {cursorXPos, promptY, 2, c_chars.characters['A']->h};
             SDL_FillRect(surface, &cursorRect, SDL_MapRGBA(surface->format, 255, 255, 255, 255));
         }
-        
+        needsRedraw = false;
+        flipSurface(surface);
         return surface;
     }
 
@@ -516,14 +527,7 @@ namespace console {
         historyIndex = -1;
         tempBuffer.clear();
 
-        if(callbackEnter != nullptr) {
-            if (callbackEnter(cmd_text) == 0) {
-                needsReflow = true;
-                return;
-            }
-            needsReflow = true;
-        }
-
+      
         std::vector<std::string> tokens = tokenize(cmd_text);
         
         if (tokens.empty()) {
@@ -571,6 +575,15 @@ namespace console {
             this->print("author\n");
         }
         else {
+
+            if(callbackEnter != nullptr) {
+                if (callbackEnter(cmd_text) == 0) {
+                    needsReflow = true;
+                    return;
+                }
+                needsReflow = true;
+            }
+    
             if (callbackSet) {
                 if(!callback(this->window, tokens)) {
                     this->print("- Unknown command: " + tokens[0] + "\n");
@@ -706,24 +719,32 @@ namespace console {
 
     void GLConsole::draw(gl::GLWindow *win) {
         Uint32 currentTime = SDL_GetTicks();
+        
+        // Always redraw if fading is in progress
+        if (console.fadeState != FADE_NONE) {
+            console.needsRedraw = true;
+        }
+        
+        // Cursor blink logic
         if (currentTime - console.cursorBlinkTime > 500) {
             console.cursorVisible = !console.cursorVisible;
             console.cursorBlinkTime = currentTime;
+            console.needsRedraw = true; 
         }
-        
-        SDL_Surface *surface = console.drawText();
-        if (surface) {
-            shader->useProgram();
-            shader->setUniform("textTexture", 0);
-            flipSurface(surface);
-            updateTexture(texture, surface);
-            
-            int consoleWidth = console.getWidth();
-            int consoleHeight = console.getHeight();
-            sprite->draw(texture, 25.0f, 25.0f, consoleWidth, consoleHeight);
-        } else {
-            std::cerr << "Failed to draw text." << std::endl;
+
+        SDL_Surface *surface = nullptr;
+        if (console.needsRedraw) {
+            surface = console.drawText();
+            if (surface) {
+                shader->useProgram();
+                shader->setUniform("textTexture", 0);
+                updateTexture(texture, surface);
+            }
         }
+
+        int consoleWidth = console.getWidth();
+        int consoleHeight = console.getHeight();
+        sprite->draw(texture, 25.0f, 25.0f, consoleWidth, consoleHeight);
     }
 
     void GLConsole::print(const std::string &data) {
@@ -780,6 +801,8 @@ namespace console {
         
         if(!font.empty()) 
             load(win, rc, font, font_size, color);
+
+        console.needsRedraw = true;
     }
 
     void GLConsole::setCallback(gl::GLWindow *window, std::function<bool(gl::GLWindow *win, const std::vector<std::string> &)> callback) {

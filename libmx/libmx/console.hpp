@@ -36,6 +36,11 @@ namespace console {
         std::unique_ptr<mx::Font> font;
     };
 
+    enum FadeState { 
+        FADE_NONE, 
+        FADE_IN, 
+        FADE_OUT 
+    };
 
     class Console {
     public:
@@ -78,6 +83,8 @@ namespace console {
         std::ostringstream &bufferData();
         void setInputCallback(std::function<int(const std::string &)> callback) { callbackEnter = callback; }
         std::string inputBuffer;
+        bool needsRedraw = true;
+        FadeState fadeState = FADE_NONE;
     protected:
         ConsoleChars c_chars;
         std::string font;
@@ -104,14 +111,8 @@ namespace console {
         int historyIndex = -1;                      
         std::string tempBuffer;   
         unsigned char alpha = 188;                  
-        enum FadeState { 
-            FADE_NONE, 
-            FADE_IN, 
-            FADE_OUT 
-        };
-        FadeState fadeState = FADE_NONE;
         Uint32 fadeStartTime = 0;
-        unsigned int fadeDuration = 300; 
+        unsigned int fadeDuration = 500; 
         struct TextLine {
             std::string text;       
             size_t startPos;        
