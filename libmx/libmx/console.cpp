@@ -109,6 +109,7 @@ namespace console {
         data.str("");
         data << currentText;
         cursorPos = data.str().length();
+        needsReflow = true;  // Mark for reflow
         scrollToBottom();
     }
 
@@ -250,141 +251,93 @@ namespace console {
     }
 
     void Console::checkScroll() {
-        if (!surface || c_chars.characters.empty()) {
+        if (!surface || c_chars.characters.empty() || c_chars.characters.find('A') == c_chars.characters.end()) {
             return;
         }
-        
-        int lineHeight = c_chars.characters['A']->h;  
-        int bottomPadding = c_chars.characters['A']->h + 10; 
-        int promptHeight = lineHeight + bottomPadding;
-        int textAreaHeight = console_rect.h - promptHeight - 5;
-        int maxLines = textAreaHeight / lineHeight;
-        std::string text = data.str();
-        int lineCount = 1;
-        int currentLineWidth = 0;
-        int charWidth = c_chars.characters['A']->w;
-        int consoleWidth = console_rect.w - 50;  
-        
-        for (size_t i = 0; i < text.length(); ++i) {
-            char c = text[i];
-            if (c == '\n') {
-                lineCount++;
-                currentLineWidth = 0;
-            } else {
-                int width = 0;
-                if (c == '\t') {
-                    width = charWidth * 4;
-                } else {
-                    auto it = c_chars.characters.find(c);
-                    if (it != c_chars.characters.end()) {
-                        width = it->second->w;
-                    } else {
-                        width = c_chars.characters['A']->w;
-                    }
-                }
-                
-                currentLineWidth += width;
-                if (currentLineWidth > consoleWidth) {
-                    lineCount++;
-                    currentLineWidth = width; 
-                }
-            }
+        if (needsReflow) {
+            calculateLines();
         }
+        int charHeight = c_chars.characters['A']->h;
+        int bottomPadding = charHeight + 10;
+        int promptY = console_rect.y + console_rect.h - charHeight - bottomPadding;
+        int maxVisibleLines = (promptY - console_rect.y) / charHeight;
         
-        if (lineCount > maxLines) {
-            bool cursorAtEnd = (cursorPos == text.length());
-            int linesToRemove = lineCount - maxLines;
-            size_t pos = 0;
-            int linesFound = 0;
-            
-            while (pos < text.length() && linesFound < linesToRemove) {
-                size_t nextPos = pos;
-                bool foundWrap = false;
-                
-                
-                size_t nextNewline = text.find('\n', pos);
-                if (nextNewline != std::string::npos) {
-                    nextPos = nextNewline + 1;
-                    foundWrap = true;
-                }
-                
-                
-                if (!foundWrap) {
-                    currentLineWidth = 0;
-                    for (size_t i = pos; i < text.length(); ++i) {
-                        char c = text[i];
-                        int width = 0;
-                        if (c == '\t') {
-                            width = charWidth * 4;
-                        } else {
-                            auto it = c_chars.characters.find(c);
-                            if (it != c_chars.characters.end()) {
-                                width = it->second->w;
-                            } else {
-                                width = c_chars.characters['A']->w;
-                            }
-                        }
-                        
-                        currentLineWidth += width;
-                        if (currentLineWidth > consoleWidth) {
-                            nextPos = i;
-                            foundWrap = true;
-                            break;
-                        }
-                    }
-                }
-                
-                if (foundWrap) {
-                    pos = nextPos;
-                    linesFound++;
-                } else {
-                
-                    break;
-                }
+        while (static_cast<int>(lines.size()) > maxVisibleLines && !lines.empty()) {
+            size_t removeLen = lines[0].length;
+            std::string buffer = data.str();
+            if (removeLen < buffer.length() && buffer[removeLen] == '\n') {
+                removeLen++;
             }
-            
-            
-            if (pos < text.length()) {
-            
-                size_t charsRemoved = pos;
-                text = text.substr(pos);
-                data.str(text);
-            
-                if (cursorAtEnd) {
-                    cursorPos = text.length();
-                } else {
-                    if (cursorPos > charsRemoved) {
-                        cursorPos -= charsRemoved;
-                    } else {
-                        cursorPos = 0;
-                    }
-                }
-            
-                if (stopPosition > charsRemoved) {
-                    stopPosition -= charsRemoved;
-                } else {
-                    stopPosition = 0;
-                }
-            } else {
-                data.str("");
-                cursorPos = 0;
-                stopPosition = 0;  
-            }
+            if (removeLen > buffer.length()) removeLen = buffer.length();
+            std::string newBuffer = buffer.substr(removeLen);
+            data.str("");
+            data << newBuffer;
+            lines.clear();
+            calculateLines();
         }
         std::string finalText = data.str();
         if (cursorPos > finalText.length()) {
             cursorPos = finalText.length();
         }
     }
-    SDL_Surface *Console::drawText() {
+
+    void Console::calculateLines() {
+        if (!surface || c_chars.characters.empty() || c_chars.characters.find('A') == c_chars.characters.end()) {
+            return;
+        }
         
+        lines.clear();
+        std::string text = data.str();
+        int maxWidth = console_rect.w - 50;
+        
+        size_t lineStart = 0;
+        size_t pos = 0;
+        int currentLineWidth = 0;
+        
+        while (pos < text.length()) {
+            char c = text[pos];
+            if (c == '\n') {
+                lines.push_back({text.substr(lineStart, pos - lineStart), lineStart, pos - lineStart});
+                lineStart = pos + 1;
+                currentLineWidth = 0;
+                pos++;
+                continue;
+            }
+
+            int width = (c == '\t') ? c_chars.characters['A']->w * 4 : c_chars.characters['A']->w;
+            auto it = c_chars.characters.find(c);
+            if (it != c_chars.characters.end()) {
+                width = (c == '\t') ? c_chars.characters['A']->w * 4 : it->second->w;
+            }
+            
+
+            currentLineWidth += width;
+            if (currentLineWidth > maxWidth) {
+
+                lines.push_back({text.substr(lineStart, pos - lineStart), lineStart, pos - lineStart});
+                lineStart = pos;
+                currentLineWidth = width;
+            }
+            
+            pos++;
+        }
+        
+
+        if (lineStart < text.length()) {
+            lines.push_back({text.substr(lineStart), lineStart, text.length() - lineStart});
+        }
+        
+        needsReflow = false;
+    }
+
+    SDL_Surface *Console::drawText() {
         if (fadeState != FADE_NONE) {
             Uint32 currentTime = SDL_GetTicks();
             Uint32 elapsedTime = currentTime - fadeStartTime;
             
             if (fadeState == FADE_IN) {
                 if (elapsedTime >= fadeDuration) {
-                    alpha = 188; // Final alpha value
+                    alpha = 188; 
                     fadeState = FADE_NONE;
                 } else {
                     alpha = (unsigned char)(1 + (188 - 1) * elapsedTime / fadeDuration);
@@ -407,9 +360,14 @@ namespace console {
             return surface;
         }
         
+        if (needsReflow) {
+            calculateLines();
+        }
+        
         int lineHeight = c_chars.characters['A']->h;
-        int bottomPadding = c_chars.characters['A']->h + 10; 
+        int bottomPadding = lineHeight + 10;
         int promptY = console_rect.y + console_rect.h - lineHeight - bottomPadding;
+        
         SDL_Rect separatorRect = {
             console_rect.x, 
             promptY - 5, 
@@ -417,41 +375,39 @@ namespace console {
             2
         };
         SDL_FillRect(surface, &separatorRect, SDL_MapRGBA(surface->format, 75, 75, 75, 220));
-        std::string outputText = data.str();
-        int x = console_rect.x;
-        int y = console_rect.y;
-        int maxWidth = console_rect.w - 50;
         
-        for (size_t i = 0; i < outputText.length(); ++i) {
-            if (y > promptY - lineHeight) break; 
+        int maxVisibleLines = (promptY - console_rect.y) / lineHeight;
+        maxVisibleLines -= 2; 
+        if (maxVisibleLines < 1) maxVisibleLines = 1;  
+    
+        size_t startLine = 0;
+        if (static_cast<int>(lines.size()) > maxVisibleLines) {
+            startLine = lines.size() - maxVisibleLines;
+        }
+        int y = console_rect.y;
+        for (size_t i = startLine; i < lines.size(); ++i) {
+            const auto& line = lines[i];
+            if (y >= promptY) break; 
             
-            char c = outputText[i];
-            if (c == '\n') {
-                x = console_rect.x;
-                y += lineHeight;
-                continue;
+            int x = console_rect.x;
+            for (char c : line.text) {
+                auto it = c_chars.characters.find(c);
+                if (it != c_chars.characters.end()) {
+                    SDL_Surface *char_surface = it->second;
+                    SDL_Rect dest_rect = {x, y, char_surface->w, char_surface->h};
+                    SDL_BlitSurface(char_surface, nullptr, surface, &dest_rect);
+                    x += char_surface->w;
+                } else if (c == '\t') {
+                    x += c_chars.characters['A']->w * 4;
+                }
             }
             
-            if (x + c_chars.characters['A']->w > console_rect.x + maxWidth) {
-                x = console_rect.x;
-                y += lineHeight;
-                if (y > promptY - lineHeight) break; 
-            }
-            
-            auto it = c_chars.characters.find(c);
-            if (it != c_chars.characters.end()) {
-                SDL_Surface *char_surface = it->second;
-                SDL_Rect dest_rect = {x, y, char_surface->w, char_surface->h};
-                SDL_BlitSurface(char_surface, nullptr, surface, &dest_rect);
-                x += char_surface->w;
-            } else if (c == '\t') {
-                x += c_chars.characters['A']->w * 4;
-            }
+            y += lineHeight;
         }
         
-        x = console_rect.x;
-        std::string promptAndInput = promptText + inputBuffer;
         
+        int x = console_rect.x;
+        std::string promptAndInput = promptText + inputBuffer;
         int cursorXPos = console_rect.x;
         
         for (size_t i = 0; i < promptAndInput.length(); ++i) {
@@ -497,11 +453,7 @@ namespace console {
     void Console::scrollToBottom() {
         cursorPos = data.str().length();
         updateCursorPosition();
-        checkScroll();
-        std::string finalText = data.str();
-        if (cursorPos > finalText.length()) {
-            cursorPos = finalText.length();
-        }
+        checkScroll();  
         inputCursorPos = inputBuffer.length();
     }
 
@@ -541,6 +493,16 @@ namespace console {
         }
     }
 
+    std::istream &GLConsole::inputData() {
+        inputStream.str(console.inputBuffer);
+        inputStream.clear(); 
+        return inputStream;
+    }
+
+    std::ostringstream &Console::bufferData() {
+        return data;
+    }
+
     void Console::procCmd(const std::string &cmd_text) {
         if (!cmd_text.empty()) {
             if (commandHistory.empty() || commandHistory.back() != cmd_text) {
@@ -553,6 +515,15 @@ namespace console {
         }
         historyIndex = -1;
         tempBuffer.clear();
+
+        if(callbackEnter != nullptr) {
+            if (callbackEnter(cmd_text) == 0) {
+                needsReflow = true;
+                return;
+            }
+            needsReflow = true;
+        }
+
         std::vector<std::string> tokens = tokenize(cmd_text);
         
         if (tokens.empty()) {
@@ -603,7 +574,9 @@ namespace console {
             if (callbackSet) {
                 if(!callback(this->window, tokens)) {
                     this->print("- Unknown command: " + tokens[0] + "\n");
+                    needsReflow = true;
                 }
+                needsReflow = true;
             } else {
                 this->print("- Unknown command: " + tokens[0] + "\n");
             }

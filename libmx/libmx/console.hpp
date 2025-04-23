@@ -36,6 +36,7 @@ namespace console {
         std::unique_ptr<mx::Font> font;
     };
 
+
     class Console {
     public:
         Console() = default;
@@ -74,6 +75,9 @@ namespace console {
         void reload();
         bool loaded() const { return c_chars.characters.size() > 0; }
         void setTextAttrib(const int size, const SDL_Color &col);
+        std::ostringstream &bufferData();
+        void setInputCallback(std::function<int(const std::string &)> callback) { callbackEnter = callback; }
+        std::string inputBuffer;
     protected:
         ConsoleChars c_chars;
         std::string font;
@@ -89,12 +93,12 @@ namespace console {
         size_t inputCursorPos = 0;
         int cursorX = 0;        
         int cursorY = 0;        
-        std::string inputBuffer;
-        bool showInput = true;  
+         bool showInput = true;  
         void checkScroll();
         void updateCursorPosition();
         void checkForLineWrap();
         std::function<bool(gl::GLWindow *win, const std::vector<std::string> &)> callback = nullptr;     
+        std::function<int(const std::string &)> callbackEnter = nullptr;
         bool callbackSet = false;
         std::vector<std::string> commandHistory;    
         int historyIndex = -1;                      
@@ -108,6 +112,14 @@ namespace console {
         FadeState fadeState = FADE_NONE;
         Uint32 fadeStartTime = 0;
         unsigned int fadeDuration = 300; 
+        struct TextLine {
+            std::string text;       
+            size_t startPos;        
+            size_t length;          
+        };
+        std::vector<TextLine> lines;  
+        bool needsReflow = true;      
+        void calculateLines();        
     };
 
     class GLConsole {
@@ -123,6 +135,7 @@ namespace console {
         void resize(gl::GLWindow *win, int w, int h);
         void setPrompt(const std::string &prompt);
         void setCallback(gl::GLWindow *window, std::function<bool(gl::GLWindow *win, const std::vector<std::string> &)> callback);
+        void setInputCallback(std::function<int(const std::string &)> callback) { console.setInputCallback(callback); }
         void show();
         void hide();
         void setStretch(bool stretch) { stretch_value = stretch; }
@@ -138,7 +151,10 @@ namespace console {
             print(textval.str());
             textval.str("");
         }
-    
+
+        std::ostream &bufferData() { return console.bufferData(); }
+        std::istream &inputData();
+
         template<typename T, typename... Args>
         void printf(const char *s, T value, Args... args) {
             while(s && *s) {
@@ -154,7 +170,7 @@ namespace console {
         bool isVisible() const { return console.isVisible(); }
         bool isFading() const { return console.isFading(); }
         void setStretchHeight(int value);
-        protected:
+    protected:
         Console console;
         bool stretch_value;
         SDL_Rect rc;
@@ -167,7 +183,11 @@ namespace console {
         std::string font;
         int font_size = 16;
         SDL_Color color = {255, 255, 255, 255};
+    private:
+        std::istringstream inputStream;
     };
+
+    
 
 }
 
