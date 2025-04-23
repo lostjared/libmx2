@@ -12,6 +12,7 @@
 #include<fstream>
 #include<iostream>
 #include<filesystem>
+#include<sstream>
 #include"command.hpp"
 
 namespace cmd {

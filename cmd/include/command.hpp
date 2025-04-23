@@ -4,6 +4,7 @@
 #include<iostream>
 #include<vector>
 #include<string>
+#include<sstream>
 
 namespace cmd {
     int exitCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);

@@ -1,8 +1,9 @@
 #include"command.hpp"
 #include<fstream>
-#include <filesystem>
-#include <regex>
-
+#include<filesystem>
+#include<regex>
+#include<sstream>
+#include<iomanip>
 namespace cmd {
     int exitCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
         std::exit(0); 

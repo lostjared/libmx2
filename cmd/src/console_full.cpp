@@ -222,9 +222,10 @@ int main(int argc, char **argv) {
         MainWindow main_window("/", 1920, 1080);
         main_w = &main_window;
         emscripten_set_main_loop(eventProc, 0, 1);
-    } catch(const mx::Excpetion &e) {
-        SDL_Log("mx: Exception: %s\n", e.text().c_str());
-        SDL_LogFlush();
+    } catch(const mx::Exception &e) {
+        mx::system_err << "mx: Exception: " << e.text() << "\n";
+        mx::system_err.flush();
+        return EXIT_FAILURE;
     }
 #else
     Arguments args = proc_args(argc, argv);
@@ -234,7 +235,7 @@ int main(int argc, char **argv) {
     } catch(const mx::Exception &e) {
         mx::system_err << "mx: Exception: " << e.text() << "\n";
         mx::system_err.flush();
-        exit(EXIT_FAILURE);
+        return EXIT_FAILURE;
     }
 #endif
     return 0;
