@@ -18,7 +18,6 @@
 #include<cmath>
 
 namespace cmd {
-    // Forward declarations
     class Node;
     class Expression;
     class AstExecutor;
@@ -34,14 +33,12 @@ namespace cmd {
     class BinaryExpression;
     class UnaryExpression;
 
-    // Base Node class
     class Node {
     public:
         virtual ~Node() = default;
         virtual void print(int indent = 0) const = 0;
     };
     
-    // Define Expression class before classes that inherit from it
     class Expression : public Node {
     public:
         virtual ~Expression() = default;
@@ -49,7 +46,6 @@ namespace cmd {
         virtual double evaluateNumber(const AstExecutor& executor) const = 0;
     };
     
-    // Define other classes that don't depend on Expression
     class Command : public Node {
     public:
         Command(std::string name, std::vector<std::string> args) 
