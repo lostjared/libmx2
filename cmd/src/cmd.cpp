@@ -16,7 +16,7 @@
 
 int main(int argc, char **argv) {
     bool active = true;
-
+    bool debug_cmd = false;
     try {
         cmd::AstExecutor executor{};
         using_history();
@@ -33,11 +33,23 @@ int main(int argc, char **argv) {
                     add_history(line);
                     std::string command_data(line);
                     free(line);
+                    if(command_data == "@debug_on") {
+                        debug_cmd = true;
+                        std::cout << "Debugging commands on." << std::endl;
+                        continue;
+                    } else if(command_data == "@debug_off") {
+                        debug_cmd = false;
+                        std::cout << "Debugging commands off." << std::endl;
+                        continue;
+                    }
                     scan::TString string_buffer(command_data);
                     scan::Scanner scanner(string_buffer);
                     cmd::Parser parser(scanner);
                     auto ast = parser.parse();
                     executor.execute(std::cin, std::cout, ast);
+                    if(debug_cmd) {
+                        ast->print();
+                    }
                 }
                 
             } catch (const scan::ScanExcept &e) {
