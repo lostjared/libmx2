@@ -15,14 +15,41 @@
 #include<sstream>
 #include"command.hpp"
 #include<set>
+#include<cmath>
+
 namespace cmd {
+    // Forward declarations
+    class Node;
+    class Expression;
+    class AstExecutor;
+    class Command;
+    class Pipeline;
+    class Redirection;
+    class Sequence;
+    class StringLiteral;
+    class NumberLiteral;
+    class VariableReference;
+    class VariableAssignment;
+    class LogicalAnd;
+    class BinaryExpression;
+    class UnaryExpression;
 
+    // Base Node class
     class Node {
-        public:
-            virtual ~Node() = default;
-            virtual void print(int indent = 0) const = 0;
-        };
-
+    public:
+        virtual ~Node() = default;
+        virtual void print(int indent = 0) const = 0;
+    };
+    
+    // Define Expression class before classes that inherit from it
+    class Expression : public Node {
+    public:
+        virtual ~Expression() = default;
+        virtual std::string evaluate(const AstExecutor& executor) const = 0;
+        virtual double evaluateNumber(const AstExecutor& executor) const = 0;
+    };
+    
+    // Define other classes that don't depend on Expression
     class Command : public Node {
     public:
         Command(std::string name, std::vector<std::string> args) 
@@ -126,40 +153,54 @@ namespace cmd {
         }
     };
 
-    class NumberLiteral : public Node {
+    class NumberLiteral : public Expression {
     public:
         NumberLiteral(double value) : value(value) {}
-        double value;
         
         void print(int indent = 0) const override {
             std::string spaces(indent, ' ');
             std::cout << spaces << "NumberLiteral: " << value << std::endl;
         }
+        
+        std::string evaluate(const AstExecutor& executor) const override {
+            return std::to_string(value);
+        }
+        
+        double evaluateNumber(const AstExecutor& executor) const override {
+            return value;
+        }
+        
+        double value;
     };
 
-    class VariableReference : public Node {
+    class VariableReference : public Expression {
     public:
         VariableReference(const std::string& name) : name(name) {}
-        std::string name;
         
         void print(int indent = 0) const override {
             std::string spaces(indent, ' ');
             std::cout << spaces << "VariableReference: " << name << std::endl;
         }
+        
+        std::string evaluate(const AstExecutor& executor) const override;
+        double evaluateNumber(const AstExecutor& executor) const override;
+        
+        std::string name;
     };
 
     class VariableAssignment : public Node {
     public:
         VariableAssignment(const std::string& name, std::shared_ptr<Node> value) 
             : name(name), value(value) {}
-        std::string name;
-        std::shared_ptr<Node> value;
         
         void print(int indent = 0) const override {
             std::string spaces(indent, ' ');
             std::cout << spaces << "VariableAssignment: " << name << " =" << std::endl;
             value->print(indent + 2);
         }
+        
+        std::string name;
+        std::shared_ptr<Node> value;
     };
 
     class LogicalAnd : public Node {
@@ -315,6 +356,9 @@ namespace cmd {
             else if (auto logicalAnd = std::dynamic_pointer_cast<cmd::LogicalAnd>(node)) {
                 executeLogicalAnd(logicalAnd, input, output);
             }
+            else if (auto expr = std::dynamic_pointer_cast<cmd::Expression>(node)) {
+                expr->evaluate(*this);
+            }
             else {
                 throw std::runtime_error("Unknown node type");
             }
@@ -389,7 +433,10 @@ namespace cmd {
                                        std::istream& input, std::ostream& output) {
             std::string value;
             
-            if (auto strLiteral = std::dynamic_pointer_cast<cmd::StringLiteral>(varAssign->value)) {
+            if (auto expr = std::dynamic_pointer_cast<cmd::Expression>(varAssign->value)) {
+                value = expr->evaluate(*this);
+            }
+            else if (auto strLiteral = std::dynamic_pointer_cast<cmd::StringLiteral>(varAssign->value)) {
                 value = strLiteral->value;
             } else if (auto numLiteral = std::dynamic_pointer_cast<cmd::NumberLiteral>(varAssign->value)) {
                 value = std::to_string(numLiteral->value);
@@ -410,7 +457,117 @@ namespace cmd {
         }
     };
 
-   
+
+    class BinaryExpression : public Expression {
+    public:
+        enum OpType { ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULO };
+        
+        BinaryExpression(std::shared_ptr<Expression> left, OpType op, std::shared_ptr<Expression> right)
+            : left(std::move(left)), op(op), right(std::move(right)) {}
+        
+        void print(int indent = 0) const override {
+            std::string spaces(indent, ' ');
+            std::cout << spaces << "BinaryExpression: ";
+            switch (op) {
+                case ADD: std::cout << "+"; break;
+                case SUBTRACT: std::cout << "-"; break;
+                case MULTIPLY: std::cout << "*"; break;
+                case DIVIDE: std::cout << "/"; break;
+                case MODULO: std::cout << "%"; break;
+            }
+            std::cout << std::endl;
+            left->print(indent + 2);
+            right->print(indent + 2);
+        }
+        
+        std::string evaluate(const AstExecutor& executor) const override {
+            return std::to_string(evaluateNumber(executor));
+        }
+        
+        double evaluateNumber(const AstExecutor& executor) const override {
+            double leftVal = left->evaluateNumber(executor);
+            double rightVal = right->evaluateNumber(executor);
+            
+            switch (op) {
+                case ADD: return leftVal + rightVal;
+                case SUBTRACT: return leftVal - rightVal;
+                case MULTIPLY: return leftVal * rightVal;
+                case DIVIDE: 
+                    if (rightVal == 0) throw std::runtime_error("Division by zero");
+                    return leftVal / rightVal;
+                case MODULO:
+                    if (rightVal == 0) throw std::runtime_error("Modulo by zero");
+                    return std::fmod(leftVal, rightVal);
+                default: throw std::runtime_error("Unknown binary operator");
+            }
+        }
+        
+        std::shared_ptr<Expression> left;
+        OpType op;
+        std::shared_ptr<Expression> right;
+    };
+
+    class UnaryExpression : public Expression {
+    public:
+        enum OpType { INCREMENT, DECREMENT, NEGATE };
+        enum Position { PREFIX, POSTFIX };
+        
+        UnaryExpression(std::shared_ptr<Expression> operand, OpType op, Position pos = PREFIX)
+            : operand(std::move(operand)), op(op), position(pos) {}
+        
+        void print(int indent = 0) const override {
+            std::string spaces(indent, ' ');
+            std::cout << spaces << "UnaryExpression: ";
+            switch (op) {
+                case INCREMENT: std::cout << "++"; break;
+                case DECREMENT: std::cout << "--"; break;
+                case NEGATE: std::cout << "-"; break;
+            }
+            std::cout << (position == PREFIX ? " (prefix)" : " (postfix)") << std::endl;
+            operand->print(indent + 2);
+        }
+        
+        std::string evaluate(const AstExecutor& executor) const override {
+            return std::to_string(evaluateNumber(executor));
+        }
+        
+        double evaluateNumber(const AstExecutor& executor) const override {
+            if (op == INCREMENT || op == DECREMENT) {
+                auto varRef = std::dynamic_pointer_cast<VariableReference>(operand);
+                if (!varRef) {
+                    throw std::runtime_error("Increment/decrement can only be applied to variables");
+                }
+                
+                auto valueOpt = executor.getVariable(varRef->name);
+                double currentValue = 0.0;
+                if (valueOpt) {
+                    try {
+                        currentValue = std::stod(valueOpt.value());
+                    } catch (const std::exception&) {
+                        
+                    }
+                }
+                
+                double originalValue = currentValue;
+                if (op == INCREMENT) {
+                    currentValue += 1.0;
+                } else { 
+                    currentValue -= 1.0;
+                }
+                const_cast<AstExecutor&>(executor).setVariable(varRef->name, std::to_string(currentValue));
+                return (position == PREFIX) ? currentValue : originalValue;
+            } 
+            else if (op == NEGATE) {
+                return -operand->evaluateNumber(executor);
+            }
+            
+            throw std::runtime_error("Unknown unary operator");
+        }
+        
+        std::shared_ptr<Expression> operand;
+        OpType op;
+        Position position;
+    };
 }
 
 #endif

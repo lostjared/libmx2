@@ -17,6 +17,7 @@ add_library(scanner STATIC
     src/string_buffer.cpp
     src/types.cpp
     src/command.cpp
+    src/ast.cpp
 )
 
 include_directories(${PROJECT_SOURCE_DIR}/include)

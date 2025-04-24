@@ -43,27 +43,128 @@ namespace cmd {
                 return true;
             }
 
+            std::shared_ptr<cmd::Expression> parseExpression() {
+                auto expr = parseTerm();
+                
+                while (peek().getTokenType() == types::TokenType::TT_SYM && 
+                       (peek().getTokenValue() == "+" || peek().getTokenValue() == "-")) {
+                    std::string op = advance().getTokenValue();
+                    auto right = parseTerm();
+                    
+                    if (op == "+") {
+                        expr = std::make_shared<cmd::BinaryExpression>(
+                            expr, cmd::BinaryExpression::ADD, right);
+                    } else { // op == "-"
+                        expr = std::make_shared<cmd::BinaryExpression>(
+                            expr, cmd::BinaryExpression::SUBTRACT, right);
+                    }
+                }
+                
+                return expr;
+            }
+            
+            std::shared_ptr<cmd::Expression> parseTerm() {
+                auto expr = parseFactor();
+                
+                while (peek().getTokenType() == types::TokenType::TT_SYM && 
+                       (peek().getTokenValue() == "*" || peek().getTokenValue() == "/" || 
+                        peek().getTokenValue() == "%")) {
+                    std::string op = advance().getTokenValue();
+                    auto right = parseFactor();
+                    
+                    if (op == "*") {
+                        expr = std::make_shared<cmd::BinaryExpression>(
+                            expr, cmd::BinaryExpression::MULTIPLY, right);
+                    } else if (op == "/") {
+                        expr = std::make_shared<cmd::BinaryExpression>(
+                            expr, cmd::BinaryExpression::DIVIDE, right);
+                    } else { // op == "%"
+                        expr = std::make_shared<cmd::BinaryExpression>(
+                            expr, cmd::BinaryExpression::MODULO, right);
+                    }
+                }
+                
+                return expr;
+            }
+            
+            std::shared_ptr<cmd::Expression> parseFactor() {
+                if (peek().getTokenType() == types::TokenType::TT_SYM) {
+                    if (peek().getTokenValue() == "++" || peek().getTokenValue() == "--") {
+                        std::string op = advance().getTokenValue();
+                        auto expr = parsePrimary();
+                        
+                        if (op == "++") {
+                            return std::make_shared<cmd::UnaryExpression>(
+                                expr, cmd::UnaryExpression::INCREMENT, cmd::UnaryExpression::PREFIX);
+                        } else { 
+                            return std::make_shared<cmd::UnaryExpression>(
+                                expr, cmd::UnaryExpression::DECREMENT, cmd::UnaryExpression::PREFIX);
+                        }
+                    } else if (peek().getTokenValue() == "-") {
+                        advance(); 
+                        auto expr = parseFactor();
+                        return std::make_shared<cmd::UnaryExpression>(
+                            expr, cmd::UnaryExpression::NEGATE);
+                    }
+                }
+                
+                auto expr = parsePrimary();
+                
+                
+                if (peek().getTokenType() == types::TokenType::TT_SYM) {
+                    if (peek().getTokenValue() == "++" || peek().getTokenValue() == "--") {
+                        std::string op = advance().getTokenValue();
+                        
+                        if (op == "++") {
+                            return std::make_shared<cmd::UnaryExpression>(
+                                expr, cmd::UnaryExpression::INCREMENT, cmd::UnaryExpression::POSTFIX);
+                        } else { // op == "--"
+                            return std::make_shared<cmd::UnaryExpression>(
+                                expr, cmd::UnaryExpression::DECREMENT, cmd::UnaryExpression::POSTFIX);
+                        }
+                    }
+                }
+                
+                return expr;
+            }
+            
+            
+            std::shared_ptr<cmd::Expression> parsePrimary() {
+                if (peek().getTokenType() == types::TokenType::TT_NUM) {
+                    double value = std::stod(advance().getTokenValue());
+                    return std::make_shared<cmd::NumberLiteral>(value);
+                }
+                
+                if (peek().getTokenType() == types::TokenType::TT_ID) {
+                    std::string name = advance().getTokenValue();
+                    return std::make_shared<cmd::VariableReference>(name);
+                }
+                
+                if (match("(")) {
+                    auto expr = parseExpression();
+                    if (!match(")")) {
+                        throw std::runtime_error("Expected ')' after expression");
+                    }
+                    return expr;
+                }
+                
+                throw std::runtime_error("Expected expression");
+            }
+
             std::shared_ptr<cmd::Node> parseVariableDefinition(const std::string& name) {
                 advance(); 
                 
                 if (isAtEnd()) {
                     throw std::runtime_error("Expected value after '='");
                 }
-                
-                
-                std::shared_ptr<cmd::Node> valueNode;
+            
                 if (peek().getTokenType() == types::TokenType::TT_STR) {
-                    valueNode = std::make_shared<cmd::StringLiteral>(advance().getTokenValue());
-                } else if (peek().getTokenType() == types::TokenType::TT_NUM) {
-                    valueNode = std::make_shared<cmd::NumberLiteral>(std::stod(advance().getTokenValue()));
-                } else if (peek().getTokenType() == types::TokenType::TT_ID) {
-                    std::string varRefName = advance().getTokenValue();
-                    valueNode = std::make_shared<cmd::VariableReference>(varRefName);
+                    auto valueNode = std::make_shared<cmd::StringLiteral>(advance().getTokenValue());
+                    return std::make_shared<cmd::VariableAssignment>(name, valueNode);
                 } else {
-                    throw std::runtime_error("Expected string, number, or variable after '='");
+                    auto expr = parseExpression();
+                    return std::make_shared<cmd::VariableAssignment>(name, expr);
                 }
-                
-                return std::make_shared<cmd::VariableAssignment>(name, valueNode);
             }
             
             std::shared_ptr<cmd::Node> parseSequence() {
@@ -71,6 +172,9 @@ namespace cmd {
                 
                 while (!isAtEnd()) {
                     commands.push_back(parsePipeline());
+                    
+                    
+                    match(";"); 
                 }
                 
                 if (commands.size() == 1) {
@@ -114,10 +218,15 @@ namespace cmd {
 
             std::shared_ptr<cmd::Node> parseCommand() {
                 if (peek().getTokenType() != types::TokenType::TT_ID) {
-                    throw std::runtime_error("Expected command name or let keyword");
+                    throw std::runtime_error("Expected command name, let keyword, or variable name");
                 }
                 
                 std::string name = advance().getTokenValue();
+                
+                
+                if (peek().getTokenType() == types::TokenType::TT_SYM && peek().getTokenValue() == "=") {
+                    return parseVariableDefinition(name);
+                }
                 
                 if (name == "let" && peek().getTokenType() == types::TokenType::TT_ID) {
                     std::string varName = advance().getTokenValue();
@@ -126,23 +235,21 @@ namespace cmd {
                         throw std::runtime_error("Expected '=' after variable name in let statement");
                     }
                     
-                    if (isAtEnd()) {
-                        throw std::runtime_error("Expected value after '='");
-                    }
-                    
-                    std::shared_ptr<cmd::Node> valueNode;
                     if (peek().getTokenType() == types::TokenType::TT_STR) {
-                        valueNode = std::make_shared<cmd::StringLiteral>(advance().getTokenValue());
-                    } else if (peek().getTokenType() == types::TokenType::TT_NUM) {
-                        valueNode = std::make_shared<cmd::NumberLiteral>(std::stod(advance().getTokenValue()));
-                    } else if (peek().getTokenType() == types::TokenType::TT_ID) {
-                        std::string varRefName = advance().getTokenValue();
-                        valueNode = std::make_shared<cmd::VariableReference>(varRefName);
+                        auto valueNode = std::make_shared<cmd::StringLiteral>(advance().getTokenValue());
+                        return std::make_shared<cmd::VariableAssignment>(varName, valueNode);
                     } else {
-                        throw std::runtime_error("Expected string, number, or variable after '='");
+                        auto expr = parseExpression();
+                        return std::make_shared<cmd::VariableAssignment>(varName, expr);
                     }
-                    
-                    return std::make_shared<cmd::VariableAssignment>(varName, valueNode);
+                }
+                
+                
+                if (name == "x" || name == "y" || name == "z") { // Just examples of variable names
+                    // This handles the case of a standalone expression like "x++"
+                    current--; // Go back one token to reparse the variable name
+                    auto expr = parseExpression();
+                    return expr;
                 }
                 
                 std::vector<std::string> args;
@@ -151,7 +258,7 @@ namespace cmd {
                     (peek().getTokenType() == types::TokenType::TT_ID ||
                      peek().getTokenType() == types::TokenType::TT_STR ||
                      peek().getTokenType() == types::TokenType::TT_NUM ||
-                     peek().getTokenType() == types::TokenType::TT_ARG ||  // Add this line
+                     peek().getTokenType() == types::TokenType::TT_ARG ||
                      (peek().getTokenType() == types::TokenType::TT_SYM && 
                       peek().getTokenValue().size() > 0 &&
                       peek().getTokenValue()[0] == '-'))) {  
