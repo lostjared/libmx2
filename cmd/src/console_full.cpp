@@ -31,6 +31,7 @@ public:
     cmd::AstExecutor executor{};
     std::ostream *output;
     bool cmd_echo = false;
+    bool debug_cmd = false;
 
     void load(gl::GLWindow *win) override {
         font.loadFont(win->util.getFilePath("data/font.ttf"), 36);
@@ -48,6 +49,14 @@ public:
                         cmd_echo = false;
                         *output << "Echoing commands off." << "\n";
                         return 0;
+                    } else if(text == "@debug_on") {
+                        debug_cmd = true;
+                        *output << "Debugging commands on." << "\n";
+                        return 0;
+                    } else if(text == "@debug_off") {
+                        debug_cmd = false;
+                        *output << "Debugging commands off." << "\n";
+                        return 0;
                     }
                     if(cmd_echo) {
                         *output << "$ " << text << "\n";
@@ -58,6 +67,7 @@ public:
                     cmd::Parser parser(scanner);
                     auto ast = parser.parse();
                     executor.execute(input_stream, *output, ast);
+                    ast->print();
                     return 0;
             } catch(const scan::ScanExcept &e) {
                 *output << "Scan error: " << e.why() << std::endl;
