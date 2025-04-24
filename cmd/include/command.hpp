@@ -26,5 +26,6 @@ namespace cmd {
     int tailCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
     int wcCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
     int chmodCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
+    int sedCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
 }
 #endif

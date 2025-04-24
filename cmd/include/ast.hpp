@@ -237,6 +237,7 @@ namespace cmd {
             registry.registerCommand("tail", cmd::tailCommand);
             registry.registerCommand("wc", cmd::wcCommand);
             registry.registerCommand("chmod", cmd::chmodCommand);
+            registry.registerCommand("sed", cmd::sedCommand);
         }
 
         std::string getPath() const {

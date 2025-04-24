@@ -312,6 +312,6 @@ namespace cmd {
                 
                 return cmd;
             }
-        };    
+        };     
 }
 #endif

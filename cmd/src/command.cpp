@@ -596,4 +596,113 @@ namespace cmd {
         return 0;
     }
 
+    int sedCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
+        if (args.empty()) {
+            output << "Usage: sed [options] 's/pattern/replacement/[g]' [file]" << std::endl;
+            output << "Options:" << std::endl;
+            output << "  -n        Suppress automatic printing of pattern space" << std::endl;
+            output << "  -i        Edit files in place" << std::endl;
+            return 1;
+        }
+
+        bool suppressOutput = false;
+        bool editInPlace = false;
+        std::string expression;
+        std::string filename;
+        
+        for (const auto& arg : args) {
+            if (arg[0] == '-') {
+                if (arg.find('n') != std::string::npos) {
+                    suppressOutput = true;
+                }
+                if (arg.find('i') != std::string::npos) {
+                    editInPlace = true;
+                }
+            } else if (arg[0] == 's' && arg.find('/') == 1) {
+                expression = arg;
+            } else {
+                filename = arg;
+            }
+        }
+
+        if (expression.empty() || expression[0] != 's') {
+            output << "Error: Expected substitution expression (s/pattern/replacement/[g])" << std::endl;
+            return 1;
+        }
+
+        size_t firstSlash = expression.find('/');
+        if (firstSlash == std::string::npos) {
+            output << "Error: Invalid substitution format" << std::endl;
+            return 1;
+        }
+        
+        size_t secondSlash = expression.find('/', firstSlash + 1);
+        if (secondSlash == std::string::npos) {
+            output << "Error: Invalid substitution format" << std::endl;
+            return 1;
+        }
+        
+        size_t thirdSlash = expression.find('/', secondSlash + 1);
+        if (thirdSlash == std::string::npos) {
+            output << "Error: Invalid substitution format" << std::endl;
+            return 1;
+        }
+        
+        std::string pattern = expression.substr(firstSlash + 1, secondSlash - firstSlash - 1);
+        std::string replacement = expression.substr(secondSlash + 1, thirdSlash - secondSlash - 1);
+        bool globalReplace = thirdSlash < expression.length() - 1 && expression[thirdSlash + 1] == 'g';
+        
+        try {
+            std::regex regexPattern(pattern);
+            std::ifstream inFile;
+            std::stringstream outputBuffer;
+            std::istream* inputStream = &input;
+            
+            if (!filename.empty()) {
+                inFile.open(filename);
+                if (!inFile.is_open()) {
+                    output << "Error: Cannot open file '" << filename << "'" << std::endl;
+                    return 1;
+                }
+                inputStream = &inFile;
+            }
+            
+            std::string line;
+            while (std::getline(*inputStream, line)) {
+                std::string result;
+                if (globalReplace) {
+                    result = std::regex_replace(line, regexPattern, replacement);
+                } else {
+                    result = std::regex_replace(line, regexPattern, replacement, 
+                                               std::regex_constants::format_first_only);
+                }
+                
+                if (!suppressOutput) {
+                    outputBuffer << result << std::endl;
+                }
+            }
+            
+            if (editInPlace && !filename.empty()) {
+                std::ofstream outFile(filename);
+                if (!outFile.is_open()) {
+                    output << "Error: Cannot write to file '" << filename << "'" << std::endl;
+                    return 1;
+                }
+                outFile << outputBuffer.str();
+                outFile.close();
+            } else {
+                output << outputBuffer.str();
+            }
+            
+            if (inFile.is_open()) {
+                inFile.close();
+            }
+            
+        } catch (const std::regex_error& e) {
+            output << "Error in regular expression: " << e.what() << std::endl;
+            return 1;
+        }
+        
+        return 0;
+    }
 }
