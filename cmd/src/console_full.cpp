@@ -30,13 +30,15 @@ public:
 
     cmd::AstExecutor executor{};
     std::ostream *output;
-    bool cmd_echo = false;
+    bool cmd_echo = true;
     bool debug_cmd = false;
 
     void load(gl::GLWindow *win) override {
         font.loadFont(win->util.getFilePath("data/font.ttf"), 36);
         win->console.printf("Console Skeleton Example\nLostSideDead Software\nhttps://lostsidedead.biz\n");
         win->console.setPrompt("mx> ");
+        win->console_visible = true;
+        win->console.show();
         output = &win->console.bufferData();
         win->console.setInputCallback([&](const std::string &text) -> int {
             try {
