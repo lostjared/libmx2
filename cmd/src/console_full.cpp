@@ -69,7 +69,9 @@ public:
                     cmd::Parser parser(scanner);
                     auto ast = parser.parse();
                     executor.execute(input_stream, *output, ast);
-                    ast->print();
+                    if(debug_cmd) {
+                        ast->print();
+                    }
                     return 0;
             } catch(const scan::ScanExcept &e) {
                 *output << "Scan error: " << e.why() << std::endl;
