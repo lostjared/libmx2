@@ -64,8 +64,7 @@ int main(int argc, char **argv) {
             } catch (const std::exception &e) {
                 std::cerr << "Error: " << e.what() << std::endl;
             }  catch (const state::StateException &e) {
-                std::cerr << "State error: " << e.what() << std::endl;
-                return 1;
+                std::cerr << "State error: " << e.what() << std::endl;;
             } catch (...) {
                 std::cerr << "Unknown error occurred." << std::endl;
             }
