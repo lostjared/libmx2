@@ -5,6 +5,7 @@
 #include<string>
 #include<sstream>
 #include<unordered_map>
+#include<set>
 
 namespace state {
 
@@ -26,10 +27,52 @@ namespace state {
         std::string getVariable(const std::string& name) const {
             auto it = variables.find(name);
             if (it != variables.end()) {
-                return it->second;
+                return expandVariables(it->second);
             }
             throw StateException("Variable not found: " + name);
         }
+
+        void listVariables(std::ostream& output) const {
+            for (const auto& pair : variables) {
+                output << pair.first << ": " << expandVariables(pair.second) << std::endl;
+            }
+        }
+        void clearVariables() {
+            variables.clear();
+        }
+        void clearVariable(const std::string& name) {
+            auto it = variables.find(name);
+            if (it != variables.end()) {
+                variables.erase(it);
+            } else {
+                throw StateException("Variable not found: " + name);
+            }
+        }
+        std::string expandVariables(const std::string& input, std::set<std::string> expandingVars = {}) const {
+            std::string result = input;
+            size_t pos = 0;
+            while ((pos = result.find("%{", pos)) != std::string::npos) {
+                size_t end = result.find("}", pos);
+                if (end == std::string::npos) break;
+                std::string varName = result.substr(pos + 2, end - pos - 2);
+                
+                if (expandingVars.find(varName) != expandingVars.end()) {
+                    throw state::StateException("Circular reference detected for variable: " + varName);
+                }
+                
+                auto it = variables.find(varName);
+                if (it != variables.end()) {
+                    std::set<std::string> newExpandingVars = expandingVars;
+                    newExpandingVars.insert(varName);
+                    std::string expandedValue = expandVariables(it->second, newExpandingVars);
+                    result.replace(pos, end - pos + 1, expandedValue);
+                    pos += expandedValue.length();
+                } else {
+                    result.replace(pos, end - pos + 1, "");
+                }
+            }
+            return result; 
+        }        
     protected:
        std::unordered_map<std::string, std::string> variables;
     };
@@ -46,22 +89,25 @@ namespace cmd {
     int catCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
     int grepCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
     int printCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
-    int cdCommand(const std::vector<std::string> &args, std::istream& input, std::ostream& output);
-    int listCommand(const std::vector<std::string> &args, std::istream& input, std::ostream& output);
-    int sortCommand(const std::vector<std::string> &args, std::istream& input, std::ostream& output);
-    int findCommand(const std::vector<std::string> &args, std::istream& input, std::ostream& output);
+    int cdCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
+    int listCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
+    int sortCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
+    int findCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
     int pwdCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
-    int mkdirCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
-    int rmCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
-    int cpCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
-    int mvCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
-    int touchCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
-    int headCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
-    int tailCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
-    int wcCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
-    int chmodCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
-    int sedCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
-    int debugSet(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
-    int debugGet(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
+    int mkdirCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);  
+    int rmCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);     
+    int cpCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);     
+    int mvCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);     
+    int touchCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);  
+    int headCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);   
+    int tailCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);   
+    int wcCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);     
+    int chmodCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);  
+    int sedCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);    
+    int debugSet(const std::vector<std::string>& args, std::istream& input, std::ostream& output);      
+    int debugGet(const std::vector<std::string>& args, std::istream& input, std::ostream& output);      
+    int debugList(const std::vector<std::string>& args, std::istream& input, std::ostream& output);     
+    int debugClear(const std::vector<std::string>& args, std::istream& input, std::ostream& output);    
+    int debugClearVariable(const std::vector<std::string>& args, std::istream& input, std::ostream& output); 
 }
 #endif

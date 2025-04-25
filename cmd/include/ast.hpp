@@ -240,6 +240,9 @@ namespace cmd {
             registry.registerCommand("sed", cmd::sedCommand);
             registry.registerCommand("debug_set", cmd::debugSet);
             registry.registerCommand("debug_get", cmd::debugGet);
+            registry.registerCommand("debug_list", cmd::debugList);
+            registry.registerCommand("debug_clear", cmd::debugClear);
+            registry.registerCommand("debug_clear_var", cmd::debugClearVariable);
         }
 
         std::string getPath() const {
