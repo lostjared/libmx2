@@ -238,6 +238,8 @@ namespace cmd {
             registry.registerCommand("wc", cmd::wcCommand);
             registry.registerCommand("chmod", cmd::chmodCommand);
             registry.registerCommand("sed", cmd::sedCommand);
+            registry.registerCommand("debug_set", cmd::debugSet);
+            registry.registerCommand("debug_get", cmd::debugGet);
         }
 
         std::string getPath() const {

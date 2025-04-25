@@ -4,7 +4,16 @@
 #include<regex>
 #include<sstream>
 #include<iomanip>
+
+namespace state {
+    GameState *getGameState() {
+        static GameState gameState;
+        return &gameState;
+    }
+}
+
 namespace cmd {
+
     int exitCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
         std::exit(0); 
         return 0;     
@@ -705,4 +714,34 @@ namespace cmd {
         
         return 0;
     }
+
+    int debugSet(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
+        if (args.size() != 2) {
+            output << "Usage: debug set <variable> <value>" << std::endl;
+            return 1;
+        } 
+        const std::string& variable = args[0];
+        const std::string& value = args[1];
+        state::GameState *gameState = state::getGameState();
+        gameState->setVariable(variable, value);
+        output << "Set Debug " << variable << " to " << value << std::endl;
+        return 0;
+    }
+
+    int debugGet(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
+        if (args.size() != 1) {
+            output << "Usage: debug get <variable>" << std::endl;
+            return 1;
+        }
+        const std::string& variable = args[0];
+        state::GameState *gameState = state::getGameState();
+        try {
+            std::string value = gameState->getVariable(variable);
+            output << variable << ": " << value << std::endl;
+        } catch (const state::StateException &e) {
+            output << "Error: " << e.what() << std::endl;
+            return 1;
+        }       
+        return 0;
+    }   
 }

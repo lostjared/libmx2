@@ -79,7 +79,11 @@ public:
             } catch(const std::exception &e) { 
                 *output << "Error: " << e.what() << std::endl;
                 return 1;
-            } catch(...) {
+            } catch (const state::StateException &e) {
+                *output << "State error: " << e.what() << std::endl;
+                return 1;
+            } 
+            catch(...) {
                 *output << "Unknown error occurred." << std::endl;
                 return 1;
             }
