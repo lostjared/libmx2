@@ -553,8 +553,27 @@ namespace console {
             this->print("Font updated to size " + tokens[1] + 
                         " color: " + tokens[2] + "," + tokens[3] + "," + tokens[4] + "\n");
             
-        } 
-        else if (tokens.size() == 1 && tokens[0] == "about") {
+        } else if(tokens.size() == 1 && tokens[0] == "clear") {
+            this->print("\n");
+            data.str("");
+            inputBuffer.clear();
+            inputCursorPos = 0;
+            cursorPos = 0;
+            stopPosition = 0;
+            needsRedraw = true;
+            needsReflow = true;
+            scrollToBottom();
+        } else if (tokens.size() == 1 && tokens[0] == "cls") {
+            this->print("\n");
+            data.str("");
+            inputBuffer.clear();
+            inputCursorPos = 0;
+            cursorPos = 0;
+            stopPosition = 0;
+            needsRedraw = true;
+            needsReflow = true;
+            scrollToBottom();
+        } else if (tokens.size() == 1 && tokens[0] == "about") {
             this->print("- MX2 Engine LostSideDead Software\nhttps://lostsidedead.biz\n");
         } else if(tokens.size() == 1  && tokens[0] == "author") {
             this->print("- MX2 Engine Coded by Jared Bruni.\nhttps://lostsidedead.biz\n");
