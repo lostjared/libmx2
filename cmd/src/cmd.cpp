@@ -30,10 +30,17 @@ int main(int argc, char **argv) {
                     break;
                 }
                 if (line[0] != '\0') {
+
                     add_history(line);
                     std::string command_data(line);
                     free(line);
-                    if(command_data == "@debug_on") {
+                    if(command_data == "clear" || command_data == "cls") {
+                        std::cout << "\033[2J\033[1;1H"; // ANSI escape code to clear the screen
+                        continue;
+                    } else if(command_data == "exit" || command_data == "quit") {
+                        active = false;
+                        continue;
+                    } else if(command_data == "@debug_on") {
                         debug_cmd = true;
                         std::cout << "Debugging commands on." << std::endl;
                         continue;

@@ -59,7 +59,7 @@ public:
                         debug_cmd = false;
                         *output << "Debugging commands off." << "\n";
                         return 0;
-                    }
+                    } 
                     if(cmd_echo) {
                         *output << "$ " << text << "\n";
                     }
