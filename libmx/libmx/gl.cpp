@@ -104,11 +104,9 @@ namespace gl {
         text.init(w,  h);
         console.resize(this, w, h);
         glViewport(0, 0, w, h);
-#ifdef __APPLE__
         if (SDL_GL_SetSwapInterval(1) != 0) {
                 SDL_Log("Failed to enable vSync: %s", SDL_GetError());
         }
-#endif
     }
 
     void GLWindow::setWindowSize(int w, int h) {
