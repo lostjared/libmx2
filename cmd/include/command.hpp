@@ -109,5 +109,6 @@ namespace cmd {
     int debugList(const std::vector<std::string>& args, std::istream& input, std::ostream& output);     
     int debugClear(const std::vector<std::string>& args, std::istream& input, std::ostream& output);    
     int debugClearVariable(const std::vector<std::string>& args, std::istream& input, std::ostream& output); 
+    int printfCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
 }
 #endif

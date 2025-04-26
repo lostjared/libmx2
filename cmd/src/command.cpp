@@ -728,6 +728,173 @@ namespace cmd {
         return 0;
     }
 
+    // Helper function to parse escape sequences like \n, \t, etc.
+    std::string parseEscapeSequences(const std::string& input) {
+        std::string result;
+        for (size_t i = 0; i < input.length(); ++i) {
+            if (input[i] == '\\' && i + 1 < input.length()) {
+                switch (input[i + 1]) {
+                    case 'n': result += '\n'; break;
+                    case 't': result += '\t'; break;
+                    case 'r': result += '\r'; break;
+                    case 'b': result += '\b'; break;
+                    case 'f': result += '\f'; break;
+                    case 'v': result += '\v'; break;
+                    case 'a': result += '\a'; break;
+                    case '\\': result += '\\'; break;
+                    case '\'': result += '\''; break;
+                    case '"': result += '"'; break;
+                    case '0': result += '\0'; break;
+                    default: result += input[i + 1];
+                }
+                ++i;
+            } else {
+                result += input[i];
+            }
+        }
+        return result;
+    }
+
+    int printfCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
+        if (args.empty()) {
+            output << "Usage: printf FORMAT [ARGUMENTS...]" << std::endl;
+            output << "Print ARGUMENTS according to FORMAT" << std::endl;
+            return 1;
+        }
+
+        state::GameState *gameState = state::getGameState();
+        
+        std::vector<std::string> expandedArgs;
+        for (const auto& arg : args) {
+            try {
+                expandedArgs.push_back(gameState->expandVariables(arg));
+            } catch (const state::StateException& e) {
+                output << "Variable expansion error: " << e.what() << std::endl;
+                return 1;
+            }
+        }
+        
+        std::string formatStr = parseEscapeSequences(expandedArgs[0]);
+        size_t argIndex = 1;
+        size_t pos = 0;
+
+        while (pos < formatStr.length()) {
+            size_t percentPos = formatStr.find('%', pos);
+            if (percentPos == std::string::npos) {
+                output << formatStr.substr(pos);
+                break;
+            }
+
+            output << formatStr.substr(pos, percentPos - pos);
+            if (percentPos + 1 >= formatStr.length()) {
+                output << '%'; 
+                break;
+            }
+
+            char specifier = formatStr[percentPos + 1];
+            
+            std::string widthPrecision;
+            size_t specPos = percentPos + 1;
+            
+            while (specPos < formatStr.length() && 
+                   (std::isdigit(formatStr[specPos]) || 
+                    formatStr[specPos] == '.' || 
+                    formatStr[specPos] == '-' || 
+                    formatStr[specPos] == '+')) {
+                widthPrecision += formatStr[specPos];
+                specPos++;
+            }
+            
+            if (specPos > percentPos + 1) {
+                specifier = formatStr[specPos];
+            }
+            
+            switch (specifier) {
+                case '%':
+                    output << '%';
+                    break;
+                case 'd':
+                case 'i':
+                    if (argIndex < expandedArgs.size()) {
+                        try {
+                            int val = std::stoi(expandedArgs[argIndex++]);
+                            output << val;
+                        } catch (const std::exception&) {
+                            output << "0";
+                        }
+                    }
+                    break;
+                case 'f':
+                    if (argIndex < expandedArgs.size()) {
+                        try {
+                            double val = std::stod(expandedArgs[argIndex++]);
+                            size_t precision = 6; 
+                            size_t dotPos = widthPrecision.find('.');
+                            if (dotPos != std::string::npos && dotPos + 1 < widthPrecision.length()) {
+                                try {
+                                    precision = std::stoul(widthPrecision.substr(dotPos + 1));
+                                } catch (...) {}
+                            }
+                            
+                            output << std::fixed << std::setprecision(precision) << val;
+                        } catch (const std::exception&) {
+                            output << "0.000000";
+                        }
+                    }
+                    break;
+                case 's':
+                    if (argIndex < expandedArgs.size()) {
+                        output << expandedArgs[argIndex++];
+                    }
+                    break;
+                case 'x':
+                    if (argIndex < expandedArgs.size()) {
+                        try {
+                            unsigned int val = std::stoul(expandedArgs[argIndex++]);
+                            output << std::hex << val << std::dec;
+                        } catch (const std::exception&) {
+                            output << "0";
+                        }
+                    }
+                    break;
+                case 'X':
+                    if (argIndex < expandedArgs.size()) {
+                        try {
+                            unsigned int val = std::stoul(expandedArgs[argIndex++]);
+                            output << std::hex << std::uppercase << val << std::nouppercase << std::dec;
+                        } catch (const std::exception&) {
+                            output << "0";
+                        }
+                    }
+                    break;
+                case 'o':
+                    if (argIndex < expandedArgs.size()) {
+                        try {
+                            unsigned int val = std::stoul(expandedArgs[argIndex++]);
+                            output << std::oct << val << std::dec;
+                        } catch (const std::exception&) {
+                            output << "0";
+                        }
+                    }
+                    break;
+                case 'c':
+                    if (argIndex < expandedArgs.size()) {
+                        if (!expandedArgs[argIndex].empty()) {
+                            output << expandedArgs[argIndex][0];
+                        }
+                        argIndex++;
+                    }
+                    break;
+                default:
+                    output << '%' << specifier;
+            }
+            
+            pos = specPos + 1;
+        }
+        
+        return 0;
+    }
+
     int debugGet(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
         if (args.size() != 1) {
             output << "Usage: debug get <variable>" << std::endl;

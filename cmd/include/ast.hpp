@@ -238,6 +238,7 @@ namespace cmd {
             registry.registerCommand("wc", cmd::wcCommand);
             registry.registerCommand("chmod", cmd::chmodCommand);
             registry.registerCommand("sed", cmd::sedCommand);
+            registry.registerCommand("printf", cmd::printfCommand);
             registry.registerCommand("debug_set", cmd::debugSet);
             registry.registerCommand("debug_get", cmd::debugGet);
             registry.registerCommand("debug_list", cmd::debugList);
@@ -261,9 +262,6 @@ namespace cmd {
         void addCommand(const std::string& name, CommandFunction func) {
             registry.registerCommand(name, func);
         }
-
-                
-
 
         void execute(std::istream &defaultInput, std::ostream &defaultOutput, const std::shared_ptr<cmd::Node>& node) {
             
@@ -290,13 +288,16 @@ namespace cmd {
         }
 
         void setVariable(const std::string& name, const std::string& value) {
-            variables[name] = value;
+            state::GameState *gameState = state::getGameState();
+            gameState->setVariable(name, value);
         }
         
         std::optional<std::string> getVariable(const std::string& name) const {
-            auto it = variables.find(name);
-            if (it != variables.end()) {
-                return it->second;
+            state::GameState *gameState = state::getGameState();
+            try {
+                return gameState->getVariable(name);
+            } catch (const state::StateException &e) {
+                return std::nullopt;
             }
             return std::nullopt;
         }
@@ -335,7 +336,6 @@ namespace cmd {
         
     private:
         CommandRegistry registry;
-        std::unordered_map<std::string, std::string> variables; 
         std::string path;
         int lastExitStatus = 0;
         
