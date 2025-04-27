@@ -4,6 +4,7 @@
 #include"scanner.hpp"
 #include"ast.hpp"
 #include<memory>
+#include<iostream> 
 
 namespace cmd {
     
@@ -14,6 +15,15 @@ namespace cmd {
             std::shared_ptr<cmd::Node> parse() {
                 tokens_count = scanner.scan();
                 return parseSequence();
+            }
+
+            void dumpTokens() {
+                std::cout << "Tokens: " << tokens_count << std::endl;
+                for (uint64_t i = 0; i < tokens_count; i++) {
+                    auto token = scanner[i];
+                    std::cout << i << ": Type=" << static_cast<int>(token.getTokenType()) 
+                              << " Value='" << token.getTokenValue() << "'" << std::endl;
+                }
             }
 
         private:
@@ -172,8 +182,6 @@ namespace cmd {
                 
                 while (!isAtEnd()) {
                     commands.push_back(parsePipeline());
-                    
-                    
                     match(";"); 
                 }
                 
@@ -209,7 +217,11 @@ namespace cmd {
                     
                     return std::make_shared<cmd::Pipeline>(commands);
                 } else if (match("&&")) {
-                    auto rightCmd = parsePipeline(); 
+                    uint64_t savedPos = current;
+                    auto rightCmd = parsePipeline();
+                    if (savedPos == current) {
+                        throw std::runtime_error("Recursive parsing error in logical AND");
+                    }
                     return std::make_shared<cmd::LogicalAnd>(leftCmd, rightCmd);
                 }
                 
@@ -221,88 +233,165 @@ namespace cmd {
                     throw std::runtime_error("Expected command name, let keyword, or variable name");
                 }
                 
+                uint64_t savedPosition = current;
                 std::string name = advance().getTokenValue();
                 
-                
                 if (peek().getTokenType() == types::TokenType::TT_SYM && peek().getTokenValue() == "=") {
-                    return parseVariableDefinition(name);
-                }
-                
-                if (name == "let" && peek().getTokenType() == types::TokenType::TT_ID) {
-                    std::string varName = advance().getTokenValue();
+                    advance(); 
                     
-                    if (!match("=")) {
-                        throw std::runtime_error("Expected '=' after variable name in let statement");
+
+                    while (!isAtEnd() && peek().getTokenType() == types::TokenType::TT_SYM && peek().getTokenValue() == "") {
+                        advance();
                     }
-                    
+                    if (peek().getTokenType() == types::TokenType::TT_SYM && peek().getTokenValue() == "$") {
+                        advance(); 
+                        auto cmdNode = parseCommandSubstitution();
+                        return std::make_shared<cmd::VariableAssignment>(
+                            name, std::make_shared<cmd::CommandSubstitution>(cmdNode));
+                    }
+                     
                     if (peek().getTokenType() == types::TokenType::TT_STR) {
                         auto valueNode = std::make_shared<cmd::StringLiteral>(advance().getTokenValue());
-                        return std::make_shared<cmd::VariableAssignment>(varName, valueNode);
+                        return std::make_shared<cmd::VariableAssignment>(name, valueNode);
                     } else {
                         auto expr = parseExpression();
-                        return std::make_shared<cmd::VariableAssignment>(varName, expr);
+                        return std::make_shared<cmd::VariableAssignment>(name, expr);
+                    }
+                }
+                
+                
+                current = savedPosition;
+                
+                if (peek().getTokenType() == types::TokenType::TT_ID) {
+                    name = advance().getTokenValue();
+                    
+                    if (name == "let" && peek().getTokenType() == types::TokenType::TT_ID) {
+                        std::string varName = advance().getTokenValue();
+                        
+                        if (match("=")) {
+                            while (!isAtEnd() && peek().getTokenType() == types::TokenType::TT_SYM && peek().getTokenValue() == "") {
+                                advance();
+                            }
+                            if (peek().getTokenType() == types::TokenType::TT_SYM && peek().getTokenValue() == "$") {
+                                advance(); 
+                                auto cmdNode = parseCommandSubstitution();
+                                return std::make_shared<cmd::VariableAssignment>(
+                                    varName, std::make_shared<cmd::CommandSubstitution>(cmdNode));
+                            }
+
+                            if (peek().getTokenType() == types::TokenType::TT_STR) {
+                                auto valueNode = std::make_shared<cmd::StringLiteral>(advance().getTokenValue());
+                                return std::make_shared<cmd::VariableAssignment>(varName, valueNode);
+                            }
+                            
+                            auto expr = parseExpression();
+                            return std::make_shared<cmd::VariableAssignment>(varName, expr);
+                        }
                     }
                 }
                 
                 std::vector<std::string> args;
-                
                 while (!isAtEnd() && 
-                    (peek().getTokenType() == types::TokenType::TT_ID ||
-                     peek().getTokenType() == types::TokenType::TT_STR ||
-                     peek().getTokenType() == types::TokenType::TT_NUM ||
-                     peek().getTokenType() == types::TokenType::TT_ARG ||
-                     (peek().getTokenType() == types::TokenType::TT_SYM && 
-                      peek().getTokenValue().size() > 0 &&
-                      peek().getTokenValue()[0] == '-'))) {  
+                       peek().getTokenType() != types::TokenType::TT_SYM && 
+                       peek().getTokenValue() != ";" && 
+                       peek().getTokenValue() != "|" && 
+                       peek().getTokenValue() != ">" && 
+                       peek().getTokenValue() != ">>" &&
+                       peek().getTokenValue() != "<" &&
+                       peek().getTokenValue() != "&&") {
                     
-                    auto token = advance();
-                    std::string value = token.getTokenValue();
-                    
-                    if (name == "print" && token.getTokenType() == types::TokenType::TT_ID) {
-                        args.push_back(std::string("${") + value + "}");
-                    }
-                    else if (token.getTokenType() == types::TokenType::TT_ID && value.size() > 1 && value[0] == '$') {
-                        std::string varName = value.substr(1);
-                        args.push_back(std::string("${") + varName + "}");
+                    if (peek().getTokenType() == types::TokenType::TT_ID || 
+                        peek().getTokenType() == types::TokenType::TT_STR || 
+                        peek().getTokenType() == types::TokenType::TT_NUM) {
+                        args.push_back(advance().getTokenValue());
                     } else {
-                        args.push_back(value);
+                        if (peek().getTokenType() == types::TokenType::TT_SYM && peek().getTokenValue() == "$") {
+                            advance();
+                            if (match("(")) {
+                                throw std::runtime_error("Command substitution in arguments not yet supported");
+                                
+                            } else {
+                                
+                                args.push_back("$" + advance().getTokenValue());
+                            }
+                        } else {
+                            advance();
+                        }
                     }
                 }
                 
-                std::shared_ptr<cmd::Node> cmd = std::make_shared<cmd::Command>(name, args);
+
+                auto cmd = std::make_shared<cmd::Command>(name, args);
                 
-                while (peek().getTokenType() == types::TokenType::TT_SYM) {
-                    std::string symbol = peek().getTokenValue();
-                    if (symbol == "<") {
+                if (!isAtEnd()) {
+                    if (peek().getTokenValue() == ">") {
                         advance(); 
-                        if (peek().getTokenType() != types::TokenType::TT_ID && 
-                            peek().getTokenType() != types::TokenType::TT_STR) {
-                            throw std::runtime_error("Expected filename after <");
+                        if (isAtEnd() || peek().getTokenType() != types::TokenType::TT_ID &&
+                                         peek().getTokenType() != types::TokenType::TT_STR) {
+                            throw std::runtime_error("Expected filename after '>'");
                         }
-                        std::string file = advance().getTokenValue();
-                        cmd = std::make_shared<cmd::Redirection>(cmd, cmd::Redirection::INPUT, file);
-                    } else if (symbol == ">") {
+                        std::string filename = advance().getTokenValue();
+                        return std::make_shared<cmd::Redirection>(cmd, cmd::Redirection::OUTPUT, filename);
+                    } 
+                    else if (peek().getTokenValue() == ">>") {
                         advance(); 
-                        if (peek().getTokenType() != types::TokenType::TT_ID && 
-                            peek().getTokenType() != types::TokenType::TT_STR) {
-                            throw std::runtime_error("Expected filename after >");
+                        if (isAtEnd() || peek().getTokenType() != types::TokenType::TT_ID &&
+                                         peek().getTokenType() != types::TokenType::TT_STR) {
+                            throw std::runtime_error("Expected filename after '>>'");
                         }
-                        std::string file = advance().getTokenValue();
-                        cmd = std::make_shared<cmd::Redirection>(cmd, cmd::Redirection::OUTPUT, file);
-                    } else if (symbol == ">>") {
+                        std::string filename = advance().getTokenValue();
+                        return std::make_shared<cmd::Redirection>(cmd, cmd::Redirection::APPEND, filename);
+                    }
+                    else if (peek().getTokenValue() == "<") {
                         advance(); 
-                        if (peek().getTokenType() != types::TokenType::TT_ID && 
-                            peek().getTokenType() != types::TokenType::TT_STR) {
-                            throw std::runtime_error("Expected filename after >>");
+                        if (isAtEnd() || peek().getTokenType() != types::TokenType::TT_ID &&
+                                         peek().getTokenType() != types::TokenType::TT_STR) {
+                            throw std::runtime_error("Expected filename after '<'");
                         }
-                        std::string file = advance().getTokenValue();
-                        cmd = std::make_shared<cmd::Redirection>(cmd, cmd::Redirection::APPEND, file);
-                    } else {
-                        break;
+                        std::string filename = advance().getTokenValue();
+                        return std::make_shared<cmd::Redirection>(cmd, cmd::Redirection::INPUT, filename);
                     }
                 }
                 
                 return cmd;
+            }
+
+            std::shared_ptr<cmd::Node> parseCommandSubstitution() {
+                if (!match("(")) {
+                    throw std::runtime_error("Expected '(' after '$' for command substitution");
+                }
+                
+                
+                uint64_t startPos = current;
+                
+                
+                if (peek().getTokenType() == types::TokenType::TT_ID) {
+                    std::string cmdName = advance().getTokenValue();
+                    std::vector<std::string> args;
+                    
+                    while (!isAtEnd() && 
+                           !(peek().getTokenType() == types::TokenType::TT_SYM && peek().getTokenValue() == ")")) {
+                        if (peek().getTokenType() == types::TokenType::TT_ID || 
+                            peek().getTokenType() == types::TokenType::TT_STR || 
+                            peek().getTokenType() == types::TokenType::TT_NUM) {
+                            args.push_back(advance().getTokenValue());
+                        } else {
+                            advance(); 
+                        }
+                    }
+                    
+                    if (!match(")")) {
+                        throw std::runtime_error("Expected ')' to close command substitution");
+                    }
+                    
+                    return std::make_shared<cmd::Command>(cmdName, args);
+                }
+                
+                if (startPos == current) {
+                    throw std::runtime_error("Parser not making progress in command substitution");
+                }
+                
+                throw std::runtime_error("Expected command name after $(");
             }
         };     
 }

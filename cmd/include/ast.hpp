@@ -32,11 +32,13 @@ namespace cmd {
     class LogicalAnd;
     class BinaryExpression;
     class UnaryExpression;
+    class CommandSubstitution;
 
     class Node {
     public:
         virtual ~Node() = default;
         virtual void print(int indent = 0) const = 0;
+        virtual void execute(const AstExecutor& executor) const {}
     };
     
     class Expression : public Node {
@@ -130,7 +132,7 @@ namespace cmd {
                 return it->second(args, input, output);
             } else {
                 output << "Command not found: " << name << std::endl;
-                return 1; // Error
+                return 1; 
             }
         }
         
@@ -334,11 +336,34 @@ namespace cmd {
             return lastExitStatus;
         }
         
+        void executeInternal(std::istream& input, std::ostream& output, std::shared_ptr<Node> node) const {
+            std::istream* oldInput = this->input;
+            std::ostream* oldOutput = this->output;
+            
+            this->input = &input;
+            this->output = &output;
+            
+            node->execute(*this);
+            
+            this->input = oldInput;
+            this->output = oldOutput;
+        }
+        
+        void executeDirectly(const std::shared_ptr<Node>& node, std::istream& input, std::ostream& output) {
+            executeNode(node, input, output);
+        }
+        
+        CommandRegistry &getCommandRegistry() {
+            return registry;
+        }
+
     private:
         CommandRegistry registry;
         std::string path;
         int lastExitStatus = 0;
-        
+        mutable std::istream* input = nullptr;
+        mutable std::ostream* output = nullptr;
+
         void executeNode(const std::shared_ptr<cmd::Node>& node, std::istream& input, std::ostream& output) {
             if (auto cmd = std::dynamic_pointer_cast<cmd::Command>(node)) {
                 executeCommand(cmd, input, output);
@@ -432,23 +457,17 @@ namespace cmd {
         }
 
         void executeVariableAssignment(const std::shared_ptr<cmd::VariableAssignment>& varAssign, 
-                                       std::istream& input, std::ostream& output) {
-            std::string value;
-            
+                              std::istream& input, std::ostream& output) {
             if (auto expr = std::dynamic_pointer_cast<cmd::Expression>(varAssign->value)) {
-                value = expr->evaluate(*this);
+                std::string value = expr->evaluate(*this);
+                setVariable(varAssign->name, value);
+                if (!std::dynamic_pointer_cast<cmd::CommandSubstitution>(varAssign->value)) {
+                    output << varAssign->name << " = " << value << std::endl;
+                } else {
+                    output << varAssign->name << " = [command output stored]" << std::endl;
+                }
+            } else {
             }
-            else if (auto strLiteral = std::dynamic_pointer_cast<cmd::StringLiteral>(varAssign->value)) {
-                value = strLiteral->value;
-            } else if (auto numLiteral = std::dynamic_pointer_cast<cmd::NumberLiteral>(varAssign->value)) {
-                value = std::to_string(numLiteral->value);
-            } else if (auto varRef = std::dynamic_pointer_cast<cmd::VariableReference>(varAssign->value)) {
-                auto existingValue = getVariable(varRef->name);
-                value = existingValue.value_or("");
-            }
-            
-            setVariable(varAssign->name, value);
-            output << varAssign->name << " = " << value << "\n";
         }
 
         void executeLogicalAnd(const std::shared_ptr<cmd::LogicalAnd>& logicalAnd, std::istream& input, std::ostream& output) {
@@ -569,6 +588,58 @@ namespace cmd {
         std::shared_ptr<Expression> operand;
         OpType op;
         Position position;
+    };
+
+    class CommandSubstitution : public Expression {
+    public:
+        CommandSubstitution(std::shared_ptr<Node> command) : command(command) {}
+        
+        std::string evaluate(const AstExecutor& executor) const override {
+            std::stringstream input;  
+            std::stringstream output;
+            
+            if (auto cmd = std::dynamic_pointer_cast<cmd::Command>(command)) {
+                std::vector<std::string> expandedArgs;
+                for (const auto& arg : cmd->args) {
+                    expandedArgs.push_back(executor.expandVariables(arg));
+                }
+                
+                const_cast<AstExecutor&>(executor).getCommandRegistry().executeCommand(
+                    cmd->name, expandedArgs, input, output);
+            }
+            else if (auto seq = std::dynamic_pointer_cast<cmd::Sequence>(command)) {
+                for (const auto& node : seq->commands) {
+                    const_cast<AstExecutor&>(executor).executeDirectly(node, input, output);
+                }
+            }
+            else {
+                const_cast<AstExecutor&>(executor).executeDirectly(command, input, output);
+            }
+            
+            std::string result = output.str();
+            while (!result.empty() && (result.back() == '\n' || result.back() == '\r')) {
+                result.pop_back();
+            }
+            
+            return result;
+        }
+        
+        double evaluateNumber(const AstExecutor& executor) const override {
+            std::string result = evaluate(executor);
+            try {
+                return std::stod(result);
+            } catch (...) {
+                return 0.0;
+            }
+        }
+        
+   
+        void print(int indent = 0) const override {
+            std::string spaces(indent, ' ');
+            std::cout << spaces << "CommandSubstitution:" << std::endl;
+            command->print(indent + 2);
+        }
+        std::shared_ptr<Node> command;
     };
 }
 
