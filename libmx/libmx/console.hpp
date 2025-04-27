@@ -44,7 +44,7 @@ namespace console {
 
     class Console {
     public:
-        Console() = default;
+        Console();
         ~Console();
         mx::mxUtil *util;
         void create(int x, int y, int w, int h);
@@ -119,8 +119,12 @@ namespace console {
             size_t length;          
         };
         std::vector<TextLine> lines;  
-        bool needsReflow = true;      
-        void calculateLines();        
+        bool needsReflow = true;
+        bool inMultilineMode = false;
+        std::string multilineBuffer;
+        int braceCount = 0;
+        std::string originalPrompt;      
+        void calculateLines();      
     };
 
     class GLConsole {

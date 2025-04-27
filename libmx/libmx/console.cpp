@@ -59,6 +59,13 @@ namespace console {
         }
     }
 
+    Console::Console() { 
+        inMultilineMode = false;
+        braceCount = 0;
+        multilineBuffer = "";
+        originalPrompt = "$ ";
+    }
+
     Console::~Console() {
         if(surface) {
             SDL_FreeSurface(surface);
@@ -123,17 +130,120 @@ namespace console {
     void Console::keypress(char c) {
         needsRedraw = true;
         try {
-            if (c == 8) {
+            if (c == 8) {  
                 if (!inputBuffer.empty() && inputCursorPos > 0) {
+                     if (inMultilineMode && inputCursorPos == inputBuffer.length() && 
+                        inputBuffer[inputCursorPos - 1] == '{') {
+                        braceCount--;
+                        if (braceCount == 0) {
+                            inMultilineMode = false;
+                            promptText = originalPrompt;
+                            multilineBuffer.clear();
+                        }
+                    } else if (inMultilineMode && inputCursorPos == inputBuffer.length() && 
+                               inputBuffer[inputCursorPos - 1] == '}') {
+                        braceCount++;
+                    }
+                    
                     inputBuffer.erase(inputCursorPos - 1, 1);
                     inputCursorPos--;
                 }
             } else if (c == 13) { 
                 std::string cmd = inputBuffer;
-                inputBuffer.clear();
-                inputCursorPos = 0; 
-                procCmd(cmd);
+                
+                if (inMultilineMode) {
+                    multilineBuffer += cmd + "\n";
+                    inputBuffer.clear();
+                    inputCursorPos = 0;
+                    
+                    for (char ch : cmd) {
+                        if (ch == '{') braceCount++;
+                        else if (ch == '}') braceCount--;
+                    }
+                    
+                    if (braceCount == 0) {
+                        inMultilineMode = false;
+                        promptText = originalPrompt;
+                        
+                        std::string processedCommand = multilineBuffer;
+                        size_t firstOpenBrace = processedCommand.find('{');
+                        if (firstOpenBrace != std::string::npos) {
+                            processedCommand.erase(firstOpenBrace, 1);
+                        }
+                        size_t lastCloseBrace = processedCommand.find_last_of('}');
+                        if (lastCloseBrace != std::string::npos) {
+                            processedCommand.erase(lastCloseBrace, 1);
+                        }    
+                        this->print(multilineBuffer);
+                        procCmd(processedCommand);
+                        multilineBuffer.clear();
+                    } else {
+                        this->print(cmd + "\n");
+                    }
+                } else {
+                    inputBuffer.clear();
+                    inputCursorPos = 0;
+                    
+                    if (cmd.find('{') != std::string::npos && cmd.find('}') == std::string::npos) {
+                        braceCount = 0;  
+                        for (char ch : cmd) {
+                            if (ch == '{') braceCount++;
+                            else if (ch == '}') braceCount--;
+                        }
+                        
+                        if (braceCount > 0) {
+                            inMultilineMode = true;
+                            originalPrompt = promptText;
+                            promptText = "... ";
+                            multilineBuffer = cmd + "\n";
+                            this->print(cmd + "\n");
+                            return;
+                        }
+                    }
+                    
+                    procCmd(cmd);
+                }
+                
                 scrollToBottom();
+            } else if (c == '{') {
+                if (!promptWouldWrap) {
+                    inputBuffer.insert(inputCursorPos, 1, c);
+                    inputCursorPos++;
+                    
+                    if (!inMultilineMode) {
+                        braceCount++;  
+                    }
+                }
+            } else if (c == '}') {
+                if (!promptWouldWrap) {
+                    inputBuffer.insert(inputCursorPos, 1, c);
+                    inputCursorPos++;
+                    
+                    if (inMultilineMode) {
+                        braceCount--;
+                        if (braceCount == 0) {
+                            std::string processedCommand;
+                            size_t firstOpenBrace = multilineBuffer.find('{');
+                            if (firstOpenBrace != std::string::npos) {
+                                multilineBuffer.erase(firstOpenBrace, 1);
+                            }
+                            size_t lastCloseBrace = inputBuffer.find_last_of('}');
+                            if (lastCloseBrace != std::string::npos) {
+                                inputBuffer.erase(lastCloseBrace, 1);
+                            }
+                            processedCommand = multilineBuffer + inputBuffer;
+                            inMultilineMode = false;
+                            promptText = originalPrompt;
+                            this->print(inputBuffer + "\n");
+                            inputBuffer.clear();
+                            inputCursorPos = 0;
+                            multilineBuffer.clear();
+                            procCmd(processedCommand);                          
+                            needsRedraw = true;
+                            scrollToBottom();
+                        }
+                    }
+                }
             } else {
                 if (!promptWouldWrap) {
                     inputBuffer.insert(inputCursorPos, 1, c);
@@ -516,18 +626,37 @@ namespace console {
 
     void Console::procCmd(const std::string &cmd_text) {
         if (!cmd_text.empty()) {
-            if (commandHistory.empty() || commandHistory.back() != cmd_text) {
-                commandHistory.push_back(cmd_text);
-                const size_t MAX_HISTORY = 50;
-                if (commandHistory.size() > MAX_HISTORY) {
-                    commandHistory.erase(commandHistory.begin());
+            if (!inMultilineMode || braceCount == 0) {
+                if (commandHistory.empty() || commandHistory.back() != cmd_text) {
+                    commandHistory.push_back(cmd_text);
+                    const size_t MAX_HISTORY = 50;
+                    if (commandHistory.size() > MAX_HISTORY) {
+                        commandHistory.erase(commandHistory.begin());
+                    }
                 }
             }
         }
         historyIndex = -1;
         tempBuffer.clear();
 
-      
+        if (cmd_text.find('\n') != std::string::npos || cmd_text.find(';') != std::string::npos) {
+            if (callbackEnter != nullptr) {
+                std::istringstream stream(cmd_text);
+                std::string line;
+                while (std::getline(stream, line)) {
+                    line.erase(0, line.find_first_not_of(" \t"));
+                    line.erase(line.find_last_not_of(" \t") + 1);
+                    if (!line.empty()) {
+                        callbackEnter(line);
+                    }
+                }
+            needsReflow = true;
+            return;
+            }
+            needsReflow = true;
+            return;
+        }
+
         std::vector<std::string> tokens = tokenize(cmd_text);
         
         if (tokens.empty()) {
@@ -739,12 +868,12 @@ namespace console {
     void GLConsole::draw(gl::GLWindow *win) {
         Uint32 currentTime = SDL_GetTicks();
         
-        // Always redraw if fading is in progress
+        
         if (console.fadeState != FADE_NONE) {
             console.needsRedraw = true;
         }
         
-        // Cursor blink logic
+        
         if (currentTime - console.cursorBlinkTime > 500) {
             console.cursorVisible = !console.cursorVisible;
             console.cursorBlinkTime = currentTime;
