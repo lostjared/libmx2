@@ -940,4 +940,8 @@ namespace cmd {
         }       
         return 0;
     }
+
+    int debugSearch(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
+        return 0;
+    }
 }

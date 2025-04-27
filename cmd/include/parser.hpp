@@ -54,7 +54,7 @@ namespace cmd {
                     if (op == "+") {
                         expr = std::make_shared<cmd::BinaryExpression>(
                             expr, cmd::BinaryExpression::ADD, right);
-                    } else { // op == "-"
+                    } else { 
                         expr = std::make_shared<cmd::BinaryExpression>(
                             expr, cmd::BinaryExpression::SUBTRACT, right);
                     }
@@ -78,7 +78,7 @@ namespace cmd {
                     } else if (op == "/") {
                         expr = std::make_shared<cmd::BinaryExpression>(
                             expr, cmd::BinaryExpression::DIVIDE, right);
-                    } else { // op == "%"
+                    } else { 
                         expr = std::make_shared<cmd::BinaryExpression>(
                             expr, cmd::BinaryExpression::MODULO, right);
                     }
@@ -118,7 +118,7 @@ namespace cmd {
                         if (op == "++") {
                             return std::make_shared<cmd::UnaryExpression>(
                                 expr, cmd::UnaryExpression::INCREMENT, cmd::UnaryExpression::POSTFIX);
-                        } else { // op == "--"
+                        } else { 
                             return std::make_shared<cmd::UnaryExpression>(
                                 expr, cmd::UnaryExpression::DECREMENT, cmd::UnaryExpression::POSTFIX);
                         }
@@ -242,14 +242,6 @@ namespace cmd {
                         auto expr = parseExpression();
                         return std::make_shared<cmd::VariableAssignment>(varName, expr);
                     }
-                }
-                
-                
-                if (name == "x" || name == "y" || name == "z") { // Just examples of variable names
-                    // This handles the case of a standalone expression like "x++"
-                    current--; // Go back one token to reparse the variable name
-                    auto expr = parseExpression();
-                    return expr;
                 }
                 
                 std::vector<std::string> args;
