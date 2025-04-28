@@ -306,7 +306,27 @@ namespace cmd {
 
         std::string expandVariables(const std::string& input, 
                                     std::set<std::string> expandingVars = {}) const {
+            if (input.empty()) return input;
+            
             std::string result = input;
+            
+            if (std::isalpha(input[0]) || input[0] == '_') {
+                bool isValidVarName = true;
+                for (char c : input) {
+                    if (!std::isalnum(c) && c != '_') {
+                        isValidVarName = false;
+                        break;
+                    }
+                }
+                
+                if (isValidVarName) {
+                    auto value = getVariable(input);
+                    if (value) {
+                        return *value;
+                    }
+                }
+            }
+            
             size_t pos = 0;
             while ((pos = result.find("${", pos)) != std::string::npos) {
                 size_t end = result.find("}", pos);
@@ -329,6 +349,42 @@ namespace cmd {
                     result.replace(pos, end - pos + 1, "");
                 }
             }
+            
+            
+            pos = 0;
+            while ((pos = result.find("$", pos)) != std::string::npos) {
+                if (pos + 1 < result.size() && result[pos + 1] == '{') {
+                    pos++;
+                    continue;
+                }
+                
+                size_t end = pos + 1;
+                while (end < result.size() && (std::isalnum(result[end]) || result[end] == '_')) {
+                    end++;
+                }
+                
+                if (end > pos + 1) {
+                    std::string varName = result.substr(pos + 1, end - pos - 1);
+                    if (expandingVars.find(varName) != expandingVars.end()) {
+                        result.replace(pos, end - pos, "[circular reference]");
+                        pos += 20;
+                        continue;
+                    }
+                    auto value = getVariable(varName);
+                    if (value) {
+                        std::set<std::string> newExpandingVars = expandingVars;
+                        newExpandingVars.insert(varName);
+                        std::string expandedValue = expandVariables(*value, newExpandingVars);
+                        result.replace(pos, end - pos, expandedValue);
+                        pos += expandedValue.length();
+                    } else {
+                        result.replace(pos, end - pos, "");
+                    }
+                } else {
+                    pos++;
+                }
+            }
+            
             return result;
         }
 
@@ -457,16 +513,25 @@ namespace cmd {
         }
 
         void executeVariableAssignment(const std::shared_ptr<cmd::VariableAssignment>& varAssign, 
-                              std::istream& input, std::ostream& output) {
-            if (auto expr = std::dynamic_pointer_cast<cmd::Expression>(varAssign->value)) {
+                                       std::istream& input, std::ostream& output) {
+            
+            if (auto strLit = std::dynamic_pointer_cast<cmd::StringLiteral>(varAssign->value)) {
+                std::string value = strLit->value;
+                if (value.size() >= 2 && 
+                    ((value.front() == '"' && value.back() == '"') || 
+                     (value.front() == '\'' && value.back() == '\''))) {
+                    value = value.substr(1, value.size() - 2);
+                }
+                setVariable(varAssign->name, value);
+                output << varAssign->name << " = " << value << std::endl;
+            }
+            else if (auto expr = std::dynamic_pointer_cast<cmd::Expression>(varAssign->value)) {
                 std::string value = expr->evaluate(*this);
                 setVariable(varAssign->name, value);
-                if (!std::dynamic_pointer_cast<cmd::CommandSubstitution>(varAssign->value)) {
-                    output << varAssign->name << " = " << value << std::endl;
-                } else {
-                    output << varAssign->name << " = [command output stored]" << std::endl;
-                }
-            } else {
+                output << varAssign->name << " = " << value << std::endl;
+            } 
+            else {
+                throw std::runtime_error("Unsupported value type in assignment");
             }
         }
 
