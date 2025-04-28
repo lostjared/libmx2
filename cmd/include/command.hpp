@@ -6,6 +6,7 @@
 #include<sstream>
 #include<unordered_map>
 #include<set>
+#include<regex>
 
 namespace state {
 
@@ -14,6 +15,7 @@ namespace state {
             StateException(const std::string& message) : message(message) {}
             const char* what() const noexcept { return message.c_str(); }
         private:
+        
             std::string message;
     };
 
@@ -48,6 +50,21 @@ namespace state {
                 throw StateException("Variable not found: " + name);
             }
         }
+
+        void searchVariables(std::ostream &output, const std::string &pattern) {
+            bool found = false;
+            for(auto &v : variables) {
+                std::regex re(pattern, std::regex::extended);
+                if(std::regex_search(v.second, re)) {
+                    found = true;
+                    output << v.first << ": " << expandVariables(v.second) << "\n";
+                } 
+            }
+            if(found == false) {
+                output << "deubg: pattern not found.\n";
+            }
+        }
+
         std::string expandVariables(const std::string& input, std::set<std::string> expandingVars = {}) const {
             std::string result = input;
             size_t pos = 0;

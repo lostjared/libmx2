@@ -942,6 +942,22 @@ namespace cmd {
     }
 
     int debugSearch(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
+        bool useRegex = false;
+        int patternIndex = 0;
+        std::string pattern = "";
+        if (!args.empty() && (args[0] == "-r" || args[0] == "-e")) {
+            useRegex = true;
+            patternIndex = 1;
+            
+            if (args.size() <= patternIndex) {
+                output << "grep: missing pattern after " << args[0] << std::endl;
+                return 1;
+            }
+        } else if (!args.empty()) {
+            pattern = args[0];
+        }
+        state::GameState *state = state::getGameState();
+        state->searchVariables(output, pattern);
         return 0;
     }
 }
