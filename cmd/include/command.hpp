@@ -4,6 +4,7 @@
 #include<vector>
 #include<string>
 #include<sstream>
+#include<fstream>
 #include<unordered_map>
 #include<set>
 #include<regex>
@@ -63,6 +64,18 @@ namespace state {
             if(found == false) {
                 output << "deubg: pattern not found.\n";
             }
+        }
+
+        bool dumpVariables(const std::string &filename) {
+            std::fstream file;
+            file.open(filename, std::ios::out);
+            if(!file.is_open()) return false;
+
+            for(auto &v : variables) {
+                file << v.first << ": "  << v.second << "\n";
+            }
+            file.close();
+            return true;
         }
 
         std::string expandVariables(const std::string& input, std::set<std::string> expandingVars = {}) const {
@@ -128,5 +141,6 @@ namespace cmd {
     int debugClearVariable(const std::vector<std::string>& args, std::istream& input, std::ostream& output); 
     int debugSearch(const std::vector<std::string>& args, std::istream& input, std::ostream& output); 
     int printfCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
+    int dumpVariables(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
 }
 #endif

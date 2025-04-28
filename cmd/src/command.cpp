@@ -960,4 +960,17 @@ namespace cmd {
         state->searchVariables(output, pattern);
         return 0;
     }
+
+    int dumpVariables(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
+        if(!args.empty() && args.size() == 1) {
+            state::GameState *state = state::getGameState();
+            if(state->dumpVariables(args[0])) {
+                output << "var table dumpped to: " << args[0] << "\n";
+            } else {
+                output << "var table dump failed\n";
+                return 1;
+            }
+        }
+        return 0;
+    }
 }
