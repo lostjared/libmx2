@@ -523,12 +523,10 @@ namespace cmd {
                     value = value.substr(1, value.size() - 2);
                 }
                 setVariable(varAssign->name, value);
-                output << varAssign->name << " = " << value << std::endl;
             }
             else if (auto expr = std::dynamic_pointer_cast<cmd::Expression>(varAssign->value)) {
                 std::string value = expr->evaluate(*this);
                 setVariable(varAssign->name, value);
-                output << varAssign->name << " = " << value << std::endl;
             } 
             else {
                 throw std::runtime_error("Unsupported value type in assignment");
