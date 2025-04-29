@@ -275,48 +275,7 @@ public:
         executor.addCommand("down", down_game);
         executor.addCommand("rotate", rotate_game);
         executor.addCommand("shift", shift_game);
-        /*    if(args.size() == 1 && args[0] == "newgame") {std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> right_game = nullptr;
-    std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> down_game= nullptr;
-std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> right_game = nullptr;
-    std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> down_game= nullptr;
-
-                mp.newGame();
-                window->console.printf("New Game started\n");
-                return true;
-            } else if(args.size() == 1 && args[0] == "drop") {
-                mp.grid.game_piece.drop();
-                window->console.printf("Block dropped\n");
-                return true;
-            } else if(args.size() == 1 && args[0] == "toggle") {
-                window->console.printf("Console toggled\n");
-                window->console_visible = false;
-                return true;
-            } else if(args.size() == 2 && args[0] == "timeout") {
-                window->console.printf("Timeout set to %s\n", args[1]);
-                mp.timeout = std::stoi(args[1]);
-                return true;
-            } else if(args.size() == 1 && args[0] == "left") {
-                mp.grid.game_piece.moveLeft();
-                window->console.printf("Move left\n");
-                return true;
-            } else if(args.size() == 1 && args[0] == "right") {
-                mp.grid.game_piece.moveRight();
-                window->console.printf("Move right\n");
-                return true;
-            } else if(args.size() == 1 && args[0] == "shift") {
-                mp.grid.game_piece.shiftColors();
-                window->console.printf("Shift Colors\n");
-                return true;
-            } else if(args.size() == 1 && args[0] == "rotate") {
-                mp.grid.game_piece.shiftDirection();
-                window->console.printf("Rotate\n");
-                return true;
-            } else if(args.size() == 1 && args[0] == "down") {
-                mp.grid.game_piece.moveDown();
-                window->console.printf("Down\n");
-                return true;
-            }
-           */
+        
         win->console.setInputCallback([&](gl::GLWindow *window, const std::string &text) -> int {
             try {
                     std::cout << "Executing: " << text << std::endl;
