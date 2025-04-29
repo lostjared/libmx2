@@ -1,7 +1,7 @@
 #ifndef __AST_HPP_X_
 #define __AST_HPP_X_
 
-//#define DEBUG_MODE 
+// #define DEBUG_MODE_ON
 
 #include<memory>
 #include<functional>
@@ -269,7 +269,7 @@ namespace cmd {
         void execute(std::istream &defaultInput, std::ostream &defaultOutput, const std::shared_ptr<cmd::Node>& node) {
             
             try {
-                #ifdef DEBUG_MODE
+                #ifdef DEBUG_MODE_ON
                 if (std::dynamic_pointer_cast<cmd::Command>(node)) {
                     std::cout << "DEBUG: Node is a Command" << std::endl;
                 } else if (std::dynamic_pointer_cast<cmd::Sequence>(node)) {

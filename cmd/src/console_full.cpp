@@ -40,7 +40,7 @@ public:
         win->console_visible = true;
         win->console.show();
         output = &win->console.bufferData();
-        win->console.setInputCallback([&](const std::string &text) -> int {
+        win->console.setInputCallback([&](gl::GLWindow *window, const std::string &text) -> int {
             try {
                     std::cout << "Executing: " << text << std::endl;
                     if(text == "@echo_on") {
