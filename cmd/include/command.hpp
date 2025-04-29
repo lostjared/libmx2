@@ -110,9 +110,6 @@ namespace state {
     GameState *getGameState();
 }
 
-
-
-
 namespace cmd {
     int exitCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
     int echoCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
@@ -137,8 +134,7 @@ namespace cmd {
     int debugSet(const std::vector<std::string>& args, std::istream& input, std::ostream& output);      
     int debugGet(const std::vector<std::string>& args, std::istream& input, std::ostream& output);      
     int debugList(const std::vector<std::string>& args, std::istream& input, std::ostream& output);     
-    int debugClear(const std::vector<std::string>& args, std::istream& input, std::ostream& output);    
-    int debugClearVariable(const std::vector<std::string>& args, std::istream& input, std::ostream& output); 
+    int debugClear(const std::vector<std::string>& args, std::istream& input, std::ostream& output);   
     int debugSearch(const std::vector<std::string>& args, std::istream& input, std::ostream& output); 
     int printfCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
     int dumpVariables(const std::vector<std::string>& args, std::istream& input, std::ostream& output);

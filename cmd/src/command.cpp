@@ -924,23 +924,7 @@ namespace cmd {
         output << "Cleared all Debug variables" << std::endl;
         return 0;
     }
-    int debugClearVariable(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
-        if (args.size() != 1) {
-            output << "Usage: debug clear <variable>" << std::endl;
-            return 1;
-        }
-        const std::string& variable = args[0];
-        state::GameState *gameState = state::getGameState();
-        try {
-            gameState->clearVariable(variable);
-            output << "Cleared Debug variable " << variable << std::endl;
-        } catch (const state::StateException &e) {
-            output << "Error: " << e.what() << std::endl;
-            return 1;
-        }       
-        return 0;
-    }
-
+ 
     int debugSearch(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
         bool useRegex = false;
         int patternIndex = 0;

@@ -245,7 +245,6 @@ namespace cmd {
             registry.registerCommand("debug_get", cmd::debugGet);
             registry.registerCommand("debug_list", cmd::debugList);
             registry.registerCommand("debug_clear", cmd::debugClear);
-            registry.registerCommand("debug_clear_var", cmd::debugClearVariable);
             registry.registerCommand("debug_search", cmd::debugSearch);
             registry.registerCommand("debug_dump", cmd::dumpVariables);
         }
