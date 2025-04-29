@@ -47,6 +47,12 @@ option(MOLTEN "Build with MoltenVK Support" OFF)
 option(CMD "Build with libcmd Support" OFF)
 include_directories(${CMAKE_BINARY_DIR} ${CMAKE_INSTALL_PREFIX}/include)
 
+if(CMD)
+message(STATUS "libcmd: Enabled")
+else()
+message(STATUS "libcmd: Disabled")
+endif()
+
 if(MIXER)
   find_package(SDL2_mixer REQUIRED)
   set(MIXER_INCLUDE ${SDL2_MIXER_INCLUDE_DIRS})
@@ -175,6 +181,7 @@ if(EXAMPLES)
     add_subdirectory(gl_about)
     if(CMD)
     add_subdirectory(mp3d)
+    message(STATUS "Building with libcmd Example: mp3d")
     endif()
     add_subdirectory(gl_cubemap)
     add_subdirectory(gl_stencil_test)
@@ -286,5 +293,4 @@ configure_file(
 install(FILES
     "${CMAKE_CURRENT_BINARY_DIR}/libmx2Config.cmake"
     "${CMAKE_CURRENT_BINARY_DIR}/libmx2ConfigVersion.cmake"
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/libmx2
-)
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/libmx2)
