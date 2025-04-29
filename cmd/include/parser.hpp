@@ -329,8 +329,8 @@ namespace cmd {
                 if (!isAtEnd()) {
                     if (peek().getTokenValue() == ">") {
                         advance(); 
-                        if (isAtEnd() || peek().getTokenType() != types::TokenType::TT_ID &&
-                                         peek().getTokenType() != types::TokenType::TT_STR) {
+                        if (isAtEnd() || (peek().getTokenType() != types::TokenType::TT_ID &&
+                                         peek().getTokenType() != types::TokenType::TT_STR)) {
                             throw std::runtime_error("Expected filename after '>'");
                         }
                         std::string filename = advance().getTokenValue();
@@ -338,8 +338,8 @@ namespace cmd {
                     } 
                     else if (peek().getTokenValue() == ">>") {
                         advance(); 
-                        if (isAtEnd() || peek().getTokenType() != types::TokenType::TT_ID &&
-                                         peek().getTokenType() != types::TokenType::TT_STR) {
+                        if (isAtEnd() || (peek().getTokenType() != types::TokenType::TT_ID &&
+                                         peek().getTokenType() != types::TokenType::TT_STR)) {
                             throw std::runtime_error("Expected filename after '>>'");
                         }
                         std::string filename = advance().getTokenValue();
@@ -347,8 +347,8 @@ namespace cmd {
                     }
                     else if (peek().getTokenValue() == "<") {
                         advance(); 
-                        if (isAtEnd() || peek().getTokenType() != types::TokenType::TT_ID &&
-                                         peek().getTokenType() != types::TokenType::TT_STR) {
+                        if (isAtEnd() || (peek().getTokenType() != types::TokenType::TT_ID &&
+                                         peek().getTokenType() != types::TokenType::TT_STR)) {
                             throw std::runtime_error("Expected filename after '<'");
                         }
                         std::string filename = advance().getTokenValue();
@@ -364,8 +364,6 @@ namespace cmd {
                     throw std::runtime_error("Expected '(' after '$' for command substitution");
                 }
                 uint64_t openParenPos = current - 1;
-                uint64_t savedTokenCount = tokens_count;
-                uint64_t savedCurrent = current;
                 int parenCount = 1;
                 uint64_t searchPos = current;
                 
