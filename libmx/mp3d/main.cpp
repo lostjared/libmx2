@@ -178,6 +178,13 @@ public:
     bool cmd_echo = true;
     bool debug_cmd = false;
     std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> new_game = nullptr;
+    std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> drop_game = nullptr;
+    std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> toggle_console = nullptr;
+    std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> left_game = nullptr;
+    std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> right_game = nullptr;
+    std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> down_game= nullptr;
+    std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> shift_game = nullptr;
+    std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> rotate_game= nullptr;
 
     Game(int diff) : mp(diff) {
         mp.grid.game_piece.setCallback([]() {});
@@ -218,8 +225,61 @@ public:
             output << "New Game Started\n";
             return 0;
         };
+        drop_game = [&](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
+            mp.grid.game_piece.drop();
+            output << "Piece Drop\n";
+            return 0;
+        };
+      
+        toggle_console = [&](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
+            win->console_visible = false;
+            win->console.hide();
+            return 0;
+        };
+
+        left_game = [&](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
+            mp.grid.game_piece.moveLeft();
+            output << "Piece:  Move Left\n";
+            return 0;
+        };
+        
+        right_game = [&](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
+            mp.grid.game_piece.moveRight();
+            output << "Piece:  Move Right\n";
+            return 0;
+        };
+      
+        down_game =  [&](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
+            mp.grid.game_piece.moveDown();
+            output << "Piece:  Move Down\n";
+            return 0;
+        };
+
+        rotate_game =  [&](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
+            mp.grid.game_piece.shiftDirection();
+            output << "Piece: Rotated\n";
+            return 0;
+        };
+
+        shift_game =  [&](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
+            mp.grid.game_piece.shiftColors();
+            output << "Piece: Shiftedn\n";
+            return 0;
+        };
+
         executor.addCommand("newgame", new_game);
-        /*    if(args.size() == 1 && args[0] == "newgame") {
+        executor.addCommand("drop", drop_game);
+        executor.addCommand("toggle", toggle_console);
+        executor.addCommand("left",left_game);
+        executor.addCommand("right", right_game);
+        executor.addCommand("down", down_game);
+        executor.addCommand("rotate", rotate_game);
+        executor.addCommand("shift", shift_game);
+        /*    if(args.size() == 1 && args[0] == "newgame") {std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> right_game = nullptr;
+    std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> down_game= nullptr;
+std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> right_game = nullptr;
+    std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> down_game= nullptr;
+
                 mp.newGame();
                 window->console.printf("New Game started\n");
                 return true;
