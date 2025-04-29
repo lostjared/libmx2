@@ -9,4 +9,4 @@ target_include_directories(mp3d PRIVATE
     ${LIBCMD_INCLUDE_DIRS}
     ${LIBCMD_INCLUDE_DIRS}/cmd
 )
-target_link_libraries(mp3d PRIVATE mx cmd ${SDL2_LIBRARIES} ${SDL2_TTF_LIBRARIES})
+target_link_libraries(mp3d PRIVATE mx libcmd::cmd ${SDL2_LIBRARIES} ${SDL2_TTF_LIBRARIES})
