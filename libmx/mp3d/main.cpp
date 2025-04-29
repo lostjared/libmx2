@@ -185,6 +185,8 @@ public:
     std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> down_game= nullptr;
     std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> shift_game = nullptr;
     std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> rotate_game= nullptr;
+    std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> settimeout_game= nullptr;
+
 
     Game(int diff) : mp(diff) {
         mp.grid.game_piece.setCallback([]() {});
@@ -232,6 +234,7 @@ public:
             output << "Piece Drop\n";
             return 0;
         };
+        
       
         toggle_console = [&](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
             window_handle->console_visible = false;
@@ -269,6 +272,17 @@ public:
             return 0;
         };
 
+        
+        settimeout_game =  [&](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
+            if(!args.empty() && args.size() == 1) {
+                int value = std::stoi(args[0]);
+                mp.timeout = value;
+                output << "Game Timeout Set to: " << value << "\n";
+                return 0;
+            }
+            return 1;
+        };
+
         executor.addCommand("newgame", new_game);
         executor.addCommand("drop", drop_game);
         executor.addCommand("toggle", toggle_console);
@@ -277,6 +291,8 @@ public:
         executor.addCommand("down", down_game);
         executor.addCommand("rotate", rotate_game);
         executor.addCommand("shift", shift_game);
+        executor.addCommand("timeout", settimeout_game);
+        
 
         win->console.setInputCallback([&](gl::GLWindow *window, const std::string &text) -> int {
             try {
