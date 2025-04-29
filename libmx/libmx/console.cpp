@@ -647,7 +647,7 @@ namespace console {
                     line.erase(0, line.find_first_not_of(" \t"));
                     line.erase(line.find_last_not_of(" \t") + 1);
                     if (!line.empty()) {
-                        callbackEnter(line);
+                        callbackEnter(this->window, line);
                     }
                 }
             needsReflow = true;
@@ -725,7 +725,7 @@ namespace console {
         else {
 
             if(callbackEnter != nullptr) {
-                if (callbackEnter(cmd_text) == 0) {
+                if (callbackEnter(this->window, cmd_text) == 0) {
                     needsReflow = true;
                     return;
                 }

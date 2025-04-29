@@ -81,7 +81,7 @@ namespace console {
         bool loaded() const { return c_chars.characters.size() > 0; }
         void setTextAttrib(const int size, const SDL_Color &col);
         std::ostringstream &bufferData();
-        void setInputCallback(std::function<int(const std::string &)> callback) { callbackEnter = callback; }
+        void setInputCallback(std::function<int(gl::GLWindow *win, const std::string &)> callback) { callbackEnter = callback; }
         std::string inputBuffer;
         bool needsRedraw = true;
         FadeState fadeState = FADE_NONE;
@@ -105,7 +105,7 @@ namespace console {
         void updateCursorPosition();
         void checkForLineWrap();
         std::function<bool(gl::GLWindow *win, const std::vector<std::string> &)> callback = nullptr;     
-        std::function<int(const std::string &)> callbackEnter = nullptr;
+        std::function<int(gl::GLWindow *window, const std::string &)> callbackEnter = nullptr;
         bool callbackSet = false;
         std::vector<std::string> commandHistory;    
         int historyIndex = -1;                      
@@ -140,7 +140,7 @@ namespace console {
         void resize(gl::GLWindow *win, int w, int h);
         void setPrompt(const std::string &prompt);
         void setCallback(gl::GLWindow *window, std::function<bool(gl::GLWindow *win, const std::vector<std::string> &)> callback);
-        void setInputCallback(std::function<int(const std::string &)> callback) { console.setInputCallback(callback); }
+        void setInputCallback(std::function<int(gl::GLWindow *window, const std::string &)> callback) { console.setInputCallback(callback); }
         void show();
         void hide();
         void setStretch(bool stretch) { stretch_value = stretch; }
@@ -148,6 +148,7 @@ namespace console {
         std::ostringstream textval;
         int getWidth() const;
         int getHeight() const;
+       
         void printf(const char *s) {
             if(s == nullptr) return;
             while(*s) {
@@ -172,6 +173,8 @@ namespace console {
             print(textval.str());
             textval.str("");
         }
+
+        
         bool isVisible() const { return console.isVisible(); }
         bool isFading() const { return console.isFading(); }
         void setStretchHeight(int value);
