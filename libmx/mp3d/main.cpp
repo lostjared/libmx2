@@ -12,6 +12,10 @@
 #include"argz.hpp"
 #endif
 
+#include<cmd/ast.hpp>
+#include<cmd/scanner.hpp>
+#include<cmd/parser.hpp>
+
 #if defined(__EMSCRIPTEN__) || defined(__ANDORID__)
     const char *m_vSource = R"(#version 300 es
             precision highp float; 
@@ -168,6 +172,13 @@
 
 class Game : public gl::GLObject {
 public:
+
+    cmd::AstExecutor executor{};
+    std::ostream *output;
+    bool cmd_echo = true;
+    bool debug_cmd = false;
+    std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> new_game = nullptr;
+
     Game(int diff) : mp(diff) {
         mp.grid.game_piece.setCallback([]() {});
     }
@@ -177,6 +188,8 @@ public:
         }
     }
     virtual void load(gl::GLWindow *win) override {
+
+
         fade_in = true;
         mp.newGame();
         if(cube.openModel(win->util.getFilePath("data/cube.mxmod")) == false) {
@@ -199,8 +212,14 @@ public:
         font.loadFont(win->util.getFilePath("data/font.ttf"), 24);
         resize(win, win->w, win->h);
         mouse_x = mouse_y = 0;
-        win->console.setCallback(win, [&](gl::GLWindow *window, const std::vector<std::string> &args) -> bool {
-            if(args.size() == 1 && args[0] == "newgame") {
+        output = &win->console.bufferData();
+        new_game = [&](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
+            mp.newGame();
+            output << "New Game Started\n";
+            return 0;
+        };
+        executor.addCommand("newgame", new_game);
+        /*    if(args.size() == 1 && args[0] == "newgame") {
                 mp.newGame();
                 window->console.printf("New Game started\n");
                 return true;
@@ -237,8 +256,56 @@ public:
                 window->console.printf("Down\n");
                 return true;
             }
-            return false;
-        });
+           */
+        win->console.setInputCallback([&](gl::GLWindow *window, const std::string &text) -> int {
+            try {
+                    std::cout << "Executing: " << text << std::endl;
+                    if(text == "@echo_on") {
+                        cmd_echo = true;
+                        *output << "Echoing commands on." << "\n";
+                        return 0;
+                    } else if(text == "@echo_off") {
+                        cmd_echo = false;
+                        *output << "Echoing commands off." << "\n";
+                        return 0;
+                    } else if(text == "@debug_on") {
+                        debug_cmd = true;
+                        *output << "Debugging commands on." << "\n";
+                        return 0;
+                    } else if(text == "@debug_off") {
+                        debug_cmd = false;
+                        *output << "Debugging commands off." << "\n";
+                        return 0;
+                    } 
+                    if(cmd_echo) {
+                        *output << "$ " << text << "\n";
+                    }
+                    std::stringstream input_stream(text);
+                    scan::TString string_buffer(text);
+                    scan::Scanner scanner(string_buffer);
+                    cmd::Parser parser(scanner);
+                    auto ast = parser.parse();
+                    executor.execute(input_stream, *output, ast);
+                    if(debug_cmd) {
+                        ast->print();
+                    }
+                    return 0;
+            } catch(const scan::ScanExcept &e) {
+                *output << "Scan error: " << e.why() << std::endl;
+                return 1;
+            } catch(const std::exception &e) { 
+                *output << "Error: " << e.what() << std::endl;
+                return 1;
+            } catch (const state::StateException &e) {
+                *output << "State error: " << e.what() << std::endl;
+                return 1;
+            } 
+            catch(...) {
+                *output << "Unknown error occurred." << std::endl;
+                return 1;
+            }
+            return 0;
+        }); 
         win->console.printf("MasterPiece3D MX2 v1.0\nLostSideDead Software\nhttps://lostsidedead.biz\nNew Game Started\n");
     }
     virtual void draw(gl::GLWindow *win) override {
