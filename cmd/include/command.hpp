@@ -15,8 +15,7 @@ namespace state {
         public:
             StateException(const std::string& message) : message(message) {}
             const char* what() const noexcept { return message.c_str(); }
-        private:
-        
+        private: 
             std::string message;
     };
 
