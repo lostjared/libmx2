@@ -279,6 +279,9 @@ public:
                 mp.timeout = value;
                 output << "Game Timeout Set to: " << value << "\n";
                 return 0;
+            } else {
+                output << "timeout: requires one argument the timeout\n";
+                return 1;
             }
             return 1;
         };
@@ -292,7 +295,7 @@ public:
         executor.addCommand("rotate", rotate_game);
         executor.addCommand("shift", shift_game);
         executor.addCommand("timeout", settimeout_game);
-        
+
 
         win->console.setInputCallback([&](gl::GLWindow *window, const std::string &text) -> int {
             try {
