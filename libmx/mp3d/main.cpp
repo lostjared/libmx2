@@ -194,9 +194,11 @@ public:
             glDeleteTextures(1, &t);
         }
     }
+
+    gl::GLWindow *window_handle = nullptr;
+
     virtual void load(gl::GLWindow *win) override {
-
-
+        window_handle = win;
         fade_in = true;
         mp.newGame();
         if(cube.openModel(win->util.getFilePath("data/cube.mxmod")) == false) {
@@ -232,8 +234,8 @@ public:
         };
       
         toggle_console = [&](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
-            win->console_visible = false;
-            win->console.hide();
+            window_handle->console_visible = false;
+            window_handle->console.hide();
             return 0;
         };
 
@@ -275,7 +277,7 @@ public:
         executor.addCommand("down", down_game);
         executor.addCommand("rotate", rotate_game);
         executor.addCommand("shift", shift_game);
-        
+
         win->console.setInputCallback([&](gl::GLWindow *window, const std::string &text) -> int {
             try {
                     std::cout << "Executing: " << text << std::endl;
@@ -325,6 +327,7 @@ public:
             }
             return 0;
         }); 
+
         win->console.printf("MasterPiece3D MX2 v1.0\nLostSideDead Software\nhttps://lostsidedead.biz\nNew Game Started\n");
     }
     virtual void draw(gl::GLWindow *win) override {
