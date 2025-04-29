@@ -155,8 +155,10 @@ namespace gl {
             console.setCallback(this, [](gl::GLWindow *window, const std::vector<std::string> &args) -> bool {
                 return false;
             });
+            console.setInputCallback([](gl::GLWindow *window, const std::string &text) -> int {
+                return 0;
+            });
         } 
-
     }
 
     void GLWindow::showConsole(bool show) { 
