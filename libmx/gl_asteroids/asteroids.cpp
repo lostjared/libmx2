@@ -389,7 +389,7 @@ public:
 
     virtual void draw(gl::GLWindow *win);
     virtual void event(gl::GLWindow *win, SDL_Event &e) {
-        if(e.key.keysym.sym == SDLK_SPACE || e.key.keysym.sym == SDLK_RETURN) {
+        if((e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_SPACE) || (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_RETURN)) {
             fade = 0.01f;
         }
     }
