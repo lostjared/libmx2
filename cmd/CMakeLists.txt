@@ -26,7 +26,7 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 
 
 if(CMD)
-    add_executable(cmd-cli src/cli.cpp)
+    add_executable(cmd-cli src/cmd.cpp)
     target_link_libraries(cmd-cli PRIVATE
         cmd
         ${Readline_LIBRARIES}
