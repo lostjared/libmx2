@@ -1,7 +1,7 @@
 #include"model_view.hpp"
 #include<QProcess>
 #include<QMessageBox>
-
+#include<QCoreApplication>
 void MainWindow::initWindow() {
     setWindowTitle("Model Viewer");
     setGeometry(100, 100, 800, 600);
