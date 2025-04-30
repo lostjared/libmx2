@@ -180,7 +180,7 @@ namespace console {
         void setStretchHeight(int value);
     protected:
         Console console;
-        bool stretch_value;
+        bool stretch_value = true;
         SDL_Rect rc;
         int stretch_height = 0;
         std::unique_ptr<gl::GLSprite> sprite = nullptr;
