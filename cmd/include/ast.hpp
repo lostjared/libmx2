@@ -34,6 +34,7 @@ namespace cmd {
     class UnaryExpression;
     class CommandSubstitution;
     class IfStatement;
+    class WhileStatement;
 
     class Node {
     public:
@@ -107,6 +108,25 @@ namespace cmd {
             std::vector<Branch> branches;  
             std::shared_ptr<Node> elseAction;  
         };
+
+    class WhileStatement : public Node {
+    public:
+        WhileStatement(std::shared_ptr<Node> condition, std::shared_ptr<Node> body)
+            : condition(std::move(condition)), body(std::move(body)) {}
+        
+        void print(int indent = 0) const override {
+            std::string spaces(indent, ' ');
+            std::cout << spaces << "WhileStatement:" << std::endl;
+            std::cout << spaces << "  condition:" << std::endl;
+            condition->print(indent + 4);
+            std::cout << spaces << "  do:" << std::endl;
+            body->print(indent + 4);
+            std::cout << spaces << "  done" << std::endl;
+        }
+        
+        std::shared_ptr<Node> condition;
+        std::shared_ptr<Node> body;
+    };
 
     class Pipeline : public Node {
     public:
@@ -481,6 +501,9 @@ namespace cmd {
             else if (auto ifStmt = std::dynamic_pointer_cast<cmd::IfStatement>(node)) {
                 executeIfStatement(ifStmt, input, output);
             }
+            else if (auto whileStmt = std::dynamic_pointer_cast<cmd::WhileStatement>(node)) {
+                executeWhileStatement(whileStmt, input, output);
+            }
             else {
                 throw std::runtime_error("Unknown node type");
             }
@@ -584,6 +607,17 @@ namespace cmd {
             }
             if (ifStmt->elseAction) {
                 executeNode(ifStmt->elseAction, input, output);
+            }
+        }
+
+        void executeWhileStatement(const std::shared_ptr<cmd::WhileStatement>& whileStmt,
+                                   std::istream& input, std::ostream& output) {
+            while (true) {
+                executeNode(whileStmt->condition, input, output);
+                if (lastExitStatus != 0) {
+                    break;
+                }
+                executeNode(whileStmt->body, input, output);
             }
         }
     };
