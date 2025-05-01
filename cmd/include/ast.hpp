@@ -596,24 +596,29 @@ namespace cmd {
             }
         }
 
-        void executeVariableAssignment(const std::shared_ptr<cmd::VariableAssignment>& varAssign, 
-                                       std::istream& input, std::ostream& output) {
-            
-            if (auto strLit = std::dynamic_pointer_cast<cmd::StringLiteral>(varAssign->value)) {
-                std::string value = strLit->value;
-                if (value.size() >= 2 && 
-                    ((value.front() == '"' && value.back() == '"') || 
-                     (value.front() == '\'' && value.back() == '\''))) {
-                    value = value.substr(1, value.size() - 2);
+        void executeVariableAssignment(const std::shared_ptr<cmd::VariableAssignment>& varAssign, std::istream& input, std::ostream& output) {   
+            try {
+                if (auto strLit = std::dynamic_pointer_cast<cmd::StringLiteral>(varAssign->value)) {
+                    std::string value = strLit->value;
+                    if (value.size() >= 2 && 
+                        ((value.front() == '"' && value.back() == '"') || 
+                         (value.front() == '\'' && value.back() == '\''))) {
+                        value = value.substr(1, value.size() - 2);
+                    }
+                    setVariable(varAssign->name, value);
                 }
-                setVariable(varAssign->name, value);
+                else if (auto expr = std::dynamic_pointer_cast<cmd::Expression>(varAssign->value)) {
+                    std::string value = expr->evaluate(*this);
+                    setVariable(varAssign->name, value);
+                } 
+                else {
+                    throw std::runtime_error("Unsupported value type in assignment");
+                }
+                lastExitStatus = 0;
             }
-            else if (auto expr = std::dynamic_pointer_cast<cmd::Expression>(varAssign->value)) {
-                std::string value = expr->evaluate(*this);
-                setVariable(varAssign->name, value);
-            } 
-            else {
-                throw std::runtime_error("Unsupported value type in assignment");
+            catch (const std::exception& e) {
+                output << "Assignment error: " << e.what() << std::endl;
+                lastExitStatus = 1; 
             }
         }
 

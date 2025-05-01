@@ -5,6 +5,7 @@
 #include<sstream>
 #include<iomanip>
 #include"game_state.hpp"
+#include"parser.hpp"
 
 namespace state {
     GameState *getGameState() {
@@ -1077,5 +1078,57 @@ namespace cmd {
             return !getValue(args[0]).empty() ? 0 : 1;
         }
         return 1;
+    }
+
+    int cmdCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
+        if (args.empty()) {
+            output << "cmd: missing file operand" << std::endl;
+            return 1;
+        }
+
+        std::string filename;
+        if (args[0].type == cmd::ARG_VARIABLE) {
+            auto varValue = state::getGameState()->getVariable(args[0].value);
+            filename = varValue;
+        } else {
+            filename = args[0].value;
+        }
+
+        if (filename.size() >= 2 && 
+            ((filename.front() == '"' && filename.back() == '"') || 
+             (filename.front() == '\'' && filename.back() == '\''))) {
+            filename = filename.substr(1, filename.size() - 2);
+        }
+
+        std::ifstream file(filename);
+        if (!file.is_open()) {
+            output << "cmd: cannot open file '" << filename << "': No such file or directory" << std::endl;
+            return 1;
+        }
+
+
+        std::stringstream buffer;
+        buffer << file.rdbuf();
+        std::string script = buffer.str();
+
+        try {
+            scan::TString string_buffer(script);
+            scan::Scanner scanner(string_buffer);
+            cmd::Parser parser(scanner);
+            auto ast = parser.parse();
+            cmd::AstExecutor scriptExecutor;
+            scriptExecutor.execute(input, output, ast);   
+            return scriptExecutor.getLastExitStatus();
+        } catch (const scan::ScanExcept &e) {
+            output << "cmd: Scan error in " << filename << ": " << e.why() << std::endl;
+            return 1;
+        } catch (const std::exception &e) {
+            output << "cmd: Error in " << filename << ": " << e.what() << std::endl;
+            return 1;
+        } catch (...) {
+            output << "cmd: Unknown error occurred while executing " << filename << std::endl;
+            return 1;
+        }
+        return 0;
     }
 }

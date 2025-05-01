@@ -169,6 +169,8 @@ public:
     }
 )";
 #endif
+        std::vector<std::string> img = { "data/crystal_red.png", "data/saphire.png" };
+        std::string img_index = img.at(mx::generateRandomInt(0, img.size()-1));
         if (!program.loadProgramFromText(vSource, fSource)) {
             throw mx::Exception("Failed to load shader program");
         }
@@ -177,8 +179,10 @@ public:
         program.setUniform("time_f", 0.0f);
         program.setUniform("alpha", 1.0f);
         logo.initSize(win->w, win->h);
-        logo.loadTexture(&program, win->util.getFilePath("data/crystal_red.png"), 0.0f, 0.0f, win->w, win->h);
+        logo.loadTexture(&program, win->util.getFilePath(img_index), 0.0f, 0.0f, win->w, win->h);
     }
+
+    
 
     void draw(gl::GLWindow *win) override {
         glDisable(GL_DEPTH_TEST);
