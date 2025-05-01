@@ -35,6 +35,7 @@ namespace cmd {
     class CommandSubstitution;
     class IfStatement;
     class WhileStatement;
+    class ForStatement;
 
     class Node {
     public:
@@ -125,6 +126,30 @@ namespace cmd {
         }
         
         std::shared_ptr<Node> condition;
+        std::shared_ptr<Node> body;
+    };
+
+    class ForStatement : public Node {
+    public:
+        ForStatement(std::string variable, std::vector<Argument> values, std::shared_ptr<Node> body)
+            : variable(std::move(variable)), values(std::move(values)), body(std::move(body)) {}
+        
+        void print(int indent = 0) const override {
+            std::string spaces(indent, ' ');
+            std::cout << spaces << "ForStatement:" << std::endl;
+            std::cout << spaces << "  variable: " << variable << std::endl;
+            std::cout << spaces << "  values: ";
+            for (const auto& val : values) {
+                std::cout << val.value << (val.type == ARG_LITERAL ? " (literal)" : " (variable)") << " ";
+            }
+            std::cout << std::endl;
+            std::cout << spaces << "  do:" << std::endl;
+            body->print(indent + 4);
+            std::cout << spaces << "  done" << std::endl;
+        }
+        
+        std::string variable;
+        std::vector<Argument> values;
         std::shared_ptr<Node> body;
     };
 
@@ -504,6 +529,9 @@ namespace cmd {
             else if (auto whileStmt = std::dynamic_pointer_cast<cmd::WhileStatement>(node)) {
                 executeWhileStatement(whileStmt, input, output);
             }
+            else if (auto forStmt = std::dynamic_pointer_cast<cmd::ForStatement>(node)) {
+                executeForStatement(forStmt, input, output);
+            }
             else {
                 throw std::runtime_error("Unknown node type");
             }
@@ -618,6 +646,79 @@ namespace cmd {
                     break;
                 }
                 executeNode(whileStmt->body, input, output);
+            }
+        }
+
+        void executeForStatement(const std::shared_ptr<cmd::ForStatement>& forStmt,
+                                 std::istream& input, std::ostream& output) {
+            
+            std::optional<std::string> originalValue = getVariable(forStmt->variable);
+            bool hadOriginalValue = originalValue.has_value();
+            for (const auto& value : forStmt->values) {
+                if (value.type == ARG_VARIABLE) {
+                    std::optional<std::string> varValue = getVariable(value.value);
+                    
+                    if (varValue.has_value()) {
+                        std::string valueStr = varValue.value();
+                        
+                    
+                        if (valueStr.find('\n') != std::string::npos) {
+                    
+                            std::istringstream lineStream(valueStr);
+                            std::string line;
+                            while (std::getline(lineStream, line)) {
+                                if (!line.empty()) {
+                                    setVariable(forStmt->variable, line);
+                                    executeNode(forStmt->body, input, output);
+                                }
+                            }
+                        } else if (valueStr.find_first_of(" \t") != std::string::npos) {
+                            std::istringstream wordStream(valueStr);
+                            std::string word;
+                            while (wordStream >> word) {
+                                setVariable(forStmt->variable, word);
+                                executeNode(forStmt->body, input, output);
+                            }
+                        } else {
+                            setVariable(forStmt->variable, valueStr);
+                            executeNode(forStmt->body, input, output);
+                        }
+                    }
+                } else {
+                    std::string literalValue = value.value;
+                    if (literalValue.size() >= 2 && 
+                        ((literalValue.front() == '"' && literalValue.back() == '"') ||
+                         (literalValue.front() == '\'' && literalValue.back() == '\''))) {
+                        
+                        literalValue = literalValue.substr(1, literalValue.size() - 2);
+                        if (literalValue.find('\n') != std::string::npos) {
+                            std::istringstream lineStream(literalValue);
+                            std::string line;
+                            while (std::getline(lineStream, line)) {
+                                if (!line.empty()) {
+                                    setVariable(forStmt->variable, line);
+                                    executeNode(forStmt->body, input, output);
+                                }
+                            }
+                            continue;
+                        }
+                    }
+            
+                    setVariable(forStmt->variable, literalValue);
+                    executeNode(forStmt->body, input, output);
+                }
+            }
+            
+            
+            if (hadOriginalValue) {
+                setVariable(forStmt->variable, originalValue.value());
+            } else {
+                try {
+                    state::GameState* gameState = state::getGameState();
+                    gameState->setVariable(forStmt->variable, "");
+                } catch (...) {
+                    setVariable(forStmt->variable, "");
+                }
             }
         }
     };

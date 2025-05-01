@@ -85,10 +85,14 @@ int main(int argc, char **argv) {
         cmd::AstExecutor executor{};
         bool debug_cmd = false;
         
-        if(argc == 2) {
+        if(argc == 2 || argc == 3) {
             std::ostringstream stream;
             std::fstream file;
-
+            if(argc == 3) {
+                if(std::string(argv[2]) == "-d") {
+                    debug_cmd = true;
+                }
+            }
             file.open(argv[1], std::ios::in);
             if(!file.is_open()) {
                 std::cerr << "Error loading file: " << argv[1] << "\n";;
@@ -102,6 +106,7 @@ int main(int argc, char **argv) {
                 auto ast = parser.parse();
                 executor.execute(std::cin, std::cout, ast);
                 if(debug_cmd) {
+                    std::cout << "*************** Debug Information: \n\n";
                     ast->print();
                 }
             } catch(const scan::ScanExcept &e) {

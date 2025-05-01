@@ -550,6 +550,94 @@ namespace cmd {
                     condition, std::make_shared<cmd::Sequence>(bodyStatements));
             }
 
+            std::shared_ptr<cmd::Node> parseForStatement() {
+                advance(); 
+                if (peek().getTokenType() != types::TokenType::TT_ID) {
+                    throw std::runtime_error("Expected variable name after 'for'");
+                }
+                std::string variableName = advance().getTokenValue();
+                if (peek().getTokenType() != types::TokenType::TT_ID || 
+                    peek().getTokenValue() != "in") {
+                    throw std::runtime_error("Expected 'in' after variable name in for loop");
+                }
+                advance(); 
+                
+                std::vector<Argument> values;
+                while (!isAtEnd() && 
+                       peek().getTokenValue() != ";" && 
+                       peek().getTokenValue() != "do") {
+                    
+                    if (peek().getTokenType() == types::TokenType::TT_ID) {
+                        std::string value = advance().getTokenValue();
+                        Argument arg;
+                        arg.value = value;
+                        arg.type = ARG_VARIABLE;
+                        values.push_back(arg);
+                    } 
+                    else if (peek().getTokenType() == types::TokenType::TT_STR) {
+                        std::string value = advance().getTokenValue();
+                        if (value.size() >= 2 && 
+                            ((value.front() == '"' && value.back() == '"') || 
+                             (value.front() == '\'' && value.back() == '\''))) {
+                            value = value.substr(1, value.size() - 2);
+                        }
+                        Argument arg;
+                        arg.value = value;
+                        arg.type = ARG_LITERAL; 
+                        values.push_back(arg);
+                    }
+                    else if (peek().getTokenType() == types::TokenType::TT_NUM) {
+                        std::string value = advance().getTokenValue();
+                        Argument arg;
+                        arg.value = value;
+                        arg.type = ARG_LITERAL; 
+                        values.push_back(arg);
+                    }
+                    else {
+                        break;
+                    }
+                }
+                
+                if (values.empty()) {
+                    throw std::runtime_error("Expected at least one value in for loop");
+                }
+                
+                
+                match(";");
+                
+                
+                if (isAtEnd() || peek().getTokenType() != types::TokenType::TT_ID || 
+                    peek().getTokenValue() != "do") {
+                    throw std::runtime_error("Expected 'do' after values in for loop");
+                }
+                advance(); 
+                
+                match(";");
+                match("\n");
+                
+                
+                std::vector<std::shared_ptr<cmd::Node>> bodyStatements;
+                while (!isAtEnd() && 
+                       (peek().getTokenType() != types::TokenType::TT_ID || 
+                        peek().getTokenValue() != "done")) {
+                    bodyStatements.push_back(parseStatement());
+                    
+                    while (match(";") || match("\n")) {
+                    }
+                }
+                
+                if (isAtEnd() || peek().getTokenType() != types::TokenType::TT_ID || 
+                    peek().getTokenValue() != "done") {
+                    throw std::runtime_error("Expected 'done' to close for loop");
+                }
+                advance();                 
+                
+                return std::make_shared<cmd::ForStatement>(
+                    variableName, 
+                    values,
+                    std::make_shared<cmd::Sequence>(bodyStatements));
+            }
+
             std::shared_ptr<cmd::Node> parseScript() {
                 std::vector<std::shared_ptr<cmd::Node>> statements;
                 while (!isAtEnd()) {
@@ -580,6 +668,9 @@ namespace cmd {
                     }
                     else if (peek().getTokenValue() == "while") {
                         return parseWhileStatement();
+                    }
+                    else if (peek().getTokenValue() == "for") {
+                        return parseForStatement();
                     }
                 }
                 return parsePipeline();
