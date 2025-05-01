@@ -240,6 +240,7 @@ namespace cmd {
                 
                 uint64_t savedPosition = current;
                 std::string name = advance().getTokenValue();
+                bool isTestCommand = (name == "test" || name == "[");
                 
                 if (peek().getTokenType() == types::TokenType::TT_SYM && peek().getTokenValue() == "=") {
                     advance(); 
@@ -263,8 +264,7 @@ namespace cmd {
                         auto expr = parseExpression();
                         return std::make_shared<cmd::VariableAssignment>(name, expr);
                     }
-                }
-                
+                }             
                 
                 current = savedPosition;
                 
@@ -298,7 +298,10 @@ namespace cmd {
                 
                 std::vector<Argument> args;
                 while (!isAtEnd() && 
-                       peek().getTokenType() != types::TokenType::TT_SYM && 
+                       (peek().getTokenType() != types::TokenType::TT_SYM || 
+                        // Special case for test command - allow = and != operators
+                        (isTestCommand && (peek().getTokenValue() == "=" || peek().getTokenValue() == "!=")) 
+                       ) && 
                        peek().getTokenValue() != ";" && 
                        peek().getTokenValue() != "|" && 
                        peek().getTokenValue() != ">" && 
@@ -306,7 +309,12 @@ namespace cmd {
                        peek().getTokenValue() != "<" &&
                        peek().getTokenValue() != "&&") {
                     
-                    if (peek().getTokenType() == types::TokenType::TT_ID) {
+                    if (isTestCommand && peek().getTokenType() == types::TokenType::TT_SYM && 
+                        (peek().getTokenValue() == "=" || peek().getTokenValue() == "!=")) {
+                        std::string value = advance().getTokenValue();
+                        args.push_back({value, ARG_LITERAL});
+                    }
+                    else if (peek().getTokenType() == types::TokenType::TT_ID) {
                         std::string value = advance().getTokenValue();
                         args.push_back({value, ARG_VARIABLE});
                     }
@@ -341,9 +349,7 @@ namespace cmd {
                         }
                     }
                 }
-
                 auto cmd = std::make_shared<cmd::Command>(name, args);
-                
                 if (!isAtEnd()) {
                     if (peek().getTokenValue() == ">") {
                         advance(); 
@@ -373,7 +379,6 @@ namespace cmd {
                         return std::make_shared<cmd::Redirection>(cmd, cmd::Redirection::INPUT, filename);
                     }
                 }
-                
                 return cmd;
             }
 

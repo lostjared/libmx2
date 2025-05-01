@@ -488,7 +488,7 @@ namespace cmd {
         
         void executeCommand(const std::shared_ptr<cmd::Command>& cmd, std::istream& input, std::ostream& output) {
             lastExitStatus = registry.executeCommand(cmd->name, cmd->args, input, output);
-            if (lastExitStatus != 0) {
+            if (lastExitStatus != 0 && cmd->name != "test") {
                 output << cmd->name << ": command failed with exit status " << lastExitStatus << std::endl;
             }
         }
