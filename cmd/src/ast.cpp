@@ -5,6 +5,7 @@ namespace cmd {
 
     AstExecutor::AstExecutor() {
         registry.registerTypedCommand("echo", cmd::echoCommand);
+        registry.registerTypedCommand("test",cmd::testCommand);
         registry.registerCommand("cat", cmd::catCommand);
         registry.registerCommand("grep", cmd::grepCommand);
         registry.registerCommand("exit", cmd::exitCommand);

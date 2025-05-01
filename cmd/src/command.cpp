@@ -971,4 +971,111 @@ namespace cmd {
         }
         return 0;
     }
+
+    int testCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
+        if (args.empty()) {
+            return 1; 
+        }
+        state::GameState* gameState = state::getGameState();
+        auto getValue = [&gameState](const cmd::Argument& arg) -> std::string {
+            if (arg.type == cmd::ARG_VARIABLE) {
+                try {
+                    return gameState->getVariable(arg.value);
+                } catch (const state::StateException&) {
+                    return ""; 
+                }
+
+            }
+            return arg.value;
+        };
+
+        if (args.size() == 2) {
+            const std::string& op = args[0].value;
+            const std::string value = getValue(args[1]);
+            
+            if (op == "-z") {
+                return value.empty() ? 0 : 1; 
+            } else if (op == "-n") {
+                return !value.empty() ? 0 : 1;
+            } else if (op == "-e") {
+                return std::filesystem::exists(value) ? 0 : 1;
+            } else if (op == "-f") {
+                return (std::filesystem::exists(value) && 
+                       std::filesystem::is_regular_file(value)) ? 0 : 1; 
+            } else if (op == "-d") {
+                return (std::filesystem::exists(value) && 
+                       std::filesystem::is_directory(value)) ? 0 : 1; 
+            }
+        }
+
+        if (args.size() >= 3) {
+            const std::string leftValue = getValue(args[0]);
+            const std::string& op = args[1].value;
+            const std::string rightValue = getValue(args[2]);
+
+            if (op == "=") {
+                return leftValue == rightValue ? 0 : 1; 
+            } else if (op == "!=") {
+                return leftValue != rightValue ? 0 : 1; 
+            } else if (op == "-eq") {
+                try {
+                    int left = std::stoi(leftValue);
+                    int right = std::stoi(rightValue);
+                    return left == right ? 0 : 1; 
+                } catch (const std::exception&) {
+                    output << "test: integer expression expected" << std::endl;
+                    return 2;
+                }
+            } else if (op == "-ne") {
+                try {
+                    int left = std::stoi(leftValue);
+                    int right = std::stoi(rightValue);
+                    return left != right ? 0 : 1; 
+                } catch (const std::exception&) {
+                    output << "test: integer expression expected" << std::endl;
+                    return 2;
+                }
+            } else if (op == "-gt") {
+                try {
+                    int left = std::stoi(leftValue);
+                    int right = std::stoi(rightValue);
+                    return left > right ? 0 : 1; 
+                } catch (const std::exception&) {
+                    output << "test: integer expression expected" << std::endl;
+                    return 2;
+                }
+            } else if (op == "-ge") {
+                try {
+                    int left = std::stoi(leftValue);
+                    int right = std::stoi(rightValue);
+                    return left >= right ? 0 : 1;
+                } catch (const std::exception&) {
+                    output << "test: integer expression expected" << std::endl;
+                    return 2;
+                }
+            } else if (op == "-lt") {
+                try {
+                    int left = std::stoi(leftValue);
+                    int right = std::stoi(rightValue);
+                    return left < right ? 0 : 1; 
+                } catch (const std::exception&) {
+                    output << "test: integer expression expected" << std::endl;
+                    return 2;
+                }
+            } else if (op == "-le") {
+                try {
+                    int left = std::stoi(leftValue);
+                    int right = std::stoi(rightValue);
+                    return left <= right ? 0 : 1;
+                } catch (const std::exception&) {
+                    output << "test: integer expression expected" << std::endl;
+                    return 2;
+                }
+            }
+        }
+        if (args.size() == 1) {
+            return !getValue(args[0]).empty() ? 0 : 1;
+        }
+        return 1;
+    }
 }

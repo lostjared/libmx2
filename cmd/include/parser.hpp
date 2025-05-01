@@ -323,6 +323,10 @@ namespace cmd {
                         std::string value = advance().getTokenValue();
                         args.push_back({value, ARG_LITERAL});
                     }
+                    else if (peek().getTokenType() == types::TokenType::TT_ARG) {
+                        std::string value = advance().getTokenValue();
+                        args.push_back({value, ARG_LITERAL}); 
+                    }
                     else {
                         if (peek().getTokenType() == types::TokenType::TT_SYM && peek().getTokenValue() == "$") {
                             advance();
