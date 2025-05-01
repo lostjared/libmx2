@@ -20,7 +20,7 @@ add_library(cmd STATIC
     src/ast.cpp
 )
 
-list(APPEND header ${CMAKE_SOURCE_DIR}/include/command.hpp ${CMAKE_SOURCE_DIR}/include/scanner.hpp ${CMAKE_SOURCE_DIR}/include/types.hpp ${CMAKE_SOURCE_DIR}/include/string_buffer.hpp ${CMAKE_SOURCE_DIR}/include/ast.hpp ${CMAKE_SOURCE_DIR}/include/parser.hpp)
+list(APPEND header ${CMAKE_SOURCE_DIR}/include/command.hpp ${CMAKE_SOURCE_DIR}/include/scanner.hpp ${CMAKE_SOURCE_DIR}/include/types.hpp ${CMAKE_SOURCE_DIR}/include/string_buffer.hpp ${CMAKE_SOURCE_DIR}/include/ast.hpp ${CMAKE_SOURCE_DIR}/include/parser.hpp ${CMAKE_SOURCE_DIR}/include/game_state.hpp)
 
 include_directories(${PROJECT_SOURCE_DIR}/include)
 

@@ -296,7 +296,7 @@ namespace cmd {
                     }
                 }
                 
-                std::vector<std::string> args;
+                std::vector<Argument> args;
                 while (!isAtEnd() && 
                        peek().getTokenType() != types::TokenType::TT_SYM && 
                        peek().getTokenValue() != ";" && 
@@ -306,27 +306,37 @@ namespace cmd {
                        peek().getTokenValue() != "<" &&
                        peek().getTokenValue() != "&&") {
                     
-                    if (peek().getTokenType() == types::TokenType::TT_ID || 
-                        peek().getTokenType() == types::TokenType::TT_STR || 
-                        peek().getTokenType() == types::TokenType::TT_NUM) {
-                        args.push_back(advance().getTokenValue());
-                    } else {
+                    if (peek().getTokenType() == types::TokenType::TT_ID) {
+                        std::string value = advance().getTokenValue();
+                        args.push_back({value, ARG_VARIABLE});
+                    }
+                    else if (peek().getTokenType() == types::TokenType::TT_STR) {
+                        std::string value = advance().getTokenValue();
+                        if (value.size() >= 2 && 
+                            ((value.front() == '"' && value.back() == '"') || 
+                             (value.front() == '\'' && value.back() == '\''))) {
+                            value = value.substr(1, value.size() - 2);
+                        }
+                        args.push_back({value, ARG_LITERAL});
+                    }
+                    else if (peek().getTokenType() == types::TokenType::TT_NUM) {
+                        std::string value = advance().getTokenValue();
+                        args.push_back({value, ARG_LITERAL});
+                    }
+                    else {
                         if (peek().getTokenType() == types::TokenType::TT_SYM && peek().getTokenValue() == "$") {
                             advance();
                             if (match("(")) {
                                 throw std::runtime_error("Command substitution in arguments not yet supported");
-                                
                             } else {
-                                
-                                args.push_back("$" + advance().getTokenValue());
+                                std::string varName = advance().getTokenValue();
+                                args.push_back({"$" + varName, ARG_VARIABLE});
                             }
                         } else {
                             advance();
                         }
                     }
                 }
-                
-
 
                 auto cmd = std::make_shared<cmd::Command>(name, args);
                 

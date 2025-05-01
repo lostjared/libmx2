@@ -4,6 +4,7 @@
 #include<regex>
 #include<sstream>
 #include<iomanip>
+#include"game_state.hpp"
 
 namespace state {
     GameState *getGameState() {
@@ -19,15 +20,27 @@ namespace cmd {
         return 0;     
     }
     
-    int echoCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
+    int echoCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
+        state::GameState *gameState = state::getGameState();
+        
         for (size_t i = 0; i < args.size(); i++) {
-            output << args[i];
+            if (args[i].type == ARG_VARIABLE) {
+                try {
+                    std::string value = gameState->getVariable(args[i].value);
+                    output << value;
+                } catch (const state::StateException &e) {
+                    output << args[i].value;
+                }
+            } else {
+                output << args[i].value;
+            }
+            
             if (i < args.size() - 1) {
                 output << " ";
             }
         }
         output << std::endl;
-        return 0; 
+        return 0;
     }
 
     int catCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
@@ -755,22 +768,23 @@ namespace cmd {
         return result;
     }
 
-    int printfCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
+    int printfCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
         if (args.empty()) {
             output << "Usage: printf FORMAT [ARGUMENTS...]" << std::endl;
             output << "Print ARGUMENTS according to FORMAT" << std::endl;
             return 1;
         }
-
         state::GameState *gameState = state::getGameState();
-        
         std::vector<std::string> expandedArgs;
         for (const auto& arg : args) {
-            try {
-                expandedArgs.push_back(gameState->expandVariables(arg));
-            } catch (const state::StateException& e) {
-                output << "Variable expansion error: " << e.what() << std::endl;
-                return 1;
+            if (arg.type == ARG_VARIABLE) {
+                try {
+                    expandedArgs.push_back(gameState->getVariable(arg.value));
+                } catch (const state::StateException& e) {
+                    expandedArgs.push_back(arg.value); // Use variable name if not found
+                }
+            } else {
+                expandedArgs.push_back(arg.value);
             }
         }
         

@@ -13,9 +13,9 @@
 #include<iostream>
 #include<filesystem>
 #include<sstream>
-#include"command.hpp"
 #include<set>
 #include<cmath>
+#include"game_state.hpp"
 
 namespace cmd {
     class Node;
@@ -49,19 +49,29 @@ namespace cmd {
         virtual double evaluateNumber(const AstExecutor& executor) const = 0;
     };
     
+    enum ArgType { ARG_LITERAL, ARG_VARIABLE };
+    
+    struct Argument {
+        std::string value;
+        ArgType type;
+    };
+
     class Command : public Node {
     public:
-        Command(std::string name, std::vector<std::string> args) 
+        
+        Command(std::string name, std::vector<Argument> args) 
             : name(std::move(name)), args(std::move(args)) {}
 
         void print(int indent = 0) const override {
             std::cout << std::string(indent, ' ') << "Command: " << name << std::endl;
             for (const auto& arg : args) {
-                std::cout << std::string(indent + 2, ' ') << "Arg: " << arg << std::endl;
+                std::cout << std::string(indent + 2, ' ') << "Arg: " << arg.value 
+                          << (arg.type == ARG_LITERAL ? " (literal)" : " (variable)") << std::endl;
             }
         }
+        
         std::string name;
-        std::vector<std::string> args;
+        std::vector<Argument> args;
     };
 
     class IfStatement : public Node {
@@ -152,6 +162,7 @@ namespace cmd {
     };
 
     using CommandFunction = std::function<int(const std::vector<std::string>&, std::istream&, std::ostream&)>;
+    using TypedCommandFunction = std::function<int(const std::vector<Argument>&, std::istream&, std::ostream&)>;
 
     class CommandRegistry {
     public:
@@ -159,20 +170,35 @@ namespace cmd {
         void registerCommand(const std::string& name, CommandFunction func) {
             commands[name] = func;
         }
+
+        void registerTypedCommand(const std::string& name, TypedCommandFunction func) {
+            typedCommands[name] = func;
+        }
         
-        int executeCommand(const std::string& name, const std::vector<std::string>& args, 
+        int executeCommand(const std::string& name, const std::vector<Argument>& args, 
                           std::istream& input, std::ostream& output) {
-            auto it = commands.find(name);
-            if (it != commands.end()) {
+            
+            auto it = typedCommands.find(name);
+            if (it != typedCommands.end()) {
                 return it->second(args, input, output);
-            } else {
-                output << "Command not found: " << name << std::endl;
-                return 1; 
             }
+            
+            
+            auto it2 = commands.find(name);
+            if (it2 != commands.end()) {
+                std::vector<std::string> argValues;
+                for (const auto& arg : args) {
+                    argValues.push_back(arg.value);
+                }
+                return it2->second(argValues, input, output);
+            }
+            output << "Command not found: " << name << std::endl;
+            return 1; 
         }
         
     private:
         std::unordered_map<std::string, CommandFunction> commands;
+        std::unordered_map<std::string, TypedCommandFunction> typedCommands;
     };
 
     class StringLiteral : public Node {
@@ -254,35 +280,7 @@ namespace cmd {
 
     class AstExecutor {
     public:
-        AstExecutor() {
-            registry.registerCommand("echo", cmd::echoCommand);
-            registry.registerCommand("cat", cmd::catCommand);
-            registry.registerCommand("grep", cmd::grepCommand);
-            registry.registerCommand("exit", cmd::exitCommand);
-            registry.registerCommand("print", cmd::printCommand);
-            registry.registerCommand("cd", cmd::cdCommand);
-            registry.registerCommand("ls", cmd::listCommand);
-            registry.registerCommand("dir", cmd::listCommand);
-            registry.registerCommand("find", cmd::findCommand);
-            registry.registerCommand("sort", cmd::sortCommand);
-            registry.registerCommand("pwd", cmd::pwdCommand);
-            registry.registerCommand("mkdir", cmd::mkdirCommand);
-            registry.registerCommand("cp", cmd::cpCommand);
-            registry.registerCommand("mv", cmd::mvCommand);
-            registry.registerCommand("touch", cmd::touchCommand);
-            registry.registerCommand("head", cmd::headCommand);
-            registry.registerCommand("tail", cmd::tailCommand);
-            registry.registerCommand("wc", cmd::wcCommand);
-            registry.registerCommand("chmod", cmd::chmodCommand);
-            registry.registerCommand("sed", cmd::sedCommand);
-            registry.registerCommand("printf", cmd::printfCommand);
-            registry.registerCommand("debug_set", cmd::debugSet);
-            registry.registerCommand("debug_get", cmd::debugGet);
-            registry.registerCommand("debug_list", cmd::debugList);
-            registry.registerCommand("debug_clear", cmd::debugClear);
-            registry.registerCommand("debug_search", cmd::debugSearch);
-            registry.registerCommand("debug_dump", cmd::dumpVariables);
-        }
+        AstExecutor();
 
         std::string getPath() const {
             return std::filesystem::current_path().string();
@@ -359,6 +357,8 @@ namespace cmd {
                     auto value = getVariable(input);
                     if (value) {
                         return *value;
+                    }  else {
+                        return input;
                     }
                 }
             }
@@ -487,13 +487,7 @@ namespace cmd {
         }
         
         void executeCommand(const std::shared_ptr<cmd::Command>& cmd, std::istream& input, std::ostream& output) {
-            std::vector<std::string> expandedArgs;
-            for (const auto& arg : cmd->args) {
-                expandedArgs.push_back(expandVariables(arg));
-            }
-            
-            lastExitStatus = registry.executeCommand(cmd->name, expandedArgs, input, output);
-            
+            lastExitStatus = registry.executeCommand(cmd->name, cmd->args, input, output);
             if (lastExitStatus != 0) {
                 output << cmd->name << ": command failed with exit status " << lastExitStatus << std::endl;
             }
@@ -715,11 +709,13 @@ namespace cmd {
             std::stringstream output;
             
             if (auto cmd = std::dynamic_pointer_cast<cmd::Command>(command)) {
-                std::vector<std::string> expandedArgs;
+                std::vector<Argument> expandedArgs;
                 for (const auto& arg : cmd->args) {
-                    expandedArgs.push_back(executor.expandVariables(arg));
-                }
-                
+                    Argument expandedArg;
+                    expandedArg.value = executor.expandVariables(arg.value);
+                    expandedArg.type = arg.type;
+                    expandedArgs.push_back(expandedArg);
+                }               
                 const_cast<AstExecutor&>(executor).getCommandRegistry().executeCommand(
                     cmd->name, expandedArgs, input, output);
             }
