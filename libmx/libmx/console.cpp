@@ -641,17 +641,7 @@ namespace console {
 
         if (cmd_text.find('\n') != std::string::npos || cmd_text.find(';') != std::string::npos) {
             if (callbackEnter != nullptr) {
-                std::istringstream stream(cmd_text);
-                std::string line;
-                while (std::getline(stream, line)) {
-                    line.erase(0, line.find_first_not_of(" \t"));
-                    line.erase(line.find_last_not_of(" \t") + 1);
-                    if (!line.empty()) {
-                        callbackEnter(this->window, line);
-                    }
-                }
-            needsReflow = true;
-            return;
+                    callbackEnter(this->window, cmd_text);
             }
             needsReflow = true;
             return;
