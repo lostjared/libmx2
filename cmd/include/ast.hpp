@@ -33,6 +33,7 @@ namespace cmd {
     class BinaryExpression;
     class UnaryExpression;
     class CommandSubstitution;
+    class IfStatement;
 
     class Node {
     public:
@@ -62,6 +63,40 @@ namespace cmd {
         std::string name;
         std::vector<std::string> args;
     };
+
+    class IfStatement : public Node {
+        public:
+            struct Branch {
+                std::shared_ptr<Node> condition;  
+                std::shared_ptr<Node> action;     
+            };
+            
+            IfStatement(std::vector<Branch> branches, std::shared_ptr<Node> elseAction = nullptr) 
+                : branches(std::move(branches)), elseAction(std::move(elseAction)) {}
+            
+            void print(int indent = 0) const override {
+                std::string spaces(indent, ' ');
+                std::cout << spaces << "IfStatement:" << std::endl;
+                
+                for (size_t i = 0; i < branches.size(); ++i) {
+                    std::cout << spaces << "  " << (i == 0 ? "if:" : "elif:") << std::endl;
+                    std::cout << spaces << "    condition:" << std::endl;
+                    branches[i].condition->print(indent + 6);
+                    std::cout << spaces << "    then:" << std::endl;
+                    branches[i].action->print(indent + 6);
+                }
+                
+                if (elseAction) {
+                    std::cout << spaces << "  else:" << std::endl;
+                    elseAction->print(indent + 4);
+                }
+                
+                std::cout << spaces << "  fi" << std::endl;
+            }
+            
+            std::vector<Branch> branches;  
+            std::shared_ptr<Node> elseAction;  
+        };
 
     class Pipeline : public Node {
     public:
@@ -443,6 +478,9 @@ namespace cmd {
             else if (auto expr = std::dynamic_pointer_cast<cmd::Expression>(node)) {
                 expr->evaluate(*this);
             }
+            else if (auto ifStmt = std::dynamic_pointer_cast<cmd::IfStatement>(node)) {
+                executeIfStatement(ifStmt, input, output);
+            }
             else {
                 throw std::runtime_error("Unknown node type");
             }
@@ -538,6 +576,20 @@ namespace cmd {
             executeNode(logicalAnd->left, input, output);
             if (lastExitStatus == 0) {
                 executeNode(logicalAnd->right, input, output);
+            }
+        }
+
+        void executeIfStatement(const std::shared_ptr<cmd::IfStatement>& ifStmt, 
+                                std::istream& input, std::ostream& output) {
+            for (const auto& branch : ifStmt->branches) {
+                executeNode(branch.condition, input, output);
+                if (lastExitStatus == 0) {
+                    executeNode(branch.action, input, output);
+                    return;
+                }
+            }
+            if (ifStmt->elseAction) {
+                executeNode(ifStmt->elseAction, input, output);
             }
         }
     };

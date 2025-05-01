@@ -47,6 +47,21 @@ namespace scan {
         tokens.clear();
         while(!string_buffer.eof(0)) {
             auto ch = string_buffer.getch();
+            if(!ch.has_value()) break;
+            
+            if (*ch == '\n') {
+                TToken token;
+                auto pos = string_buffer.cur_line();
+                auto filename = string_buffer.cur_file();
+                
+                token.set_pos(pos);
+                token.set_filename(filename);
+                token.setToken(types::TokenType::TT_SYM, "\n");
+                
+                tokens.push_back(token);
+                continue;
+            }
+            
             if(ch.has_value() && *ch == '#') { 
                 auto next_char = string_buffer.peekch(1);
                 if (next_char.has_value() && isdigit(*next_char)) {

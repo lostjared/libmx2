@@ -14,7 +14,7 @@ namespace cmd {
 
             std::shared_ptr<cmd::Node> parse() {
                 tokens_count = scanner.scan();
-                return parseSequence();
+                return parseScript();
             }
 
             void dumpTokens() {
@@ -234,6 +234,10 @@ namespace cmd {
                     throw std::runtime_error("Expected command name, let keyword, or variable name");
                 }
                 
+                if (peek().getTokenValue() == "if") {
+                    return parseIfStatement();
+                }
+                
                 uint64_t savedPosition = current;
                 std::string name = advance().getTokenValue();
                 
@@ -388,6 +392,154 @@ namespace cmd {
                 }
                 
                 return commandNode;
+            }
+
+            std::shared_ptr<cmd::Node> parseIfStatement() {
+                std::vector<cmd::IfStatement::Branch> branches;
+                std::shared_ptr<cmd::Node> elseAction = nullptr;
+                
+                
+                advance(); 
+                auto firstCondition = parsePipeline();
+                
+                match(";");
+                match("\n"); 
+                
+                
+                if (isAtEnd() || peek().getTokenType() != types::TokenType::TT_ID || 
+                    peek().getTokenValue() != "then") {
+                    throw std::runtime_error("Expected 'then' after if condition");
+                }
+                advance(); 
+                match(";");
+                match("\n");
+                
+                std::vector<std::shared_ptr<cmd::Node>> firstActions;
+                while (!isAtEnd() && 
+                       (peek().getTokenType() != types::TokenType::TT_ID || 
+                        (peek().getTokenValue() != "elif" && 
+                         peek().getTokenValue() != "else" && 
+                         peek().getTokenValue() != "fi"))) {
+                    firstActions.push_back(parseStatement());
+                    
+                    
+                    while (match(";") || match("\n")) {
+                    
+                    }
+                }
+                
+                branches.push_back({firstCondition, std::make_shared<cmd::Sequence>(firstActions)});
+                
+                
+                while (!isAtEnd() && 
+                       peek().getTokenType() == types::TokenType::TT_ID &&
+                       peek().getTokenValue() == "elif") {
+                    advance(); 
+                    
+                    auto elifCondition = parsePipeline();
+                    
+                    match(";");
+                    match("\n");
+                    
+                    if (isAtEnd() || peek().getTokenType() != types::TokenType::TT_ID || 
+                        peek().getTokenValue() != "then") {
+                        throw std::runtime_error("Expected 'then' after elif condition");
+                    }
+                    advance(); 
+                    
+                    
+                    match(";");
+                    match("\n");
+                    
+                    std::vector<std::shared_ptr<cmd::Node>> elifActions;
+                    
+                    
+                    while (!isAtEnd() && 
+                           (peek().getTokenType() != types::TokenType::TT_ID || 
+                            (peek().getTokenValue() != "elif" && 
+                             peek().getTokenValue() != "else" && 
+                             peek().getTokenValue() != "fi"))) {
+                        elifActions.push_back(parseStatement());
+                        
+                    
+                        while (match(";") || match("\n")) {
+                    
+                        }
+                    }
+                    
+                    branches.push_back({elifCondition, std::make_shared<cmd::Sequence>(elifActions)});
+                }
+                
+                
+                if (!isAtEnd() && 
+                    peek().getTokenType() == types::TokenType::TT_ID &&
+                    peek().getTokenValue() == "else") {
+                    advance(); 
+                    
+                    
+                    match(";");
+                    match("\n");
+                    
+                    std::vector<std::shared_ptr<cmd::Node>> elseActions;
+                    
+                    
+                    while (!isAtEnd() && 
+                           (peek().getTokenType() != types::TokenType::TT_ID || 
+                            peek().getTokenValue() != "fi")) {
+                        elseActions.push_back(parseStatement());
+                        
+                    
+                        while (match(";") || match("\n")) {
+                    
+                        }
+                    }
+                    
+                    elseAction = std::make_shared<cmd::Sequence>(elseActions);
+                }
+                
+                
+                if (isAtEnd() || 
+                    peek().getTokenType() != types::TokenType::TT_ID ||
+                    peek().getTokenValue() != "fi") {
+                    throw std::runtime_error("Expected 'fi' to close if statement");
+                }
+                advance(); 
+                
+                return std::make_shared<cmd::IfStatement>(branches, elseAction);
+            }
+
+            std::shared_ptr<cmd::Node> parseScript() {
+                std::vector<std::shared_ptr<cmd::Node>> statements;
+                while (!isAtEnd()) {
+                    while (!isAtEnd() && 
+                          (match(";") || match("\n"))) {
+                    }
+                    
+                    if (!isAtEnd()) {
+                        statements.push_back(parseStatement());
+                        while (!isAtEnd() && 
+                              (match(";") || match("\n"))) {
+                            
+                        }
+                    }
+                }
+                
+                
+                if (statements.size() == 1) {
+                    return statements[0];
+                }
+                
+                
+                return std::make_shared<cmd::Sequence>(statements);
+            }
+
+            std::shared_ptr<cmd::Node> parseStatement() {
+                if (peek().getTokenType() == types::TokenType::TT_ID) {
+                    if (peek().getTokenValue() == "if") {
+                        return parseIfStatement();
+                    }
+                }
+                return parsePipeline();
             }
         };     
 }
