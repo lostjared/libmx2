@@ -192,39 +192,99 @@ namespace cmd {
             }
 
             std::shared_ptr<cmd::Node> parsePipeline() {
-                auto leftCmd = parseCommand();
+                std::shared_ptr<cmd::Node> left = parseCommand();
                 
-                if (match("|")) {
-                    std::vector<std::shared_ptr<cmd::Command>> commands;
-                    if (auto cmd = std::dynamic_pointer_cast<cmd::Command>(leftCmd)) {
-                        commands.push_back(cmd);
-                    } else {
-                        throw std::runtime_error("Expected command before pipe");
-                    }
-                    while (true) {
-                        auto rightCmd = parseCommand();
-                        if (auto cmd = std::dynamic_pointer_cast<cmd::Command>(rightCmd)) {
-                            commands.push_back(cmd);
+                while (!isAtEnd() && peek().getTokenType() == types::TokenType::TT_SYM) {
+                    if (peek().getTokenValue() == ">") {
+                        advance(); 
+                        
+                        std::string filename;
+                        if (peek().getTokenType() == types::TokenType::TT_ID ||
+                            peek().getTokenType() == types::TokenType::TT_STR) {
+                            filename = advance().getTokenValue();
+                            
+                            
+                            if (filename.size() >= 2 && 
+                                ((filename.front() == '"' && filename.back() == '"') || 
+                                 (filename.front() == '\'' && filename.back() == '\''))) {
+                                filename = filename.substr(1, filename.size() - 2);
+                            }
                         } else {
-                            throw std::runtime_error("Expected command after pipe");
+                            throw std::runtime_error("Expected filename after '>' operator");
                         }
                         
-                        if (!match("|")) {
-                            break;
+                        
+                        left = std::make_shared<cmd::Redirection>(left, cmd::Redirection::OUTPUT, filename);
+                    }
+                    else if (peek().getTokenValue() == ">>") {
+                        advance(); 
+                        std::string filename;
+                        if (peek().getTokenType() == types::TokenType::TT_ID ||
+                            peek().getTokenType() == types::TokenType::TT_STR) {
+                            filename = advance().getTokenValue();
+                        
+                            if (filename.size() >= 2 && 
+                                ((filename.front() == '"' && filename.back() == '"') || 
+                                 (filename.front() == '\'' && filename.back() == '\''))) {
+                                filename = filename.substr(1, filename.size() - 2);
+                            }
+                        } else {
+                            throw std::runtime_error("Expected filename after '>>' operator");
+                        }
+                    
+                        left = std::make_shared<cmd::Redirection>(left, cmd::Redirection::APPEND, filename);
+                    }
+                    else if (peek().getTokenValue() == "<") {
+                        advance(); 
+                    
+                        std::string filename;
+                        if (peek().getTokenType() == types::TokenType::TT_ID ||
+                            peek().getTokenType() == types::TokenType::TT_STR) {
+                            filename = advance().getTokenValue();
+                            
+                    
+                            if (filename.size() >= 2 && 
+                                ((filename.front() == '"' && filename.back() == '"') || 
+                                 (filename.front() == '\'' && filename.back() == '\''))) {
+                                filename = filename.substr(1, filename.size() - 2);
+                            }
+                        } else {
+                            throw std::runtime_error("Expected filename after '<' operator");
+                        }
+                        
+                    
+                        left = std::make_shared<cmd::Redirection>(left, cmd::Redirection::INPUT, filename);
+                    }
+                    else if (peek().getTokenValue() == "|") {
+                        advance(); 
+                        auto right = parseCommand();
+                        auto rightCmd = std::dynamic_pointer_cast<cmd::Command>(right);
+                        if (!rightCmd) {
+                            throw std::runtime_error("Expected command after '|' operator");
+                        }
+                        auto leftPipe = std::dynamic_pointer_cast<cmd::Pipeline>(left);
+                        if (leftPipe) {
+                            leftPipe->commands.push_back(rightCmd);
+                            left = leftPipe;
+                        } 
+                        else {
+                            auto leftCmd = std::dynamic_pointer_cast<cmd::Command>(left);
+                            if (!leftCmd) {
+                                throw std::runtime_error("Left side of pipe must be a command");
+                            }
+                            
+                            std::vector<std::shared_ptr<cmd::Command>> commands;
+                            commands.push_back(leftCmd);
+                            commands.push_back(rightCmd);
+                            left = std::make_shared<cmd::Pipeline>(std::move(commands));
                         }
                     }
-                    
-                    return std::make_shared<cmd::Pipeline>(commands);
-                } else if (match("&&")) {
-                    uint64_t savedPos = current;
-                    auto rightCmd = parsePipeline();
-                    if (savedPos == current) {
-                        throw std::runtime_error("Recursive parsing error in logical AND");
+                    else {
+                        break;
                     }
-                    return std::make_shared<cmd::LogicalAnd>(leftCmd, rightCmd);
                 }
                 
-                return leftCmd;
+                return left;
             }
 
             std::shared_ptr<cmd::Node> parseCommand() {
