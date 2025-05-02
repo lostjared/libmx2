@@ -335,24 +335,30 @@ namespace cmd {
         }
     }
 
-    int mkdirCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
+    int mkdirCommand(const std::vector<Argument>& args, std::istream& input, std::ostream& output) {
         if (args.empty()) {
             output << "mkdir: missing operand" << std::endl;
             return 1;
         }
-        
         bool parents = false;
         std::vector<std::string> dirs;
         bool success = true;
-        
         for (const auto& arg : args) {
-            if (arg == "-p") {
+            std::string a = arg.value;
+            state::GameState *s = state::getGameState();
+            try {
+                if(arg.type == ArgType::ARG_VARIABLE) {
+                    a = s->getVariable(arg.value);
+                }
+            } catch(const state::StateException  &e) {
+
+            }
+            if (a == "-p") {
                 parents = true;
             } else {
-                dirs.push_back(arg);
+                dirs.push_back(a);
             }
         }
-        
         for (const auto& dir : dirs) {
             try {
                 if (parents) {
@@ -365,13 +371,12 @@ namespace cmd {
                 success = false;
             }
         }
-        
         return success ? 0 : 1;
     }
 
-    int cpCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
+    int cpCommand(const std::vector<Argument>& args, std::istream& input, std::ostream& output) {
         if (args.size() < 2) {
-            output << "cp: missing destination file operand after '" << (args.empty() ? "cp" : args[0]) << "'" << std::endl;
+            output << "cp: missing destination file operand after '" << (args.empty() ? "cp" : args[0].value) << "'" << std::endl;
             return 1;
         }
         
@@ -379,10 +384,19 @@ namespace cmd {
         std::vector<std::string> files;
         
         for (const auto& arg : args) {
-            if (arg == "-r" || arg == "-R") {
+            std::string a = arg.value;
+            state::GameState *s = state::getGameState();
+            try {
+                if(arg.type == ArgType::ARG_VARIABLE) {
+                    a = s->getVariable(arg.value);
+                }
+            } catch(const state::StateException &e) {
+
+            }
+            if (a == "-r" || a == "-R") {
                 recursive = true;
             } else {
-                files.push_back(arg);
+                files.push_back(a);
             }
         }
         
@@ -411,49 +425,69 @@ namespace cmd {
         return success ? 0 : 1;
     }
 
-    int mvCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
+    int mvCommand(const std::vector<Argument>& args, std::istream& input, std::ostream& output) {
         if (args.size() < 2) {
-            output << "mv: missing destination file operand after '" << (args.empty() ? "mv" : args[0]) << "'" << std::endl;
+            output << "mv: missing destination file operand after '" << (args.empty() ? "mv" : args[0].value) << "'" << std::endl;
             return 1;
         }
-        
-        std::string dest = args.back();
+        state::GameState *s = state::getGameState();
+        std::string dest = args.back().value;
+        try {
+            if (args.back().type == ArgType::ARG_VARIABLE) {
+                dest = s->getVariable(args.back().value);
+            }
+        }
+        catch(const state::StateException &e) {
+
+        }
         bool success = true;
-        
+
         for (size_t i = 0; i < args.size() - 1; ++i) {
+
+            std::string a = args[i].value;
+
             try {
-                std::filesystem::rename(args[i], dest);
+                
+                if(args[i].type == ArgType::ARG_VARIABLE) {
+                    a = s->getVariable(args[i].value);
+                }
+                std::filesystem::rename(a, dest);
             } catch (const std::filesystem::filesystem_error& e) {
-                output << "mv: cannot move '" << args[i] << "' to '" << dest << "': " << e.what() << std::endl;
+                output << "mv: cannot move '" << a << "' to '" << dest << "': " << e.what() << std::endl;
                 success = false;
+            } catch(const state::StateException &e) {
+
             }
         }
         
         return success ? 0 : 1;
     }
 
-    int touchCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
+    int touchCommand(const std::vector<Argument>& args, std::istream& input, std::ostream& output) {
         if (args.empty()) {
             output << "touch: missing file operand" << std::endl;
             return 1;
         }
-        
         bool success = true;
-        
         for (const auto& file : args) {
+            std::string f = file.value;
             try {
-                if (!std::filesystem::exists(file)) {
-                    std::ofstream(file).close();
+                state::GameState *s = state::getGameState();
+                if(file.type == ArgType::ARG_VARIABLE) {
+                    f = s->getVariable(file.value);
+                }
+                if (!std::filesystem::exists(f)) {
+                    std::ofstream(f).close();
                 } else {
                     auto now = std::filesystem::file_time_type::clock::now();
-                    std::filesystem::last_write_time(file, now);
+                    std::filesystem::last_write_time(f, now);
                 }
             } catch (const std::filesystem::filesystem_error& e) {
-                output << "touch: cannot touch '" << file << "': " << e.what() << std::endl;
+                output << "touch: cannot touch '" << f << "': " << e.what() << std::endl;
                 success = false;
-            }
+            } catch(const state::StateException &e) { }
         }
-        
+
         return success ? 0 : 1;
     }
 
@@ -566,21 +600,29 @@ namespace cmd {
         return success ? 0 : 1;
     }
 
-    int wcCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
+    int wcCommand(const std::vector<Argument>& args, std::istream& input, std::ostream& output) {
         bool countLines = false;
         bool countWords = false;
         bool countChars = false;
         std::vector<std::string> files;
     
         for (const auto& arg : args) {
-            if (arg == "-l") {
+            std::string a = arg.value;
+            if(arg.type == ArgType::ARG_VARIABLE) {
+                try {
+                    state::GameState *s = state::getGameState();
+                    a = s->getVariable(arg.value);
+                } catch(const state::StateException &e) {}
+
+            }
+            if (a == "-l") {
                 countLines = true;
-            } else if (arg == "-w") {
+            } else if (a == "-w") {
                 countWords = true;
-            } else if (arg == "-c") {
+            } else if (a == "-c") {
                 countChars = true;
             } else {
-                files.push_back(arg);
+                files.push_back(a);
             }
         }
         
@@ -642,32 +684,7 @@ namespace cmd {
         return 0;
     }
 
-    int chmodCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
-        if (args.size() < 2) {
-            output << "chmod: missing operand" << std::endl;
-            return 1;
-        }
-        const std::string& mode = args[0];
-        std::filesystem::perms perms;
-        try {
-            int octalMode = std::stoi(mode, nullptr, 8);
-            perms = static_cast<std::filesystem::perms>(octalMode);
-        } catch (const std::exception& e) {
-            output << "chmod: invalid mode: '" << mode << "'" << std::endl;
-            return 1;
-        }
-        
-        for (size_t i = 1; i < args.size(); ++i) {
-            try {
-                std::filesystem::permissions(args[i], perms, std::filesystem::perm_options::replace);
-            } catch (const std::filesystem::filesystem_error& e) {
-                output << "chmod: cannot access '" << args[i] << "': " << e.what() << std::endl;
-            }
-        }
-        return 0;
-    }
-
-    int sedCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
+    int sedCommand(const std::vector<Argument>& args, std::istream& input, std::ostream& output) {
         if (args.empty()) {
             output << "Usage: sed [options] 's/pattern/replacement/[g]' [file]" << std::endl;
             output << "Options:" << std::endl;
@@ -682,17 +699,25 @@ namespace cmd {
         std::string filename;
         
         for (const auto& arg : args) {
-            if (arg[0] == '-') {
-                if (arg.find('n') != std::string::npos) {
+            std::string a = arg.value;
+            try {
+                if(arg.type == ArgType::ARG_VARIABLE) {
+                    state::GameState *s = state::getGameState();
+                    a = s->getVariable(arg.value);
+                }
+            } catch (const state::StateException &e) {}
+
+            if (a[0] == '-') {
+                if (a.find('n') != std::string::npos) {
                     suppressOutput = true;
                 }
-                if (arg.find('i') != std::string::npos) {
+                if (a.find('i') != std::string::npos) {
                     editInPlace = true;
                 }
-            } else if (arg[0] == 's' && arg.find('/') == 1) {
-                expression = arg;
+            } else if (a[0] == 's' && a.find('/') == 1) {
+                expression = a;
             } else {
-                filename = arg;
+                filename = a;
             }
         }
 
@@ -777,20 +802,6 @@ namespace cmd {
         return 0;
     }
 
-    int debugSet(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
-        if (args.size() != 2) {
-            output << "Usage: debug set <variable> <value>" << std::endl;
-            return 1;
-        } 
-        const std::string& variable = args[0];
-        const std::string& value = args[1];
-        state::GameState *gameState = state::getGameState();
-        gameState->setVariable(variable, value);
-        output << "Set Debug " << variable << " to " << value << std::endl;
-        return 0;
-    }
-
-    // Helper function to parse escape sequences like \n, \t, etc.
     std::string parseEscapeSequences(const std::string& input) {
         std::string result;
         for (size_t i = 0; i < input.length(); ++i) {
@@ -830,7 +841,7 @@ namespace cmd {
                 try {
                     expandedArgs.push_back(gameState->getVariable(arg.value));
                 } catch (const state::StateException& e) {
-                    expandedArgs.push_back(arg.value); // Use variable name if not found
+                    expandedArgs.push_back(arg.value); 
                 }
             } else {
                 expandedArgs.push_back(arg.value);
@@ -958,12 +969,39 @@ namespace cmd {
         return 0;
     }
 
-    int debugGet(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
-        if (args.size() != 1) {
-            output << "Usage: debug get <variable>" << std::endl;
+    int debugSet(const std::vector<Argument>& args, std::istream& input, std::ostream& output) {
+        if (args.size() != 2) {
+            output << "Usage: debug set <variable> <value>" << std::endl;
+            return 1;
+        } 
+        
+        if(args[0].type != ArgType::ARG_VARIABLE) {
+            output << "Usage: debug_set <variable> <value>\n";
             return 1;
         }
-        const std::string& variable = args[0];
+        std::string variable = args[0].value;
+        std::string value = args[1].value;
+        try {
+            state::GameState *gameState = state::getGameState();
+            if(args[1].type == ArgType::ARG_VARIABLE) {
+                value = gameState->getVariable(args[1].value);
+            }
+            gameState->setVariable(variable, value);
+        } catch(const state::StateException &e) {}
+        output << "Set Debug " << variable << " to " << value << std::endl;
+        return 0;
+    }
+
+    int debugGet(const std::vector<Argument>& args, std::istream& input, std::ostream& output) {
+        if (args.size() != 1) {
+            output << "Usage: debug_get <variable>" << std::endl;
+            return 1;
+        }
+        if(args[0].type != ArgType::ARG_VARIABLE) {
+            output << "Useage debug_get <varaible>\n";
+            return 1;
+        }
+        std::string variable = args[0].value;
         state::GameState *gameState = state::getGameState();
         try {
             std::string value = gameState->getVariable(variable);
@@ -981,7 +1019,22 @@ namespace cmd {
         return 0;
     }
 
-    int debugClear(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
+    int debugClear(const std::vector<Argument>& args, std::istream& input, std::ostream& output) {
+        if(args.empty()) {
+            output << "debugClear: Requires argument to clear.\n";
+            return 1;
+        }
+        if(args[0].type != ArgType::ARG_VARIABLE) {
+            output << "debugClear: Variable name required\n";
+            return 1;
+        }
+        state::GameState *gameState = state::getGameState();
+        gameState->clearVariable(args[0].value);
+        output << "Cleared all Debug variables" << std::endl;
+        return 0;
+    }
+
+    int debugClearAll(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
         state::GameState *gameState = state::getGameState();
         gameState->clearVariables();
         output << "Cleared all Debug variables" << std::endl;

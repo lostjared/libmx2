@@ -21,6 +21,7 @@ printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
+#include<filesystem>
 
 
 class Game : public gl::GLObject {
@@ -211,9 +212,10 @@ private:
 class MainWindow : public gl::GLWindow {
 public:
     MainWindow(std::string path, int tw, int th) : gl::GLWindow("Console Skeleton", tw, th) {
-        setPath(path);
+        setPath(std::filesystem::current_path().string()+"/"+path);
         setObject(new Game());
         object->load(this);
+        
         activateConsole({25, 25, tw-50, th-50}, util.getFilePath("data/font.ttf"), 16, {255, 255, 255, 255});
     }
     
