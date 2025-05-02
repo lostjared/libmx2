@@ -5,9 +5,6 @@ project(cmd_cxx VERSION 1.0 LANGUAGES CXX C)
 option(CMD "Build command line interface" OFF)
 option(CONSOLE "Build graphical console" OFF)
 
-find_library(Readline NAMES readline)
-find_path(Readline_INCLUDE_DIRS NAMES readline/readline.h)
-
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -28,6 +25,10 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 
 
 if(CMD)
+
+    find_library(Readline NAMES readline)   
+    find_path(Readline_INCLUDE_DIRS NAMES readline/readline.h)
+
     add_executable(cmd-cli src/cmd.cpp)
     target_link_libraries(cmd-cli PRIVATE
         cmd
