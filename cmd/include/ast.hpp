@@ -40,8 +40,41 @@ namespace cmd {
     class Node {
     public:
         virtual ~Node() = default;
-        virtual void print(int indent = 0) const = 0;
+        virtual void print(std::ostream& out, int indent = 0) const = 0;
         virtual void execute(const AstExecutor& executor) const {}
+
+    protected:
+        
+        std::string getIndent(int indent) const {
+            return std::string(indent, ' ');
+        }
+
+        
+        std::string escapeHtml(const std::string& text) const {
+            std::string result = text;
+            size_t pos = 0;
+            while ((pos = result.find("<", pos)) != std::string::npos) {
+                result.replace(pos, 1, "&lt;");
+                pos += 4;
+            }
+            pos = 0;
+            while ((pos = result.find(">", pos)) != std::string::npos) {
+                result.replace(pos, 1, "&gt;");
+                pos += 4;
+            }
+            pos = 0;
+            while ((pos = result.find("&", pos)) != std::string::npos && 
+                   result.substr(pos, 4) != "&lt;" && result.substr(pos, 4) != "&gt;") {
+                result.replace(pos, 1, "&amp;");
+                pos += 5;
+            }
+            pos = 0;
+            while ((pos = result.find("\"", pos)) != std::string::npos) {
+                result.replace(pos, 1, "&quot;");
+                pos += 6;
+            }
+            return result;
+        }
     };
     
     class Expression : public Node {
@@ -60,92 +93,152 @@ namespace cmd {
 
     class Command : public Node {
     public:
-        
         Command(std::string name, std::vector<Argument> args) 
             : name(std::move(name)), args(std::move(args)) {}
 
-        void print(int indent = 0) const override {
-            std::cout << std::string(indent, ' ') << "Command: " << name << std::endl;
+        void print(std::ostream& out, int indent = 0) const override {
+            std::string spaces = getIndent(indent);
+            out << spaces << "<div class='node command'>\n";
+            out << spaces << "  <h3>Command: " << escapeHtml(name) << "</h3>\n";
+            out << spaces << "  <table>\n";
+            out << spaces << "    <tr><th colspan='2'>Arguments</th></tr>\n";
             for (const auto& arg : args) {
-                std::cout << std::string(indent + 2, ' ') << "Arg: " << arg.value 
-                          << (arg.type == ARG_LITERAL ? " (literal)" : " (variable)") << std::endl;
+                out << spaces << "    <tr><td class='" 
+                    << (arg.type == ARG_LITERAL ? "literal" : "variable") << "'>"
+                    << escapeHtml(arg.value) << "</td>";
+                out << "<td>(" << (arg.type == ARG_LITERAL ? "literal" : "variable") << ")</td></tr>\n";
             }
+            out << spaces << "  </table>\n";
+            out << spaces << "</div>\n";
         }
         
         std::string name;
         std::vector<Argument> args;
     };
 
+    class LogicalAnd : public Node {
+    public:
+        LogicalAnd(std::shared_ptr<Node> left, std::shared_ptr<Node> right)
+            : left(std::move(left)), right(std::move(right)) {}
+        
+        void print(std::ostream& out, int indent = 0) const override {
+            std::string spaces = getIndent(indent);
+            out << spaces << "<div class='node logical-and'>\n";
+            out << spaces << "  <h3>LogicalAnd</h3>\n";
+            out << spaces << "  <table>\n";
+            out << spaces << "    <tr><th colspan='2'>Left Operand</th></tr>\n";
+            out << spaces << "    <tr><td colspan='2'>\n";
+            left->print(out, indent + 6);
+            out << spaces << "    </td></tr>\n";
+            out << spaces << "    <tr><td colspan='2' class='symbol'>&amp;&amp;</td></tr>\n";
+            out << spaces << "    <tr><th colspan='2'>Right Operand</th></tr>\n";
+            out << spaces << "    <tr><td colspan='2'>\n";
+            right->print(out, indent + 6);
+            out << spaces << "    </td></tr>\n";
+            out << spaces << "  </table>\n";
+            out << spaces << "</div>\n";
+        }
+        
+        std::shared_ptr<Node> left;
+        std::shared_ptr<Node> right;
+    };
+
     class IfStatement : public Node {
-        public:
-            struct Branch {
-                std::shared_ptr<Node> condition;  
-                std::shared_ptr<Node> action;     
-            };
+    public:
+        struct Branch {
+            std::shared_ptr<Node> condition;  
+            std::shared_ptr<Node> action;     
+        };
+        
+        IfStatement(std::vector<Branch> branches, std::shared_ptr<Node> elseAction = nullptr) 
+            : branches(std::move(branches)), elseAction(std::move(elseAction)) {}
+        
+        void print(std::ostream& out, int indent = 0) const override {
+            std::string spaces = getIndent(indent);
+            out << spaces << "<div class='node if-statement'>\n";
+            out << spaces << "  <h3>IfStatement</h3>\n";
+            out << spaces << "  <table>\n";
             
-            IfStatement(std::vector<Branch> branches, std::shared_ptr<Node> elseAction = nullptr) 
-                : branches(std::move(branches)), elseAction(std::move(elseAction)) {}
-            
-            void print(int indent = 0) const override {
-                std::string spaces(indent, ' ');
-                std::cout << spaces << "IfStatement:" << std::endl;
-                
-                for (size_t i = 0; i < branches.size(); ++i) {
-                    std::cout << spaces << "  " << (i == 0 ? "if:" : "elif:") << std::endl;
-                    std::cout << spaces << "    condition:" << std::endl;
-                    branches[i].condition->print(indent + 6);
-                    std::cout << spaces << "    then:" << std::endl;
-                    branches[i].action->print(indent + 6);
-                }
-                
-                if (elseAction) {
-                    std::cout << spaces << "  else:" << std::endl;
-                    elseAction->print(indent + 4);
-                }
-                
-                std::cout << spaces << "  fi" << std::endl;
+            for (size_t i = 0; i < branches.size(); ++i) {
+                out << spaces << "    <tr><th colspan='2'>" << (i == 0 ? "if" : "elif") << "</th></tr>\n";
+                out << spaces << "    <tr><td>condition:</td><td>\n";
+                branches[i].condition->print(out, indent + 8);
+                out << spaces << "    </td></tr>\n";
+                out << spaces << "    <tr><td>then:</td><td>\n";
+                branches[i].action->print(out, indent + 8);
+                out << spaces << "    </td></tr>\n";
             }
             
-            std::vector<Branch> branches;  
-            std::shared_ptr<Node> elseAction;  
-        };
+            if (elseAction) {
+                out << spaces << "    <tr><th colspan='2'>else</th></tr>\n";
+                out << spaces << "    <tr><td colspan='2'>\n";
+                elseAction->print(out, indent + 8);
+                out << spaces << "    </td></tr>\n";
+            }
+            
+            out << spaces << "    <tr><td colspan='2' class='symbol'>fi</td></tr>\n";
+            out << spaces << "  </table>\n";
+            out << spaces << "</div>\n";
+        }
+        
+        std::vector<Branch> branches;  
+        std::shared_ptr<Node> elseAction;  
+    };
 
     class WhileStatement : public Node {
     public:
         WhileStatement(std::shared_ptr<Node> condition, std::shared_ptr<Node> body)
             : condition(std::move(condition)), body(std::move(body)) {}
         
-        void print(int indent = 0) const override {
-            std::string spaces(indent, ' ');
-            std::cout << spaces << "WhileStatement:" << std::endl;
-            std::cout << spaces << "  condition:" << std::endl;
-            condition->print(indent + 4);
-            std::cout << spaces << "  do:" << std::endl;
-            body->print(indent + 4);
-            std::cout << spaces << "  done" << std::endl;
+        void print(std::ostream& out, int indent = 0) const override {
+            std::string spaces = getIndent(indent);
+            out << spaces << "<div class='node while-statement'>\n";
+            out << spaces << "  <h3>WhileStatement</h3>\n";
+            out << spaces << "  <table>\n";
+            out << spaces << "    <tr><th>Condition</th></tr>\n";
+            out << spaces << "    <tr><td>\n";
+            condition->print(out, indent + 6);
+            out << spaces << "    </td></tr>\n";
+            out << spaces << "    <tr><th>Body</th></tr>\n";
+            out << spaces << "    <tr><td>\n";
+            body->print(out, indent + 6);
+            out << spaces << "    </td></tr>\n";
+            out << spaces << "    <tr><td class='symbol'>done</td></tr>\n";
+            out << spaces << "  </table>\n";
+            out << spaces << "</div>\n";
         }
         
         std::shared_ptr<Node> condition;
         std::shared_ptr<Node> body;
     };
-
+    
     class ForStatement : public Node {
     public:
         ForStatement(std::string variable, std::vector<Argument> values, std::shared_ptr<Node> body)
             : variable(std::move(variable)), values(std::move(values)), body(std::move(body)) {}
         
-        void print(int indent = 0) const override {
-            std::string spaces(indent, ' ');
-            std::cout << spaces << "ForStatement:" << std::endl;
-            std::cout << spaces << "  variable: " << variable << std::endl;
-            std::cout << spaces << "  values: ";
+        void print(std::ostream& out, int indent = 0) const override {
+            std::string spaces = getIndent(indent);
+            out << spaces << "<div class='node for-statement'>\n";
+            out << spaces << "  <h3>ForStatement</h3>\n";
+            out << spaces << "  <table>\n";
+            out << spaces << "    <tr><th>Variable</th><td class='variable'>" << escapeHtml(variable) << "</td></tr>\n";
+            out << spaces << "    <tr><th>Values</th><td>\n";
+            out << spaces << "      <table>\n";
             for (const auto& val : values) {
-                std::cout << val.value << (val.type == ARG_LITERAL ? " (literal)" : " (variable)") << " ";
+                out << spaces << "        <tr><td class='" 
+                    << (val.type == ARG_LITERAL ? "literal" : "variable") << "'>" 
+                    << escapeHtml(val.value) << "</td><td>" 
+                    << (val.type == ARG_LITERAL ? "literal" : "variable") << "</td></tr>\n";
             }
-            std::cout << std::endl;
-            std::cout << spaces << "  do:" << std::endl;
-            body->print(indent + 4);
-            std::cout << spaces << "  done" << std::endl;
+            out << spaces << "      </table>\n";
+            out << spaces << "    </td></tr>\n";
+            out << spaces << "    <tr><th>Body</th><td>\n";
+            body->print(out, indent + 6);
+            out << spaces << "    </td></tr>\n";
+            out << spaces << "    <tr><td colspan='2' class='symbol'>done</td></tr>\n";
+            out << spaces << "  </table>\n";
+            out << spaces << "</div>\n";
         }
         
         std::string variable;
@@ -158,11 +251,22 @@ namespace cmd {
         Pipeline(std::vector<std::shared_ptr<Command>> commands) 
             : commands(std::move(commands)) {}
 
-        void print(int indent = 0) const override {
-            std::cout << std::string(indent, ' ') << "Pipeline:" << std::endl;
-            for (const auto& cmd : commands) {
-                cmd->print(indent + 2);
+        void print(std::ostream& out, int indent = 0) const override {
+            std::string spaces = getIndent(indent);
+            out << spaces << "<div class='node pipeline'>\n";
+            out << spaces << "  <h3>Pipeline</h3>\n";
+            out << spaces << "  <table>\n";
+            out << spaces << "    <tr><th>Commands</th></tr>\n";
+            for (size_t i = 0; i < commands.size(); i++) {
+                out << spaces << "    <tr><td>\n";
+                commands[i]->print(out, indent + 6);
+                if (i < commands.size() - 1) {
+                    out << spaces << "      <div class='symbol'>|</div>\n";
+                }
+                out << spaces << "    </td></tr>\n";
             }
+            out << spaces << "  </table>\n";
+            out << spaces << "</div>\n";
         }
 
         std::vector<std::shared_ptr<Command>> commands;
@@ -176,15 +280,29 @@ namespace cmd {
         Redirection(std::shared_ptr<Node> command, Type type, std::string file) 
             : command(std::move(command)), type(type), file(std::move(file)) {}
 
-        void print(int indent = 0) const override {
-            std::cout << std::string(indent, ' ') << "Redirection: ";
-            if (type == INPUT) std::cout << "INPUT from ";
-            else if (type == OUTPUT) std::cout << "OUTPUT to ";
-            else std::cout << "APPEND to ";
-            std::cout << file << std::endl;
-            command->print(indent + 2);
-        }
-
+        void print(std::ostream& out, int indent = 0) const override {
+                std::string spaces = getIndent(indent);
+                out << spaces << "<div class='node redirection'>\n";
+                out << spaces << "  <h3>Redirection</h3>\n";
+                out << spaces << "  <table>\n";
+                out << spaces << "    <tr><th>Type</th><td class='symbol'>";
+                
+                if (type == INPUT) {
+                    out << "&lt; (Input)";
+                } else if (type == OUTPUT) {
+                    out << "&gt; (Output)";
+                } else {
+                    out << "&gt;&gt; (Append)";
+                }
+                
+                out << "</td></tr>\n";
+                out << spaces << "    <tr><th>File</th><td class='filename'>" << escapeHtml(file) << "</td></tr>\n";
+                out << spaces << "    <tr><th>Command</th><td>\n";
+                command->print(out, indent + 6);
+                out << spaces << "    </td></tr>\n";
+                out << spaces << "  </table>\n";
+                out << spaces << "</div>\n";
+            }
         std::shared_ptr<Node> command;
         Type type;
         std::string file;
@@ -195,14 +313,21 @@ namespace cmd {
     public:
         Sequence(std::vector<std::shared_ptr<Node>> commands) 
             : commands(std::move(commands)) {}
-
-        void print(int indent = 0) const override {
-            std::cout << std::string(indent, ' ') << "Sequence:" << std::endl;
-            for (const auto& cmd : commands) {
-                cmd->print(indent + 2);
+    
+        void print(std::ostream& out, int indent = 0) const override {
+            std::string spaces = getIndent(indent);
+            out << spaces << "<div class='node sequence'>\n";
+            out << spaces << "  <h3>Sequence</h3>\n";
+            out << spaces << "  <table>\n";
+            out << spaces << "    <tr><th>Commands</th></tr>\n";
+            for (size_t i = 0; i < commands.size(); i++) {
+                out << spaces << "    <tr><td>\n";
+                commands[i]->print(out, indent + 6);
+                out << spaces << "    </td></tr>\n";
             }
+            out << spaces << "  </table>\n";
+            out << spaces << "</div>\n";
         }
-
         std::vector<std::shared_ptr<Node>> commands;
     };
 
@@ -246,24 +371,70 @@ namespace cmd {
         std::unordered_map<std::string, TypedCommandFunction> typedCommands;
     };
 
-    class StringLiteral : public Node {
+    class StringLiteral : public Expression {
     public:
-        StringLiteral(const std::string& value) : value(value) {}
-        std::string value;
+        StringLiteral(std::string value) : value(std::move(value)) {}
         
-        void print(int indent = 0) const override {
-            std::string spaces(indent, ' ');
-            std::cout << spaces << "StringLiteral: " << value << std::endl;
+        void print(std::ostream& out, int indent = 0) const override {
+            std::string spaces = getIndent(indent);
+            out << spaces << "<div class='node string-literal'>\n";
+            out << spaces << "  <h3>StringLiteral</h3>\n";
+            out << spaces << "  <table>\n";
+            out << spaces << "    <tr><th>Value</th></tr>\n";
+            out << spaces << "    <tr><td class='literal'>" << escapeHtml(value) << "</td></tr>\n";
+            out << spaces << "  </table>\n";
+            out << spaces << "</div>\n";
         }
+        
+        std::string evaluate(const AstExecutor& executor) const override {
+            return value;
+        }
+        
+        double evaluateNumber(const AstExecutor& executor) const override {
+            try {
+                return std::stod(value);
+            } catch (const std::exception&) {
+                return 0.0;  
+            }
+        }
+        
+        std::string value;
     };
-
+    
+    class VariableAssignment : public Node {
+    public:
+        VariableAssignment(std::string name, std::shared_ptr<Node> value)
+            : name(std::move(name)), value(std::move(value)) {}
+        
+        void print(std::ostream& out, int indent = 0) const override {
+            std::string spaces = getIndent(indent);
+            out << spaces << "<div class='node variable-assignment'>\n";
+            out << spaces << "  <h3>VariableAssignment</h3>\n";
+            out << spaces << "  <table>\n";
+            out << spaces << "    <tr><th>Name</th><th>Value</th></tr>\n";
+            out << spaces << "    <tr><td class='variable'>" << escapeHtml(name) << "</td><td>\n";
+            value->print(out, indent + 6);
+            out << spaces << "    </td></tr>\n";
+            out << spaces << "  </table>\n";
+            out << spaces << "</div>\n";
+        }
+        
+        std::string name;
+        std::shared_ptr<Node> value;
+    };
     class NumberLiteral : public Expression {
     public:
         NumberLiteral(double value) : value(value) {}
         
-        void print(int indent = 0) const override {
-            std::string spaces(indent, ' ');
-            std::cout << spaces << "NumberLiteral: " << value << std::endl;
+        void print(std::ostream& out, int indent = 0) const override {
+            std::string spaces = getIndent(indent);
+            out << spaces << "<div class='node number-literal'>\n";
+            out << spaces << "  <h3>NumberLiteral</h3>\n";
+            out << spaces << "  <table>\n";
+            out << spaces << "    <tr><th>Value</th></tr>\n";
+            out << spaces << "    <tr><td class='literal'>" << value << "</td></tr>\n";
+            out << spaces << "  </table>\n";
+            out << spaces << "</div>\n";
         }
         
         std::string evaluate(const AstExecutor& executor) const override {
@@ -272,8 +443,7 @@ namespace cmd {
         
         double evaluateNumber(const AstExecutor& executor) const override {
             return value;
-        }
-        
+        }    
         double value;
     };
 
@@ -281,46 +451,21 @@ namespace cmd {
     public:
         VariableReference(const std::string& name) : name(name) {}
         
-        void print(int indent = 0) const override {
-            std::string spaces(indent, ' ');
-            std::cout << spaces << "VariableReference: " << name << std::endl;
+        void print(std::ostream& out, int indent = 0) const override {
+            std::string spaces = getIndent(indent);
+            out << spaces << "<div class='node variable-reference'>\n";
+            out << spaces << "  <h3>VariableReference</h3>\n";
+            out << spaces << "  <table>\n";
+            out << spaces << "    <tr><th>Name</th></tr>\n";
+            out << spaces << "    <tr><td class='variable'>" << escapeHtml(name) << "</td></tr>\n";
+            out << spaces << "  </table>\n";
+            out << spaces << "</div>\n";
         }
         
         std::string evaluate(const AstExecutor& executor) const override;
         double evaluateNumber(const AstExecutor& executor) const override;
         
         std::string name;
-    };
-
-    class VariableAssignment : public Node {
-    public:
-        VariableAssignment(const std::string& name, std::shared_ptr<Node> value) 
-            : name(name), value(value) {}
-        
-        void print(int indent = 0) const override {
-            std::string spaces(indent, ' ');
-            std::cout << spaces << "VariableAssignment: " << name << " =" << std::endl;
-            value->print(indent + 2);
-        }
-        
-        std::string name;
-        std::shared_ptr<Node> value;
-    };
-
-    class LogicalAnd : public Node {
-    public:
-        LogicalAnd(std::shared_ptr<Node> left, std::shared_ptr<Node> right) 
-            : left(std::move(left)), right(std::move(right)) {}
-
-        void print(int indent = 0) const override {
-            std::string spaces(indent, ' ');
-            std::cout << spaces << "LogicalAnd:" << std::endl;
-            left->print(indent + 2);
-            right->print(indent + 2);
-        }
-
-        std::shared_ptr<Node> left;
-        std::shared_ptr<Node> right;
     };
 
     class AstExecutor {
@@ -736,21 +881,30 @@ namespace cmd {
         BinaryExpression(std::shared_ptr<Expression> left, OpType op, std::shared_ptr<Expression> right)
             : left(std::move(left)), op(op), right(std::move(right)) {}
         
-        void print(int indent = 0) const override {
-            std::string spaces(indent, ' ');
-            std::cout << spaces << "BinaryExpression: ";
+        void print(std::ostream& out, int indent = 0) const override {
+            std::string spaces = getIndent(indent);
+            out << spaces << "<div class='node binary-expression'>\n";
+            out << spaces << "  <h3>BinaryExpression</h3>\n";
+            out << spaces << "  <table>\n";
+            out << spaces << "    <tr><th>Operator</th><td class='operator'>";
             switch (op) {
-                case ADD: std::cout << "+"; break;
-                case SUBTRACT: std::cout << "-"; break;
-                case MULTIPLY: std::cout << "*"; break;
-                case DIVIDE: std::cout << "/"; break;
-                case MODULO: std::cout << "%"; break;
+                case ADD: out << "+"; break;
+                case SUBTRACT: out << "-"; break;
+                case MULTIPLY: out << "*"; break;
+                case DIVIDE: out << "/"; break;
+                case MODULO: out << "%"; break;
             }
-            std::cout << std::endl;
-            left->print(indent + 2);
-            right->print(indent + 2);
+            out << "</td></tr>\n";
+            out << spaces << "    <tr><th>Left Operand</th><td>\n";
+            left->print(out, indent + 6);
+            out << spaces << "    </td></tr>\n";
+            out << spaces << "    <tr><th>Right Operand</th><td>\n";
+            right->print(out, indent + 6);
+            out << spaces << "    </td></tr>\n";
+            out << spaces << "  </table>\n";
+            out << spaces << "</div>\n";
         }
-        
+          
         std::string evaluate(const AstExecutor& executor) const override {
             return std::to_string(evaluateNumber(executor));
         }
@@ -786,16 +940,25 @@ namespace cmd {
         UnaryExpression(std::shared_ptr<Expression> operand, OpType op, Position pos = PREFIX)
             : operand(std::move(operand)), op(op), position(pos) {}
         
-        void print(int indent = 0) const override {
-            std::string spaces(indent, ' ');
-            std::cout << spaces << "UnaryExpression: ";
+        void print(std::ostream& out, int indent = 0) const override {
+            std::string spaces = getIndent(indent);
+            out << spaces << "<div class='node unary-expression'>\n";
+            out << spaces << "  <h3>UnaryExpression</h3>\n";
+            out << spaces << "  <table>\n";
+            out << spaces << "    <tr><th>Operator</th><td class='operator'>";
             switch (op) {
-                case INCREMENT: std::cout << "++"; break;
-                case DECREMENT: std::cout << "--"; break;
-                case NEGATE: std::cout << "-"; break;
+                case INCREMENT: out << "++"; break;
+                case DECREMENT: out << "--"; break;
+                case NEGATE: out << "-"; break;
             }
-            std::cout << (position == PREFIX ? " (prefix)" : " (postfix)") << std::endl;
-            operand->print(indent + 2);
+            out << "</td></tr>\n";
+            out << spaces << "    <tr><th>Position</th><td class='position'>" 
+                << (position == PREFIX ? "prefix" : "postfix") << "</td></tr>\n";
+            out << spaces << "    <tr><th>Operand</th><td>\n";
+            operand->print(out, indent + 6);
+            out << spaces << "    </td></tr>\n";
+            out << spaces << "  </table>\n";
+            out << spaces << "</div>\n";
         }
         
         std::string evaluate(const AstExecutor& executor) const override {
@@ -844,6 +1007,19 @@ namespace cmd {
     public:
         CommandSubstitution(std::shared_ptr<Node> command) : command(command) {}
         
+        void print(std::ostream& out, int indent = 0) const override {
+            std::string spaces = getIndent(indent);
+            out << spaces << "<div class='node command-substitution'>\n";
+            out << spaces << "  <h3>CommandSubstitution</h3>\n";
+            out << spaces << "  <table>\n";
+            out << spaces << "    <tr><th>Command</th></tr>\n";
+            out << spaces << "    <tr><td>\n";
+            command->print(out, indent + 6);
+            out << spaces << "    </td></tr>\n";
+            out << spaces << "  </table>\n";
+            out << spaces << "</div>\n";
+        }
+        
         std::string evaluate(const AstExecutor& executor) const override {
             std::stringstream input;  
             std::stringstream output;
@@ -885,14 +1061,10 @@ namespace cmd {
             }
         }
         
-   
-        void print(int indent = 0) const override {
-            std::string spaces(indent, ' ');
-            std::cout << spaces << "CommandSubstitution:" << std::endl;
-            command->print(indent + 2);
-        }
         std::shared_ptr<Node> command;
     };
+
+   
 }
 
 #endif
