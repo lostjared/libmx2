@@ -7,6 +7,7 @@
 #include "gameover.hpp"
 #include <cstdlib>
 #include <ctime>
+#include <filesystem>
 
 #if defined(__APPLE__) || defined(_WIN32) || defined(__linux__)
 #include"argz.hpp"
@@ -295,7 +296,6 @@ public:
         executor.addCommand("rotate", rotate_game);
         executor.addCommand("shift", shift_game);
         executor.addCommand("timeout", settimeout_game);
-
 
         win->console.setInputCallback([&](gl::GLWindow *window, const std::string &text) -> int {
             try {
@@ -750,7 +750,7 @@ void GameOver::event(gl::GLWindow *win, SDL_Event &e) {
 class MainWindow : public gl::GLWindow {
 public:
     MainWindow(const std::string &path, int wx, int wy) : gl::GLWindow("MasterPiece3D", wx, wy) {
-        setPath(path);
+        setPath(std::filesystem::current_path().string()+"/"+path);
         SDL_Surface *ico = png::LoadPNG(util.getFilePath("data/punk.png").c_str());
         if(ico != nullptr) {
             setWindowIcon(ico);
