@@ -10,15 +10,4 @@ set(LIBCMD_LIBRARIES libcmd::cmd)
 include(CMakeFindDependencyMacro)
 find_dependency(Threads)
 
-if(@CMD@)
-    find_dependency(Readline)
-endif()
-
-if(@CONSOLE@)
-    find_dependency(SDL2)
-    find_dependency(SDL2_ttf)
-    find_dependency(SDL2_mixer)
-    find_dependency(libmx2)
-endif()
-
 check_required_components(cmd)
