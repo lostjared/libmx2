@@ -10,6 +10,7 @@ namespace cmd {
         registry.registerTypedCommand("cat", cmd::catCommand);
         registry.registerTypedCommand("grep", cmd::grepCommand);
         registry.registerCommand("exit", cmd::exitCommand);
+        registry.registerCommand("quit", cmd::exitCommand);
         registry.registerCommand("print", cmd::printCommand);
         registry.registerTypedCommand("cd", cmd::cdCommand);
         registry.registerTypedCommand("ls", cmd::listCommand);
