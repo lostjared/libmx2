@@ -177,7 +177,6 @@ public:
     cmd::AstExecutor executor{};
     std::ostream *output;
     bool cmd_echo = true;
-    bool debug_cmd = false;
     std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> new_game = nullptr;
     std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> drop_game = nullptr;
     std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> toggle_console = nullptr;
@@ -308,15 +307,8 @@ public:
                         cmd_echo = false;
                         *output << "Echoing commands off." << "\n";
                         return 0;
-                    } else if(text == "@debug_on") {
-                        debug_cmd = true;
-                        *output << "Debugging commands on." << "\n";
-                        return 0;
-                    } else if(text == "@debug_off") {
-                        debug_cmd = false;
-                        *output << "Debugging commands off." << "\n";
-                        return 0;
                     } 
+                    
                     if(cmd_echo) {
                         *output << "$ " << text << "\n";
                     }
@@ -326,9 +318,6 @@ public:
                     cmd::Parser parser(scanner);
                     auto ast = parser.parse();
                     executor.execute(input_stream, *output, ast);
-                    if(debug_cmd) {
-                        ast->print();
-                    }
                     return 0;
             } catch(const scan::ScanExcept &e) {
                 *output << "Scan error: " << e.why() << std::endl;
