@@ -6,6 +6,8 @@
 #include<iomanip>
 #include"game_state.hpp"
 #include"parser.hpp"
+#include"html.hpp"
+
 
 namespace state {
     GameState *getGameState() {
@@ -1230,6 +1232,57 @@ namespace cmd {
             output << "cmd: Unknown error occurred while executing " << filename << std::endl;
             return 1;
         }
+        return 0;
+    }
+
+    int visualCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
+        if(args.empty() || args.size() != 2) {
+            output << "Usage: visual script output_filel.\n";
+            return 1;
+        }
+        std::string op1 = args[0].value, op2 = args[1].value;;
+        try {
+            state::GameState *s = state::getGameState();
+
+            if(args[0].type == ArgType::ARG_VARIABLE)
+                op1 = s->getVariable(args[0].value);
+
+            if(args[1].type == ArgType::ARG_VARIABLE)
+                op2 = s->getVariable(args[1].value);
+
+        } catch(const state::StateException &e) {}
+        std::ifstream infile(op1);
+        if(!infile.is_open()) {
+            output << "Could not open file: " << op1 << "\n";
+            return 1;
+        }
+        std::ostringstream stream;
+        stream <<  infile.rdbuf();
+
+        std::ofstream ofile(op2);
+        if(!ofile.is_open()) {
+            output << "Could not create output file:" << op2 << "\n";
+            return 1;
+        }
+
+        try {
+            scan::TString string_buffer(stream.str());
+            scan::Scanner scanner(string_buffer);
+            cmd::Parser parser(scanner);
+            auto ast = parser.parse();
+            html::gen_html(ofile, ast);
+            return 0;
+        } catch (const scan::ScanExcept &e) {
+            output << "cmd: Scan error in " << op1 << ": " << e.why() << std::endl;
+            return 1;
+        } catch (const std::exception &e) {
+            output << "cmd: Error in " << op1 << ": " << e.what() << std::endl;
+            return 1;
+        } catch (...) {
+            output << "cmd: Unknown error occurred while executing " << op1 << std::endl;
+            return 1;
+        }
+
         return 0;
     }
 }

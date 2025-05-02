@@ -40,6 +40,7 @@ namespace cmd {
     int dumpVariables(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
     int testCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output);
     int cmdCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output);
+    int visualCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output);
 
 }
 #endif

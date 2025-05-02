@@ -33,6 +33,7 @@ namespace cmd {
         registry.registerCommand("debug_clear_all", cmd::debugClearAll);
         registry.registerCommand("debug_search", cmd::debugSearch);
         registry.registerCommand("debug_dump", cmd::dumpVariables);
+        registry.registerTypedCommand("visual", cmd::visualCommand);
     }
 
     std::string VariableReference::evaluate(const AstExecutor& executor) const {
