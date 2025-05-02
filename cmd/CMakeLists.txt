@@ -121,3 +121,9 @@ install(
     NAMESPACE libcmd::
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/libcmd
 )
+
+if(CMD)
+    install(TARGETS cmd-cli
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    )
+endif()

@@ -12,7 +12,7 @@ namespace html {
         out << "    h1, h2, h3, h4, h5 { color: #ff3333; margin: 5px 0; text-shadow: 1px 1px 2px rgba(0,0,0,0.8); }\n";
         out << "    .node { margin: 10px 0; padding: 10px; border-radius: 5px; background-color: #1a1a1a; border: 1px solid #333; }\n";
         out << "    table { border-collapse: collapse; width: auto; margin: 10px 0; border: 0px solid #444; background-color: #151515; }\n";
-        out << "    th { background-color: #2a0000; color: #ff6666; text-align: left; padding: 8px; }\n";
+        out << "    th { background-color:rgb(0, 0, 0); color: #ff6666; text-align: left; padding: 8px; }\n";
         out << "    td { padding: 8px; border: 1px solid #333; }\n";
         out << "    .command { background-color: #1a0000; }\n";
         out << "    .pipeline { background-color: #001a1a; }\n";
