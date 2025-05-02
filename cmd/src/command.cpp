@@ -44,7 +44,7 @@ namespace cmd {
         return 0;
     }
 
-    int catCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
+    int catCommand(const std::vector<Argument>& args, std::istream& input, std::ostream& output) {
         if (args.empty()) {
             std::string line;
             while (std::getline(input, line)) {
@@ -54,9 +54,19 @@ namespace cmd {
         } else {
             bool success = true;
             for (const auto& filename : args) {
-                std::ifstream file(filename);
+                std::string filen_ = filename.value;
+                if(filename.type == ArgType::ARG_VARIABLE) {
+                    state::GameState *game = state::getGameState();
+                    try {
+                        auto f = game->getVariable(filename.value);
+                        filen_ = f;
+                    } catch(const state::StateException &) {
+
+                    }
+                }
+                std::ifstream file(filen_);
                 if (!file) {
-                    output << "cat: " << filename << ": No such file" << std::endl;
+                    output << "cat: " << filen_ << ": No such file" << std::endl;
                     success = false;
                     continue;
                 }
@@ -69,7 +79,7 @@ namespace cmd {
         }
     }
 
-    int grepCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
+    int grepCommand(const std::vector<Argument>& args, std::istream& input, std::ostream& output) {
         if (args.empty()) {
             output << "grep: missing pattern" << std::endl;
             return 1;
@@ -79,26 +89,33 @@ namespace cmd {
         int patternIndex = 0;
         bool success = true;
         
-        if (!args.empty() && (args[0] == "-r" || args[0] == "-e")) {
+        if (!args.empty() && (args[0].value ==  "-r" || args[0].value == "-e")) {
             useRegex = true;
             patternIndex = 1;
             
             if (args.size() <= patternIndex) {
-                output << "grep: missing pattern after " << args[0] << std::endl;
+                output << "grep: missing pattern after " << args[0].value << std::endl;
                 return 1;
             }
         }
         
-        const std::string& pattern = args[patternIndex];
+        const auto& pattern = args[patternIndex];
         std::vector<std::string> fileNames;
-        
         for (size_t i = patternIndex + 1; i < args.size(); i++) {
-            fileNames.push_back(args[i]);
+            std::string file_n = args[i].value;
+            if(args[i].type == ArgType::ARG_VARIABLE) {
+                try {
+                    state::GameState *s = state::getGameState();
+                    file_n = s->getVariable(args[i].value);
+                } catch(const state::StateException &) {
+                }
+            }
+            fileNames.push_back(file_n);
         }
         
         if (useRegex) {
             try {
-                std::regex re(pattern, std::regex::extended);
+                std::regex re(pattern.value, std::regex::extended);
                 std::string line;
                 
                 if (!fileNames.empty()) {
@@ -124,7 +141,7 @@ namespace cmd {
                     }
                 }
             } catch (const std::regex_error& e) {
-                output << "grep: invalid regex pattern: " << pattern << " - " << e.what() << std::endl;
+                output << "grep: invalid regex pattern: " << pattern.value << " - " << e.what() << std::endl;
                 return 1;
             }
         } else {
@@ -139,14 +156,14 @@ namespace cmd {
                     }
                     
                     while (std::getline(file, line)) {
-                        if (line.find(pattern) != std::string::npos) {
+                        if (line.find(pattern.value) != std::string::npos) {
                             output << line << std::endl;
                         }
                     }
                 }
             } else {
                 while (std::getline(input, line)) {
-                    if (line.find(pattern) != std::string::npos) {
+                    if (line.find(pattern.value) != std::string::npos) {
                         output << line << std::endl;
                     }
                 }
@@ -191,13 +208,20 @@ namespace cmd {
         return success ? 0 : 1;
     }
 
-    int cdCommand(const std::vector<std::string> &args, std::istream& input, std::ostream& output) {
+    int cdCommand(const std::vector<Argument> &args, std::istream& input, std::ostream& output) {
         if (args.size() != 1) {
             output << "cd: expected exactly one argument" << std::endl;
             return 1;
         }
-        
-        const std::string& path = args[0];
+        std::string path = args[0].value;
+        if(args[0].type == ArgType::ARG_VARIABLE) {
+            try {
+                state::GameState *s = state::getGameState();
+                path = s->getVariable(args[0].value);
+            } catch(const state::StateException  &e) {
+
+            }
+        }
         try {
             std::filesystem::current_path(path);
             return 0;
@@ -207,12 +231,21 @@ namespace cmd {
         }
     }
 
-    int listCommand(const std::vector<std::string> &args, std::istream& input, std::ostream& output) {
+    int listCommand(const std::vector<Argument> &args, std::istream& input, std::ostream& output) {
         std::string path = ".";
         if (!args.empty()) {
-            path = args[0];
+            path = args[0].value;
+            if(args[0].type == ArgType::ARG_VARIABLE) {
+                try {
+                    state::GameState *s = state::getGameState();
+                    path = s->getVariable(args[0].value);
+                } catch(const state::StateException &) {
+
+                } catch(...) {
+
+                }
+            }
         }
-        
         try {
             for (const auto& entry : std::filesystem::directory_iterator(path)) {
                 output << entry.path().filename().string() << std::endl;
@@ -224,7 +257,7 @@ namespace cmd {
         }
     }
 
-    int sortCommand(const std::vector<std::string> &args, std::istream& input, std::ostream& output) {
+    int sortCommand(const std::vector<Argument> &args, std::istream& input, std::ostream& output) {
         std::vector<std::string> lines;
         std::string line;
         
@@ -234,35 +267,50 @@ namespace cmd {
             }
         } else {
             for (const auto& filename : args) {
-                std::ifstream file(filename);
-                if (!file) {
-                    output << "sort: " << filename << ": No such file" << std::endl;
-                    return 1;
+                std::string file_n = filename.value;
+                if(filename.type == ArgType::ARG_VARIABLE) {
+                    try {
+                        state::GameState *s = state::getGameState();
+                        file_n = s->getVariable(filename.value);
+                    } catch(const state::StateException  &e) {
+
+                    }
                 }
-                
+                std::ifstream file(file_n);
+                if (!file) {
+                    output << "sort: " << file_n << ": No such file" << std::endl;
+                    return 1;
+                } 
                 while (std::getline(file, line)) {
                     lines.push_back(line);
                 }
             }
         }
-        
         std::sort(lines.begin(), lines.end());
-        
         for (const auto& sortedLine : lines) {
             output << sortedLine << std::endl;
         }
-        
         return 0;
     }
 
-    int findCommand(const std::vector<std::string> &args, std::istream& input, std::ostream& output) {
+    int findCommand(const std::vector<Argument> &args, std::istream& input, std::ostream& output) {
         if (args.size() < 2) {
             output << "find: expected at least two arguments" << std::endl;
             return 1;
         }
-        
-        const std::string& path = args[0];
-        const std::string& pattern = args[1];
+        std::string path = args[0].value;
+        std::string pattern = args[1].value;
+        state::GameState *s = state::getGameState();
+        try {
+            if(args[0].type == ArgType::ARG_VARIABLE) {
+                path = s->getVariable(args[0].value);
+            }
+            if(args[1].type == ArgType::ARG_VARIABLE) {
+                pattern = s->getVariable(args[1].value);
+            }
+        } catch(const state::StateException &e) {
+
+        }
         
         try {
             for (const auto& entry : std::filesystem::recursive_directory_iterator(path)) {

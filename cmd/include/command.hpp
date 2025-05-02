@@ -14,13 +14,13 @@
 namespace cmd {
     int exitCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
     int echoCommand(const std::vector<Argument>& args, std::istream& input, std::ostream& output); 
-    int catCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
-    int grepCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
+    int catCommand(const std::vector<Argument>& args, std::istream& input, std::ostream& output);
+    int grepCommand(const std::vector<Argument>& args, std::istream& input, std::ostream& output);
     int printCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
-    int cdCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
-    int listCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
-    int sortCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
-    int findCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
+    int cdCommand(const std::vector<Argument>& args, std::istream& input, std::ostream& output);
+    int listCommand(const std::vector<Argument>& args, std::istream& input, std::ostream& output);
+    int sortCommand(const std::vector<Argument>& args, std::istream& input, std::ostream& output);
+    int findCommand(const std::vector<Argument>& args, std::istream& input, std::ostream& output);
     int pwdCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
     int mkdirCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);  
     int rmCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);     
@@ -41,5 +41,6 @@ namespace cmd {
     int dumpVariables(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
     int testCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output);
     int cmdCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output);
+
 }
 #endif
