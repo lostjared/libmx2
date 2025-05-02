@@ -24,18 +24,22 @@ list(APPEND header ${CMAKE_SOURCE_DIR}/include/command.hpp ${CMAKE_SOURCE_DIR}/i
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
 
+
 if(CMD)
-
-    find_library(Readline NAMES readline)   
+    find_library(Readline_LIBRARIES NAMES readline)
     find_path(Readline_INCLUDE_DIRS NAMES readline/readline.h)
-
-    add_executable(cmd-cli src/cmd.cpp)
-    target_link_libraries(cmd-cli PRIVATE
-        cmd
-        ${Readline_LIBRARIES}
-        readline
-    )
-
+    
+    if(NOT Readline_LIBRARIES OR NOT Readline_INCLUDE_DIRS)
+        message(WARNING "Readline not found. cmd-cli will not be built.")
+        set(CMD OFF)
+    else()
+        add_executable(cmd-cli src/cmd.cpp)
+        target_link_libraries(cmd-cli PRIVATE
+            cmd
+            ${Readline_LIBRARIES}
+            readline
+        )
+    endif()
 endif()
 
 
