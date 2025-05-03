@@ -27,18 +27,54 @@ int main(int argc, char **argv) {
             cmd::AstExecutor executor{};
             using_history();
             read_history(".cmd_history");
+            std::ostringstream input_stream;
             while(active) {
                 try {
                     std::string prompt = executor.getPath() + "> ";
                     char* line = readline(prompt.c_str());
                     if (line == nullptr) {
                         std::cout << std::endl;  
+                        write_history(".cmd_history");
                         break;
                     }
+
                     if (line[0] != '\0') {
 
+                        if(line[0] == '{') {
+                            std::string iline;
+                            input_stream.str("");
+                            while(true) {
+                                char *in_line = readline("... ");
+                                iline = in_line;
+                                if(in_line != nullptr) {
+                                    free(in_line);
+                                    auto pos = iline.find("}");
+                                    if(pos != std::string::npos) {
+                                        std::string left;
+                                        left = iline.substr(0, pos);
+
+                                        input_stream << left << "\n";
+                                        break;
+                                    } else {
+                                        add_history(iline.c_str());
+                                        input_stream << iline << "\n";
+                                    }
+                                }
+                            }
+
+                            scan::TString string_buffer(input_stream.str());
+                            scan::Scanner scanner(string_buffer);
+                            cmd::Parser parser(scanner);
+                            auto ast = parser.parse();
+                            executor.execute(std::cin, std::cout, ast);
+                            if(debug_cmd) {
+                                ast->print(std::cout);
+                            }
+                            continue;
+                        }
+                        std::string command_data;
                         add_history(line);
-                        std::string command_data(line);
+                        command_data = line;
                         free(line);
                         if(command_data == "clear" || command_data == "cls") {
                             std::cout << "\033[2J\033[1;1H"; 
@@ -55,6 +91,7 @@ int main(int argc, char **argv) {
                             std::cout << "Debugging commands off." << std::endl;
                             continue;
                         }
+                    
                         scan::TString string_buffer(command_data);
                         scan::Scanner scanner(string_buffer);
                         cmd::Parser parser(scanner);
@@ -64,7 +101,6 @@ int main(int argc, char **argv) {
                             ast->print(std::cout);
                         }
                     }
-                    
                 } catch (const scan::ScanExcept &e) {
                     std::cerr << "Scan error: " << e.why() << std::endl;
                 } catch (const std::exception &e) {
@@ -84,10 +120,8 @@ int main(int argc, char **argv) {
             std::cerr << "Unknown error occurred." << std::endl;
         }
     } else {
-
         cmd::AstExecutor executor{};
         bool debug_cmd = false;
-        
         if(argc == 2 || argc == 3) {
             std::ostringstream stream;
             std::fstream file;
