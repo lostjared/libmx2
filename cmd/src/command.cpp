@@ -1341,9 +1341,40 @@ namespace cmd {
         return 0;
     }
 
+    std::string getVar(const Argument &arg) {
+        std::string a = arg.value;
+        if(arg.type == ArgType::ARG_VARIABLE) {
+            try {
+                state::GameState  *s = state::getGameState();
+                a = s->getVariable(arg.value);
+            } catch(const state::StateException &) {
+                return a;
+            }
+        }
+        return a;
+    }
+
+    // index <string> start len
     int indexCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
+        if(args.empty() || args.size() != 3) {
+            output << "Usage: index <string> start leeenn\n";
+            return 1;
+        }
 
+        std::string operands[3];
+        operands[0] = getVar(args[0]);
+        operands[1] = getVar(args[1]);
+        operands[2] = getVar(args[2]);
 
-        return 0;
+        int val[2];
+        val[0] = std::stoi(operands[1]);
+        val[1] = std::stoi(operands[2]);
+
+        if(val[0] >= 0 && val[0] < operands[0].length())  {
+            std::string temp = operands[0].substr(val[0], val[1]);
+            output << temp;
+            return 0;
+        }
+        return 1;
     }
 }

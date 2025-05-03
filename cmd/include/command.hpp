@@ -12,6 +12,9 @@
 
 
 namespace cmd {
+    // helper func
+    std::string getVar(const Argument &arg);
+    // the commands
     int exitCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
     int echoCommand(const std::vector<Argument>& args, std::istream& input, std::ostream& output); 
     int catCommand(const std::vector<Argument>& args, std::istream& input, std::ostream& output);
