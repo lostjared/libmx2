@@ -1316,4 +1316,28 @@ namespace cmd {
             output << values.at(index);
         return 0;
     }
+
+    int lenCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
+        if(args.empty() || args.size() != 1) {
+            output << "Usage: len <list>\n";
+            return 1;
+        }
+        std::string op1 = args[0].value;
+        try {
+            state::GameState *s = state::getGameState();
+            if(args[0].type == ArgType::ARG_VARIABLE) {
+                op1 = s->getVariable(args[0].value);
+            }
+        } catch(const state::StateException &e) {
+
+        }
+        std::istringstream stream(op1);
+        std::vector<std::string> values;
+        std::string line;
+        while(std::getline(stream, line)) {
+            values.push_back(line);
+        }
+        output << values.size();    
+        return 0;
+    }
 }

@@ -42,6 +42,7 @@ namespace cmd {
     int cmdCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output);
     int visualCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output);
     int atCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
+    int lenCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
 
 }
 #endif

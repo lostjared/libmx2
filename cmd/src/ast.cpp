@@ -36,6 +36,7 @@ namespace cmd {
         registry.registerCommand("debug_dump", cmd::dumpVariables);
         registry.registerTypedCommand("visual", cmd::visualCommand);
         registry.registerTypedCommand("at", cmd::atCommand);
+        registry.registerTypedCommand("len", cmd::lenCommand);
     }
 
     std::string VariableReference::evaluate(const AstExecutor& executor) const {
