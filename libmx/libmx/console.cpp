@@ -238,7 +238,7 @@ namespace console {
                             inputBuffer.clear();
                             inputCursorPos = 0;
                             multilineBuffer.clear();
-                            procCmd(processedCommand);                          
+                            procCmd(processedCommand + "\n");                          
                             needsRedraw = true;
                             scrollToBottom();
                         }
