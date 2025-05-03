@@ -37,6 +37,7 @@ namespace cmd {
         registry.registerTypedCommand("visual", cmd::visualCommand);
         registry.registerTypedCommand("at", cmd::atCommand);
         registry.registerTypedCommand("len", cmd::lenCommand);
+        registry.registerTypedCommand("index", cmd::indexCommand);
     }
 
     std::string VariableReference::evaluate(const AstExecutor& executor) const {

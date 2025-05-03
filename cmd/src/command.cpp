@@ -1340,4 +1340,10 @@ namespace cmd {
         output << values.size();    
         return 0;
     }
+
+    int indexCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
+
+
+        return 0;
+    }
 }
