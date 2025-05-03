@@ -52,7 +52,6 @@ int main(int argc, char **argv) {
                                     if(pos != std::string::npos) {
                                         std::string left;
                                         left = iline.substr(0, pos);
-
                                         input_stream << left << "\n";
                                         break;
                                     } else {
@@ -61,7 +60,6 @@ int main(int argc, char **argv) {
                                     }
                                 }
                             }
-
                             scan::TString string_buffer(input_stream.str());
                             scan::Scanner scanner(string_buffer);
                             cmd::Parser parser(scanner);

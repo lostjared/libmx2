@@ -158,7 +158,7 @@ public:
     }
 )";
 #endif
-        std::vector<std::string> img = { "data/crystal_red.png", "data/saphire.png" };
+        std::vector<std::string> img = { "data/crystal_red.png", "data/saphire.png", "data/crystal_blue.png", "data/crystal_green.png" };
         std::string img_index = img.at(mx::generateRandomInt(0, img.size()-1));
         if (!program.loadProgramFromText(vSource, fSource)) {
             throw mx::Exception("Failed to load shader program");
