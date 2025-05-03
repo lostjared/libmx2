@@ -1,3 +1,4 @@
+
 #ifndef __AST_HPP_X_
 #define __AST_HPP_X_
 
@@ -36,6 +37,15 @@ namespace cmd {
     class IfStatement;
     class WhileStatement;
     class ForStatement;
+
+    
+    class AstFailure {
+    public:
+        AstFailure(const std::string& message) : message(message) {}
+        const char* what() const noexcept  { return message.c_str(); }
+     private:
+        std::string message;
+    };
 
     class Node {
     public:
@@ -470,7 +480,15 @@ namespace cmd {
 
     class AstExecutor {
     public:
+
         AstExecutor();
+
+        
+        bool on_fail = true;
+
+        void setTerm(const bool &t) {
+            on_fail = t;
+        }
 
         std::string getPath() const {
             return std::filesystem::current_path().string();
@@ -510,6 +528,8 @@ namespace cmd {
                 executeNode(node, defaultInput, defaultOutput);
             } catch (const std::exception& e) {
                 defaultOutput << "Error: " << e.what() << std::endl;
+            } catch(const AstFailure &e) {
+                defaultOutput << "Failure: " << e.what() << std::endl;
             }
         }
 
@@ -548,7 +568,7 @@ namespace cmd {
                     if (value) {
                         return *value;
                     }  else {
-                        return input;
+                        throw std::runtime_error("Invalid varaible name: " + input);
                     }
                 }
             }
@@ -705,6 +725,9 @@ namespace cmd {
                 
                 if (lastExitStatus != 0) {
                     output << cmd->name << ": command failed with exit status " << lastExitStatus << std::endl;
+                    if(on_fail) {
+                        throw AstFailure(cmd->name + ": command failed");
+                    }
                 }
                 
                 buffer = std::move(nextBuffer);
@@ -714,6 +737,9 @@ namespace cmd {
             
             if (lastExitStatus != 0) {
                 output << lastCmd->name << ": command failed with exit status " << lastExitStatus << std::endl;
+                if(on_fail) {
+                    throw AstFailure(lastCmd->name + ": command failed.");
+                }
             }
         }
         
@@ -751,20 +777,36 @@ namespace cmd {
                         value = value.substr(1, value.size() - 2);
                     }
                     setVariable(varAssign->name, value);
-                }
+                } 
                 else if (auto expr = std::dynamic_pointer_cast<cmd::Expression>(varAssign->value)) {
+                    try {
                     std::string value = expr->evaluate(*this);
                     setVariable(varAssign->name, value);
-                } 
+                    } catch(const std::exception &e) {
+                        output << "Assignment Error: " << e.what() << "\n";
+                        lastExitStatus = 1;
+                        if(on_fail) {
+                            throw AstFailure("Assignment Failed: " + std::string(e.what()));
+                        }
+                        return;
+                    }
+                    lastExitStatus = 0;
+                    return;
+                }
                 else {
                     throw std::runtime_error("Unsupported value type in assignment");
                 }
                 lastExitStatus = 0;
+                return;
             }
             catch (const std::exception& e) {
                 output << "Assignment error: " << e.what() << std::endl;
                 lastExitStatus = 1; 
+                if(on_fail) {
+                    throw AstFailure("Assignment Failed: "+ std::string(e.what()));
+                }
             }
+            
         }
 
         void executeLogicalAnd(const std::shared_ptr<cmd::LogicalAnd>& logicalAnd, std::istream& input, std::ostream& output) {
@@ -1005,8 +1047,8 @@ namespace cmd {
 
     class CommandSubstitution : public Expression {
     public:
-        CommandSubstitution(std::shared_ptr<Node> command) : command(command) {}
-        
+        CommandSubstitution(std::shared_ptr<Node> command, bool is_var = true) : command(command),isVar(is_var) {}
+
         void print(std::ostream& out, int indent = 0) const override {
             std::string spaces = getIndent(indent);
             out << spaces << "<div class='node command-substitution'>\n";
@@ -1029,7 +1071,7 @@ namespace cmd {
                 for (const auto& arg : cmd->args) {
                     Argument expandedArg;
                     expandedArg.value = executor.expandVariables(arg.value);
-                    expandedArg.type = arg.type;
+                    expandedArg.type =  ARG_LITERAL;
                     expandedArgs.push_back(expandedArg);
                 }               
                 const_cast<AstExecutor&>(executor).getCommandRegistry().executeCommand(
@@ -1062,6 +1104,7 @@ namespace cmd {
         }
         
         std::shared_ptr<Node> command;
+        bool isVar;
     };
 
    

@@ -19,7 +19,7 @@ namespace state {
 namespace cmd {
 
     int exitCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
-        std::exit(0); 
+        std::exit(0);      
         return 0;     
     }
     
@@ -63,7 +63,7 @@ namespace cmd {
                         auto f = game->getVariable(filename.value);
                         filen_ = f;
                     } catch(const state::StateException &) {
-
+                        throw std::runtime_error("Could not find variable name");
                     }
                 }
                 std::ifstream file(filen_);
@@ -221,7 +221,7 @@ namespace cmd {
                 state::GameState *s = state::getGameState();
                 path = s->getVariable(args[0].value);
             } catch(const state::StateException  &e) {
-
+                throw std::runtime_error("cd: Could not find variable name");
             }
         }
         try {
@@ -242,7 +242,7 @@ namespace cmd {
                     state::GameState *s = state::getGameState();
                     path = s->getVariable(args[0].value);
                 } catch(const state::StateException &) {
-
+                    throw std::runtime_error("list: Could not find variable name.");
                 } catch(...) {
 
                 }
@@ -275,7 +275,7 @@ namespace cmd {
                         state::GameState *s = state::getGameState();
                         file_n = s->getVariable(filename.value);
                     } catch(const state::StateException  &e) {
-
+                        throw std::runtime_error("sort: Could not find varaible ");
                     }
                 }
                 std::ifstream file(file_n);
@@ -311,7 +311,7 @@ namespace cmd {
                 pattern = s->getVariable(args[1].value);
             }
         } catch(const state::StateException &e) {
-
+            throw  std::runtime_error("find: Could not find variable name.\n");
         }
         
         try {
@@ -353,7 +353,7 @@ namespace cmd {
                     a = s->getVariable(arg.value);
                 }
             } catch(const state::StateException  &e) {
-
+                throw std::runtime_error("mkdir: Could not find variable name");
             }
             if (a == "-p") {
                 parents = true;
@@ -393,7 +393,7 @@ namespace cmd {
                     a = s->getVariable(arg.value);
                 }
             } catch(const state::StateException &e) {
-
+                throw std::runtime_error("cp: Could not find variable");
             }
             if (a == "-r" || a == "-R") {
                 recursive = true;
@@ -458,7 +458,7 @@ namespace cmd {
                 output << "mv: cannot move '" << a << "' to '" << dest << "': " << e.what() << std::endl;
                 success = false;
             } catch(const state::StateException &e) {
-
+                throw std::runtime_error("mv: Could not find variable\n");
             }
         }
         
@@ -614,7 +614,9 @@ namespace cmd {
                 try {
                     state::GameState *s = state::getGameState();
                     a = s->getVariable(arg.value);
-                } catch(const state::StateException &e) {}
+                } catch(const state::StateException &e) {
+                    throw std::runtime_error("wc: Variable name not found");
+                }
 
             }
             if (a == "-l") {
@@ -843,7 +845,7 @@ namespace cmd {
                 try {
                     expandedArgs.push_back(gameState->getVariable(arg.value));
                 } catch (const state::StateException& e) {
-                    expandedArgs.push_back(arg.value); 
+                    throw std::runtime_error("Variable: " + arg.value + " is not defined");
                 }
             } else {
                 expandedArgs.push_back(arg.value);
@@ -1007,7 +1009,7 @@ namespace cmd {
         state::GameState *gameState = state::getGameState();
         try {
             std::string value = gameState->getVariable(variable);
-            output << variable << ": " << value << std::endl;
+            
         } catch (const state::StateException &e) {
             output << "Error: " << e.what() << std::endl;
             return 1;
@@ -1086,6 +1088,7 @@ namespace cmd {
                 try {
                     return gameState->getVariable(arg.value);
                 } catch (const state::StateException&) {
+                    throw std::runtime_error(" Error variable: " + arg.value + " not found");
                     return ""; 
                 }
 
@@ -1189,14 +1192,7 @@ namespace cmd {
             return 1;
         }
 
-        std::string filename;
-        if (args[0].type == cmd::ARG_VARIABLE) {
-            auto varValue = state::getGameState()->getVariable(args[0].value);
-            filename = varValue;
-        } else {
-            filename = args[0].value;
-        }
-
+        std::string filename = getVar(args[0]);
         if (filename.size() >= 2 && 
             ((filename.front() == '"' && filename.back() == '"') || 
              (filename.front() == '\'' && filename.back() == '\''))) {
@@ -1221,7 +1217,7 @@ namespace cmd {
             auto ast = parser.parse();
             cmd::AstExecutor scriptExecutor;
             scriptExecutor.execute(input, output, ast);   
-            return scriptExecutor.getLastExitStatus();
+            return 0;
         } catch (const scan::ScanExcept &e) {
             output << "cmd: Scan error in " << filename << ": " << e.why() << std::endl;
             return 1;
@@ -1240,17 +1236,7 @@ namespace cmd {
             output << "Usage: visual script output_filel.\n";
             return 1;
         }
-        std::string op1 = args[0].value, op2 = args[1].value;;
-        try {
-            state::GameState *s = state::getGameState();
-
-            if(args[0].type == ArgType::ARG_VARIABLE)
-                op1 = s->getVariable(args[0].value);
-
-            if(args[1].type == ArgType::ARG_VARIABLE)
-                op2 = s->getVariable(args[1].value);
-
-        } catch(const state::StateException &e) {}
+        std::string op1 = getVar(args[0]), op2 = getVar(args[1]);
         std::ifstream infile(op1);
         if(!infile.is_open()) {
             output << "Could not open file: " << op1 << "\n";
@@ -1291,19 +1277,9 @@ namespace cmd {
             output << "Usage: at <list> index\n";
             return 1;
         }
-        std::string op1 = args[0].value;
-        std::string op2 = args[1].value;
-        try {
-            state::GameState *s = state::getGameState();
-            if(args[0].type == ArgType::ARG_VARIABLE) {
-                op1 = s->getVariable(args[0].value);
-            }
-            if(args[1].type == ArgType::ARG_VARIABLE) {
-                op2 = s->getVariable(args[1].value);
-            }
-        } catch(const state::StateException &e) {
 
-        }
+        std::string op1= getVar(args[0]);
+        std::string op2= getVar(args[1]);
         std::istringstream stream(op1);
         std::vector<std::string> values;
         std::string line;
@@ -1316,28 +1292,34 @@ namespace cmd {
             output << values.at(index);
         return 0;
     }
-
     int lenCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
         if(args.empty() || args.size() != 1) {
             output << "Usage: len <list>\n";
             return 1;
         }
-        std::string op1 = args[0].value;
-        try {
-            state::GameState *s = state::getGameState();
-            if(args[0].type == ArgType::ARG_VARIABLE) {
-                op1 = s->getVariable(args[0].value);
+        std::string op1 = getVar(args[0]);          
+        
+        if (op1.find('\n') != std::string::npos) {
+        
+            std::istringstream stream(op1);
+            std::vector<std::string> values;
+            std::string line;
+            while(std::getline(stream, line)) {
+                if (!line.empty()) {
+                    values.push_back(line);
+                }
             }
-        } catch(const state::StateException &e) {
-
+            output << values.size();
+        } else {
+        
+            std::istringstream stream(op1);
+            std::vector<std::string> values;
+            std::string word;
+            while(stream >> word) {
+                values.push_back(word);
+            }
+            output << values.size();
         }
-        std::istringstream stream(op1);
-        std::vector<std::string> values;
-        std::string line;
-        while(std::getline(stream, line)) {
-            values.push_back(line);
-        }
-        output << values.size();    
         return 0;
     }
 
@@ -1348,7 +1330,7 @@ namespace cmd {
                 state::GameState  *s = state::getGameState();
                 a = s->getVariable(arg.value);
             } catch(const state::StateException &) {
-                return a;
+                throw std::runtime_error("Variable name: " + arg.value + " not found");
             }
         }
         return a;
@@ -1357,7 +1339,7 @@ namespace cmd {
     // index <string> start len
     int indexCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
         if(args.empty() || args.size() != 3) {
-            output << "Usage: index <string> start leeenn\n";
+            output << "Usage: index <string> start leenn\n";
             return 1;
         }
 

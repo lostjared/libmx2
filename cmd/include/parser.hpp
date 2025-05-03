@@ -310,8 +310,8 @@ namespace cmd {
                     if (peek().getTokenType() == types::TokenType::TT_SYM && peek().getTokenValue() == "$") {
                         advance(); 
                         auto cmdNode = parseCommandSubstitution();
-                        return std::make_shared<cmd::VariableAssignment>(
-                            name, std::make_shared<cmd::CommandSubstitution>(cmdNode));
+                        auto cmdSubst = std::make_shared<cmd::CommandSubstitution>(cmdNode, true);
+                        return std::make_shared<cmd::VariableAssignment>(name, cmdSubst);
                     }
                      
 
@@ -340,7 +340,7 @@ namespace cmd {
                                 advance(); 
                                 auto cmdNode = parseCommandSubstitution();
                                 return std::make_shared<cmd::VariableAssignment>(
-                                    varName, std::make_shared<cmd::CommandSubstitution>(cmdNode));
+                                    varName, std::make_shared<cmd::CommandSubstitution>(cmdNode, true));
                             }
 
                             if (peek().getTokenType() == types::TokenType::TT_STR) {

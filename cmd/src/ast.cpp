@@ -39,6 +39,22 @@ namespace cmd {
         registry.registerTypedCommand("len", cmd::lenCommand);
         registry.registerTypedCommand("index", cmd::indexCommand);
         registry.registerTypedCommand("strlen", cmd::strlenCommand);
+        //commands implemneted here
+        registry.registerTypedCommand("set", [this](const std::vector<Argument>& args, std::istream& input, std::ostream& output) {
+            if (args.size() >= 1) {
+                if (args[0].value == "-e") {
+                    setTerm(true);
+                    output << "Early termination enabled" << std::endl;
+                    return 0;
+                } else if (args[0].value == "+e") {
+                    setTerm(false);
+                    output << "Early termination disabled" << std::endl;
+                    return 0;
+                }
+            }
+            output << "Usage: set [-e|+e] (enable or disable early termination)" << std::endl;
+            return 1;
+        });
     }
 
     std::string VariableReference::evaluate(const AstExecutor& executor) const {

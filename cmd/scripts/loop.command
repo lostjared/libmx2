@@ -1,9 +1,8 @@
 files = $(ls)
-index = 0
-len = $(len files)
-while test index -lt len; do
-f = $(at files index)
-printf "file: %s\n" f
-index =  index + 1
+i = 0
+length = $(len files)
+while test i -lt length; do
+  f = $(at files i)
+  printf "%d: %s\n" i f
+  i = i + 1
 done
-
