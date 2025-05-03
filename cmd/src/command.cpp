@@ -1285,4 +1285,35 @@ namespace cmd {
 
         return 0;
     }
+
+    int atCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
+        if(args.empty() || args.size() != 2) {
+            output << "Usage: at <list> index\n";
+            return 1;
+        }
+        std::string op1 = args[0].value;
+        std::string op2 = args[1].value;
+        try {
+            state::GameState *s = state::getGameState();
+            if(args[0].type == ArgType::ARG_VARIABLE) {
+                op1 = s->getVariable(args[0].value);
+            }
+            if(args[1].type == ArgType::ARG_VARIABLE) {
+                op2 = s->getVariable(args[1].value);
+            }
+        } catch(const state::StateException &e) {
+
+        }
+        std::istringstream stream(op1);
+        std::vector<std::string> values;
+        std::string line;
+        while(std::getline(stream, line)) {
+            values.push_back(line);
+        }
+        int index = std::stoi(op2);
+
+        if(index >= 0 && index < values.size())
+            output << values.at(index);
+        return 0;
+    }
 }
