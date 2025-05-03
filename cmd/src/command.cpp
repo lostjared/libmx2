@@ -1377,4 +1377,14 @@ namespace cmd {
         }
         return 1;
     }
+
+    int strlenCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
+        if(args.empty() || args.size() != 1) {
+            output <<  "Usage: strlen <string>\n";
+            return 1;
+        }
+        std::string v = getVar(args[0]);
+        output << v.length();
+        return 0;
+    }
 }
