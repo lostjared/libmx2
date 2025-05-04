@@ -1,6 +1,6 @@
 CXX = em++
-CXXFLAGS = -std=c++20 -O2 -DFOR_WASM -s USE_SDL=2 -s USE_SDL_TTF=2 -s NO_DISABLE_EXCEPTION_CATCHING -I./include
-LIBS_PATH = /home/jared/emscripten-libs
+CXXFLAGS = -std=c++20 -O2 -DFOR_WASM -s USE_SDL=2 -s USE_SDL_TTF=2 -s NO_DISABLE_EXCEPTION_CATCHING -I./include -I/usr/local/include/glm
+LIBS_PATH = $(HOME)/emscripten-libs
 ZLIB_INCLUDE = -s USE_ZLIB=1 #-I$(LIBS_PATH)/zlib/include
 PNG_INCLUDE = -s USE_LIBPNG=1 #-I$(LIBS_PATH)/libpng/include
 MX_INCLUDE = -I$(LIBS_PATH)/mx2/include -I/usr/include/glm
@@ -8,7 +8,7 @@ ZLIB_LIB = -s USE_ZLIB=1 # $(LIBS_PATH)/zlib/lib/libz.a
 PNG_LIB = -s USE_LIBPNG=1 # $(LIBS_PATH)/libpng/lib/libpng.a
 LIBMX_LIB = $(LIBS_PATH)/mx2/lib/libmx.a 
 PRELOAD = --preload-file data
-SOURCES = src/console_full.cpp src/command.cpp src/scanner.cpp  src/string_buffer.cpp  src/types.cpp src/ast.cpp
+SOURCES = src/console_full.cpp src/command.cpp src/scanner.cpp  src/string_buffer.cpp  src/types.cpp src/ast.cpp src/html.cpp
 OBJECTS = $(SOURCES:.cpp=.o)
 OUTPUT = Console.html
 
