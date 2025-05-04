@@ -37,6 +37,8 @@ namespace cmd {
     class IfStatement;
     class WhileStatement;
     class ForStatement;
+    class Break;
+    class Continue;
 
     
     class AstFailure {
@@ -45,6 +47,16 @@ namespace cmd {
         const char* what() const noexcept  { return message.c_str(); }
      private:
         std::string message;
+    };
+
+    class BreakException {
+    public:
+        const char* what() const noexcept { return "Break statement"; }
+    };
+    
+    class ContinueException {
+    public:
+        const char* what() const noexcept { return "Continue statement"; }
     };
 
     class Node {
@@ -86,7 +98,27 @@ namespace cmd {
             return result;
         }
     };
-    
+      
+    class Break : public Node {
+    public:
+        void print(std::ostream& out, int indent = 0) const override {
+            std::string spaces = getIndent(indent);
+            out << spaces << "<div class='node break'>\n";
+            out << spaces << "  <h3>Break</h3>\n";
+            out << spaces << "</div>\n";
+        }
+    };
+
+    class Continue : public Node {
+    public:
+        void print(std::ostream& out, int indent = 0) const override {
+            std::string spaces = getIndent(indent);
+            out << spaces << "<div class='node continue'>\n";
+            out << spaces << "  <h3>Continue</h3>\n";
+            out << spaces << "</div>\n";
+        }
+    };
+
     class Expression : public Node {
     public:
         virtual ~Expression() = default;
@@ -697,6 +729,12 @@ namespace cmd {
             else if (auto forStmt = std::dynamic_pointer_cast<cmd::ForStatement>(node)) {
                 executeForStatement(forStmt, input, output);
             }
+            else if (auto breakStmt = std::dynamic_pointer_cast<cmd::Break>(node)) {
+                throw BreakException();
+            }
+            else if (auto continueStmt = std::dynamic_pointer_cast<cmd::Continue>(node)) {
+                throw ContinueException();
+            }
             else {
                 throw std::runtime_error("Unknown node type");
             }
@@ -830,14 +868,23 @@ namespace cmd {
             }
         }
 
-        void executeWhileStatement(const std::shared_ptr<cmd::WhileStatement>& whileStmt,
-                                   std::istream& input, std::ostream& output) {
-            while (true) {
-                executeNode(whileStmt->condition, input, output);
-                if (lastExitStatus != 0) {
-                    break;
+        void executeWhileStatement(const std::shared_ptr<cmd::WhileStatement>& whileStmt,std::istream& input, std::ostream& output) {
+
+            try {
+                while (true) {
+                    executeNode(whileStmt->condition, input, output);
+                    if (lastExitStatus != 0) {
+                        break;
+                    }
+                    try {
+                        executeNode(whileStmt->body, input, output);
+                    } catch(const ContinueException&) {
+                       continue;
+                    } 
                 }
-                executeNode(whileStmt->body, input, output);
+            }
+            catch (const BreakException&) {
+                
             }
         }
 
@@ -846,61 +893,85 @@ namespace cmd {
             
             std::optional<std::string> originalValue = getVariable(forStmt->variable);
             bool hadOriginalValue = originalValue.has_value();
-            for (const auto& value : forStmt->values) {
-                if (value.type == ARG_VARIABLE) {
-                    std::optional<std::string> varValue = getVariable(value.value);
-                    
-                    if (varValue.has_value()) {
-                        std::string valueStr = varValue.value();
+            try {
+                for (const auto& value : forStmt->values) {
+                    if (value.type == ARG_VARIABLE) {
+                        std::optional<std::string> varValue = getVariable(value.value);
                         
-                    
-                        if (valueStr.find('\n') != std::string::npos) {
-                    
-                            std::istringstream lineStream(valueStr);
-                            std::string line;
-                            while (std::getline(lineStream, line)) {
-                                if (!line.empty()) {
-                                    setVariable(forStmt->variable, line);
-                                    executeNode(forStmt->body, input, output);
+                        if (varValue.has_value()) {
+                            std::string valueStr = varValue.value();
+                            
+                        
+                            if (valueStr.find('\n') != std::string::npos) {
+                        
+                                std::istringstream lineStream(valueStr);
+                                std::string line;
+                                while (std::getline(lineStream, line)) {
+                                    if (!line.empty()) {
+                                        setVariable(forStmt->variable, line);
+                                        try {
+                                            executeNode(forStmt->body, input, output);
+                                        } catch (const ContinueException&) {
+                                            continue;
+                                        } 
+                                    }
                                 }
+                            } else if (valueStr.find_first_of(" \t") != std::string::npos) {
+                                std::istringstream wordStream(valueStr);
+                                std::string word;
+                                while (wordStream >> word) {
+                                    setVariable(forStmt->variable, word);
+                                    try {
+                                        executeNode(forStmt->body, input, output);
+                                    } catch (const ContinueException&) {
+                                        continue;
+                                    }
+                                }
+                            } else {
+                                setVariable(forStmt->variable, valueStr);
+                                try {
+                                    executeNode(forStmt->body, input, output);
+                                } catch (const ContinueException&) {
+                                    continue;
+                                }
+
                             }
-                        } else if (valueStr.find_first_of(" \t") != std::string::npos) {
-                            std::istringstream wordStream(valueStr);
-                            std::string word;
-                            while (wordStream >> word) {
-                                setVariable(forStmt->variable, word);
-                                executeNode(forStmt->body, input, output);
-                            }
-                        } else {
-                            setVariable(forStmt->variable, valueStr);
-                            executeNode(forStmt->body, input, output);
                         }
-                    }
-                } else {
-                    std::string literalValue = value.value;
-                    if (literalValue.size() >= 2 && 
-                        ((literalValue.front() == '"' && literalValue.back() == '"') ||
-                         (literalValue.front() == '\'' && literalValue.back() == '\''))) {
-                        
-                        literalValue = literalValue.substr(1, literalValue.size() - 2);
-                        if (literalValue.find('\n') != std::string::npos) {
-                            std::istringstream lineStream(literalValue);
-                            std::string line;
-                            while (std::getline(lineStream, line)) {
-                                if (!line.empty()) {
-                                    setVariable(forStmt->variable, line);
-                                    executeNode(forStmt->body, input, output);
+                    } else {
+                        std::string literalValue = value.value;
+                        if (literalValue.size() >= 2 && 
+                            ((literalValue.front() == '"' && literalValue.back() == '"') ||
+                            (literalValue.front() == '\'' && literalValue.back() == '\''))) {
+                            
+                            literalValue = literalValue.substr(1, literalValue.size() - 2);
+                            if (literalValue.find('\n') != std::string::npos) {
+                                std::istringstream lineStream(literalValue);
+                                std::string line;
+                                while (std::getline(lineStream, line)) {
+                                    if (!line.empty()) {
+                                        setVariable(forStmt->variable, line);
+                                        try {
+                                            executeNode(forStmt->body, input, output);
+                                        } catch (const ContinueException&) {
+                                            continue;
+                                        }
+                                    }
                                 }
+                                continue;
                             }
+                        }
+                
+                        setVariable(forStmt->variable, literalValue);
+                        try {
+                            executeNode(forStmt->body, input, output);
+                        } catch (const ContinueException&) {
                             continue;
                         }
                     }
-            
-                    setVariable(forStmt->variable, literalValue);
-                    executeNode(forStmt->body, input, output);
                 }
+            } catch(const BreakException&) {
+        
             }
-            
             
             if (hadOriginalValue) {
                 setVariable(forStmt->variable, originalValue.value());

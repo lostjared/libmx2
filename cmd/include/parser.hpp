@@ -732,6 +732,14 @@ namespace cmd {
                     else if (peek().getTokenValue() == "for") {
                         return parseForStatement();
                     }
+                    else if (peek().getTokenValue() == "break") {
+                        advance(); 
+                        return std::make_shared<cmd::Break>();
+                    }
+                    else if (peek().getTokenValue() == "continue") {
+                        advance(); 
+                        return std::make_shared<cmd::Continue>();
+                    }
                 }
                 return parsePipeline();
             }
