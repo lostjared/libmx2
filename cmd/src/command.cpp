@@ -1170,7 +1170,6 @@ namespace cmd {
                     return 2;
                 }
             } else if (op == "-le") {
-                std::cout << leftValue << " < " << rightValue << "\n";
                 try {
                     int left = std::stoi(leftValue);
                     int right = std::stoi(rightValue);
@@ -1179,6 +1178,9 @@ namespace cmd {
                     output << "test: integer expression expected" << std::endl;
                     return 2;
                 }
+            } else {
+                std::cout << "test: unknown operator: " << op << std::endl;
+                return 2;
             }
         }
         if (args.size() == 1) {
