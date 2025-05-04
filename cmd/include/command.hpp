@@ -48,7 +48,6 @@ namespace cmd {
     int lenCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
     int indexCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
     int strlenCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
-
-
+    int strfindCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
 }
 #endif

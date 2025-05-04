@@ -39,6 +39,7 @@ namespace cmd {
         registry.registerTypedCommand("len", cmd::lenCommand);
         registry.registerTypedCommand("index", cmd::indexCommand);
         registry.registerTypedCommand("strlen", cmd::strlenCommand);
+        registry.registerTypedCommand("strfind", cmd::strfindCommand);
         //commands implemneted here
         registry.registerTypedCommand("set", [this](const std::vector<Argument>& args, std::istream& input, std::ostream& output) {
             if (args.size() >= 1) {
