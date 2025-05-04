@@ -21,7 +21,7 @@ add_library(cmd STATIC
 list(APPEND header ${CMAKE_SOURCE_DIR}/include/command.hpp ${CMAKE_SOURCE_DIR}/include/scanner.hpp ${CMAKE_SOURCE_DIR}/include/types.hpp ${CMAKE_SOURCE_DIR}/include/string_buffer.hpp ${CMAKE_SOURCE_DIR}/include/ast.hpp ${CMAKE_SOURCE_DIR}/include/parser.hpp ${CMAKE_SOURCE_DIR}/include/game_state.hpp ${CMAKE_SOURCE_DIR}/include/html.hpp
 )
 
-include_directories(${PROJECT_SOURCE_DIR}/include)
+include_directories(${PROJECT_SOURCE_DIR}/include ${CMAKE_INSTALL_PREFIX}/include)
 
 
 
@@ -48,6 +48,7 @@ if(CONSOLE)
     find_package(SDL2_ttf REQUIRED)
     find_package(SDL2_mixer REQUIRED)
     find_package(libmx2 REQUIRED)
+    find_Package(glm REQUIRED)
     add_executable(cmd-console
         src/console_full.cpp
     )
@@ -58,6 +59,7 @@ if(CONSOLE)
         ${SDL2_INCLUDE_DIRS} 
         ${SDL2_TTF_INCLUDE_DIRS}
         ${SDL2_MIXER_INCLUDE_DIRS}
+	${GLM_INCLUDE_DIRS}
     )
     target_link_libraries(cmd-console PRIVATE
         cmd
