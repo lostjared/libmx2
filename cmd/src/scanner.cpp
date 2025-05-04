@@ -74,6 +74,16 @@ namespace scan {
                     string_buffer.currentLine -= 1;
                     continue;           
                 } 
+                else {
+                    do {
+                        ch = string_buffer.getch();
+                    } while(ch.has_value() && *ch != '\n');
+                    
+                    if (ch.has_value()) {
+                        string_buffer.backward_step(1);
+                    }
+                    continue;
+                }
             } else if(ch.has_value() && *ch == '/') {
                 auto ch2 = string_buffer.curch();
                 if(ch2.has_value() && *ch2 == '/') {
@@ -222,103 +232,89 @@ namespace scan {
         std::string tok_value;
         string_buffer.backward_step(1);
         auto filename = string_buffer.cur_file();
-        auto pos = string_buffer.cur_line();
-
+        auto pos      = string_buffer.cur_line();
+        
         auto ch = string_buffer.getch();
-        if (ch.has_value()) {
-            tok_value += *ch;
+        if (!ch.has_value()) return std::nullopt;
+        
+        // Special handling for `-args`, `-a`, etc.
+        if (*ch == '-') {
+            tok_value = "-";
             
-            
-            if (*ch == '-') {
-            
-                auto next_ch = string_buffer.peekch(0);
-                if (next_ch.has_value() && *next_ch == '-') {
-                    tok_value += *next_ch;
-                    string_buffer.forward_step(1); 
-                    int look = 0;
-                    std::string arg_name;
-                    while (true) {
-                        auto temp = string_buffer.peekch(look);
-                        if (!temp.has_value()) break;
-                        
-                        auto temp_type = token_map.lookup_int8(*temp);
-                        if ((temp_type == types::CharType::TT_CHAR) || 
-                            (temp_type == types::CharType::TT_DIGIT) ||
-                            (*temp == '-')) {
-                            arg_name += *temp;
-                            look++;
-                        } else {
-                            break;
-                        }
-                    }
-                    
-                    if (!arg_name.empty()) {
-                        tok_value += arg_name;
-                        string_buffer.forward_step(look);
-                        token.set_pos(pos);
-                        token.set_filename(filename);
-                        token.setToken(types::TokenType::TT_ARG, tok_value);
-                        return token;
-                    }
+            // Peek ahead to see if this is a command-line arg pattern
+            auto next = string_buffer.peekch(0);
+            if (next.has_value() && std::isalnum(*next)) {
+                // Continue consuming alpha-numeric chars to form `-abc` style arg
+                while (true) {
+                    auto nxt = string_buffer.peekch(0);
+                    if (!nxt.has_value() || !std::isalnum(*nxt)) break;
+                    tok_value += *nxt;
+                    string_buffer.getch();
                 }
-                else {
-                    
-                    int look = 0;
-                    std::string arg_name;
-                    while (true) {
-                        auto temp = string_buffer.peekch(look);
-                        if (!temp.has_value()) break;
-                        
-                        auto temp_type = token_map.lookup_int8(*temp);
-                        
-                        if ((temp_type == types::CharType::TT_CHAR) || 
-                            (temp_type == types::CharType::TT_DIGIT)) {
-                            arg_name += *temp;
-                            look++;
-                        } else {
-                            break;
-                        }
-                    }
-                    
-                    if (!arg_name.empty()) {
-                        tok_value += arg_name;
-                        string_buffer.forward_step(look);
-                        token.set_pos(pos);
-                        token.set_filename(filename);
-                        token.setToken(types::TokenType::TT_ARG, tok_value);
-                        return token;
-                    }
+                
+                // If we grabbed more than just the `-`, it's an argument flag
+                if (tok_value.length() > 1) {
+                    token.set_pos(pos);
+                    token.set_filename(filename);
+                    token.setToken(types::TokenType::TT_ARG, tok_value);
+                    return token;
                 }
             }
             
-            std::string temp_value = tok_value;
-            int look = 0;
-            bool found = false;
-            while (true) {
-                auto temp = string_buffer.peekch(look);
-                if (temp.has_value() && token_map.lookup_int8(*temp) == types::CharType::TT_SYMBOL) {
-                    temp_value += *temp;
-                    if (is_c_sym(temp_value)) {
-                        tok_value = temp_value;  
-                        look++;
-                        found = true;
-                    } else {
-                        break;  
+            // Handle comments
+            if (tok_value == "-" && string_buffer.peekch(0).has_value() && 
+                *string_buffer.peekch(0) == '-') {
+                // Double-dash comment
+                string_buffer.getch(); // Consume second dash
+                
+                // Skip to end of line
+                while (true) {
+                    auto c = string_buffer.getch();
+                    if (!c.has_value() || *c == '\n') {
+                        if (c.has_value()) string_buffer.backward_step(1);
+                        break;
                     }
-                } else {
-                    break;  
                 }
+                
+                // Return empty token to signal comment was processed
+                token.set_pos(pos);
+                token.set_filename(filename);
+                token.setToken(types::TokenType::TT_SYM, "");
+                return token;
             }
-            if(found && look != 0) {
-                string_buffer.forward_step(look);
-            }
-
-            token.set_pos(pos);
-            token.set_filename(filename);
-            token.setToken(types::TokenType::TT_SYM, tok_value);
-            return token;
         }
-        return std::nullopt;
+        
+        // Regular symbol processing for standalone `-` or any other symbol
+        tok_value = *ch;
+        std::string temp_value = tok_value;
+        int look = 0;
+        bool found = false;
+        
+        // Look ahead for multi-character operators
+        while (true) {
+            auto temp = string_buffer.peekch(look);
+            if (temp.has_value() && token_map.lookup_int8(*temp) == types::CharType::TT_SYMBOL) {
+                temp_value += *temp;
+                if (is_c_sym(temp_value)) {
+                    tok_value = temp_value;
+                    look++;
+                    found = true;
+                } else {
+                    break;
+                }
+            } else {
+                break;
+            }
+        }
+        
+        if (found && look != 0) {
+            string_buffer.forward_step(look);
+        }
+        
+        token.set_pos(pos);
+        token.set_filename(filename);
+        token.setToken(types::TokenType::TT_SYM, tok_value);
+        return token;
     }
         
     std::optional<TToken> Scanner::grabString() {
@@ -413,4 +409,3 @@ namespace scan {
     }
     size_t Scanner::size() const { return tokens.size(); }
 }
-

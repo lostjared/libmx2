@@ -1170,6 +1170,7 @@ namespace cmd {
                     return 2;
                 }
             } else if (op == "-le") {
+                std::cout << leftValue << " < " << rightValue << "\n";
                 try {
                     int left = std::stoi(leftValue);
                     int right = std::stoi(rightValue);

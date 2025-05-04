@@ -138,6 +138,10 @@ namespace cmd {
             }
             
             std::shared_ptr<cmd::Expression> parsePrimary() {
+                if(peek().getTokenValue()[0] == '-') {
+                    double value = std::stod(advance().getTokenValue());
+                    return std::make_shared<cmd::NumberLiteral>(value); 
+                }
                 if (peek().getTokenType() == types::TokenType::TT_NUM) {
                     double value = std::stod(advance().getTokenValue());
                     return std::make_shared<cmd::NumberLiteral>(value);
@@ -156,7 +160,7 @@ namespace cmd {
                     return expr;
                 }
                 
-                throw std::runtime_error("Expected expression");
+                throw std::runtime_error("Expected expression: " + peek().getTokenValue() + " On Line: " + std::to_string(peek().get_pos().first));
             }
 
             std::shared_ptr<cmd::Node> parseVariableDefinition(const std::string& name) {
@@ -289,7 +293,7 @@ namespace cmd {
 
             std::shared_ptr<cmd::Node> parseCommand() {
                 if (peek().getTokenType() != types::TokenType::TT_ID) {
-                    throw std::runtime_error("Expected command name, let keyword, or variable name");
+                    throw std::runtime_error("Expected command name, let keyword, or variable name found: " + peek().getTokenValue() + " on Line: " + std::to_string(peek().get_pos().first));
                 }
                 
                 if (peek().getTokenValue() == "if") {
