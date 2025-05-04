@@ -1074,16 +1074,32 @@ namespace cmd {
                     expandedArg.type =  ARG_LITERAL;
                     expandedArgs.push_back(expandedArg);
                 }               
-                const_cast<AstExecutor&>(executor).getCommandRegistry().executeCommand(
+                int exitStatus = const_cast<AstExecutor&>(executor).getCommandRegistry().executeCommand(
                     cmd->name, expandedArgs, input, output);
+
+                if(exitStatus != 0) {
+                    output << cmd->name << ": command failed with exit status " << executor.getLastExitStatus() << std::endl;
+                    if(executor.on_fail) {
+                        throw AstFailure(cmd->name + ": sub command failed.");
+                    }
+                }
             }
             else if (auto seq = std::dynamic_pointer_cast<cmd::Sequence>(command)) {
                 for (const auto& node : seq->commands) {
                     const_cast<AstExecutor&>(executor).executeDirectly(node, input, output);
+
+                    if(executor.getLastExitStatus() != 0) {
+                        output << "Sequence command failed with exit status " << executor.getLastExitStatus() << std::endl;
+                        if(executor.on_fail) {
+                            throw AstFailure("Sequence command failed.");
+                        }
+                    }
                 }
             }
             else {
                 const_cast<AstExecutor&>(executor).executeDirectly(command, input, output);
+    
+
             }
             
             std::string result = output.str();
