@@ -237,14 +237,14 @@ namespace scan {
         auto ch = string_buffer.getch();
         if (!ch.has_value()) return std::nullopt;
         
-        // Special handling for `-args`, `-a`, etc.
+        
         if (*ch == '-') {
             tok_value = "-";
             
-            // Peek ahead to see if this is a command-line arg pattern
+        
             auto next = string_buffer.peekch(0);
             if (next.has_value() && std::isalnum(*next)) {
-                // Continue consuming alpha-numeric chars to form `-abc` style arg
+        
                 while (true) {
                     auto nxt = string_buffer.peekch(0);
                     if (!nxt.has_value() || !std::isalnum(*nxt)) break;
@@ -252,7 +252,7 @@ namespace scan {
                     string_buffer.getch();
                 }
                 
-                // If we grabbed more than just the `-`, it's an argument flag
+        
                 if (tok_value.length() > 1) {
                     token.set_pos(pos);
                     token.set_filename(filename);
@@ -261,13 +261,13 @@ namespace scan {
                 }
             }
             
-            // Handle comments
+        
             if (tok_value == "-" && string_buffer.peekch(0).has_value() && 
                 *string_buffer.peekch(0) == '-') {
-                // Double-dash comment
-                string_buffer.getch(); // Consume second dash
+        
+                string_buffer.getch(); 
                 
-                // Skip to end of line
+                
                 while (true) {
                     auto c = string_buffer.getch();
                     if (!c.has_value() || *c == '\n') {
@@ -276,7 +276,7 @@ namespace scan {
                     }
                 }
                 
-                // Return empty token to signal comment was processed
+                
                 token.set_pos(pos);
                 token.set_filename(filename);
                 token.setToken(types::TokenType::TT_SYM, "");
@@ -284,13 +284,13 @@ namespace scan {
             }
         }
         
-        // Regular symbol processing for standalone `-` or any other symbol
+        
         tok_value = *ch;
         std::string temp_value = tok_value;
         int look = 0;
         bool found = false;
         
-        // Look ahead for multi-character operators
+        
         while (true) {
             auto temp = string_buffer.peekch(look);
             if (temp.has_value() && token_map.lookup_int8(*temp) == types::CharType::TT_SYMBOL) {
