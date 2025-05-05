@@ -481,7 +481,7 @@ namespace cmd {
 
     class VariableReference : public Expression {
     public:
-        VariableReference(const std::string& name) : name(name), negative(false) {}
+        VariableReference(const std::string& name) : name(name) {}
         
         void print(std::ostream& out, int indent = 0) const override {
             std::string spaces = getIndent(indent);
@@ -498,7 +498,6 @@ namespace cmd {
         double evaluateNumber(const AstExecutor& executor) const override;
         
         std::string name;
-        bool negative;
     };
 
     class AstExecutor {
