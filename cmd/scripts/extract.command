@@ -1,7 +1,9 @@
 
-define list_dir(args) begin
+define list_dir(args)
+begin
    files = $(ls args)
-   for i in files do
+   for i in files
+   do
       full_path = $(printf "%s/%s" args i)
       if test --d full_path; then
          printf "%s is a directory.\n" i

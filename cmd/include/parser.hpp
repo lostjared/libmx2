@@ -496,16 +496,14 @@ namespace cmd {
                 advance(); 
                 auto firstCondition = parsePipeline();
                 
-                match(";");
-                match("\n"); 
+                while (match(";") || match("\n")) {}
                 
                 if (isAtEnd() || peek().getTokenType() != types::TokenType::TT_ID || 
                     peek().getTokenValue() != "then") {
                     throw std::runtime_error("Expected 'then' after if condition found: " + peek().getTokenValue() + " on Line: " + std::to_string(peek().get_pos().first));
                 }
                 advance(); 
-                match(";");
-                match("\n");
+                while (match(";") || match("\n")) {}
                 
                 std::vector<std::shared_ptr<cmd::Node>> firstActions;
                 while (!isAtEnd() && 
@@ -529,8 +527,7 @@ namespace cmd {
                     
                     auto elifCondition = parsePipeline();
                     
-                    match(";");
-                    match("\n");
+                    while (match(";") || match("\n")) {}
                     
                     if (isAtEnd() || peek().getTokenType() != types::TokenType::TT_ID || 
                         peek().getTokenValue() != "then") {
@@ -538,8 +535,7 @@ namespace cmd {
                     }
                     advance(); 
                     
-                    match(";");
-                    match("\n");
+                    while (match(";") || match("\n")) {}
                     
                     std::vector<std::shared_ptr<cmd::Node>> elifActions;
                     
@@ -550,9 +546,7 @@ namespace cmd {
                              peek().getTokenValue() != "fi"))) {
                         elifActions.push_back(parseStatement());
                         
-                        while (match(";") || match("\n")) {
-                        
-                        }
+                        while (match(";") || match("\n")) {}
                     }
                     
                     branches.push_back({elifCondition, std::make_shared<cmd::Sequence>(elifActions)});
@@ -563,8 +557,7 @@ namespace cmd {
                     peek().getTokenValue() == "else") {
                     advance(); 
                     
-                    match(";");
-                    match("\n");
+                    while (match(";") || match("\n")) {}
                     
                     std::vector<std::shared_ptr<cmd::Node>> elseActions;
                     
@@ -573,9 +566,7 @@ namespace cmd {
                             peek().getTokenValue() != "fi")) {
                         elseActions.push_back(parseStatement());
                         
-                        while (match(";") || match("\n")) {
-                        
-                        }
+                        while (match(";") || match("\n")) {}
                     }
                     
                     elseAction = std::make_shared<cmd::Sequence>(elseActions);
@@ -596,17 +587,15 @@ namespace cmd {
                 
                 auto condition = parsePipeline();
                 
-                match(";");
-                match("\n");
+                while (match(";") || match("\n")) {}
                 
                 if (isAtEnd() || peek().getTokenType() != types::TokenType::TT_ID || 
                     peek().getTokenValue() != "do") {
                     throw std::runtime_error("Expected 'do' after while condition");
                 }
                 advance(); 
-                
-                match(";");
-                match("\n");
+
+                while (match(";") || match("\n")) {}
                 
                 std::vector<std::shared_ptr<cmd::Node>> bodyStatements;
                 while (!isAtEnd() && 
@@ -640,7 +629,6 @@ namespace cmd {
                     throw std::runtime_error("Expected 'in' after variable name in for loop");
                 }
                 advance(); 
-                
                 std::vector<Argument> values;
                 while (!isAtEnd() && 
                        peek().getTokenValue() != ";" && 
@@ -682,18 +670,15 @@ namespace cmd {
                 }
                 
                 
-                match(";");
-                
+                while (match(";") || match("\n")) {}
                 
                 if (isAtEnd() || peek().getTokenType() != types::TokenType::TT_ID || 
                     peek().getTokenValue() != "do") {
-                    throw std::runtime_error("Expected 'do' after values in for loop");
+                    throw std::runtime_error("Expected 'do' after values in for loop Instead i found: " +  peek().getTokenValue() + " on Line: " + std::to_string(peek().get_pos().first));
                 }
                 advance(); 
                 
-                match(";");
-                match("\n");
-                
+                while (match(";") || match("\n")) {}
                 
                 std::vector<std::shared_ptr<cmd::Node>> bodyStatements;
                 while (!isAtEnd() && 
@@ -701,8 +686,7 @@ namespace cmd {
                         peek().getTokenValue() != "done")) {
                     bodyStatements.push_back(parseStatement());
                     
-                    while (match(";") || match("\n")) {
-                    }
+                    while (match(";") || match("\n")) {}
                 }
                 
                 if (isAtEnd() || peek().getTokenType() != types::TokenType::TT_ID || 
@@ -750,14 +734,14 @@ namespace cmd {
                     throw std::runtime_error("Expected ')' after parameter list");
                 }
                 
+                while (match(";") || match("\n")) {}
                 
                 if (peek().getTokenType() != types::TokenType::TT_ID || peek().getTokenValue() != "begin") {
-                    throw std::runtime_error("Expected 'begin' after parameter list");
+                    throw std::runtime_error("Expected 'begin' after parameter list instead I got: " + peek().getTokenValue() + " on Line: " + std::to_string(peek().get_pos().first));
                 }
                 advance();
                 
-                match(";"); 
-                match("\n"); 
+                while (match(";") || match("\n")) {}
                 
                 
                 std::vector<std::shared_ptr<cmd::Node>> bodyStatements;
@@ -791,7 +775,6 @@ namespace cmd {
                         statements.push_back(parseStatement());
                         while (!isAtEnd() && 
                               (match(";") || match("\n"))) {
-                            
                         }
                     }
                 }
