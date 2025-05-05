@@ -82,7 +82,7 @@ namespace html {
         out << "    table {\n";
         out << "      border-collapse: separate;\n";
         out << "      border-spacing: 0;\n";
-        out << "      width: 100%;\n";
+        out << "      width: auto;\n";
         out << "      margin: 1rem 0;\n";
         out << "      border-radius: var(--border-radius);\n";
         out << "      overflow: hidden;\n";
