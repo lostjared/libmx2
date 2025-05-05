@@ -367,6 +367,13 @@ namespace cmd {
                 
                 std::vector<Argument> args;
                 while (!isAtEnd() && 
+                       
+                       !(peek().getTokenType() == types::TokenType::TT_ID && 
+                         (peek().getTokenValue() == "fi" || peek().getTokenValue() == "then" ||
+                          peek().getTokenValue() == "else" || peek().getTokenValue() == "elif" ||
+                          peek().getTokenValue() == "do" || peek().getTokenValue() == "done" ||
+                          peek().getTokenValue() == "end")) &&
+                       
                        (peek().getTokenType() != types::TokenType::TT_SYM || peek().getTokenValue() == "-" ||
                         (isTestCommand && (peek().getTokenValue() == "=" || peek().getTokenValue() == "!=")) 
                        ) && 
@@ -375,8 +382,8 @@ namespace cmd {
                        peek().getTokenValue() != ">" && 
                        peek().getTokenValue() != ">>" &&
                        peek().getTokenValue() != "<" &&
-                       peek().getTokenValue() != "&&") {
-                    
+                       peek().getTokenValue() != "&&" &&
+                       peek().getTokenValue() != ")") {
                     if (isTestCommand && peek().getTokenType() == types::TokenType::TT_SYM && 
                         (peek().getTokenValue() == "=" || peek().getTokenValue() == "!=")) {
                         std::string value = advance().getTokenValue();
@@ -575,8 +582,7 @@ namespace cmd {
                 if (isAtEnd() || 
                     peek().getTokenType() != types::TokenType::TT_ID ||
                     peek().getTokenValue() != "fi") {
-                    throw std::runtime_error("Expected 'fi' to close if statement");
-                }
+                    throw std::runtime_error("Expected 'fi' to close if statement instead found: " + peek().getTokenValue() + " on Line: " + std::to_string(peek().get_pos().first));                }
                 advance(); 
                 
                 return std::make_shared<cmd::IfStatement>(branches, elseAction);
