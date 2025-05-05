@@ -91,7 +91,7 @@ namespace cmd {
         int patternIndex = 0;
         bool success = true;
         
-        if (!args.empty() && (args[0].value ==  "-r" || args[0].value == "-e")) {
+        if (!args.empty() && (args[0].value ==  "--r" || args[0].value == "--e")) {
             useRegex = true;
             patternIndex = 1;
             
@@ -185,10 +185,10 @@ namespace cmd {
         bool success = true;
         
         for (const auto& arg : args) {
-            if (arg == "-i") {
+            if (arg == "--i") {
                 output_integer = true;
                 continue;
-            } else if(arg == "-f") {
+            } else if(arg == "--f") {
                 output_integer = false;
                 continue;
             } 
@@ -355,7 +355,7 @@ namespace cmd {
             } catch(const state::StateException  &e) {
                 throw std::runtime_error("mkdir: Could not find variable name");
             }
-            if (a == "-p") {
+            if (a == "--p") {
                 parents = true;
             } else {
                 dirs.push_back(a);
@@ -395,7 +395,7 @@ namespace cmd {
             } catch(const state::StateException &e) {
                 throw std::runtime_error("cp: Could not find variable");
             }
-            if (a == "-r" || a == "-R") {
+            if (a == "--r" || a == "--R") {
                 recursive = true;
             } else {
                 files.push_back(a);
@@ -498,7 +498,7 @@ namespace cmd {
         std::vector<std::string> files;
         
         for (size_t i = 0; i < args.size(); ++i) {
-            if (args[i] == "-n" && i + 1 < args.size()) {
+            if (args[i] == "--n" && i + 1 < args.size()) {
                 try {
                     numLines = std::stoi(args[++i]);
                 } catch (const std::exception& e) {
@@ -548,7 +548,7 @@ namespace cmd {
         int numLines = 10;  
         std::vector<std::string> files;
         for (size_t i = 0; i < args.size(); ++i) {
-            if (args[i] == "-n" && i + 1 < args.size()) {
+            if (args[i] == "--n" && i + 1 < args.size()) {
                 try {
                     numLines = std::stoi(args[++i]);
                 } catch (const std::exception& e) {
@@ -619,11 +619,11 @@ namespace cmd {
                 }
 
             }
-            if (a == "-l") {
+            if (a == "--l") {
                 countLines = true;
-            } else if (a == "-w") {
+            } else if (a == "--w") {
                 countWords = true;
-            } else if (a == "-c") {
+            } else if (a == "--c") {
                 countChars = true;
             } else {
                 files.push_back(a);
@@ -711,7 +711,7 @@ namespace cmd {
                 }
             } catch (const state::StateException &e) {}
 
-            if (a[0] == '-') {
+            if (a.size()>2 && a[0] == '-' && a[1] == '-') {
                 if (a.find('n') != std::string::npos) {
                     suppressOutput = true;
                 }
@@ -1100,16 +1100,16 @@ namespace cmd {
             const std::string& op = args[0].value;
             const std::string value = getValue(args[1]);
             
-            if (op == "-z") {
+            if (op == "--z") {
                 return value.empty() ? 0 : 1; 
-            } else if (op == "-n") {
+            } else if (op == "--n") {
                 return !value.empty() ? 0 : 1;
-            } else if (op == "-e") {
+            } else if (op == "--e") {
                 return std::filesystem::exists(value) ? 0 : 1;
-            } else if (op == "-f") {
+            } else if (op == "--f") {
                 return (std::filesystem::exists(value) && 
                        std::filesystem::is_regular_file(value)) ? 0 : 1; 
-            } else if (op == "-d") {
+            } else if (op == "--d") {
                 return (std::filesystem::exists(value) && 
                        std::filesystem::is_directory(value)) ? 0 : 1; 
             }
@@ -1123,7 +1123,7 @@ namespace cmd {
                 return leftValue == rightValue ? 0 : 1; 
             } else if (op == "!=") {
                 return leftValue != rightValue ? 0 : 1; 
-            } else if (op == "-eq") {
+            } else if (op == "--eq") {
                 try {
                     int left = std::stoi(leftValue);
                     int right = std::stoi(rightValue);
@@ -1132,7 +1132,7 @@ namespace cmd {
                     output << "test: integer expression expected" << std::endl;
                     return 2;
                 }
-            } else if (op == "-ne") {
+            } else if (op == "--ne") {
                 try {
                     int left = std::stoi(leftValue);
                     int right = std::stoi(rightValue);
@@ -1141,7 +1141,7 @@ namespace cmd {
                     output << "test: integer expression expected" << std::endl;
                     return 2;
                 }
-            } else if (op == "-gt") {
+            } else if (op == "--gt") {
                 try {
                     int left = std::stoi(leftValue);
                     int right = std::stoi(rightValue);
@@ -1150,7 +1150,7 @@ namespace cmd {
                     output << "test: integer expression expected" << std::endl;
                     return 2;
                 }
-            } else if (op == "-ge") {
+            } else if (op == "--ge") {
                 try {
                     int left = std::stoi(leftValue);
                     int right = std::stoi(rightValue);
@@ -1159,7 +1159,7 @@ namespace cmd {
                     output << "test: integer expression expected" << std::endl;
                     return 2;
                 }
-            } else if (op == "-lt") {
+            } else if (op == "--lt") {
                 try {
                     int left = std::stoi(leftValue);
                     int right = std::stoi(rightValue);
@@ -1168,7 +1168,7 @@ namespace cmd {
                     output << "test: integer expression expected" << std::endl;
                     return 2;
                 }
-            } else if (op == "-le") {
+            } else if (op == "--le") {
                 try {
                     int left = std::stoi(leftValue);
                     int right = std::stoi(rightValue);

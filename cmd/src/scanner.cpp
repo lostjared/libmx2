@@ -237,49 +237,19 @@ namespace scan {
         auto ch = string_buffer.getch();
         if (!ch.has_value()) return std::nullopt;
         
-        
         if (*ch == '-') {
-            tok_value = "-";
-            
-        
             auto next = string_buffer.peekch(0);
-            if (next.has_value() && std::isalnum(*next)) {
-        
-                while (true) {
-                    auto nxt = string_buffer.peekch(0);
-                    if (!nxt.has_value() || !std::isalnum(*nxt)) break;
-                    tok_value += *nxt;
-                    string_buffer.getch();
-                }
-                
-        
-                if (tok_value.length() > 1) {
-                    token.set_pos(pos);
-                    token.set_filename(filename);
-                    token.setToken(types::TokenType::TT_ARG, tok_value);
-                    return token;
-                }
-            }
-            
-        
-            if (tok_value == "-" && string_buffer.peekch(0).has_value() && 
-                *string_buffer.peekch(0) == '-') {
-        
-                string_buffer.getch(); 
-                
-                
-                while (true) {
-                    auto c = string_buffer.getch();
-                    if (!c.has_value() || *c == '\n') {
-                        if (c.has_value()) string_buffer.backward_step(1);
-                        break;
-                    }
-                }
-                
-                
+            if (next.has_value() && *next == '-') {
+                string_buffer.getch();
                 token.set_pos(pos);
                 token.set_filename(filename);
-                token.setToken(types::TokenType::TT_SYM, "");
+                token.setToken(types::TokenType::TT_ARG, "--"); 
+                return token;
+            }
+            else {
+                token.set_pos(pos);
+                token.set_filename(filename);
+                token.setToken(types::TokenType::TT_SYM, "-");
                 return token;
             }
         }
@@ -289,7 +259,6 @@ namespace scan {
         std::string temp_value = tok_value;
         int look = 0;
         bool found = false;
-        
         
         while (true) {
             auto temp = string_buffer.peekch(look);

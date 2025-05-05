@@ -66,8 +66,9 @@ namespace cmd {
     double VariableReference::evaluateNumber(const AstExecutor& executor) const {
         auto value = executor.getVariable(name);
         if (!value) return 0.0;
-        
         try {
+            if(negative)
+                return -std::stod(value.value());
             return std::stod(value.value());
         } catch (const std::exception&) {
             return 0.0;

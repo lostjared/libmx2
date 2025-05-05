@@ -4,7 +4,7 @@
 files = $(ls)
 for i in files; do
   e = $(strfind 0 i ".")
-  if test e -ne 0; then
+  if test e --ne 0; then
     length = $(strlen i)
     pos = length - e - 1
     spot  = e + 1

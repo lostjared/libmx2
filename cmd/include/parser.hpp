@@ -110,7 +110,8 @@ namespace cmd {
                             return std::make_shared<cmd::UnaryExpression>(
                                 expr, cmd::UnaryExpression::DECREMENT, cmd::UnaryExpression::PREFIX);
                         }
-                    } else if (peek().getTokenValue() == "-") {
+                    }
+                    else if (peek().getTokenValue() == "-") {    
                         advance(); 
                         auto expr = parseFactor();
                         return std::make_shared<cmd::UnaryExpression>(
@@ -136,12 +137,18 @@ namespace cmd {
                 
                 return expr;
             }
+
+            bool isVariableName(const std::string &text) {
+                if (text.empty()) return false;
+                if (!isalpha(text[0])) return false;
+                for (size_t i = 1; i < text.size(); ++i) {
+                    if (!isalnum(text[i]) && text[i] != '_') return false;
+                }
+                return true;    
+            }
             
             std::shared_ptr<cmd::Expression> parsePrimary() {
-                if(peek().getTokenValue()[0] == '-') {
-                    double value = std::stod(advance().getTokenValue());
-                    return std::make_shared<cmd::NumberLiteral>(value); 
-                }
+       
                 if (peek().getTokenType() == types::TokenType::TT_NUM) {
                     double value = std::stod(advance().getTokenValue());
                     return std::make_shared<cmd::NumberLiteral>(value);
@@ -360,7 +367,7 @@ namespace cmd {
                 
                 std::vector<Argument> args;
                 while (!isAtEnd() && 
-                       (peek().getTokenType() != types::TokenType::TT_SYM || 
+                       (peek().getTokenType() != types::TokenType::TT_SYM || peek().getTokenValue() == "-" ||
                         (isTestCommand && (peek().getTokenValue() == "=" || peek().getTokenValue() == "!=")) 
                        ) && 
                        peek().getTokenValue() != ";" && 
@@ -373,6 +380,14 @@ namespace cmd {
                     if (isTestCommand && peek().getTokenType() == types::TokenType::TT_SYM && 
                         (peek().getTokenValue() == "=" || peek().getTokenValue() == "!=")) {
                         std::string value = advance().getTokenValue();
+                        args.push_back({value, ARG_LITERAL});
+                    }
+                    else if ((peek().getTokenType() == types::TokenType::TT_SYM && peek().getTokenValue() == "-") ||
+                             (peek().getTokenType() == types::TokenType::TT_ARG && peek().getTokenValue() == "--")) {
+                        std::string value = advance().getTokenValue(); 
+                        if (isTestCommand && peek().getTokenType() == types::TokenType::TT_ID) {
+                            value += advance().getTokenValue(); 
+                        }
                         args.push_back({value, ARG_LITERAL});
                     }
                     else if (peek().getTokenType() == types::TokenType::TT_ID) {
@@ -486,7 +501,7 @@ namespace cmd {
                 
                 if (isAtEnd() || peek().getTokenType() != types::TokenType::TT_ID || 
                     peek().getTokenValue() != "then") {
-                    throw std::runtime_error("Expected 'then' after if condition");
+                    throw std::runtime_error("Expected 'then' after if condition found: " + peek().getTokenValue() + " on Line: " + std::to_string(peek().get_pos().first));
                 }
                 advance(); 
                 match(";");
