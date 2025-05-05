@@ -146,9 +146,18 @@ namespace scan {
                                 tokens.push_back(*tok);
                             }
                         }
+                        break;
                         case types::CharType::TT_SPACE:
+                            while (true) {
+                                auto next = string_buffer.peekch(0);
+                                if (!next.has_value() || token_map.lookup_int8(*next) != types::CharType::TT_SPACE) {
+                                    break;
+                                }
+                                string_buffer.getch(); 
+                            }
+                            continue;
                         case types::CharType::TT_NULL:
-                        continue;
+                            continue;
                     }
                 }
             } else break;

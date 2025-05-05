@@ -825,6 +825,11 @@ namespace cmd {
                     else if (peek().getTokenValue() == "define") {
                         return parseCommandDefinition();
                     }
+                    else if (peek().getTokenValue() == "return") {
+                        advance(); 
+                        auto expr = parseExpression();
+                        return std::make_shared<cmd::Return>(expr);
+                    }
                 }
                 return parsePipeline();
             }

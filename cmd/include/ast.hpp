@@ -97,7 +97,8 @@ namespace cmd {
             return result;
         }
     };
-      
+
+
     class Break : public Node {
     public:
         void print(std::ostream& out, int indent = 0) const override {
@@ -125,6 +126,22 @@ namespace cmd {
         virtual double evaluateNumber(const AstExecutor& executor) const = 0;
     };
     
+    class Return : public Node {
+    public:
+        explicit Return(std::shared_ptr<Expression> value) : value(std::move(value)) {}
+        
+        void print(std::ostream& out, int indent = 0) const override {
+            std::string spaces = getIndent(indent);
+            out << spaces << "<div class='node return'>\n";
+            out << spaces << "  <h3>Return</h3>\n";
+            out << spaces << "  <div class='value'>\n";
+            value->print(out, indent + 4);
+            out << spaces << "  </div>\n";
+            out << spaces << "</div>\n";
+        }
+        std::shared_ptr<Expression> value;
+    };
+          
     enum ArgType { ARG_LITERAL, ARG_VARIABLE };
     
     struct Argument {
@@ -502,10 +519,7 @@ namespace cmd {
 
     class AstExecutor {
     public:
-
-        AstExecutor();
-
-        
+        AstExecutor();    
         bool on_fail = true;
 
         void setTerm(const bool &t) {
@@ -530,7 +544,7 @@ namespace cmd {
         }
 
         void execute(std::istream &defaultInput, std::ostream &defaultOutput, const std::shared_ptr<cmd::Node>& node) {
-            
+            returnSignal = false;         
             try {
                 #ifdef DEBUG_MODE_ON
                 if (std::dynamic_pointer_cast<cmd::Command>(node)) {
@@ -688,15 +702,29 @@ namespace cmd {
             lastExitStatus = 0;
         }
 
+        void executeReturn(const std::shared_ptr<cmd::Return>& returnStmt, 
+                           std::istream& input, std::ostream& output) {
+            double result = returnStmt->value->evaluateNumber(*this);
+            lastExitStatus = static_cast<int>(result);
+            returnSignal = true;
+        }
+
     private:
         CommandRegistry registry;
         std::string path;
         int lastExitStatus = 0;
         mutable std::istream* input = nullptr;
         mutable std::ostream* output = nullptr;
+        bool returnSignal = false;
 
         void executeNode(const std::shared_ptr<cmd::Node>& node, std::istream& input, std::ostream& output) {
-            if (auto cmdDef = std::dynamic_pointer_cast<cmd::CommandDefinition>(node)) {
+            if (returnSignal) {
+                return;
+            }
+
+            if (auto returnStmt = std::dynamic_pointer_cast<cmd::Return>(node)) {
+                executeReturn(returnStmt, input, output);
+            } else if (auto cmdDef = std::dynamic_pointer_cast<cmd::CommandDefinition>(node)) {
                 executeCommandDefinition(cmdDef, input, output);
             } else if (auto cmd = std::dynamic_pointer_cast<cmd::Command>(node)) {
                 executeCommand(cmd, input, output);

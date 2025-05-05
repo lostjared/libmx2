@@ -1097,6 +1097,7 @@ namespace cmd {
         };
 
         if (args.size() == 2) {
+
             const std::string& op = args[0].value;
             const std::string value = getValue(args[1]);
             
@@ -1110,7 +1111,7 @@ namespace cmd {
                 return (std::filesystem::exists(value) && 
                        std::filesystem::is_regular_file(value)) ? 0 : 1; 
             } else if (op == "--d") {
-                return (std::filesystem::exists(value) && 
+                       return (std::filesystem::exists(value) && 
                        std::filesystem::is_directory(value)) ? 0 : 1; 
             }
         }
