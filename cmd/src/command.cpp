@@ -1119,7 +1119,6 @@ namespace cmd {
             const std::string leftValue = getValue(args[0]);
             const std::string& op = args[1].value;
             const std::string rightValue = getValue(args[2]);
-
             if (op == "=") {
                 return leftValue == rightValue ? 0 : 1; 
             } else if (op == "!=") {

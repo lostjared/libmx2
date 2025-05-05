@@ -1,3 +1,6 @@
+# list all files in directory
+# extract filename and extension
+
 files = $(ls)
 for i in files; do
   e = $(strfind 0 i ".")

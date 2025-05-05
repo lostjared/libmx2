@@ -1,4 +1,3 @@
-
 #ifndef __AST_HPP_X_
 #define __AST_HPP_X_
 
@@ -17,7 +16,7 @@
 #include<set>
 #include<cmath>
 #include"game_state.hpp"
-
+#include"command_reg.hpp"
 namespace cmd {
     class Node;
     class Expression;
@@ -156,6 +155,35 @@ namespace cmd {
         
         std::string name;
         std::vector<Argument> args;
+    };
+
+    class CommandDefinition : public Node {
+    public:
+        CommandDefinition(std::string name, std::vector<std::string> parameters, std::shared_ptr<Node> body)
+            : name(std::move(name)), parameters(std::move(parameters)), body(std::move(body)) {}
+        
+        void print(std::ostream& out, int indent = 0) const override {
+            std::string spaces = getIndent(indent);
+            out << spaces << "<div class='node command-definition'>\n";
+            out << spaces << "  <h3>CommandDefinition: " << escapeHtml(name) << "</h3>\n";
+            out << spaces << "  <table>\n";
+            out << spaces << "    <tr><th>Parameters</th></tr>\n";
+            out << spaces << "    <tr><td>\n";
+            for (const auto& param : parameters) {
+                out << spaces << "      <div class='parameter'>" << escapeHtml(param) << "</div>\n";
+            }
+            out << spaces << "    </td></tr>\n";
+            out << spaces << "    <tr><th>Body</th></tr>\n";
+            out << spaces << "    <tr><td>\n";
+            body->print(out, indent + 6);
+            out << spaces << "    </td></tr>\n";
+            out << spaces << "  </table>\n";
+            out << spaces << "</div>\n";
+        }
+        
+        std::string name;
+        std::vector<std::string> parameters;
+        std::shared_ptr<Node> body;
     };
 
     class LogicalAnd : public Node {
@@ -373,45 +401,7 @@ namespace cmd {
         std::vector<std::shared_ptr<Node>> commands;
     };
 
-    using CommandFunction = std::function<int(const std::vector<std::string>&, std::istream&, std::ostream&)>;
-    using TypedCommandFunction = std::function<int(const std::vector<Argument>&, std::istream&, std::ostream&)>;
-
-    class CommandRegistry {
-    public:
-    
-        void registerCommand(const std::string& name, CommandFunction func) {
-            commands[name] = func;
-        }
-
-        void registerTypedCommand(const std::string& name, TypedCommandFunction func) {
-            typedCommands[name] = func;
-        }
-        
-        int executeCommand(const std::string& name, const std::vector<Argument>& args, 
-                          std::istream& input, std::ostream& output) {
-            
-            auto it = typedCommands.find(name);
-            if (it != typedCommands.end()) {
-                return it->second(args, input, output);
-            }
-            
-            
-            auto it2 = commands.find(name);
-            if (it2 != commands.end()) {
-                std::vector<std::string> argValues;
-                for (const auto& arg : args) {
-                    argValues.push_back(arg.value);
-                }
-                return it2->second(argValues, input, output);
-            }
-            output << "Command not found: " << name << std::endl;
-            return 1; 
-        }
-        
-    private:
-        std::unordered_map<std::string, CommandFunction> commands;
-        std::unordered_map<std::string, TypedCommandFunction> typedCommands;
-    };
+   
 
     class StringLiteral : public Expression {
     public:
@@ -691,6 +681,13 @@ namespace cmd {
             return registry;
         }
 
+        void executeCommandDefinition(const std::shared_ptr<cmd::CommandDefinition>& def, 
+                                      std::istream& input, std::ostream& output) {
+            CommandRegistry::UserDefinedCommandInfo info{def->parameters, def->body};
+            registry.registerUserDefinedCommand(def->name, info);
+            lastExitStatus = 0;
+        }
+
     private:
         CommandRegistry registry;
         std::string path;
@@ -699,7 +696,9 @@ namespace cmd {
         mutable std::ostream* output = nullptr;
 
         void executeNode(const std::shared_ptr<cmd::Node>& node, std::istream& input, std::ostream& output) {
-            if (auto cmd = std::dynamic_pointer_cast<cmd::Command>(node)) {
+            if (auto cmdDef = std::dynamic_pointer_cast<cmd::CommandDefinition>(node)) {
+                executeCommandDefinition(cmdDef, input, output);
+            } else if (auto cmd = std::dynamic_pointer_cast<cmd::Command>(node)) {
                 executeCommand(cmd, input, output);
             } 
             else if (auto seq = std::dynamic_pointer_cast<cmd::Sequence>(node)) {

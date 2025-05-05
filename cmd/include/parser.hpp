@@ -702,6 +702,78 @@ namespace cmd {
                     std::make_shared<cmd::Sequence>(bodyStatements));
             }
 
+            std::shared_ptr<cmd::Node> parseCommandDefinition() {
+                // Consume 'define'
+                advance();
+                
+                // Parse command name
+                if (peek().getTokenType() != types::TokenType::TT_ID) {
+                    throw std::runtime_error("Expected command name after 'define'");
+                }
+                std::string commandName = advance().getTokenValue();
+                
+                // Parse parameter list
+                if (!match("(")) {
+                    throw std::runtime_error("Expected '(' after command name");
+                }
+                
+                std::vector<std::string> parameters;
+                bool firstParam = true;
+                
+                // Parse parameters until ')'
+                while (!isAtEnd() && peek().getTokenValue() != ")") {
+                    if (!firstParam) {
+                        if (!match(",")) {
+                            throw std::runtime_error("Expected ',' between parameters");
+                        }
+                    } else if (peek().getTokenValue() != ")") {
+                        firstParam = false;
+                    }
+                    
+                    if (peek().getTokenType() != types::TokenType::TT_ID) {
+                        throw std::runtime_error("Expected parameter name");
+                    }
+                    
+                    parameters.push_back(advance().getTokenValue());
+                }
+                
+                if (!match(")")) {
+                    throw std::runtime_error("Expected ')' after parameter list");
+                }
+                
+                // Consume 'begin'
+                if (peek().getTokenType() != types::TokenType::TT_ID || peek().getTokenValue() != "begin") {
+                    throw std::runtime_error("Expected 'begin' after parameter list");
+                }
+                advance();
+                
+                match(";"); // Optional semicolon
+                match("\n"); // Optional newline
+                
+                // Parse command body until 'end'
+                std::vector<std::shared_ptr<cmd::Node>> bodyStatements;
+                
+                while (!isAtEnd() && 
+                       !(peek().getTokenType() == types::TokenType::TT_ID && 
+                         peek().getTokenValue() == "end")) {
+                    bodyStatements.push_back(parseStatement());
+                    
+                    while (match(";") || match("\n")) {
+                        // Consume separators
+                    }
+                }
+                
+                // Consume 'end'
+                if (isAtEnd() || peek().getTokenType() != types::TokenType::TT_ID || peek().getTokenValue() != "end") {
+                    throw std::runtime_error("Expected 'end' to close command definition");
+                }
+                advance();
+                
+                // Create command definition node
+                auto body = std::make_shared<cmd::Sequence>(bodyStatements);
+                return std::make_shared<cmd::CommandDefinition>(commandName, parameters, body);
+            }
+
             std::shared_ptr<cmd::Node> parseScript() {
                 std::vector<std::shared_ptr<cmd::Node>> statements;
                 while (!isAtEnd()) {
@@ -743,6 +815,9 @@ namespace cmd {
                     else if (peek().getTokenValue() == "continue") {
                         advance(); 
                         return std::make_shared<cmd::Continue>();
+                    }
+                    else if (peek().getTokenValue() == "define") {
+                        return parseCommandDefinition();
                     }
                 }
                 return parsePipeline();
