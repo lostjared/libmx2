@@ -189,6 +189,10 @@
                         h1, h2, h3 {
                             margin-top: 0;
                         }
+                        /* Remove the small arrows from the original HTML */
+                        .node h3::before {
+                            content: none !important;
+                        }
                     `;
                     iframeDoc.head.appendChild(style);
                     
@@ -213,9 +217,8 @@
                             header.style.backgroundColor = '#334155';
                             header.style.padding = '5px';
                             header.style.borderRadius = '4px';
-                            if (!header.textContent.includes('▼')) {
-                                header.innerHTML = '▼ ' + header.innerHTML;
-                            }
+                            header.innerHTML = header.innerHTML.replace(/[▼▶]\s+/, '');
+                            header.innerHTML = '▼ ' + header.innerHTML;
                             
                             const newHeader = header.cloneNode(true);
                             header.parentNode.replaceChild(newHeader, header);
