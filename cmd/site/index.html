@@ -192,26 +192,71 @@
                     `;
                     iframeDoc.head.appendChild(style);
                     
-                    
                     setTimeout(() => {
-                    
-                        const links = iframeDoc.querySelectorAll('a');
-                        links.forEach(link => link.target = '_blank');
+                        console.log("Document structure:", iframeDoc.body.innerHTML.substring(0, 500) + "...");
+                       const headers = iframeDoc.querySelectorAll('.node h3');
+                        console.log(`Found ${headers.length} collapsible headers`);
                         
-                    
-                        const headers = iframeDoc.querySelectorAll('.node h3');
-                        headers.forEach(header => {
+                        if (headers.length === 0) {
+                            const alternativeHeaders = iframeDoc.querySelectorAll('h3');
+                            console.log(`Found ${alternativeHeaders.length} h3 elements with alternative selector`);
+                            
+                            if (alternativeHeaders.length > 0) {
+                                headers = alternativeHeaders;
+                            }
+                        }
+                        
+                        headers.forEach((header, index) => {
+                            console.log(`Setting up header ${index}:`, header.textContent);
+                            
                             header.style.cursor = 'pointer';
-                            header.addEventListener('click', function() {
-                                const content = this.nextElementSibling;
-                                if (content) {
-                                    const isVisible = getComputedStyle(content).display !== 'none';
-                                    content.style.display = isVisible ? 'none' : 'block';
-                                    this.classList.toggle('collapsed', isVisible);
+                            header.style.backgroundColor = '#334155';
+                            header.style.padding = '5px';
+                            header.style.borderRadius = '4px';
+                            if (!header.textContent.includes('▼')) {
+                                header.innerHTML = '▼ ' + header.innerHTML;
+                            }
+                            
+                            const newHeader = header.cloneNode(true);
+                            header.parentNode.replaceChild(newHeader, header);
+                            newHeader.addEventListener('click', function(e) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                console.log("Header clicked:", this.textContent);
+                                
+                                this.style.backgroundColor = '#0284c7';
+                                
+                                let content = this.nextElementSibling;
+                                console.log("Next element:", content ? content.tagName : "none");
+                                
+                                let attempts = 0;
+                                while (content && content.tagName.toLowerCase() !== 'div' && attempts < 5) {
+                                    content = content.nextElementSibling;
+                                    attempts++;
                                 }
+                                
+                                if (content && content.tagName.toLowerCase() === 'div') {
+                                    console.log("Found content to toggle:", content);
+                                    const isCurrentlyVisible = window.getComputedStyle(content).display !== 'none';
+                                    content.style.setProperty('display', isCurrentlyVisible ? 'none' : 'block', 'important');
+                                    
+                                    if (isCurrentlyVisible) {
+                                        this.innerHTML = this.innerHTML.replace('▼', '▶');
+                                    } else {
+                                        this.innerHTML = this.innerHTML.replace('▶', '▼');
+                                    }
+                                } else {
+                                    console.log("Failed to find content div to toggle");
+                                }
+                                
+                                setTimeout(() => {
+                                    this.style.backgroundColor = '#334155';
+                                }, 200);
+                                
+                                return false;
                             });
                         });
-                    }, 100);
+                    }, 800); 
                 } catch (error) {
                     console.error("Error processing script:", error);
                     outputElement.textContent = "Error: " + error.message;
