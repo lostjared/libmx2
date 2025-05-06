@@ -41,7 +41,7 @@ begin
         then
             pos_len = $(strlen i)
             pos_end = pos_len - pos - 1
-            pos = pos + 1
+            pos++
             ext = $(index i pos pos_len)
             printf "extension: %s\n" ext      
         fi
