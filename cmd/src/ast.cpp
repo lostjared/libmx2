@@ -72,4 +72,38 @@ namespace cmd {
             return 0.0;
         }
     }
+
+    double UnaryExpression::evaluateNumber(const AstExecutor& executor) const {
+        if (op == INCREMENT || op == DECREMENT) {
+            auto varRef = std::dynamic_pointer_cast<VariableReference>(operand);
+            if (!varRef) {
+                throw std::runtime_error("Increment/decrement can only be applied to variables");
+            }
+            
+            auto valueOpt = executor.getVariable(varRef->name);
+            double currentValue = 0.0;
+            if (valueOpt) {
+                try {
+                    currentValue = std::stod(valueOpt.value());
+                } catch (const std::exception&) {
+                    
+                }
+            }
+            
+            double originalValue = currentValue;
+            if (op == INCREMENT) {
+                currentValue += 1.0;
+            } else { 
+                currentValue -= 1.0;
+            }
+            const_cast<AstExecutor&>(executor).setVariable(varRef->name, std::to_string(currentValue));
+            return (position == PREFIX) ? currentValue : originalValue;
+        } 
+        else if (op == NEGATE) {
+            return -operand->evaluateNumber(executor);
+        }
+        
+        throw std::runtime_error("Unknown unary operator");
+    }
+
 }

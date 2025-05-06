@@ -517,6 +517,47 @@ namespace cmd {
         std::string name;
     };
 
+
+
+    class UnaryExpression : public Expression {
+    public:
+        enum OpType { INCREMENT, DECREMENT, NEGATE };
+        enum Position { PREFIX, POSTFIX };
+        
+        UnaryExpression(std::shared_ptr<Expression> operand, OpType op, Position pos = PREFIX)
+            : operand(std::move(operand)), op(op), position(pos) {}
+        
+        void print(std::ostream& out, int indent = 0) const override {
+            std::string spaces = getIndent(indent);
+            out << spaces << "<div class='node unary-expression'>\n";
+            out << spaces << "  <h3>UnaryExpression</h3>\n";
+            out << spaces << "  <table>\n";
+            out << spaces << "    <tr><th>Operator</th><td class='operator'>";
+            switch (op) {
+                case INCREMENT: out << "++"; break;
+                case DECREMENT: out << "--"; break;
+                case NEGATE: out << "-"; break;
+            }
+            out << "</td></tr>\n";
+            out << spaces << "    <tr><th>Position</th><td class='position'>" 
+                << (position == PREFIX ? "prefix" : "postfix") << "</td></tr>\n";
+            out << spaces << "    <tr><th>Operand</th><td>\n";
+            operand->print(out, indent + 6);
+            out << spaces << "    </td></tr>\n";
+            out << spaces << "  </table>\n";
+            out << spaces << "</div>\n";
+        }
+        
+        std::string evaluate(const AstExecutor& executor) const override {
+            return std::to_string(evaluateNumber(executor));
+        }
+        
+        double evaluateNumber(const AstExecutor& executor) const override;
+        std::shared_ptr<Expression> operand;
+        OpType op;
+        Position position;
+    };
+
     class AstExecutor {
     public:
         AstExecutor();    
@@ -745,7 +786,11 @@ namespace cmd {
                 executeLogicalAnd(logicalAnd, input, output);
             }
             else if (auto expr = std::dynamic_pointer_cast<cmd::Expression>(node)) {
-                expr->evaluate(*this);
+                if (auto unaryExpr = std::dynamic_pointer_cast<cmd::UnaryExpression>(expr)) {
+                    unaryExpr->evaluateNumber(*this); 
+                } else {
+                    expr->evaluate(*this);  // For other expressions
+                }
             }
             else if (auto ifStmt = std::dynamic_pointer_cast<cmd::IfStatement>(node)) {
                 executeIfStatement(ifStmt, input, output);
@@ -768,6 +813,25 @@ namespace cmd {
         }
         
         void executeCommand(const std::shared_ptr<cmd::Command>& cmd, std::istream& input, std::ostream& output) {
+
+            if (cmd->args.size() == 1 && 
+            (cmd->args[0].value == "++" || cmd->args[0].value == "--")) {
+                auto varName = cmd->name;
+                auto op = cmd->args[0].value;
+                auto varValue = getVariable(varName);
+                if (varValue) {
+                    auto varRef = std::make_shared<cmd::VariableReference>(varName);
+                    auto unary = std::make_shared<cmd::UnaryExpression>(
+                        varRef,
+                        op == "++" ? cmd::UnaryExpression::INCREMENT : cmd::UnaryExpression::DECREMENT,
+                        cmd::UnaryExpression::POSTFIX
+                    );
+                    auto assignment = std::make_shared<cmd::VariableAssignment>(varName, unary);
+                    executeVariableAssignment(assignment, input, output);
+                    return;
+                }
+            }
+
             lastExitStatus = registry.executeCommand(cmd->name, cmd->args, input, output);
             if (lastExitStatus != 0 && cmd->name != "test") {
                 output << cmd->name << ": command failed with exit status " << lastExitStatus << std::endl;
@@ -834,6 +898,24 @@ namespace cmd {
 
         void executeVariableAssignment(const std::shared_ptr<cmd::VariableAssignment>& varAssign, std::istream& input, std::ostream& output) {   
             try {
+                // Special handling for unary expressions (++/--) to avoid double-assignment
+                if (auto unaryExpr = std::dynamic_pointer_cast<cmd::UnaryExpression>(varAssign->value)) {
+                    if ((unaryExpr->op == cmd::UnaryExpression::INCREMENT || 
+                         unaryExpr->op == cmd::UnaryExpression::DECREMENT)) {
+                        double result = unaryExpr->evaluateNumber(*this);
+                        if (unaryExpr->position == cmd::UnaryExpression::PREFIX) {
+                            auto varRef = std::dynamic_pointer_cast<cmd::VariableReference>(unaryExpr->operand);
+                            if (varRef && varRef->name == varAssign->name) {
+                                lastExitStatus = 0;
+                                return;
+                            }
+                        } else if (unaryExpr->position == cmd::UnaryExpression::POSTFIX) {
+                            lastExitStatus = 0;
+                            return;
+                        }
+                    }
+                }
+
                 if (auto strLit = std::dynamic_pointer_cast<cmd::StringLiteral>(varAssign->value)) {
                     std::string value = strLit->value;
                     if (value.size() >= 2 && 
@@ -1072,76 +1154,7 @@ namespace cmd {
         std::shared_ptr<Expression> right;
     };
 
-    class UnaryExpression : public Expression {
-    public:
-        enum OpType { INCREMENT, DECREMENT, NEGATE };
-        enum Position { PREFIX, POSTFIX };
-        
-        UnaryExpression(std::shared_ptr<Expression> operand, OpType op, Position pos = PREFIX)
-            : operand(std::move(operand)), op(op), position(pos) {}
-        
-        void print(std::ostream& out, int indent = 0) const override {
-            std::string spaces = getIndent(indent);
-            out << spaces << "<div class='node unary-expression'>\n";
-            out << spaces << "  <h3>UnaryExpression</h3>\n";
-            out << spaces << "  <table>\n";
-            out << spaces << "    <tr><th>Operator</th><td class='operator'>";
-            switch (op) {
-                case INCREMENT: out << "++"; break;
-                case DECREMENT: out << "--"; break;
-                case NEGATE: out << "-"; break;
-            }
-            out << "</td></tr>\n";
-            out << spaces << "    <tr><th>Position</th><td class='position'>" 
-                << (position == PREFIX ? "prefix" : "postfix") << "</td></tr>\n";
-            out << spaces << "    <tr><th>Operand</th><td>\n";
-            operand->print(out, indent + 6);
-            out << spaces << "    </td></tr>\n";
-            out << spaces << "  </table>\n";
-            out << spaces << "</div>\n";
-        }
-        
-        std::string evaluate(const AstExecutor& executor) const override {
-            return std::to_string(evaluateNumber(executor));
-        }
-        
-        double evaluateNumber(const AstExecutor& executor) const override {
-            if (op == INCREMENT || op == DECREMENT) {
-                auto varRef = std::dynamic_pointer_cast<VariableReference>(operand);
-                if (!varRef) {
-                    throw std::runtime_error("Increment/decrement can only be applied to variables");
-                }
-                
-                auto valueOpt = executor.getVariable(varRef->name);
-                double currentValue = 0.0;
-                if (valueOpt) {
-                    try {
-                        currentValue = std::stod(valueOpt.value());
-                    } catch (const std::exception&) {
-                        
-                    }
-                }
-                
-                double originalValue = currentValue;
-                if (op == INCREMENT) {
-                    currentValue += 1.0;
-                } else { 
-                    currentValue -= 1.0;
-                }
-                const_cast<AstExecutor&>(executor).setVariable(varRef->name, std::to_string(currentValue));
-                return (position == PREFIX) ? currentValue : originalValue;
-            } 
-            else if (op == NEGATE) {
-                return -operand->evaluateNumber(executor);
-            }
-            
-            throw std::runtime_error("Unknown unary operator");
-        }
-        
-        std::shared_ptr<Expression> operand;
-        OpType op;
-        Position position;
-    };
+    
 
     class CommandSubstitution : public Expression {
     public:

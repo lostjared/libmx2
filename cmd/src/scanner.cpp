@@ -250,13 +250,21 @@ namespace scan {
         if (*ch == '-') {
             auto next = string_buffer.peekch(0);
             if (next.has_value() && *next == '-') {
-                string_buffer.getch();
+                string_buffer.getch(); 
+                std::string arg_value = "--";
+                while (true) {
+                    auto peeked = string_buffer.peekch(0);
+                    if (peeked.has_value() && (isalnum(*peeked) || *peeked == '_')) {
+                        arg_value += string_buffer.getch().value();
+                    } else {
+                        break;
+                    }
+                }
                 token.set_pos(pos);
                 token.set_filename(filename);
-                token.setToken(types::TokenType::TT_ARG, "--"); 
+                token.setToken(types::TokenType::TT_ARG, arg_value);
                 return token;
-            }
-            else {
+            } else {
                 token.set_pos(pos);
                 token.set_filename(filename);
                 token.setToken(types::TokenType::TT_SYM, "-");

@@ -793,6 +793,59 @@ namespace cmd {
             }
 
             std::shared_ptr<cmd::Node> parseStatement() {
+                if (isAtEnd()) {
+                    throw std::runtime_error("Unexpected end of input");
+                }
+                
+                if ((peek().getTokenType() == types::TokenType::TT_ARG || peek().getTokenType() == types::TokenType::TT_SYM)
+                && peek().getTokenValue().length() > 2
+                && peek().getTokenValue().substr(0, 2) == "--") {
+                    std::string token = peek().getTokenValue();
+                    std::string varName = token.substr(2);
+                    if (isVariableName(varName)) {
+                        advance(); 
+                        auto varRef = std::make_shared<cmd::VariableReference>(varName);
+                        auto unary = std::make_shared<cmd::UnaryExpression>(
+                            varRef,
+                            cmd::UnaryExpression::DECREMENT,
+                            cmd::UnaryExpression::PREFIX
+                        );
+                        return std::make_shared<cmd::VariableAssignment>(varName, unary);
+                    }
+                }
+                if (peek().getTokenType() == types::TokenType::TT_SYM && 
+                    (peek().getTokenValue() == "++" || peek().getTokenValue() == "--")) {
+                    std::string op = advance().getTokenValue();
+                    if (peek().getTokenType() != types::TokenType::TT_ID) {
+                        throw std::runtime_error("Expected variable name after prefix " + op);
+                    }
+                    std::string varName = advance().getTokenValue();
+                    auto varRef = std::make_shared<cmd::VariableReference>(varName);
+                    auto unary = std::make_shared<cmd::UnaryExpression>(
+                        varRef,
+                        op == "++" ? cmd::UnaryExpression::INCREMENT : cmd::UnaryExpression::DECREMENT,
+                        cmd::UnaryExpression::PREFIX
+                    );
+                    return std::make_shared<cmd::VariableAssignment>(varName, unary);
+                }
+                
+                if (peek().getTokenType() == types::TokenType::TT_ID) {        
+                    if (current + 1 < tokens_count) {
+                        auto next = scanner[current + 1];
+                        if (next.getTokenType() == types::TokenType::TT_SYM &&
+                            (next.getTokenValue() == "++" || next.getTokenValue() == "--")) {
+                            std::string varName = advance().getTokenValue();   
+                            std::string op = advance().getTokenValue();                    
+                            auto varRef = std::make_shared<cmd::VariableReference>(varName);
+                            auto unary = std::make_shared<cmd::UnaryExpression>(
+                                varRef,
+                                op == "++" ? cmd::UnaryExpression::INCREMENT : cmd::UnaryExpression::DECREMENT,
+                                cmd::UnaryExpression::POSTFIX
+                            );
+                            return std::make_shared<cmd::VariableAssignment>(varName, unary);
+                        }
+                    }
+                }
                 if (peek().getTokenType() == types::TokenType::TT_ID) {
                     if (peek().getTokenValue() == "if") {
                         return parseIfStatement();
@@ -815,7 +868,7 @@ namespace cmd {
                         return parseCommandDefinition();
                     }
                     else if (peek().getTokenValue() == "return") {
-                        advance(); 
+                        advance();
                         auto expr = parseExpression();
                         return std::make_shared<cmd::Return>(expr);
                     }
