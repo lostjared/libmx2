@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MXCMD Script Tree Visualizer</title>
+    <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --accent-primary: #38bdf8;
+            --accent-secondary: #0ea5e9;
+            --accent-tertiary: #0284c7;
+            --highlight: #2563eb;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --border-radius: 8px;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            margin: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            padding: 20px;
+        }
+        
+        h1 {
+            color: var(--accent-primary);
+            margin-bottom: 1rem;
+        }
+        
+        .container {
+            display: flex;
+            gap: 20px;
+            height: 60vh; /* Reduce height to 60% of viewport height */
+            width: 100%; /* Take full width */
+            margin-bottom: 20px; /* Add space for the button */
+        }
+        
+        .input-area {
+            flex: 0 0 30%; /* Take 30% of the container width */
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .output-area {
+            flex: 1; /* Take the remaining width (70%) */
+            display: flex;
+            flex-direction: column;
+        }
+        
+        textarea, pre {
+            width: 100%;
+            height: 100%;
+            padding: 10px;
+            border: 1px solid var(--bg-tertiary);
+            box-sizing: border-box;
+            font-family: 'Fira Code', monospace;
+            font-size: 14px;
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            border-radius: var(--border-radius);
+        }
+        
+        pre {
+            background-color: var(--bg-secondary);
+            overflow: auto;
+            white-space: pre;
+        }
+        
+        label {
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: var(--text-secondary);
+        }
+        
+        button {
+            padding: 10px 20px;
+            cursor: pointer;
+            align-self: flex-start;
+            background-color: var(--accent-primary);
+            color: var(--text-primary);
+            border: none;
+            border-radius: var(--border-radius);
+            font-weight: bold;
+            margin-top: 10px;
+            transition: background-color 0.2s;
+            box-shadow: var(--shadow);
+        }
+        
+        button:disabled {
+            background-color: var(--bg-tertiary);
+            cursor: not-allowed;
+        }
+        
+        button:hover:not(:disabled) {
+            background-color: var(--accent-secondary);
+        }
+        
+        .table-container {
+            overflow-x: auto;
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <h1>MXCMD Script Tree Visualizer</h1>
+    <div class="container">
+        <div class="input-area">
+            <label for="cmdScriptInput">CMD Script Code:</label>
+            <textarea id="cmdScriptInput" rows="20" placeholder="Enter your CMD script code here..."></textarea>
+        </div>
+        <div class="output-area">
+            <label for="treeOutput">Rendered Tree Structure:</label>
+            <pre id="treeOutput"></pre>
+        </div>
+    </div>
+
+    <button id="renderTreeButton" disabled>Render Tree</button>
+    <script type="module">
+        import createModule from './export_html.js';
+        
+        let wasmModule;
+        
+        async function initModule() {
+            try {
+                wasmModule = await createModule();
+                console.log("WebAssembly module loaded successfully!");
+                document.getElementById('renderTreeButton').disabled = false;
+            } catch (error) {
+                console.error("Failed to load WebAssembly module:", error);
+                document.getElementById('treeOutput').textContent = 
+                    "Error loading WASM module. Check console for details.";
+            }
+        }
+        
+        initModule();
+
+        document.getElementById('renderTreeButton').addEventListener('click', function() {
+            if (!wasmModule) {
+                document.getElementById('treeOutput').textContent = 
+                    "Module is still loading. Please try again in a moment.";
+                return;
+            }
+
+            const scriptCode = document.getElementById('cmdScriptInput').value;
+            const outputElement = document.getElementById('treeOutput');
+            
+            if (scriptCode.trim() === "") {
+                outputElement.textContent = "Please enter some CMD script code.";
+            } else {
+                try {
+                    const iframe = document.createElement('iframe');
+                    iframe.style.width = '100%';
+                    iframe.style.height = '100%';
+                    iframe.style.border = 'none';
+                    iframe.style.backgroundColor = 'var(--bg-secondary)';
+                    outputElement.textContent = '';
+                    outputElement.appendChild(iframe);
+                    const exporter = new wasmModule.ExportHTML();
+                    const html = exporter.outputHTML(scriptCode);
+                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    iframeDoc.open();
+                    iframeDoc.write(html);
+                    iframeDoc.close();
+                
+                    const style = iframeDoc.createElement('style');
+                    style.textContent = `
+                        body {
+                            background-color: #1e293b;
+                            color: #f8fafc;
+                            margin: 0;
+                            padding: 10px;
+                            font-family: 'Fira Code', monospace;
+                        }
+                        h1, h2, h3 {
+                            margin-top: 0;
+                        }
+                    `;
+                    iframeDoc.head.appendChild(style);
+                    
+                    
+                    setTimeout(() => {
+                    
+                        const links = iframeDoc.querySelectorAll('a');
+                        links.forEach(link => link.target = '_blank');
+                        
+                    
+                        const headers = iframeDoc.querySelectorAll('.node h3');
+                        headers.forEach(header => {
+                            header.style.cursor = 'pointer';
+                            header.addEventListener('click', function() {
+                                const content = this.nextElementSibling;
+                                if (content) {
+                                    const isVisible = getComputedStyle(content).display !== 'none';
+                                    content.style.display = isVisible ? 'none' : 'block';
+                                    this.classList.toggle('collapsed', isVisible);
+                                }
+                            });
+                        });
+                    }, 100);
+                } catch (error) {
+                    console.error("Error processing script:", error);
+                    outputElement.textContent = "Error: " + error.message;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
