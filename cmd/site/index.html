@@ -33,6 +33,7 @@
             background-color: var(--bg-primary);
             color: var(--text-primary);
             padding: 20px;
+            padding-bottom: 70px; /* Add padding at the bottom */
         }
         
         h1 {
@@ -43,9 +44,9 @@
         .container {
             display: flex;
             gap: 20px;
-            height: 60vh; /* Reduce height to 60% of viewport height */
-            width: 100%; /* Take full width */
-            margin-bottom: 20px; /* Add space for the button */
+            height: calc(100vh - 220px); /* Adjusted height to ensure button visibility */
+            width: 100%;
+            margin-bottom: 20px;
         }
         
         .input-area {
@@ -106,6 +107,22 @@
         
         button:hover:not(:disabled) {
             background-color: var(--accent-secondary);
+        }
+        
+        button#renderTreeButton {
+            padding: 10px 20px;
+            cursor: pointer;
+            align-self: flex-start;
+            background-color: var(--accent-primary);
+            color: var(--text-primary);
+            border: none;
+            border-radius: var(--border-radius);
+            font-weight: bold;
+            margin-top: 10px;
+            transition: background-color 0.2s;
+            box-shadow: var(--shadow);
+            position: sticky; /* Make button sticky */
+            bottom: 20px; /* Position from bottom */
         }
         
         .table-container {
