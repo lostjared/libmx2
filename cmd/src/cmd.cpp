@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
             std::ostringstream input_stream;
             while(active) {
                 try {
-                    std::string prompt = executor.getPath() + "> ";
+                    std::string prompt = executor.getPath() + "=)> ";
                     char* line = readline(prompt.c_str());
                     if (line == nullptr) {
                         std::cout << std::endl;  

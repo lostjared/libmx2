@@ -1261,7 +1261,8 @@ namespace cmd {
             auto ast = parser.parse();
             html::gen_html(ofile, ast);
             return 0;
-        } catch (const scan::ScanExcept &e) {
+        }  
+        catch (const scan::ScanExcept &e) {
             output << "cmd: Scan error in " << op1 << ": " << e.why() << std::endl;
             return 1;
         } catch (const std::exception &e) {
