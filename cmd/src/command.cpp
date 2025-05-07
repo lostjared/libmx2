@@ -329,7 +329,7 @@ namespace cmd {
 
     int pwdCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
         try {
-            output << std::filesystem::current_path() << std::endl;
+            output << std::filesystem::current_path().string() << std::endl;
             return 0;
         } catch (const std::filesystem::filesystem_error& e) {
             output << "pwd: " << e.what() << std::endl;
