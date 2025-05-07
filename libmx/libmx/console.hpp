@@ -178,6 +178,7 @@ namespace console {
         bool isVisible() const { return console.isVisible(); }
         bool isFading() const { return console.isFading(); }
         void setStretchHeight(int value);
+        void refresh() { console.needsRedraw = true; }
     protected:
         Console console;
         bool stretch_value = true;
