@@ -44,7 +44,6 @@ if(CMD)
         target_link_libraries(cmd-cli PRIVATE
             cmd
             ${Readline_LIBRARIES}
-            readline
         )
     endif()
 endif()
