@@ -55,6 +55,8 @@
             flex-direction: column;
         }
         
+
+
         .output-area {
             flex: 1; /* Take the remaining width (70%) */
             display: flex;
@@ -109,24 +111,19 @@
             background-color: var(--accent-secondary);
         }
         
-        button#renderTreeButton {
-            padding: 10px 20px;
-            cursor: pointer;
-            align-self: flex-start;
-            background-color: var(--accent-primary);
-            color: var(--text-primary);
-            border: none;
-            border-radius: var(--border-radius);
-            font-weight: bold;
-            margin-top: 10px;
-            transition: background-color 0.2s;
-            box-shadow: var(--shadow);
-            position: sticky; /* Make button sticky */
-            bottom: 20px; /* Position from bottom */
-        }
-        
         .table-container {
             overflow-x: auto;
+        }
+
+        .button-container {
+            display: flex;
+            gap: 10px;
+            margin-top: -25px; /* Move buttons up by 25px */
+        }
+        
+        #renderTreeButton, #formatButton {
+            position: relative;
+            bottom: auto;
         }
     </style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -146,7 +143,11 @@
         </div>
     </div>
 
-    <button id="renderTreeButton" disabled>Render Tree</button>
+    <div class="button-container">
+        <button id="renderTreeButton" disabled>Render Tree</button>
+        <button id="formatButton" disabled>Format Code</button>
+    </div>
+
     <script type="module">
         import createModule from './export_html.js';
         
@@ -157,6 +158,7 @@
                 wasmModule = await createModule();
                 console.log("WebAssembly module loaded successfully!");
                 document.getElementById('renderTreeButton').disabled = false;
+                document.getElementById('formatButton').disabled = false;
             } catch (error) {
                 console.error("Failed to load WebAssembly module:", error);
                 document.getElementById('treeOutput').textContent = 
@@ -277,6 +279,40 @@
                             });
                         });
                     }, 800); 
+                } catch (error) {
+                    console.error("Error processing script:", error);
+                    outputElement.textContent = "Error: " + error.message;
+                }
+            }
+        });
+
+        document.getElementById('formatButton').addEventListener('click', function() {
+            if (!wasmModule) {
+                document.getElementById('treeOutput').textContent = 
+                    "Module is still loading. Please try again in a moment.";
+                return;
+            }
+
+            const scriptCode = document.getElementById('cmdScriptInput').value;
+            const outputElement = document.getElementById('treeOutput');
+            
+            if (scriptCode.trim() === "") {
+                outputElement.textContent = "Please enter some CMD script code.";
+            } else {
+                try {
+                    const iframe = document.createElement('iframe');
+                    iframe.style.width = '100%';
+                    iframe.style.height = '100%';
+                    iframe.style.border = 'none';
+                    iframe.style.backgroundColor = 'var(--bg-secondary)';
+                    outputElement.textContent = '';
+                    outputElement.appendChild(iframe);
+                    const exporter = new wasmModule.ExportHTML();
+                    const html = exporter.outputFormatHTML(scriptCode);
+                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    iframeDoc.open();
+                    iframeDoc.write(html);
+                    iframeDoc.close();
                 } catch (error) {
                     console.error("Error processing script:", error);
                     outputElement.textContent = "Error: " + error.message;
