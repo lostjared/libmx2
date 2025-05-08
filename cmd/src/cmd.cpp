@@ -120,12 +120,16 @@ int main(int argc, char **argv) {
     } else {
         cmd::AstExecutor executor{};
         bool debug_cmd = false;
+        bool debug_html = false;
         if(argc == 2 || argc == 3) {
             std::ostringstream stream;
             std::fstream file;
             if(argc == 3) {
                 if(std::string(argv[2]) == "-d") {
                     debug_cmd = true;
+                }
+                if(std::string(argv[2]) == "-h") {
+                    debug_html = true;
                 }
             }
             file.open(argv[1], std::ios::in);
@@ -140,11 +144,14 @@ int main(int argc, char **argv) {
                 cmd::Parser parser(scanner);
                 auto ast = parser.parse();
                 executor.execute(std::cin, std::cout, ast);
-                if(debug_cmd) {
+                if(debug_cmd || debug_html) {
                     std::cout << "Debug Information written to: debug.html\n\n";
                     std::ofstream html_file("debug.html");
                     if(html_file.is_open()) {
-                        html::gen_html(html_file, ast);
+                        if(debug_cmd) 
+                            html::gen_html(html_file, ast);
+                        else if(debug_html)
+                            html::gen_html_color(html_file, ast);
                         html_file.close();
                     }
                 }

@@ -1232,9 +1232,7 @@ namespace cmd {
         
         std::shared_ptr<Node> command;
         bool isVar;
-    };
-
-   
+    };   
 }
 
 #endif
