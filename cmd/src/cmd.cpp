@@ -128,7 +128,7 @@ int main(int argc, char **argv) {
                 if(std::string(argv[2]) == "-d") {
                     debug_cmd = true;
                 }
-                if(std::string(argv[2]) == "-h") {
+                if(std::string(argv[2]) == "-f") {
                     debug_html = true;
                 }
             }

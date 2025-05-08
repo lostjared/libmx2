@@ -373,7 +373,12 @@ namespace html {
                         if (arg.type == cmd::ARG_VARIABLE) {
                             result += "<span class=\"variable\">" + escapeHtml(arg.value) + "</span>";
                         } else if (arg.value.find(' ') != std::string::npos ||
-                                  arg.value.find('\t') != std::string::npos) {
+                                  arg.value.find('\t') != std::string::npos ||
+                                  arg.value.find('\n') != std::string::npos ||
+                                  arg.value.find('\\') != std::string::npos ||
+                                  arg.value.find('%') != std::string::npos ||
+                                  arg.value.find('"') != std::string::npos ||
+                                  arg.value.find('\'') != std::string::npos) {
                             result += "<span class=\"string\">\"" + escapeHtml(formatEscapeSequences(arg.value)) + "\"</span>";
                         } else if (arg.value.find_first_of("0123456789") == 0 && 
                                   arg.value.find_first_not_of("0123456789.") == std::string::npos) {
@@ -421,22 +426,25 @@ namespace html {
                         line += " ";
                         if (arg.type == cmd::ARG_VARIABLE) {
                             line += "<span class=\"variable\">" + escapeHtml(arg.value) + "</span>";
+                        } else if (arg.value.find(' ') != std::string::npos ||
+                                  arg.value.find('\t') != std::string::npos ||
+                                  arg.value.find('\n') != std::string::npos ||
+                                  arg.value.find('\\') != std::string::npos ||
+                                  arg.value.find('%') != std::string::npos ||
+                                  arg.value.find('"') != std::string::npos ||
+                                  arg.value.find('\'') != std::string::npos) {
+                            line += "<span class=\"string\">\"" + escapeHtml(formatEscapeSequences(arg.value)) + "\"</span>";
+                        } else if (arg.value.find_first_of("0123456789") == 0 && 
+                                  arg.value.find_first_not_of("0123456789.") == std::string::npos) {
+                            line += "<span class=\"number\">" + escapeHtml(arg.value) + "</span>";
+                        } else if (arg.value == "=" || arg.value == "!=" || 
+                                  arg.value == "+" || arg.value == "-" || 
+                                  arg.value == "*" || arg.value == "/" || 
+                                  arg.value == "<" || arg.value == ">" || 
+                                  arg.value == "<=" || arg.value == ">=") {
+                            line += "<span class=\"operator\">" + escapeHtml(arg.value) + "</span>";
                         } else {
-                            if (arg.value.find(' ') != std::string::npos ||
-                                arg.value.find('\t') != std::string::npos) {
-                                line += "<span class=\"string\">\"" + escapeHtml(formatEscapeSequences(arg.value)) + "\"</span>";
-                            } else if (arg.value.find_first_of("0123456789") == 0 && 
-                                      arg.value.find_first_not_of("0123456789.") == std::string::npos) {
-                                line += "<span class=\"number\">" + escapeHtml(arg.value) + "</span>";
-                            } else if (arg.value == "=" || arg.value == "!=" || 
-                                      arg.value == "+" || arg.value == "-" || 
-                                      arg.value == "*" || arg.value == "/" || 
-                                      arg.value == "<" || arg.value == ">" || 
-                                      arg.value == "<=" || arg.value == ">=") {
-                                line += "<span class=\"operator\">" + escapeHtml(arg.value) + "</span>";
-                            } else {
-                                line += "<span class=\"identifier\">" + escapeHtml(arg.value) + "</span>";
-                            }
+                            line += "<span class=\"identifier\">" + escapeHtml(arg.value) + "</span>";
                         }
                     }
                     line += "</span>";
@@ -502,12 +510,11 @@ namespace html {
                     line += "<span class=\"variable\">" + escapeHtml(forStmt->variable) + "</span> ";
                     line += "<span class=\"keyword\">in</span> ";
                     
-                    
                     for (const auto& val : forStmt->values) {
                         if (val.type == cmd::ARG_VARIABLE) {
                             line += "<span class=\"variable\">" + escapeHtml(val.value) + "</span> ";
                         } else {
-                            line += "<span class=\"string\">" + escapeHtml(val.value) + "</span> ";
+                            line += "<span class=\"string\">\"" + escapeHtml(formatEscapeSequences(val.value)) + "\"</span> ";
                         }
                     }
                     line += "</span>";
@@ -535,7 +542,13 @@ namespace html {
                             line += " ";
                             if (arg.type == cmd::ARG_VARIABLE) {
                                 line += "<span class=\"variable\">" + escapeHtml(arg.value) + "</span>";
-                            } else if (arg.value.find(' ') != std::string::npos) {
+                            } else if (arg.value.find(' ') != std::string::npos ||
+                                      arg.value.find('\t') != std::string::npos ||
+                                      arg.value.find('\n') != std::string::npos ||
+                                      arg.value.find('\\') != std::string::npos ||
+                                      arg.value.find('%') != std::string::npos ||
+                                      arg.value.find('"') != std::string::npos ||
+                                      arg.value.find('\'') != std::string::npos) {
                                 line += "<span class=\"string\">\"" + escapeHtml(formatEscapeSequences(arg.value)) + "\"</span>";
                             } else {
                                 line += "<span class=\"identifier\">" + escapeHtml(arg.value) + "</span>";
@@ -753,7 +766,12 @@ namespace html {
                             if (arg.type == cmd::ARG_VARIABLE) {
                                 result += "<span class=\"variable\">" + escapeHtml(arg.value) + "</span>";
                             } else if (arg.value.find(' ') != std::string::npos ||
-                                      arg.value.find('\t') != std::string::npos) {
+                                      arg.value.find('\t') != std::string::npos ||
+                                      arg.value.find('\n') != std::string::npos ||
+                                      arg.value.find('\\') != std::string::npos ||
+                                      arg.value.find('%') != std::string::npos ||
+                                      arg.value.find('"') != std::string::npos ||
+                                      arg.value.find('\'') != std::string::npos) {
                                 result += "<span class=\"string\">\"" + escapeHtml(formatEscapeSequences(arg.value)) + "\"</span>";
                             } else if (arg.value.find_first_of("0123456789") == 0 && 
                                       arg.value.find_first_not_of("0123456789.") == std::string::npos) {
