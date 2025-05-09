@@ -6,6 +6,7 @@
 
 Online guide: https://lostsidedead.biz/mxcmd
 
+Visualizer/Code Formatter: https://lostsidedead.biz/debug
 
 ## Features
 
