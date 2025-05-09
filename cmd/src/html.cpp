@@ -385,7 +385,7 @@ namespace html {
                                     result += "<span class=\"variable\">" + escapeHtml(arg.value) + "</span>";
                                 } else if (arg.value.find_first_of("0123456789") == 0 && 
                                           arg.value.find_first_not_of("0123456789.") == std::string::npos) {
-                                    result += "<span class=\"number\">" + escapeHtml(arg.value) + "</span>";
+                                    result += "<span class=\"number\">" + escapeHtml(std::to_string(std::stod(arg.value))) + "</span>";
                                 } else {
                                     result += "<span class=\"string\">&quot;" + escapeHtml(formatEscapeSequences(arg.value)) + "&quot;</span>";
                                 }
@@ -403,7 +403,7 @@ namespace html {
                                 result += "<span class=\"string\">&quot;" + escapeHtml(formatEscapeSequences(arg.value)) + "&quot;</span>";
                             } else if (arg.value.find_first_of("0123456789") == 0 && 
                                       arg.value.find_first_not_of("0123456789.") == std::string::npos) {
-                                result += "<span class=\"number\">" + escapeHtml(arg.value) + "</span>";
+                                result += "<span class=\"number\">" + escapeHtml(std::to_string(std::stod(arg.value.c_str()))) + "</span>";
                             } else {
                                 result += "<span class=\"identifier\">" + escapeHtml(arg.value) + "</span>";
                             }
@@ -454,7 +454,7 @@ namespace html {
                             line += "<span class=\"string\">&quot;" + escapeHtml(formatEscapeSequences(arg.value)) + "&quot;</span>";
                         } else if (arg.value.find_first_of("0123456789") == 0 && 
                                   arg.value.find_first_not_of("0123456789.") == std::string::npos) {
-                            line += "<span class=\"number\">" + escapeHtml(arg.value) + "</span>";
+                            line += "<span class=\"number\">" + escapeHtml(std::to_string(std::stod(arg.value))) + "</span>";
                         } else if (arg.value.find(' ') != std::string::npos ||
                                   arg.value.find('\t') != std::string::npos ||
                                   arg.value.find('\n') != std::string::npos ||
@@ -568,7 +568,7 @@ namespace html {
                                 line += "<span class=\"string\">&quot;" + escapeHtml(formatEscapeSequences(arg.value)) + "&quot;</span>";
                             } else if (arg.value.find_first_of("0123456789") == 0 && 
                                       arg.value.find_first_not_of("0123456789.") == std::string::npos) {
-                                line += "<span class=\"number\">" + escapeHtml(arg.value) + "</span>";
+                                line += "<span class=\"number\">" + escapeHtml(std::to_string(std::stod(arg.value))) + "</span>";
                             } else if (arg.value.find(' ') != std::string::npos ||
                                       arg.value.find('\t') != std::string::npos ||
                                       arg.value.find('\n') != std::string::npos ||
@@ -804,7 +804,7 @@ namespace html {
                                         result += "<span class=\"variable\">" + escapeHtml(arg.value) + "</span>";
                                     } else if (arg.value.find_first_of("0123456789") == 0 && 
                                               arg.value.find_first_not_of("0123456789.") == std::string::npos) {
-                                        result += "<span class=\"number\">" + escapeHtml(arg.value) + "</span>";
+                                        result += "<span class=\"number\">" + escapeHtml(std::to_string(std::stod(arg.value))) + "</span>";
                                     } else {
                                         result += "<span class=\"string\">&quot;" + escapeHtml(formatEscapeSequences(arg.value)) + "&quot;</span>";
                                     }
@@ -822,7 +822,7 @@ namespace html {
                                     result += "<span class=\"string\">&quot;" + escapeHtml(formatEscapeSequences(arg.value)) + "&quot;</span>";
                                 } else if (arg.value.find_first_of("0123456789") == 0 && 
                                           arg.value.find_first_not_of("0123456789.") == std::string::npos) {
-                                    result += "<span class=\"number\">" + escapeHtml(arg.value) + "</span>";
+                                    result += "<span class=\"number\">" + escapeHtml(std::to_string(std::stod(arg.value))) + "</span>";
                                 } else {
                                     result += "<span class=\"identifier\">" + escapeHtml(arg.value) + "</span>";
                                 }
