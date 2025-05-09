@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(cmd_cxx VERSION 1.0 LANGUAGES CXX C)
+project(cmd_cxx VERSION 1.01 LANGUAGES CXX C)
 
 
 option(CMD "Build command line interface" OFF)
@@ -40,8 +40,8 @@ if(CMD)
         message(WARNING "Readline not found. cmd-cli will not be built.")
         set(CMD OFF)
     else()
-        add_executable(cmd-cli src/cmd.cpp)
-        target_link_libraries(cmd-cli PRIVATE
+        add_executable(mxcmd-cli src/cmd.cpp)
+        target_link_libraries(mxcmd-cli PRIVATE
             cmd
             ${Readline_LIBRARIES}
         )
@@ -136,7 +136,7 @@ install(
 )
 
 if(CMD)
-    install(TARGETS cmd-cli
+    install(TARGETS mxcmd-cli
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     )
 endif()

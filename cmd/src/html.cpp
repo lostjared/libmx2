@@ -137,7 +137,7 @@ namespace html {
         out << "    .filename { color: #fbbf24; font-style: italic; }\n";
         out << "    .operator { color: #e11d48; font-weight: bold; }\n";
         out << "    .literal { color: #10b981; }\n";
-        out << "    .variable { color: #38bdf8; }\n";
+        out << "    .variable { color: #38bdf8; }\n";  
         out << "    .symbol { color: #ec4899; font-weight: 500; }\n";
         out << "    /* Responsive design */\n";
         out << "    @media (max-width: 768px) {\n";

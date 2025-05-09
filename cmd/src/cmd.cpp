@@ -20,6 +20,8 @@
 
 int main(int argc, char **argv) {
 
+    std::cout << "MXCMD v1.0\n(C) 1999-2025 LostSideDead Software\n\n";
+
     if(argc == 1) {
         bool active = true;
         bool debug_cmd = false;
