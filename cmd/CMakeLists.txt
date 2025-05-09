@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(cmd_cxx VERSION 1.01 LANGUAGES CXX C)
+project(mxcmd_cxx VERSION 1.01 LANGUAGES CXX C)
 
 
 option(CMD "Build command line interface" OFF)
@@ -9,7 +9,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_library(cmd STATIC
+add_library(mxcmd STATIC
     src/scanner.cpp
     src/string_buffer.cpp
     src/types.cpp
@@ -29,6 +29,7 @@ list(APPEND header
     ${CMAKE_SOURCE_DIR}/include/game_state.hpp
     ${CMAKE_SOURCE_DIR}/include/html.hpp 
     ${CMAKE_SOURCE_DIR}/include/command_reg.hpp
+    ${CMAKE_SOURCE_DIR}/include/version_info.hpp
 )
 include_directories(${PROJECT_SOURCE_DIR}/include ${CMAKE_INSTALL_PREFIX}/include)
 
@@ -42,7 +43,7 @@ if(CMD)
     else()
         add_executable(mxcmd-cli src/cmd.cpp)
         target_link_libraries(mxcmd-cli PRIVATE
-            cmd
+            mxcmd
             ${Readline_LIBRARIES}
         )
     endif()
@@ -68,7 +69,7 @@ if(CONSOLE)
 	${GLM_INCLUDE_DIRS}
     )
     target_link_libraries(cmd-console PRIVATE
-        cmd
+        mxcmd
         libmx2::mx 
         ${SDL2_LIBRARIES} 
         ${SDL2_TTF_LIBRARIES} 
@@ -78,61 +79,61 @@ endif()
 
 include(GNUInstallDirs)
 
-set_target_properties(cmd PROPERTIES
+set_target_properties(mxcmd PROPERTIES
     VERSION ${PROJECT_VERSION}
     SOVERSION ${PROJECT_VERSION_MAJOR}
     PUBLIC_HEADER "${header}"
-    OUTPUT_NAME "cmd"  
+    OUTPUT_NAME "mxcmd"  
 )
 
 
-install(TARGETS cmd
-    EXPORT cmdTargets  
+install(TARGETS mxcmd
+    EXPORT mxcmdTargets  
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}      
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}      
-    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/cmd  
+    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/mxcmd  
 )
 
-install(EXPORT cmdTargets
-    FILE cmdTargets.cmake
-    NAMESPACE libcmd::  
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/libcmd
+install(EXPORT mxcmdTargets
+    FILE mxcmdTargets.cmake
+    NAMESPACE libmxcmd::  
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/libmxcmd
 )
 
 include(CMakePackageConfigHelpers)
 
 configure_package_config_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/libcmdConfig.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/libcmdConfig.cmake
-    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/libcmd  
+    ${CMAKE_CURRENT_SOURCE_DIR}/libmxcmdConfig.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/libmxcmdConfig.cmake
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/libmxcmd  
     PATH_VARS CMAKE_INSTALL_INCLUDEDIR  
 )
 
 write_basic_package_version_file(
-    ${CMAKE_CURRENT_BINARY_DIR}/libcmdConfigVersion.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/libmxcmdConfigVersion.cmake
     VERSION ${PROJECT_VERSION}
     COMPATIBILITY SameMajorVersion
 )
 
 export(
-    TARGETS cmd
-    FILE ${CMAKE_CURRENT_BINARY_DIR}/libcmdTargets.cmake
-    NAMESPACE libcmd::
+    TARGETS mxcmd
+    FILE ${CMAKE_CURRENT_BINARY_DIR}/libmxcmdTargets.cmake
+    NAMESPACE libmxcmd::
 )
 
 
 install(
     FILES
-        ${CMAKE_CURRENT_BINARY_DIR}/libcmdConfig.cmake
-        ${CMAKE_CURRENT_BINARY_DIR}/libcmdConfigVersion.cmake
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/libcmd
+        ${CMAKE_CURRENT_BINARY_DIR}/libmxcmdConfig.cmake
+        ${CMAKE_CURRENT_BINARY_DIR}/libmxcmdConfigVersion.cmake
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/libmxcmd
 )
 
 install(
-    EXPORT cmdTargets
-    FILE libcmdTargets.cmake
-    NAMESPACE libcmd::
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/libcmd
+    EXPORT mxcmdTargets
+    FILE libmxcmdTargets.cmake
+    NAMESPACE libmxcmd::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/libmxcmd
 )
 
 if(CMD)

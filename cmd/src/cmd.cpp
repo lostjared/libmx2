@@ -15,12 +15,12 @@
 #include<sstream>
 #include<readline/readline.h>
 #include<readline/history.h>
-
+#include"version_info.hpp"
 
 
 int main(int argc, char **argv) {
 
-    std::cout << "MXCMD v1.0\n(C) 1999-2025 LostSideDead Software\n\n";
+    std::cout << "MXCMD " << version_string << "\n(C) 1999-2025 LostSideDead Software\n\n";
 
     if(argc == 1) {
         bool active = true;
