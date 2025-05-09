@@ -408,7 +408,7 @@ namespace cmd {
                              (value.front() == '\'' && value.back() == '\''))) {
                             value = value.substr(1, value.size() - 2);
                         }
-                        args.push_back({value, ARG_LITERAL});
+                        args.push_back({value, ARG_STRING_LITERAL});
                     }
                     else if (peek().getTokenType() == types::TokenType::TT_NUM) {
                         std::string value = advance().getTokenValue();
@@ -441,6 +441,13 @@ namespace cmd {
                             throw std::runtime_error("Expected filename after '>'");
                         }
                         std::string filename = advance().getTokenValue();
+                        if (peek().getTokenType() == types::TokenType::TT_STR) {
+                            if (filename.size() >= 2 && 
+                                ((filename.front() == '"' && filename.back() == '"') || 
+                                 (filename.front() == '\'' && filename.back() == '\''))) {
+                                filename = filename.substr(1, filename.size() - 2);
+                            }
+                        }
                         return std::make_shared<cmd::Redirection>(cmd, cmd::Redirection::OUTPUT, filename);
                     } 
                     else if (peek().getTokenValue() == ">>") {
@@ -656,7 +663,7 @@ namespace cmd {
                         }
                         Argument arg;
                         arg.value = value;
-                        arg.type = ARG_LITERAL; 
+                        arg.type = ARG_STRING_LITERAL; 
                         values.push_back(arg);
                     }
                     else if (peek().getTokenType() == types::TokenType::TT_NUM) {

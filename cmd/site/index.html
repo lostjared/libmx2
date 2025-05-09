@@ -146,6 +146,7 @@
     <div class="button-container">
         <button id="renderTreeButton" disabled>Render Tree</button>
         <button id="formatButton" disabled>Format Code</button>
+        <button id="copyButton" disabled>Copy to Clipboard</button>
     </div>
 
     <script type="module">
@@ -159,6 +160,7 @@
                 console.log("WebAssembly module loaded successfully!");
                 document.getElementById('renderTreeButton').disabled = false;
                 document.getElementById('formatButton').disabled = false;
+                document.getElementById('copyButton').disabled = false;
             } catch (error) {
                 console.error("Failed to load WebAssembly module:", error);
                 document.getElementById('treeOutput').textContent = 
@@ -317,6 +319,55 @@
                     console.error("Error processing script:", error);
                     outputElement.textContent = "Error: " + error.message;
                 }
+            }
+        });
+
+        document.getElementById('copyButton').addEventListener('click', function() {
+            const outputElement = document.getElementById('treeOutput');
+            const iframe = outputElement.querySelector('iframe');
+            
+            if (!iframe) {
+                alert("Please format the code first before copying.");
+                return;
+            }
+            
+            try {
+                const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                const codeElement = iframeDoc.querySelector('pre.code');
+                
+                if (codeElement) {
+                    const lines = Array.from(codeElement.querySelectorAll('.code-line'));
+                    const cleanedText = lines.map(line => {
+                        const lineClone = line.cloneNode(true);
+                        const lineNumberSpan = lineClone.querySelector('.line-number');
+                        if (lineNumberSpan) {
+                            lineNumberSpan.remove();
+                        }
+                        
+                        return lineClone.textContent;
+                    }).join('\n');
+                    
+                    navigator.clipboard.writeText(cleanedText)
+                        .then(() => {
+                            const originalText = this.textContent;
+                            this.textContent = "Copied!";
+                            this.style.backgroundColor = "var(--success)";
+                            
+                            setTimeout(() => {
+                                this.textContent = originalText;
+                                this.style.backgroundColor = "var(--accent-primary)";
+                            }, 2000);
+                        })
+                        .catch(err => {
+                            console.error('Failed to copy text: ', err);
+                            alert("Failed to copy to clipboard. Please try again.");
+                        });
+                } else {
+                    alert("No formatted code found to copy.");
+                }
+            } catch (error) {
+                console.error("Error copying to clipboard:", error);
+                alert("Error copying to clipboard: " + error.message);
             }
         });
     </script>

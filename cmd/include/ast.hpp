@@ -142,7 +142,7 @@ namespace cmd {
         std::shared_ptr<Expression> value;
     };
           
-    enum ArgType { ARG_LITERAL, ARG_VARIABLE };
+    enum ArgType { ARG_LITERAL, ARG_VARIABLE, ARG_STRING_LITERAL };
     
     struct Argument {
         std::string value;
@@ -162,9 +162,9 @@ namespace cmd {
             out << spaces << "    <tr><th colspan='2'>Arguments</th></tr>\n";
             for (const auto& arg : args) {
                 out << spaces << "    <tr><td class='" 
-                    << (arg.type == ARG_LITERAL ? "literal" : "variable") << "'>"
-                    << escapeHtml(arg.value) << "</td>";
-                out << "<td>(" << (arg.type == ARG_LITERAL ? "literal" : "variable") << ")</td></tr>\n";
+                << (arg.type == ARG_VARIABLE ? "variable" : 
+                (arg.type == ARG_STRING_LITERAL ? "string-literal" : "literal")) << "'>" << escapeHtml(arg.value) << "</td>";
+                out << "<td>(" << (arg.type == ARG_VARIABLE ? "variable" : (arg.type == ARG_STRING_LITERAL ? "string literal" : "literal")) << ")</td></tr>\n";
             }
             out << spaces << "  </table>\n";
             out << spaces << "</div>\n";
@@ -430,7 +430,7 @@ namespace cmd {
             out << spaces << "  <h3>StringLiteral</h3>\n";
             out << spaces << "  <table>\n";
             out << spaces << "    <tr><th>Value</th></tr>\n";
-            out << spaces << "    <tr><td class='literal'>" << escapeHtml(value) << "</td></tr>\n";
+            out << spaces << "    <tr><td class='string-literal'>" << escapeHtml(value) << "</td></tr>\n";
             out << spaces << "  </table>\n";
             out << spaces << "</div>\n";
         }
