@@ -4,6 +4,7 @@
 #include<regex>
 #include<sstream>
 #include<iomanip>
+#include<cstdlib>
 #include"game_state.hpp"
 #include"parser.hpp"
 #include"html.hpp"
@@ -1392,5 +1393,27 @@ namespace cmd {
             output << pos;
 
          return 0;
+    }
+
+    int execCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
+        std::ostringstream all_args;
+        for(auto &arg : args) {
+            if(arg.type == ArgType::ARG_VARIABLE) {
+                state::GameState *s = state::getGameState();
+                std::string opval;
+                try {
+                    opval = s->getVariable(arg.value);
+
+                } catch(const state::StateException &) {
+                    opval = arg.value;
+                }
+                all_args << opval << " ";
+            } else if(arg.type == ArgType::ARG_STRING_LITERAL) {
+                all_args << arg.value << " ";
+            } else if(arg.type == ArgType::ARG_LITERAL) {
+                all_args << arg.value << " ";
+            }
+        }
+        return std::system(all_args.str().c_str());
     }
 }
