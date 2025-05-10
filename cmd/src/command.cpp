@@ -8,8 +8,13 @@
 #include"game_state.hpp"
 #include"parser.hpp"
 #include"html.hpp"
-
-
+#if !defined(__EMSCRIPTEN__) &&  !defined(_WIN32)
+#include<unistd.h>
+#include<sys/wait.h>
+#endif
+#if !defined(__EMSCRIPTEN__) && defined(_WIN32)
+#include <windows.h>
+#endif
 namespace state {
     GameState *getGameState() {
         static GameState gameState;
@@ -1414,9 +1419,120 @@ namespace cmd {
                 all_args << arg.value << " ";
             }
         }
-        #ifndef __EMSCRIPTEN__
-        return std::system(all_args.str().c_str());
-        #endif
-        return 0;
+        std::string command_str = all_args.str();
+#if !defined(__EMSCRIPTEN__)  && !defined(_WIN32)
+        int in_pipe[2];
+        int out_pipe[2];
+        
+        if (pipe(in_pipe) < 0 || pipe(out_pipe) < 0) {
+            output << "exec: failed to create pipes" << std::endl;
+            return 1;
+        }
+        
+        pid_t pid = fork();
+        if (pid < 0) {
+            output << "exec: failed to fork process" << std::endl;
+            return 1;
+        }
+        
+        if (pid == 0) {
+            close(in_pipe[1]);  
+            dup2(in_pipe[0], STDIN_FILENO);
+            close(in_pipe[0]);
+            
+            
+            close(out_pipe[0]);  
+            dup2(out_pipe[1], STDOUT_FILENO);
+            dup2(out_pipe[1], STDERR_FILENO); 
+            close(out_pipe[1]);
+            
+            execl("/bin/sh", "sh", "-c", command_str.c_str(), NULL);
+            exit(127);  
+        } else {
+            
+            close(in_pipe[0]);  
+            close(out_pipe[1]); 
+            
+            close(in_pipe[1]);
+            
+            char buffer[4096];
+            ssize_t bytes_read;
+            while ((bytes_read = read(out_pipe[0], buffer, sizeof(buffer) - 1)) > 0) {
+                buffer[bytes_read] = '\0';
+                output << buffer;
+                output.flush();
+            }
+            close(out_pipe[0]);
+            
+            int status;
+            waitpid(pid, &status, 0);
+            
+            return WEXITSTATUS(status);
+        }
+#elif !defined(__EMSCRIPTEN__)  && defined(_WIN32)
+        SECURITY_ATTRIBUTES sa;
+        sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+        sa.bInheritHandle = TRUE;
+        sa.lpSecurityDescriptor = NULL;
+
+        HANDLE hStdOutRead, hStdOutWrite;
+        if (!CreatePipe(&hStdOutRead, &hStdOutWrite, &sa, 0)) {
+            output << "exec: failed to create output pipe" << std::endl;
+            return 1;
+        }
+        SetHandleInformation(hStdOutRead, HANDLE_FLAG_INHERIT, 0); // Don't inherit read handle
+
+        HANDLE hStdInRead, hStdInWrite;
+        if (!CreatePipe(&hStdInRead, &hStdInWrite, &sa, 0)) {
+            CloseHandle(hStdOutRead);
+            CloseHandle(hStdOutWrite);
+            output << "exec: failed to create input pipe" << std::endl;
+            return 1;
+        }
+        SetHandleInformation(hStdInWrite, HANDLE_FLAG_INHERIT, 0); // Don't inherit write handle
+
+        STARTUPINFO si;
+        ZeroMemory(&si, sizeof(STARTUPINFO));
+        si.cb = sizeof(STARTUPINFO);
+        si.hStdInput = hStdInRead;
+        si.hStdOutput = hStdOutWrite;
+        si.hStdError = hStdOutWrite;
+        si.dwFlags |= STARTF_USESTDHANDLES;
+
+        PROCESS_INFORMATION pi;
+        ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
+
+        std::string cmdLine = "cmd.exe /c " + command_str;
+        if (!CreateProcess(NULL, const_cast<LPSTR>(cmdLine.c_str()), NULL, NULL, TRUE, 
+                        CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
+            CloseHandle(hStdOutRead);
+            CloseHandle(hStdOutWrite);
+            CloseHandle(hStdInRead);
+            CloseHandle(hStdInWrite);
+            output << "exec: failed to create process" << std::endl;
+            return 1;
+        }
+        CloseHandle(hStdOutWrite);
+        CloseHandle(hStdInRead);
+        CloseHandle(hStdInWrite);
+        DWORD bytesRead;
+        char buffer[4096];
+        BOOL success;
+        while (true) {
+            success = ReadFile(hStdOutRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL);
+            if (!success || bytesRead == 0) break;
+            
+            buffer[bytesRead] = '\0';
+            output << buffer;
+            output.flush();
+        }
+        WaitForSingleObject(pi.hProcess, INFINITE);
+        DWORD exitCode = 0;
+        GetExitCodeProcess(pi.hProcess, &exitCode);
+        CloseHandle(hStdOutRead);
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+        return static_cast<int>(exitCode);
+#endif
     }
 }
