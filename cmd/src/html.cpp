@@ -416,10 +416,25 @@ namespace html {
                 if (auto seq = std::dynamic_pointer_cast<cmd::Sequence>(node)) {
                     std::string result;
                     for (size_t i = 0; i < seq->commands.size(); i++) {
-                        if (i > 0) result += "; ";
+                        if (i > 0) result += " <span class=\"operator\">;</span> ";
                         result += formatNodeInline(seq->commands[i]);
                     }
                     return result;
+                }
+                
+                else if (auto pipeline = std::dynamic_pointer_cast<cmd::Pipeline>(node)) {
+                    std::string result;
+                    
+                    for (size_t i = 0; i < pipeline->commands.size(); i++) {
+                        if (i > 0) result += " <span class=\"operator\">|</span> ";
+                        result += formatNodeInline(pipeline->commands[i]);
+                    }
+                    
+                    return result;
+                }
+                
+                else if (auto logAnd = std::dynamic_pointer_cast<cmd::LogicalAnd>(node)) {
+                    return formatNodeInline(logAnd->left) + " <span class=\"operator\">&&</span> " + formatNodeInline(logAnd->right);
                 }
                 
                 return "<span class=\"comment\">/* complex condition */</span>";
