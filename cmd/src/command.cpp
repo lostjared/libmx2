@@ -1400,6 +1400,31 @@ namespace cmd {
          return 0;
     }
 
+    int strtokCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
+        if(args.empty() || args.size() != 2) {
+            output << "Usage: strtok string seperator\n";
+            return 1;
+        }
+        std::string op1 = getVar(args[0]);
+        std::string sep = getVar(args[1]);
+        if(sep.empty()) {
+            for(char c : op1) {
+                output << c << std::endl;
+            }
+            return 0;
+        }
+        size_t pos = 0;
+        size_t found;
+        while((found = op1.find(sep, pos)) != std::string::npos) {
+            output << op1.substr(pos, found - pos) << std::endl;
+            pos = found + sep.length();
+        }
+        if(pos < op1.length()) {
+            output << op1.substr(pos) << std::endl;
+        }
+        return 0;
+    }
+
     int execCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
         std::ostringstream all_args;
         for(auto &arg : args) {

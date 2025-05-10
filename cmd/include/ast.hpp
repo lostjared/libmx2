@@ -1217,8 +1217,6 @@ namespace cmd {
             }
             else {
                 const_cast<AstExecutor&>(executor).executeDirectly(command, input, output);
-    
-
             }
             
             std::string result = output.str();
