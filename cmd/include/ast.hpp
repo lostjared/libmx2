@@ -1181,8 +1181,16 @@ namespace cmd {
                 std::vector<Argument> expandedArgs;
                 for (const auto& arg : cmd->args) {
                     Argument expandedArg;
-                    expandedArg.value = executor.expandVariables(arg.value);
-                    expandedArg.type =  ARG_LITERAL;
+                    if (arg.type == ARG_VARIABLE) {
+                        expandedArg.value = executor.expandVariables(arg.value);
+                        expandedArg.type = ARG_LITERAL;
+                    } else if (arg.type == ARG_STRING_LITERAL) {
+                        expandedArg.value = arg.value;
+                        expandedArg.type = ARG_STRING_LITERAL;
+                    } else {
+                        expandedArg.value = arg.value;
+                        expandedArg.type = arg.type;
+                    }                    
                     expandedArgs.push_back(expandedArg);
                 }               
                 int exitStatus = const_cast<AstExecutor&>(executor).getCommandRegistry().executeCommand(
