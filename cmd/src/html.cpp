@@ -828,8 +828,10 @@ namespace html {
                                 }
                             }
                         }
+                    } else if (cmdSubst->command) {
+                        result += formatNodeInline(cmdSubst->command);
                     } else {
-                        result += "<span class=\"comment\">/* cmd */</span>";
+                        result += "<span class=\"comment\">/* empty cmd */</span>";
                     }
                     
                     result += "<span class=\"operator\">)</span>";
