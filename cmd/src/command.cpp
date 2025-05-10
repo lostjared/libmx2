@@ -1414,6 +1414,9 @@ namespace cmd {
                 all_args << arg.value << " ";
             }
         }
+        #ifndef __EMSCRIPTEN__
         return std::system(all_args.str().c_str());
+        #endif
+        return 0;
     }
 }
