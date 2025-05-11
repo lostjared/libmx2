@@ -371,6 +371,26 @@ namespace html {
                     for (size_t arg_index = 0; arg_index < cmd->args.size(); arg_index++) {
                         const auto& arg = cmd->args[arg_index];
                         result += " ";
+                        if (cmd->name == "test" && arg_index >= 2 && arg.type == cmd::ARG_LITERAL) {
+                            std::string val = arg.value;
+                            bool isNumeric = false;
+                            size_t startPos = 0;
+                            if (!val.empty() && val[0] == '-') {
+                                startPos = 1;
+                            }
+                            if (val.size() > startPos && 
+                                val.find_first_not_of("0123456789.", startPos) == std::string::npos &&
+                                val.find_first_of("0123456789", startPos) != std::string::npos) {
+                                isNumeric = true;
+                            }
+                            
+                            if (isNumeric) {
+                                std::ostringstream numStr;
+                                numStr << std::fixed << std::setprecision(6) << std::stod(val);
+                                result += "<span class=\"number\">" + escapeHtml(numStr.str()) + "</span>";
+                                continue; 
+                            }
+                        }
                         
                         if (arg.type == cmd::ARG_VARIABLE) {
                             result += "<span class=\"variable\">" + escapeHtml(arg.value) + "</span>";
@@ -385,7 +405,9 @@ namespace html {
                                     result += "<span class=\"variable\">" + escapeHtml(arg.value) + "</span>";
                                 } else if (arg.value.find_first_of("0123456789") == 0 && 
                                           arg.value.find_first_not_of("0123456789.") == std::string::npos) {
-                                    result += "<span class=\"number\">" + escapeHtml(std::to_string(std::stod(arg.value))) + "</span>";
+                                    std::ostringstream numStr;
+                                    numStr << std::fixed << std::setprecision(6) << std::stod(arg.value);
+                                    result += "<span class=\"number\">" + escapeHtml(numStr.str()) + "</span>";
                                 } else {
                                     result += "<span class=\"string\">&quot;" + escapeHtml(formatEscapeSequences(arg.value)) + "&quot;</span>";
                                 }
@@ -403,7 +425,9 @@ namespace html {
                                 result += "<span class=\"string\">&quot;" + escapeHtml(formatEscapeSequences(arg.value)) + "&quot;</span>";
                             } else if (arg.value.find_first_of("0123456789") == 0 && 
                                       arg.value.find_first_not_of("0123456789.") == std::string::npos) {
-                                result += "<span class=\"number\">" + escapeHtml(std::to_string(std::stod(arg.value.c_str()))) + "</span>";
+                                std::ostringstream numStr;
+                                numStr << std::fixed << std::setprecision(6) << std::stod(arg.value);
+                                result += "<span class=\"number\">" + escapeHtml(numStr.str()) + "</span>";
                             } else {
                                 result += "<span class=\"identifier\">" + escapeHtml(arg.value) + "</span>";
                             }
@@ -463,13 +487,42 @@ namespace html {
                         const auto& arg = cmd->args[arg_index];
                         line += " ";
                         
+                        // Special handling for test command numeric arguments
+                        if (cmd->name == "test" && arg_index >= 2 && arg.type == cmd::ARG_LITERAL) {
+                            // Check if this might be a numeric value (including negative numbers)
+                            std::string val = arg.value;
+                            bool isNumeric = false;
+                            size_t startPos = 0;
+                            
+                            // Check for negative numbers
+                            if (!val.empty() && val[0] == '-') {
+                                startPos = 1;
+                            }
+                            
+                            // See if the rest is numeric
+                            if (val.size() > startPos && 
+                                val.find_first_not_of("0123456789.", startPos) == std::string::npos &&
+                                val.find_first_of("0123456789", startPos) != std::string::npos) {
+                                isNumeric = true;
+                            }
+                            
+                            if (isNumeric) {
+                                std::ostringstream numStr;
+                                numStr << std::fixed << std::setprecision(6) << std::stod(val);
+                                line += "<span class=\"number\">" + escapeHtml(numStr.str()) + "</span>";
+                                continue; // Skip the regular handling
+                            }
+                        }
+                        
                         if (arg.type == cmd::ARG_VARIABLE) {
                             line += "<span class=\"variable\">" + escapeHtml(arg.value) + "</span>";
                         } else if (arg.type == cmd::ARG_STRING_LITERAL) {
                             line += "<span class=\"string\">&quot;" + escapeHtml(formatEscapeSequences(arg.value)) + "&quot;</span>";
                         } else if (arg.value.find_first_of("0123456789") == 0 && 
                                   arg.value.find_first_not_of("0123456789.") == std::string::npos) {
-                            line += "<span class=\"number\">" + escapeHtml(std::to_string(std::stod(arg.value))) + "</span>";
+                            std::ostringstream numStr;
+                            numStr << std::fixed << std::setprecision(6) << std::stod(arg.value);
+                            line += "<span class=\"number\">" + escapeHtml(numStr.str()) + "</span>";
                         } else if (arg.value.find(' ') != std::string::npos ||
                                   arg.value.find('\t') != std::string::npos ||
                                   arg.value.find('\n') != std::string::npos ||
@@ -583,7 +636,9 @@ namespace html {
                                 line += "<span class=\"string\">&quot;" + escapeHtml(formatEscapeSequences(arg.value)) + "&quot;</span>";
                             } else if (arg.value.find_first_of("0123456789") == 0 && 
                                       arg.value.find_first_not_of("0123456789.") == std::string::npos) {
-                                line += "<span class=\"number\">" + escapeHtml(std::to_string(std::stod(arg.value))) + "</span>";
+                                std::ostringstream numStr;
+                                numStr << std::fixed << std::setprecision(6) << std::stod(arg.value);
+                                line += "<span class=\"number\">" + escapeHtml(numStr.str()) + "</span>";
                             } else if (arg.value.find(' ') != std::string::npos ||
                                       arg.value.find('\t') != std::string::npos ||
                                       arg.value.find('\n') != std::string::npos ||
@@ -761,7 +816,9 @@ namespace html {
                     return "<span class=\"string\">&quot;" + escapeHtml(formatEscapeSequences(strLit->value)) + "&quot;</span>";
                 }
                 else if (auto numLit = std::dynamic_pointer_cast<cmd::NumberLiteral>(expr)) {
-                    return "<span class=\"number\">" + escapeHtml(std::to_string(numLit->value)) + "</span>";
+                    std::ostringstream numStr;
+                    numStr << std::fixed << std::setprecision(6) << numLit->value;
+                    return "<span class=\"number\">" + escapeHtml(numStr.str()) + "</span>";
                 }
                 else if (auto varRef = std::dynamic_pointer_cast<cmd::VariableReference>(expr)) {
                     return "<span class=\"variable\">" + escapeHtml(varRef->name) + "</span>";
@@ -819,7 +876,9 @@ namespace html {
                                         result += "<span class=\"variable\">" + escapeHtml(arg.value) + "</span>";
                                     } else if (arg.value.find_first_of("0123456789") == 0 && 
                                               arg.value.find_first_not_of("0123456789.") == std::string::npos) {
-                                        result += "<span class=\"number\">" + escapeHtml(std::to_string(std::stod(arg.value))) + "</span>";
+                                        std::ostringstream numStr;
+                                        numStr << std::fixed << std::setprecision(6) << std::stod(arg.value);
+                                        result += "<span class=\"number\">" + escapeHtml(numStr.str()) + "</span>";
                                     } else {
                                         result += "<span class=\"string\">&quot;" + escapeHtml(formatEscapeSequences(arg.value)) + "&quot;</span>";
                                     }
@@ -837,7 +896,9 @@ namespace html {
                                     result += "<span class=\"string\">&quot;" + escapeHtml(formatEscapeSequences(arg.value)) + "&quot;</span>";
                                 } else if (arg.value.find_first_of("0123456789") == 0 && 
                                           arg.value.find_first_not_of("0123456789.") == std::string::npos) {
-                                    result += "<span class=\"number\">" + escapeHtml(std::to_string(std::stod(arg.value))) + "</span>";
+                                    std::ostringstream numStr;
+                                    numStr << std::fixed << std::setprecision(6) << std::stod(arg.value);
+                                    result += "<span class=\"number\">" + escapeHtml(numStr.str()) + "</span>";
                                 } else {
                                     result += "<span class=\"identifier\">" + escapeHtml(arg.value) + "</span>";
                                 }
@@ -873,9 +934,17 @@ namespace html {
                         }
                     } 
                     else if (unaryExpr->op == cmd::UnaryExpression::NEGATE) {
-                        result += "<span class=\"operator\">-</span>";
+                        result += "<span class=\"operator\" style=\"margin-right:0;padding-right:0\">-</span>";
                         if (auto subExpr = std::dynamic_pointer_cast<cmd::Expression>(unaryExpr->operand)) {
-                            result += formatExpressionInline(subExpr);
+                            if (auto numLit = std::dynamic_pointer_cast<cmd::NumberLiteral>(subExpr)) {
+                                    std::ostringstream numStr;
+                                    numStr << std::fixed << std::setprecision(6) << numLit->value;
+                                    result += "<span class=\"number\" style=\"margin-left:0;padding-left:0\">" + 
+                                            escapeHtml(numStr.str()) + "</span>";
+                                
+                            } else {
+                                result += formatExpressionInline(subExpr);
+                            }
                         }
                     }
                     

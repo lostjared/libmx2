@@ -1132,8 +1132,8 @@ namespace cmd {
                 return leftValue != rightValue ? 0 : 1; 
             } else if (op == "--eq") {
                 try {
-                    int left = std::stoi(leftValue);
-                    int right = std::stoi(rightValue);
+                    double left = std::stod(leftValue);
+                    double right = std::stod(rightValue);
                     return left == right ? 0 : 1; 
                 } catch (const std::exception&) {
                     output << "test: integer expression expected" << std::endl;
@@ -1141,8 +1141,8 @@ namespace cmd {
                 }
             } else if (op == "--ne") {
                 try {
-                    int left = std::stoi(leftValue);
-                    int right = std::stoi(rightValue);
+                    double left = std::stod(leftValue);
+                    double right = std::stod(rightValue);
                     return left != right ? 0 : 1; 
                 } catch (const std::exception&) {
                     output << "test: integer expression expected" << std::endl;
@@ -1150,8 +1150,8 @@ namespace cmd {
                 }
             } else if (op == "--gt") {
                 try {
-                    int left = std::stoi(leftValue);
-                    int right = std::stoi(rightValue);
+                    double left = std::stod(leftValue);
+                    double right = std::stod(rightValue);
                     return left > right ? 0 : 1; 
                 } catch (const std::exception&) {
                     output << "test: integer expression expected" << std::endl;
@@ -1159,8 +1159,8 @@ namespace cmd {
                 }
             } else if (op == "--ge") {
                 try {
-                    int left = std::stoi(leftValue);
-                    int right = std::stoi(rightValue);
+                    double left = std::stod(leftValue);
+                    double right = std::stod(rightValue);
                     return left >= right ? 0 : 1;
                 } catch (const std::exception&) {
                     output << "test: integer expression expected" << std::endl;
@@ -1168,8 +1168,8 @@ namespace cmd {
                 }
             } else if (op == "--lt") {
                 try {
-                    int left = std::stoi(leftValue);
-                    int right = std::stoi(rightValue);
+                    double left = std::stod(leftValue);
+                    double right = std::stod(rightValue);
                     return left < right ? 0 : 1; 
                 } catch (const std::exception&) {
                     output << "test: integer expression expected" << std::endl;
@@ -1177,8 +1177,8 @@ namespace cmd {
                 }
             } else if (op == "--le") {
                 try {
-                    int left = std::stoi(leftValue);
-                    int right = std::stoi(rightValue);
+                    double left = std::stod(leftValue);
+                    double right = std::stod(rightValue);
                     return left <= right ? 0 : 1;
                 } catch (const std::exception&) {
                     output << "test: integer expression expected" << std::endl;
