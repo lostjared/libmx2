@@ -346,6 +346,20 @@ namespace html {
                 
                 return result;
             }
+
+            static std::string formatNumberWithPrecision(const std::string& value) {
+                std::ostringstream numStr;
+                numStr << std::fixed << std::setprecision(6);
+                
+                try {
+                    double num = std::stod(value);
+                    numStr << num;
+                    return "<span class=\"number\">" + escapeHtml(numStr.str()) + "</span>";
+                } catch(const std::exception&) {
+                    // If not a valid number, return as is
+                    return "<span class=\"identifier\">" + escapeHtml(value) + "</span>";
+                }
+            }
             
             static void format(std::ostream& out, const std::shared_ptr<cmd::Node>& node) {
                 std::vector<std::string> formattedLines;
@@ -371,22 +385,14 @@ namespace html {
                     for (size_t arg_index = 0; arg_index < cmd->args.size(); arg_index++) {
                         const auto& arg = cmd->args[arg_index];
                         result += " ";
-                        if (cmd->name == "test" && arg.type == cmd::ARG_LITERAL) {
+                        if (arg.type == cmd::ARG_LITERAL) {
                             std::string val = arg.value;
-                            bool isNumeric = false;
-                            
-                            // Check if this is a negative number
                             if (val.size() > 1 && val[0] == '-' && 
                                 val.find_first_not_of("0123456789.", 1) == std::string::npos &&
                                 val.find_first_of("0123456789", 1) != std::string::npos) {
-                                
-                                // It's a negative number - handle it as a single unit
-                                std::ostringstream numStr;
-                                numStr << std::fixed << std::setprecision(6) << std::stod(val);
-                                result += "<span class=\"number\">" + escapeHtml(numStr.str()) + "</span>";
-                                continue;  // Skip regular handling
+                                result += formatNumberWithPrecision(val);
+                                continue;
                             }
-                            // Continue with existing handling for other cases...
                         }
                         
                         if (arg.type == cmd::ARG_VARIABLE) {
@@ -402,9 +408,7 @@ namespace html {
                                     result += "<span class=\"variable\">" + escapeHtml(arg.value) + "</span>";
                                 } else if (arg.value.find_first_of("0123456789") == 0 && 
                                           arg.value.find_first_not_of("0123456789.") == std::string::npos) {
-                                    std::ostringstream numStr;
-                                    numStr << std::fixed << std::setprecision(6) << std::stod(arg.value);
-                                    result += "<span class=\"number\">" + escapeHtml(numStr.str()) + "</span>";
+                                    result += formatNumberWithPrecision(arg.value);
                                 } else {
                                     result += "<span class=\"string\">&quot;" + escapeHtml(formatEscapeSequences(arg.value)) + "&quot;</span>";
                                 }
@@ -422,9 +426,7 @@ namespace html {
                                 result += "<span class=\"string\">&quot;" + escapeHtml(formatEscapeSequences(arg.value)) + "&quot;</span>";
                             } else if (arg.value.find_first_of("0123456789") == 0 && 
                                       arg.value.find_first_not_of("0123456789.") == std::string::npos) {
-                                std::ostringstream numStr;
-                                numStr << std::fixed << std::setprecision(6) << std::stod(arg.value);
-                                result += "<span class=\"number\">" + escapeHtml(numStr.str()) + "</span>";
+                                result += formatNumberWithPrecision(arg.value);
                             } else {
                                 result += "<span class=\"identifier\">" + escapeHtml(arg.value) + "</span>";
                             }
@@ -484,30 +486,14 @@ namespace html {
                         const auto& arg = cmd->args[arg_index];
                         line += " ";
                         
-                        // Special handling for test command numeric arguments
-                        if (cmd->name == "test" && arg_index >= 2 && arg.type == cmd::ARG_LITERAL) {
-                            // Check if this might be a numeric value (including negative numbers)
-                            std::string val = arg.value;
-                            bool isNumeric = false;
-                            size_t startPos = 0;
-                            
-                            // Check for negative numbers
-                            if (!val.empty() && val[0] == '-') {
-                                startPos = 1;
-                            }
-                            
-                            // See if the rest is numeric
-                            if (val.size() > startPos && 
-                                val.find_first_not_of("0123456789.", startPos) == std::string::npos &&
-                                val.find_first_of("0123456789", startPos) != std::string::npos) {
-                                isNumeric = true;
-                            }
-                            
-                            if (isNumeric) {
-                                std::ostringstream numStr;
-                                numStr << std::fixed << std::setprecision(6) << std::stod(val);
-                                line += "<span class=\"number\">" + escapeHtml(numStr.str()) + "</span>";
-                                continue; // Skip the regular handling
+                        if (arg.type == cmd::ARG_LITERAL) {
+                            std::string val = arg.value;    
+                            if (val.size() > 1 && val[0] == '-' && 
+                                val.find_first_not_of("0123456789.", 1) == std::string::npos &&
+                                val.find_first_of("0123456789", 1) != std::string::npos) {
+                                
+                                line += formatNumberWithPrecision(val);
+                                continue; 
                             }
                         }
                         
@@ -517,9 +503,7 @@ namespace html {
                             line += "<span class=\"string\">&quot;" + escapeHtml(formatEscapeSequences(arg.value)) + "&quot;</span>";
                         } else if (arg.value.find_first_of("0123456789") == 0 && 
                                   arg.value.find_first_not_of("0123456789.") == std::string::npos) {
-                            std::ostringstream numStr;
-                            numStr << std::fixed << std::setprecision(6) << std::stod(arg.value);
-                            line += "<span class=\"number\">" + escapeHtml(numStr.str()) + "</span>";
+                            line += formatNumberWithPrecision(arg.value);
                         } else if (arg.value.find(' ') != std::string::npos ||
                                   arg.value.find('\t') != std::string::npos ||
                                   arg.value.find('\n') != std::string::npos ||
@@ -633,9 +617,7 @@ namespace html {
                                 line += "<span class=\"string\">&quot;" + escapeHtml(formatEscapeSequences(arg.value)) + "&quot;</span>";
                             } else if (arg.value.find_first_of("0123456789") == 0 && 
                                       arg.value.find_first_not_of("0123456789.") == std::string::npos) {
-                                std::ostringstream numStr;
-                                numStr << std::fixed << std::setprecision(6) << std::stod(arg.value);
-                                line += "<span class=\"number\">" + escapeHtml(numStr.str()) + "</span>";
+                                line += formatNumberWithPrecision(arg.value);
                             } else if (arg.value.find(' ') != std::string::npos ||
                                       arg.value.find('\t') != std::string::npos ||
                                       arg.value.find('\n') != std::string::npos ||
@@ -765,9 +747,13 @@ namespace html {
                         }
                     } 
                     else if (unaryExpr->op == cmd::UnaryExpression::NEGATE) {
-                        line += "<span class=\"operator\">-</span>";
-                        if (auto subExpr = std::dynamic_pointer_cast<cmd::Expression>(unaryExpr->operand)) {
-                            line += formatExpressionInline(subExpr);
+                        if (auto numLit = std::dynamic_pointer_cast<cmd::NumberLiteral>(unaryExpr->operand)) {
+                            // Format negative numbers as a single unit with 6 decimal places
+                            line += formatNumberWithPrecision(std::to_string(-numLit->value));
+                        } else {
+                            // Otherwise keep the separate operator + operand format
+                            line += "<span class=\"operator\">-</span>";
+                            line += formatExpressionInline(std::dynamic_pointer_cast<cmd::Expression>(unaryExpr->operand));
                         }
                     }
                     
@@ -813,9 +799,7 @@ namespace html {
                     return "<span class=\"string\">&quot;" + escapeHtml(formatEscapeSequences(strLit->value)) + "&quot;</span>";
                 }
                 else if (auto numLit = std::dynamic_pointer_cast<cmd::NumberLiteral>(expr)) {
-                    std::ostringstream numStr;
-                    numStr << std::fixed << std::setprecision(6) << numLit->value;
-                    return "<span class=\"number\">" + escapeHtml(numStr.str()) + "</span>";
+                    return formatNumberWithPrecision(std::to_string(numLit->value));
                 }
                 else if (auto varRef = std::dynamic_pointer_cast<cmd::VariableReference>(expr)) {
                     return "<span class=\"variable\">" + escapeHtml(varRef->name) + "</span>";
@@ -873,9 +857,7 @@ namespace html {
                                         result += "<span class=\"variable\">" + escapeHtml(arg.value) + "</span>";
                                     } else if (arg.value.find_first_of("0123456789") == 0 && 
                                               arg.value.find_first_not_of("0123456789.") == std::string::npos) {
-                                        std::ostringstream numStr;
-                                        numStr << std::fixed << std::setprecision(6) << std::stod(arg.value);
-                                        result += "<span class=\"number\">" + escapeHtml(numStr.str()) + "</span>";
+                                        result += formatNumberWithPrecision(arg.value);
                                     } else {
                                         result += "<span class=\"string\">&quot;" + escapeHtml(formatEscapeSequences(arg.value)) + "&quot;</span>";
                                     }
@@ -893,9 +875,7 @@ namespace html {
                                     result += "<span class=\"string\">&quot;" + escapeHtml(formatEscapeSequences(arg.value)) + "&quot;</span>";
                                 } else if (arg.value.find_first_of("0123456789") == 0 && 
                                           arg.value.find_first_not_of("0123456789.") == std::string::npos) {
-                                    std::ostringstream numStr;
-                                    numStr << std::fixed << std::setprecision(6) << std::stod(arg.value);
-                                    result += "<span class=\"number\">" + escapeHtml(numStr.str()) + "</span>";
+                                    result += formatNumberWithPrecision(arg.value);
                                 } else {
                                     result += "<span class=\"identifier\">" + escapeHtml(arg.value) + "</span>";
                                 }
@@ -931,17 +911,13 @@ namespace html {
                         }
                     } 
                     else if (unaryExpr->op == cmd::UnaryExpression::NEGATE) {
-                        result += "<span class=\"operator\" style=\"margin-right:0;padding-right:0\">-</span>";
-                        if (auto subExpr = std::dynamic_pointer_cast<cmd::Expression>(unaryExpr->operand)) {
-                            if (auto numLit = std::dynamic_pointer_cast<cmd::NumberLiteral>(subExpr)) {
-                                    std::ostringstream numStr;
-                                    numStr << std::fixed << std::setprecision(6) << numLit->value;
-                                    result += "<span class=\"number\" style=\"margin-left:0;padding-left:0\">" + 
-                                            escapeHtml(numStr.str()) + "</span>";
-                                
-                            } else {
-                                result += formatExpressionInline(subExpr);
-                            }
+                        if (auto numLit = std::dynamic_pointer_cast<cmd::NumberLiteral>(unaryExpr->operand)) {
+                            // Format negative numbers as a single unit with 6 decimal places
+                            result += formatNumberWithPrecision(std::to_string(-numLit->value));
+                        } else {
+                            // Otherwise keep the separate operator + operand format
+                            result += "<span class=\"operator\">-</span>";
+                            result += formatExpressionInline(std::dynamic_pointer_cast<cmd::Expression>(unaryExpr->operand));
                         }
                     }
                     
