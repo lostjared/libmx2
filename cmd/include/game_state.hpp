@@ -3,6 +3,7 @@
 
 #include<string>
 #include<iostream>
+#include<iomanip>
 #include<fstream>
 #include<sstream>
 #include<unordered_map>
@@ -36,9 +37,20 @@ namespace state {
         }
 
         void listVariables(std::ostream& output) const {
-            for (const auto& pair : variables) {
-                output << pair.first << ": " << expandVariables(pair.second) << std::endl;
-            }
+            auto listSorted = [&](std::ostream  &o, auto &l) -> void {
+                std::vector<std::pair<std::string, std::string>> lst;
+                for(auto &f: l) {
+                    lst.push_back(std::make_pair(f.first, f.second));
+
+                }
+                std::sort(lst.begin(), lst.end());
+                for(auto &i : lst) {
+                    o << std::setfill(' ') << std::setw(25) << i.first << "\t" << expandVariables(i.second)  << "\n";
+                }
+            };
+            output << "Script Variables {\n";
+            listSorted(output, variables);
+            output << "}\n";
         }
         void clearVariables() {
             variables.clear();
