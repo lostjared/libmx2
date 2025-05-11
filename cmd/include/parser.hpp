@@ -392,10 +392,17 @@ namespace cmd {
                     else if ((peek().getTokenType() == types::TokenType::TT_SYM && peek().getTokenValue() == "-") ||
                              (peek().getTokenType() == types::TokenType::TT_ARG && peek().getTokenValue() == "--")) {
                         std::string value = advance().getTokenValue(); 
-                        if (isTestCommand && peek().getTokenType() == types::TokenType::TT_ID) {
-                            value += advance().getTokenValue(); 
+                        if (isTestCommand && peek().getTokenType() == types::TokenType::TT_NUM) {
+                            value += advance().getTokenValue();
+                            args.push_back({value, ARG_LITERAL});
                         }
-                        args.push_back({value, ARG_LITERAL});
+                        else if (isTestCommand && peek().getTokenType() == types::TokenType::TT_ID) {
+                            value += advance().getTokenValue(); 
+                            args.push_back({value, ARG_LITERAL});
+                        }
+                        else {
+                            args.push_back({value, ARG_LITERAL});
+                        }
                     }
                     else if (peek().getTokenType() == types::TokenType::TT_ID) {
                         std::string value = advance().getTokenValue();

@@ -6,12 +6,16 @@ CC="cc"
 obj = ""
 for i in files 
 do
-command = $(printf "%s %s %s -c" CC cflags i)
-echo command
-exec command
-pos = $(strfind 0 i ".c")
-filename = $(index i 0 pos)
-obj = $(printf "%s %s.o" obj filename)
+	command = $(printf "%s %s %s -c" CC cflags i)
+	echo command
+	exec command
+	length = $(strlen i)
+	pos = $(strfindr length i ".c")
+    if test pos --ne -1 
+    then
+	    filename = $(index i 0 pos)
+	    obj = $(printf "%s %s.o" obj filename)
+    fi
 done
 command = $(printf "%s %s -o %s %s" CC obj output_name ld_flags)
 echo command
