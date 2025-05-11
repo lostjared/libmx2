@@ -371,25 +371,22 @@ namespace html {
                     for (size_t arg_index = 0; arg_index < cmd->args.size(); arg_index++) {
                         const auto& arg = cmd->args[arg_index];
                         result += " ";
-                        if (cmd->name == "test" && arg_index >= 2 && arg.type == cmd::ARG_LITERAL) {
+                        if (cmd->name == "test" && arg.type == cmd::ARG_LITERAL) {
                             std::string val = arg.value;
                             bool isNumeric = false;
-                            size_t startPos = 0;
-                            if (!val.empty() && val[0] == '-') {
-                                startPos = 1;
-                            }
-                            if (val.size() > startPos && 
-                                val.find_first_not_of("0123456789.", startPos) == std::string::npos &&
-                                val.find_first_of("0123456789", startPos) != std::string::npos) {
-                                isNumeric = true;
-                            }
                             
-                            if (isNumeric) {
+                            // Check if this is a negative number
+                            if (val.size() > 1 && val[0] == '-' && 
+                                val.find_first_not_of("0123456789.", 1) == std::string::npos &&
+                                val.find_first_of("0123456789", 1) != std::string::npos) {
+                                
+                                // It's a negative number - handle it as a single unit
                                 std::ostringstream numStr;
                                 numStr << std::fixed << std::setprecision(6) << std::stod(val);
                                 result += "<span class=\"number\">" + escapeHtml(numStr.str()) + "</span>";
-                                continue; 
+                                continue;  // Skip regular handling
                             }
+                            // Continue with existing handling for other cases...
                         }
                         
                         if (arg.type == cmd::ARG_VARIABLE) {

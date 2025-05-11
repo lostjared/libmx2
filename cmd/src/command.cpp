@@ -1579,6 +1579,7 @@ namespace cmd {
         CloseHandle(pi.hThread);
         return static_cast<int>(exitCode);
 #endif
+        return 0;
     }
 
     int commandListCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
