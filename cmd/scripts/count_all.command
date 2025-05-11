@@ -1,12 +1,12 @@
-define count_text(dir)
+define count_text(dir, ext)
 begin
     files = $(ls | sort)
-    total = 0
-    for f in files
+    total = 0.000000
+    for f in files 
     do
         path = $(printf "%s/%s" dir f)
-        pos = $(strfind 0 path ".command")
-        if test pos --ne 0
+        pos = $(strfind 0.000000 path ext)
+        if test pos --ne 0.000000
         then
             count = $(wc --l path)
             total = total + count
@@ -15,5 +15,4 @@ begin
     done
     printf "total lines: %d\n" total
 end
-
-count_text "."
+count_text "." ".command"
