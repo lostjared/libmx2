@@ -32,6 +32,7 @@ namespace cmd {
                           std::istream& input, std::ostream& output);
 
         void printInfo(std::ostream &out);
+        bool empty() const;
 
     private:
         int executeUserDefinedCommand(const std::string& name, const UserDefinedCommandInfo& info,

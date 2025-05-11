@@ -149,4 +149,8 @@ namespace cmd {
         out << "}\n";
     }
 
+    bool CommandRegistry::empty() const {
+        return commands.empty() && typedCommands.empty() && userDefinedCommands.empty();
+    }
+
 } 

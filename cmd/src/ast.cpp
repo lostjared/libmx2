@@ -4,63 +4,63 @@
 namespace cmd {
 
     AstExecutor::AstExecutor() {
-        registry.registerTypedCommand("echo", cmd::echoCommand);
-        registry.registerTypedCommand("test",cmd::testCommand);
-        registry.registerTypedCommand("cmd", cmd::cmdCommand);
-        registry.registerTypedCommand("cat", cmd::catCommand);
-        registry.registerTypedCommand("grep", cmd::grepCommand);
-        registry.registerCommand("exit", cmd::exitCommand);
-        registry.registerCommand("quit", cmd::exitCommand);
-        registry.registerCommand("print", cmd::printCommand);
-        registry.registerTypedCommand("cd", cmd::cdCommand);
-        registry.registerTypedCommand("ls", cmd::listCommand);
-        registry.registerTypedCommand("dir", cmd::listCommand);
-        registry.registerTypedCommand("find", cmd::findCommand);
-        registry.registerTypedCommand("sort", cmd::sortCommand);
-        registry.registerCommand("pwd", cmd::pwdCommand);
-        registry.registerTypedCommand("mkdir", cmd::mkdirCommand);
-        registry.registerTypedCommand("cp", cmd::cpCommand);
-        registry.registerTypedCommand("mv", cmd::mvCommand);
-        registry.registerTypedCommand("touch", cmd::touchCommand);
-        registry.registerCommand("head", cmd::headCommand);
-        registry.registerCommand("tail", cmd::tailCommand);
-        registry.registerTypedCommand("wc", cmd::wcCommand);
-        registry.registerTypedCommand("sed", cmd::sedCommand);
-        registry.registerTypedCommand("printf", cmd::printfCommand);
-        registry.registerTypedCommand("debug_set", cmd::debugSet);
-        registry.registerTypedCommand("debug_get", cmd::debugGet);
-        registry.registerCommand("debug_list", cmd::debugList);
-        registry.registerTypedCommand("debug_clear", cmd::debugClear);
-        registry.registerCommand("debug_clear_all", cmd::debugClearAll);
-        registry.registerCommand("debug_search", cmd::debugSearch);
-        registry.registerCommand("debug_dump", cmd::dumpVariables);
-        registry.registerTypedCommand("visual", cmd::visualCommand);
-        registry.registerTypedCommand("at", cmd::atCommand);
-        registry.registerTypedCommand("len", cmd::lenCommand);
-        registry.registerTypedCommand("index", cmd::indexCommand);
-        registry.registerTypedCommand("strlen", cmd::strlenCommand);
-        registry.registerTypedCommand("strfind", cmd::strfindCommand);
-        registry.registerTypedCommand("strtok", cmd::strtokCommand);
-        registry.registerTypedCommand("exec", cmd::execCommand);
-        registry.registerTypedCommand("cmdlist", cmd::commandListCommand);
-        registry.registerTypedCommand("debug_cmd", cmd::commandListCommand);
-
-        //commands implemneted here
-        registry.registerTypedCommand("set", [this](const std::vector<Argument>& args, std::istream& input, std::ostream& output) {
-            if (args.size() >= 1) {
-                if (args[0].value == "-e") {
-                    setTerm(true);
-                    output << "Early termination enabled" << std::endl;
-                    return 0;
-                } else if (args[0].value == "+e") {
-                    setTerm(false);
-                    output << "Early termination disabled" << std::endl;
-                    return 0;
+        if(registry.empty()) {
+            registry.registerTypedCommand("echo", cmd::echoCommand);
+            registry.registerTypedCommand("test",cmd::testCommand);
+            registry.registerTypedCommand("cmd", cmd::cmdCommand);
+            registry.registerTypedCommand("cat", cmd::catCommand);
+            registry.registerTypedCommand("grep", cmd::grepCommand);
+            registry.registerCommand("exit", cmd::exitCommand);
+            registry.registerCommand("quit", cmd::exitCommand);
+            registry.registerCommand("print", cmd::printCommand);
+            registry.registerTypedCommand("cd", cmd::cdCommand);
+            registry.registerTypedCommand("ls", cmd::listCommand);
+            registry.registerTypedCommand("dir", cmd::listCommand);
+            registry.registerTypedCommand("find", cmd::findCommand);
+            registry.registerTypedCommand("sort", cmd::sortCommand);
+            registry.registerCommand("pwd", cmd::pwdCommand);
+            registry.registerTypedCommand("mkdir", cmd::mkdirCommand);
+            registry.registerTypedCommand("cp", cmd::cpCommand);
+            registry.registerTypedCommand("mv", cmd::mvCommand);
+            registry.registerTypedCommand("touch", cmd::touchCommand);
+            registry.registerCommand("head", cmd::headCommand);
+            registry.registerCommand("tail", cmd::tailCommand);
+            registry.registerTypedCommand("wc", cmd::wcCommand);
+            registry.registerTypedCommand("sed", cmd::sedCommand);
+            registry.registerTypedCommand("printf", cmd::printfCommand);
+            registry.registerTypedCommand("debug_set", cmd::debugSet);
+            registry.registerTypedCommand("debug_get", cmd::debugGet);
+            registry.registerCommand("debug_list", cmd::debugList);
+            registry.registerTypedCommand("debug_clear", cmd::debugClear);
+            registry.registerCommand("debug_clear_all", cmd::debugClearAll);
+            registry.registerCommand("debug_search", cmd::debugSearch);
+            registry.registerCommand("debug_dump", cmd::dumpVariables);
+            registry.registerTypedCommand("visual", cmd::visualCommand);
+            registry.registerTypedCommand("at", cmd::atCommand);
+            registry.registerTypedCommand("len", cmd::lenCommand);
+            registry.registerTypedCommand("index", cmd::indexCommand);
+            registry.registerTypedCommand("strlen", cmd::strlenCommand);
+            registry.registerTypedCommand("strfind", cmd::strfindCommand);
+            registry.registerTypedCommand("strtok", cmd::strtokCommand);
+            registry.registerTypedCommand("exec", cmd::execCommand);
+            registry.registerTypedCommand("cmdlist", cmd::commandListCommand);
+            registry.registerTypedCommand("debug_cmd", cmd::commandListCommand);
+            registry.registerTypedCommand("set", [this](const std::vector<Argument>& args, std::istream& input, std::ostream& output) {
+                if (args.size() >= 1) {
+                    if (args[0].value == "-e") {
+                        setTerm(true);
+                        output << "Early termination enabled" << std::endl;
+                        return 0;
+                    } else if (args[0].value == "+e") {
+                        setTerm(false);
+                        output << "Early termination disabled" << std::endl;
+                        return 0;
+                    }
                 }
-            }
-            output << "Usage: set [-e|+e] (enable or disable early termination)" << std::endl;
-            return 1;
-        });
+                output << "Usage: set [-e|+e] (enable or disable early termination)" << std::endl;
+                return 1;
+            });
+        }
     }
 
     std::string VariableReference::evaluate(const AstExecutor& executor) const {
