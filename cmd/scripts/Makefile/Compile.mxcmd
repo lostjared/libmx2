@@ -1,0 +1,25 @@
+define compile()
+begin
+    files=$(ls | grep --r ".c$")
+    cflags="-std=c11 -Wall -pedantic"
+    output_name="hello_world"
+    ld_flags=""
+    CC="cc"
+    obj = ""
+    for i in files 
+    do
+	    command = $(printf "%s %s %s -c" CC cflags i)
+	    echo command
+	    exec command
+	    length = $(strlen i)
+	    pos = $(strfindr length i ".c")
+        if test pos --ne -1 
+        then
+	        filename = $(index i 0 pos)
+	        obj = $(printf "%s %s.o" obj filename)
+        fi
+    done
+    command = $(printf "%s %s -o %s %s" CC obj output_name ld_flags)
+    echo command
+    exec command
+end
