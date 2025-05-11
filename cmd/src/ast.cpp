@@ -41,7 +41,9 @@ namespace cmd {
         registry.registerTypedCommand("strlen", cmd::strlenCommand);
         registry.registerTypedCommand("strfind", cmd::strfindCommand);
         registry.registerTypedCommand("strtok", cmd::strtokCommand);
-        registry.registerTypedCommand("exec", execCommand);
+        registry.registerTypedCommand("exec", cmd::execCommand);
+        registry.registerTypedCommand("cmdlist", cmd::commandListCommand);
+
         //commands implemneted here
         registry.registerTypedCommand("set", [this](const std::vector<Argument>& args, std::istream& input, std::ostream& output) {
             if (args.size() >= 1) {
@@ -107,5 +109,7 @@ namespace cmd {
         
         throw std::runtime_error("Unknown unary operator");
     }
+
+    CommandRegistry AstExecutor::registry;
 
 }

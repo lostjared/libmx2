@@ -31,6 +31,8 @@ namespace cmd {
         int executeCommand(const std::string& name, const std::vector<Argument>& args, 
                           std::istream& input, std::ostream& output);
 
+        void printInfo(std::ostream &out);
+
     private:
         int executeUserDefinedCommand(const std::string& name, const UserDefinedCommandInfo& info,
                                     const std::vector<Argument>& args, 

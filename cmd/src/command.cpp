@@ -1560,4 +1560,9 @@ namespace cmd {
         return static_cast<int>(exitCode);
 #endif
     }
+
+    int commandListCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
+        AstExecutor::printCommandInfo(output);
+        return 0;
+    }
 }

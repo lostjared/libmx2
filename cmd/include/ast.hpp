@@ -750,8 +750,12 @@ namespace cmd {
             returnSignal = true;
         }
 
+        static void printCommandInfo(std::ostream &out) {
+            registry.printInfo(out);
+        }
+
     private:
-        CommandRegistry registry;
+        static CommandRegistry registry;
         std::string path;
         int lastExitStatus = 0;
         mutable std::istream* input = nullptr;

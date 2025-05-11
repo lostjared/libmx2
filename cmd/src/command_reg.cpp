@@ -1,5 +1,6 @@
 #include"command_reg.hpp"
 #include"ast.hpp"
+#include<vector>
 
 namespace cmd {
 
@@ -124,6 +125,28 @@ namespace cmd {
         }
 
         return result;
+    }
+
+    void CommandRegistry::printInfo(std::ostream &out) {
+        auto listSorted = [](std::ostream  &o, auto &l) -> void {
+            std::vector<std::string> lst;
+            for(auto &f: l) {
+                lst.push_back(f.first);
+            }
+            std::sort(lst.begin(), lst.end());
+            for(auto &i : lst) {
+                o << "\t" << i << "\n";
+            }
+        };
+        out << "Commands {\n";
+        listSorted(out, this->commands);
+        out << "}\n";
+        out << "Typed Commands {\n";
+        listSorted(out, this->typedCommands);
+        out << "}\n";
+        out << "User Defined Commands {\n";
+        listSorted(out, this->userDefinedCommands);
+        out << "}\n";
     }
 
 } 

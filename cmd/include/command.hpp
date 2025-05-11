@@ -51,6 +51,8 @@ namespace cmd {
     int strfindCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
     int strtokCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
     int execCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
+    int commandListCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
+    
 
 }
 #endif
