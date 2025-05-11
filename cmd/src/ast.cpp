@@ -41,6 +41,7 @@ namespace cmd {
             registry.registerTypedCommand("index", cmd::indexCommand);
             registry.registerTypedCommand("strlen", cmd::strlenCommand);
             registry.registerTypedCommand("strfind", cmd::strfindCommand);
+            registry.registerTypedCommand("strfindr", cmd::strfindrCommand);
             registry.registerTypedCommand("strtok", cmd::strtokCommand);
             registry.registerTypedCommand("exec", cmd::execCommand);
             registry.registerTypedCommand("cmdlist", cmd::commandListCommand);

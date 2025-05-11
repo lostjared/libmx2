@@ -1393,7 +1393,27 @@ namespace cmd {
          int index = std::stoi(op1);
          auto pos = op2.find(op3, index);
          if(pos == std::string::npos)
-            output << "0";
+            output << "-1";
+        else
+            output << pos;
+
+         return 0;
+    }
+
+    int strfindrCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
+         if(args.empty() && args.size() != 3) {
+            output << "Usage: <start> <string> <search>\n";
+            return 1;
+         }
+
+         std::string op1 = getVar(args[0]);
+         std::string op2 = getVar(args[1]);
+         std::string op3 = getVar(args[2]);
+
+         int index = std::stoi(op1);
+         auto pos = op2.rfind(op3, index);
+         if(pos == std::string::npos)
+            output << "-1";
         else
             output << pos;
 
