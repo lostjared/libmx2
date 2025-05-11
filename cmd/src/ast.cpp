@@ -43,6 +43,7 @@ namespace cmd {
         registry.registerTypedCommand("strtok", cmd::strtokCommand);
         registry.registerTypedCommand("exec", cmd::execCommand);
         registry.registerTypedCommand("cmdlist", cmd::commandListCommand);
+        registry.registerTypedCommand("debug_cmd", cmd::commandListCommand);
 
         //commands implemneted here
         registry.registerTypedCommand("set", [this](const std::vector<Argument>& args, std::istream& input, std::ostream& output) {
