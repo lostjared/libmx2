@@ -1,3 +1,4 @@
+
 define compile()
 begin
     files=$(ls | grep --r ".c$")
@@ -22,4 +23,34 @@ begin
     command = $(printf "%s %s -o %s %s" CC obj output_name ld_flags)
     echo command
     exec command
+end
+
+define generate_makefile()
+begin
+    files=$(ls | grep --r ".c$")
+    makefile="# Generated Makefile\n"
+    makefile=$(printf "%s\nCC= gcc\n" makefile)
+    makefile=$(printf "%s\nCFLAGS= -std=c11 -Wall -pedantic\n" makefile)
+    makefile=$(printf "%s\nLDFLAGS= \n\n" makefile)
+    makefile=$(printf "%s\nOBJECTS = " makefile)
+    for file in files 
+    do
+        length = $(strlen file)
+        pos = $(strfindr length file ".c")
+        if test pos --ne -1.000000 
+        then
+            filename = $(index file 0 pos)
+            makefile=$(printf "%s %s.o" makefile filename)
+        fi
+    done
+    makefile = $(printf "%s\n" makefile)
+    makefile=$(printf "%s\ninstall: HelloWorld\n\n" makefile)
+    makefile=$(printf "%s\nHelloWorld: \$(OBJECTS)\n" makefile)
+    makefile=$(printf "%s\n\t\$(CC) \$(OBJECTS) -o HelloWorld \$(LDFLAGS)\n\n" makefile)
+    makefile=$(printf "%s\n%%.o: %%.c\n" makefile)
+    makefile=$(printf "%s\n\t\$(CC) \$(CFLAGS) -c \$< -o \$@\n\n" makefile)
+    makefile=$(printf "%s\nclean:\n" makefile)
+    makefile=$(printf "%s\n\trm -f \$(OBJECTS) HelloWorld\n\n" makefile)
+    echo makefile > Makefile
+    echo "Generated Makefile"
 end
