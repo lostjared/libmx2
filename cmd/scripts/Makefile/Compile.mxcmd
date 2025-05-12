@@ -32,7 +32,7 @@ begin
     makefile=$(printf "%s\nCC= gcc\n" makefile)
     makefile=$(printf "%s\nCFLAGS= -std=c11 -Wall -pedantic\n" makefile)
     makefile=$(printf "%s\nLDFLAGS= \n\n" makefile)
-    makefile=$(printf "%s\nOBJECTS = " makefile)
+    makefile=$(printf "%s\nOBJECTS= " makefile)
     for file in files 
     do
         length = $(strlen file)
