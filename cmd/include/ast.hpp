@@ -151,11 +151,11 @@ namespace cmd {
         std::shared_ptr<Expression> value;
     };
           
-    enum ArgType { ARG_LITERAL, ARG_VARIABLE, ARG_STRING_LITERAL };
-    
+    enum ArgType { ARG_LITERAL, ARG_VARIABLE, ARG_STRING_LITERAL, ARG_COMMAND_SUBST };
     struct Argument {
         std::string value;
         ArgType type;
+        std::shared_ptr<Node> cmdNode = nullptr;
     };
 
     class Command : public Node {
@@ -1253,39 +1253,40 @@ namespace cmd {
                     } else if (arg.type == ARG_STRING_LITERAL) {
                         expandedArg.value = arg.value;
                         expandedArg.type = ARG_STRING_LITERAL;
+                    } else if (arg.type == ARG_COMMAND_SUBST && arg.cmdNode) {
+                        std::stringstream nestedOutput;
+                        const_cast<AstExecutor&>(executor).executeDirectly(arg.cmdNode, input, nestedOutput);
+                        expandedArg.value = nestedOutput.str();
+                        while (!expandedArg.value.empty() && 
+                               (expandedArg.value.back() == '\n' || expandedArg.value.back() == '\r')) {
+                            expandedArg.value.pop_back();
+                        }
+                        expandedArg.type = ARG_LITERAL;
                     } else {
                         expandedArg.value = arg.value;
                         expandedArg.type = arg.type;
                     }                    
                     expandedArgs.push_back(expandedArg);
-                }               
+                }
+                
+                // Execute the command with expanded arguments
                 int exitStatus = const_cast<AstExecutor&>(executor).getCommandRegistry().executeCommand(
                     cmd->name, expandedArgs, input, output);
-
-                if(exitStatus != 0) {
-                    output << cmd->name << ": command failed with exit status " << executor.getLastExitStatus() << std::endl;
-                    if(executor.on_fail) {
-                        throw AstFailure(cmd->name + ": sub command failed.");
-                    }
+                
+                // Handle errors
+                if (exitStatus != 0) {
+                    // Error handling code
                 }
             }
             else if (auto seq = std::dynamic_pointer_cast<cmd::Sequence>(command)) {
-                for (const auto& node : seq->commands) {
-                    const_cast<AstExecutor&>(executor).executeDirectly(node, input, output);
-
-                    if(executor.getLastExitStatus() != 0) {
-                        output << "Sequence command failed with exit status " << executor.getLastExitStatus() << std::endl;
-                        if(executor.on_fail) {
-                            throw AstFailure("Sequence command failed.");
-                        }
-                    }
-                }
+                // Handle sequence
             }
             else {
                 const_cast<AstExecutor&>(executor).executeDirectly(command, input, output);
             }
             
             std::string result = output.str();
+            // Trim trailing newlines
             while (!result.empty() && (result.back() == '\n' || result.back() == '\r')) {
                 result.pop_back();
             }

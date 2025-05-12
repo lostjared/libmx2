@@ -30,17 +30,10 @@ namespace cmd {
     }
     
     int echoCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
-        state::GameState *gameState = state::getGameState();
-        
         for (size_t i = 0; i < args.size(); i++) {
-            if (args[i].type == ARG_VARIABLE) {
-                try {
-                    std::string value = gameState->getVariable(args[i].value);
-                    output << value;
-                } catch (const state::StateException &e) {
-                    output << args[i].value;
-                }
-            } else {
+            try {
+                output << getVar(args[i]);
+            } catch (const std::runtime_error &e) {
                 output << args[i].value;
             }
             
@@ -62,16 +55,7 @@ namespace cmd {
         } else {
             bool success = true;
             for (const auto& filename : args) {
-                std::string filen_ = filename.value;
-                if(filename.type == ArgType::ARG_VARIABLE) {
-                    state::GameState *game = state::getGameState();
-                    try {
-                        auto f = game->getVariable(filename.value);
-                        filen_ = f;
-                    } catch(const state::StateException &) {
-                        throw std::runtime_error("Could not find variable name");
-                    }
-                }
+                std::string filen_ = getVar(filename);
                 std::ifstream file(filen_);
                 if (!file) {
                     output << "cat: " << filen_ << ": No such file" << std::endl;
@@ -1342,7 +1326,17 @@ namespace cmd {
             } catch(const state::StateException &) {
                 throw std::runtime_error("Variable name: " + arg.value + " not found");
             }
+        } else if (arg.type == ARG_COMMAND_SUBST && arg.cmdNode) {
+            AstExecutor executor;
+            std::stringstream input, output;
+            executor.executeDirectly(arg.cmdNode, input, output);
+            std::string result = output.str();
+            while (!result.empty() && (result.back() == '\n' || result.back() == '\r')) {
+                result.pop_back();
+            }
+            return result;
         }
+        
         return a;
     }
 
