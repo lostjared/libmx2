@@ -323,7 +323,7 @@ namespace cmd {
         try {
             for (const auto& entry : std::filesystem::recursive_directory_iterator(path)) {
                 if (entry.path().filename().string().find(pattern) != std::string::npos) {
-                    output << entry.path() << std::endl;
+                    output << entry.path().string() << std::endl;
                 }
             }
             return 0;
