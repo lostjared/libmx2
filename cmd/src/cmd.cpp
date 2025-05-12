@@ -16,11 +16,31 @@
 #include<readline/readline.h>
 #include<readline/history.h>
 #include"version_info.hpp"
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+#include <signal.h>
+#include <unistd.h>
+#endif
 
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+void sigint_handler(int sig) {
+    if (program_running) {
+        program_running = 0;
+    } else {
+        std::cout << "\nMXCMD: Interrupt signal received. Exiting...\n";
+        exit(130);
+    }
+}
+#endif
 
 int main(int argc, char **argv) {
-
     std::cout << "MXCMD " << version_string << "\n(C) 1999-2025 LostSideDead Software\n\n";
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+    struct sigaction sa;
+    sa.sa_handler = sigint_handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    sigaction(SIGINT, &sa, nullptr);
+#endif
 
     if(argc == 1) {
         bool active = true;
@@ -30,6 +50,9 @@ int main(int argc, char **argv) {
             using_history();
             read_history(".cmd_history");
             std::ostringstream input_stream;
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+            signal(SIGINT, sigint_handler);
+#endif
             while(active) {
                 try {
                     std::string prompt = executor.getPath() + " $> ";
@@ -66,7 +89,13 @@ int main(int argc, char **argv) {
                             scan::Scanner scanner(string_buffer);
                             cmd::Parser parser(scanner);
                             auto ast = parser.parse();
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+                            program_running = 1;
+#endif
                             executor.execute(std::cin, std::cout, ast);
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+                            program_running = 0;
+#endif
                             if(debug_cmd) {
                                 ast->print(std::cout);
                             }
@@ -96,7 +125,13 @@ int main(int argc, char **argv) {
                         scan::Scanner scanner(string_buffer);
                         cmd::Parser parser(scanner);
                         auto ast = parser.parse();
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+                        program_running = 1;
+#endif
                         executor.execute(std::cin, std::cout, ast);
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+                        program_running = 0;
+#endif
                         if(debug_cmd) {
                             ast->print(std::cout);
                         }
@@ -145,7 +180,13 @@ int main(int argc, char **argv) {
                 scan::Scanner scanner(string_buffer);
                 cmd::Parser parser(scanner);
                 auto ast = parser.parse();
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+                program_running = 1;
+#endif
                 executor.execute(std::cin, std::cout, ast);
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+                program_running = 0;
+#endif
                 if(debug_cmd || debug_html) {
                     std::cout << "Debug Information written to: debug.html\n\n";
                     std::ofstream html_file("debug.html");

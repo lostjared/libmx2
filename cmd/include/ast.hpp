@@ -17,6 +17,15 @@
 #include<cmath>
 #include"game_state.hpp"
 #include"command_reg.hpp"
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+#include <signal.h>
+#include <unistd.h>
+#endif
+
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+    inline volatile sig_atomic_t program_running = 0;
+#endif
+
 namespace cmd {
     class Node;
     class Expression;
@@ -39,7 +48,7 @@ namespace cmd {
     class Break;
     class Continue;
 
-    
+  
     class AstFailure {
     public:
         AstFailure(const std::string& message) : message(message) {}
@@ -585,6 +594,9 @@ namespace cmd {
         }
 
         void execute(std::istream &defaultInput, std::ostream &defaultOutput, const std::shared_ptr<cmd::Node>& node) {
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+            program_running = 1;
+#endif
             returnSignal = false;         
             try {
                 #ifdef DEBUG_MODE_ON
@@ -602,12 +614,21 @@ namespace cmd {
                     std::cout << "DEBUG: Node is of UNKNOWN type" << std::endl;
                 }
                 #endif
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+                if (program_running == 0) {
+                    defaultOutput << "Command interrupted" << std::endl;
+                    return;
+                }
+#endif
                 executeNode(node, defaultInput, defaultOutput);
             } catch (const std::exception& e) {
                 defaultOutput << "Error: " << e.what() << std::endl;
             } catch(const AstFailure &e) {
                 defaultOutput << "Failure: " << e.what() << std::endl;
             }
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+            program_running = 0;
+#endif
         }
 
         void setVariable(const std::string& name, const std::string& value) {
@@ -985,6 +1006,14 @@ namespace cmd {
 
             try {
                 while (true) {
+
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+                    if (program_running == 0) {
+                        output << "- [ Loop interrupted ]-" << std::endl;
+                        break;
+                    }
+#endif
+
                     executeNode(whileStmt->condition, input, output);
                     if (lastExitStatus != 0) {
                         break;
@@ -1023,6 +1052,12 @@ namespace cmd {
                                     if (!line.empty()) {
                                         setVariable(forStmt->variable, line);
                                         try {
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+                                            if (program_running == 0) {
+                                                output << "- [ Loop interrupted ]- " << std::endl;
+                                                break;
+                                            }
+#endif
                                             executeNode(forStmt->body, input, output);
                                         } catch (const ContinueException&) {
                                             continue;
@@ -1035,6 +1070,12 @@ namespace cmd {
                                 while (wordStream >> word) {
                                     setVariable(forStmt->variable, word);
                                     try {
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+                                        if (program_running == 0) {
+                                            output << "-[ Loop interrupted ]- " << std::endl;
+                                            break;
+                                        }
+#endif
                                         executeNode(forStmt->body, input, output);
                                     } catch (const ContinueException&) {
                                         continue;
@@ -1043,6 +1084,13 @@ namespace cmd {
                             } else {
                                 setVariable(forStmt->variable, valueStr);
                                 try {
+                                    
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+                                    if (program_running == 0) {
+                                        output << "-[ Loop interrupted ]- " << std::endl;
+                                        break;
+                                    }
+#endif
                                     executeNode(forStmt->body, input, output);
                                 } catch (const ContinueException&) {
                                     continue;
@@ -1064,6 +1112,13 @@ namespace cmd {
                                     if (!line.empty()) {
                                         setVariable(forStmt->variable, line);
                                         try {
+                                            
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+                                            if (program_running == 0) {
+                                                output << "-[ Loop interrupted ]- " << std::endl;
+                                                break;
+                                            }
+#endif
                                             executeNode(forStmt->body, input, output);
                                         } catch (const ContinueException&) {
                                             continue;
@@ -1076,6 +1131,13 @@ namespace cmd {
                 
                         setVariable(forStmt->variable, literalValue);
                         try {
+                            
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+                            if (program_running == 0) {
+                                output << "-[ Loop interrupted ]- " << std::endl;
+                                break;
+                            }
+#endif
                             executeNode(forStmt->body, input, output);
                         } catch (const ContinueException&) {
                             continue;
