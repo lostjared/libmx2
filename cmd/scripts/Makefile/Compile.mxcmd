@@ -45,12 +45,12 @@ begin
     done
     makefile = $(printf "%s\n" makefile)
     makefile=$(printf "%s\ninstall: HelloWorld\n\n" makefile)
-    makefile=$(printf "%s\nHelloWorld: \$(OBJECTS)\n" makefile)
-    makefile=$(printf "%s\n\t\$(CC) \$(OBJECTS) -o HelloWorld \$(LDFLAGS)\n\n" makefile)
+    makefile=$(printf "%s\nHelloWorld: $(OBJECTS)\n" makefile)
+    makefile=$(printf "%s\n\t\$(CC) $(OBJECTS) -o HelloWorld $(LDFLAGS)\n\n" makefile)
     makefile=$(printf "%s\n%%.o: %%.c\n" makefile)
-    makefile=$(printf "%s\n\t\$(CC) \$(CFLAGS) -c \$< -o \$@\n\n" makefile)
+    makefile=$(printf "%s\n\t$(CC) $(CFLAGS) -c \$< -o $@\n\n" makefile)
     makefile=$(printf "%s\nclean:\n" makefile)
-    makefile=$(printf "%s\n\trm -f \$(OBJECTS) HelloWorld\n\n" makefile)
+    makefile=$(printf "%s\n\trm -f $(OBJECTS) HelloWorld\n\n" makefile)
     echo makefile > Makefile
     echo "Generated Makefile"
 end
