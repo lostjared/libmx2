@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(mxcmd_cxx VERSION 1.02 LANGUAGES CXX C)
+project(mxcmd_cxx VERSION 1.03 LANGUAGES CXX C)
 
 
 option(CMD "Build command line interface" OFF)
