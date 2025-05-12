@@ -290,6 +290,11 @@ namespace cmd {
                             left = std::make_shared<cmd::Pipeline>(std::move(commands));
                         }
                     }
+                    else if (peek().getTokenValue() == "&&") {
+                        advance(); 
+                        auto right = parseCommand();
+                        left = std::make_shared<cmd::LogicalAnd>(left, right);
+                    }
                     else {
                         break;
                     }
