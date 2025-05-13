@@ -8,7 +8,7 @@ begin
     do
         path = $(printf "%s/%s" dir f)
         pos = $(strfind 0.000000 path ext)
-        if test pos --ne 0.000000
+        if test pos --ne -1.000000
         then
             count = $(wc --l path)
             total = total + count
@@ -17,4 +17,4 @@ begin
     done
     printf "total lines: %d\n" total
 end
-count_text "." ".command"
+count_text "." "."
