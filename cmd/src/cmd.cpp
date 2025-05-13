@@ -154,7 +154,7 @@ int main(int argc, char **argv) {
         } catch (...) {
             std::cerr << "Unknown error occurred." << std::endl;
         }
-    } else {
+    } else if(argc == 2 && (std::string(argv[1]) != "--stdin" && std::string(argv[1]) != "-i")) {
         cmd::AstExecutor executor{};
         bool debug_cmd = false;
         bool debug_html = false;
@@ -175,8 +175,17 @@ int main(int argc, char **argv) {
                 return EXIT_FAILURE;
             }
             stream << file.rdbuf();
+            std::string fileContent = stream.str();
+            
+            if (fileContent.size() >= 2 && fileContent[0] == '#' && fileContent[1] == '!') {
+                size_t newlinePos = fileContent.find('\n');
+                if (newlinePos != std::string::npos) {
+                    fileContent = fileContent.substr(newlinePos + 1);
+                }
+            }
+
             try {
-                scan::TString string_buffer(stream.str());
+                scan::TString string_buffer(fileContent);  // Use modified content
                 scan::Scanner scanner(string_buffer);
                 cmd::Parser parser(scanner);
                 auto ast = parser.parse();
@@ -209,7 +218,33 @@ int main(int argc, char **argv) {
                 return EXIT_FAILURE;
             }
         }
-
-    }   
+    } else if(argc == 2 && (std::string(argv[1]) == "--stdin" || std::string(argv[1]) == "-i")) {
+               try {
+                cmd::AstExecutor executor{};
+                std::ostringstream stream;
+                stream << std::cin.rdbuf();
+                scan::TString string_buffer(stream.str());
+                scan::Scanner scanner(string_buffer);
+                cmd::Parser parser(scanner);
+                auto ast = parser.parse();
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+                program_running = 1;
+#endif
+                executor.execute(std::cin, std::cout, ast);
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+                program_running = 0;
+#endif    
+            } catch(const scan::ScanExcept &e) {
+                std::cerr << "Scan Error: " << e.why() << std::endl;
+                return EXIT_FAILURE;
+            } catch(const std::exception &e) {
+                std::cerr << "Exception: " << e.what() << std::endl;
+                return EXIT_FAILURE;
+            } catch(...) {
+                std::cerr << "Unknown Error has Occoured..\n";
+                return EXIT_FAILURE;
+            }
+    }
+    
     return 0;
 }

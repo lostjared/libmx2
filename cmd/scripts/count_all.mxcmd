@@ -1,3 +1,5 @@
+#!/usr/local/bin/mxcmd-cli
+
 define count_text(dir, ext)
 begin
     files = $(ls | sort)

@@ -1,3 +1,5 @@
+#!/usr/local/bin/mxcmd-cli
+
 define rename(what, to, directory)
 begin
     for file in $(ls | grep --r $(printf "%s$" what))
