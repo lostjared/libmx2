@@ -352,11 +352,18 @@ namespace html {
                         }
                     } else {
                         switch (input[i]) {
-                            case '<': result += "&lt;"; break;
-                            case '>': result += "&gt;"; break;
-                            case '&': result += "&amp;"; break;
+                            case '\n': result += "\\n"; break;
+                            case '\t': result += "\\t"; break;
+                            case '\r': result += "\\r"; break;
+                            case '\f': result += "\\f"; break;
+                            case '\v': result += "\\v"; break;              
+                            case '\b': result += "\\b"; break;
+                            case '\\': result += "\\\\"; break;
+                            case '<': result += "<"; break;
+                            case '>': result += ">"; break;
+                            case '&': result += "&"; break;
                             case '"': result += "\""; break;
-                            case '\'': result += "&#39;"; break;
+                            case '\'': result += "'"; break;
                             default: result += input[i]; break;
                         }
                     }
