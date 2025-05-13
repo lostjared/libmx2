@@ -122,6 +122,7 @@ namespace html {
         out << "    .redirection { background-color: rgba(245, 158, 11, 0.1); border-left: 3px solid var(--warning); }\n";
         out << "    .sequence { background-color: rgba(99, 102, 241, 0.1); border-left: 3px solid #6366f1; }\n";
         out << "    .logical-and { background-color: rgba(139, 92, 246, 0.1); border-left: 3px solid #8b5cf6; }\n";
+        out << "    .logical-or { background-color: rgba(251, 113, 133, 0.1); border-left: 3px solid #fb7185; }";
         out << "    .if-statement { background-color: rgba(236, 72, 153, 0.1); border-left: 3px solid #ec4899; }\n";
         out << "    .while-statement { background-color: rgba(248, 113, 113, 0.1); border-left: 3px solid #f87171; }\n";
         out << "    .for-statement { background-color: rgba(251, 146, 60, 0.1); border-left: 3px solid #fb923c; }\n";
@@ -491,6 +492,9 @@ namespace html {
                 else if (auto logAnd = std::dynamic_pointer_cast<cmd::LogicalAnd>(node)) {
                     return formatNodeInline(logAnd->left) + " <span class=\"operator\">&&</span> " + formatNodeInline(logAnd->right);
                 }
+                else if (auto logOr = std::dynamic_pointer_cast<cmd::LogicalOr>(node)) {
+                    return formatNodeInline(logOr->left) + " <span class=\"operator\">||</span> " + formatNodeInline(logOr->right);
+                }
                 
                 return "<span class=\"comment\">/* complex condition */</span>";
             }
@@ -781,9 +785,19 @@ namespace html {
                         std::string lastLine = lines.back();
                         lines.pop_back();
                         lastLine += " <span class=\"operator\">&&</span> ";
+                        lastLine += formatNodeInline(logicalAnd->right);  // Use inline formatting like LogicalOr
                         lines.push_back(lastLine);
                     }
-                    formatBlock(lines, logicalAnd->right, 0);
+                }
+                else if (auto logicalOr = std::dynamic_pointer_cast<cmd::LogicalOr>(node)) {
+                    formatBlock(lines, logicalOr->left, indentLevel);
+                    if (!lines.empty()) {
+                        std::string lastLine = lines.back();
+                        lines.pop_back();
+                        lastLine += " <span class=\"operator\">||</span> ";
+                        lastLine += formatNodeInline(logicalOr->right);
+                        lines.push_back(lastLine);
+                    }
                 }
                 else if (auto unaryExpr = std::dynamic_pointer_cast<cmd::UnaryExpression>(node)) {
                     std::string line = "<span class=\"code-line\">" + indent;
