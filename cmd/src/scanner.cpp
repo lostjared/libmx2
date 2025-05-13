@@ -61,29 +61,13 @@ namespace scan {
                 tokens.push_back(token);
                 continue;
             }
-            
             if(ch.has_value() && *ch == '#') { 
-                auto next_char = string_buffer.peekch(1);
-                if (next_char.has_value() && isdigit(*next_char)) {
-                    uint64_t lineNumber = parseLineNumber();
-                    std::string fileName = parseFileName();
-                    string_buffer.process_line_directive(lineNumber, fileName);
-                    do {
-                        ch = string_buffer.getch();
-                    } while(ch.has_value() && ch.value()!='\n');
-                    string_buffer.currentLine -= 1;
-                    continue;           
-                } 
-                else {
-                    do {
-                        ch = string_buffer.getch();
-                    } while(ch.has_value() && *ch != '\n');
-                    
-                    if (ch.has_value()) {
-                        string_buffer.backward_step(1);
-                    }
-                    continue;
-                }
+                do {
+                    ch = string_buffer.getch();
+                } while(ch.has_value() && *ch != '\n');
+                string_buffer.backward_step(1);
+                continue;
+
             } else if(ch.has_value() && *ch == '/') {
                 auto ch2 = string_buffer.curch();
                 if(ch2.has_value() && *ch2 == '/') {
