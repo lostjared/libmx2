@@ -1,0 +1,11 @@
+define testall()
+begin
+    for i in $(ls | grep --r ".command" | sort)
+    do 
+	cmd i
+        printf "executing: %s\n" i
+    done
+    return 0
+end
+
+testall
