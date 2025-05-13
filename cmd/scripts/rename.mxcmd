@@ -1,4 +1,4 @@
-#!/usr/local/bin/mxcmd-cli
+#!/usr/bin/env mxcmd-cli
 
 define rename(what, to, directory)
 begin
