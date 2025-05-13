@@ -70,8 +70,9 @@ if(CONSOLE)
         ${SDL2_INCLUDE_DIRS} 
         ${SDL2_TTF_INCLUDE_DIRS}
         ${SDL2_MIXER_INCLUDE_DIRS}
-	${GLM_INCLUDE_DIRS}
+	    ${GLM_INCLUDE_DIRS}
     )
+    
     target_link_libraries(cmd-console PRIVATE
         mxcmd
         libmx2::mx 
