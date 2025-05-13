@@ -628,9 +628,6 @@ namespace cmd {
             } catch(const AstFailure &e) {
                 defaultOutput << "Failure: " << e.what() << std::endl;
             }
-#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
-            program_running = 0;
-#endif
         }
 
         void setVariable(const std::string& name, const std::string& value) {
@@ -1148,7 +1145,7 @@ namespace cmd {
             }
         }
     };
-    
+
     class BinaryExpression : public Expression {
     public:
         enum OpType { ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULO };
@@ -1207,8 +1204,6 @@ namespace cmd {
         std::shared_ptr<Expression> right;
     };
 
-    
-
     class CommandSubstitution : public Expression {
     public:
         CommandSubstitution(std::shared_ptr<Node> command, bool is_var = true) : command(command),isVar(is_var) {}
@@ -1225,6 +1220,7 @@ namespace cmd {
             out << spaces << "  </table>\n";
             out << spaces << "</div>\n";
         }
+
         
         std::string evaluate(const AstExecutor& executor) const override {
             std::stringstream input;  
@@ -1256,17 +1252,17 @@ namespace cmd {
                     expandedArgs.push_back(expandedArg);
                 }
                 
-                // Execute the command with expanded arguments
+                
                 int exitStatus = const_cast<AstExecutor&>(executor).getCommandRegistry().executeCommand(
                     cmd->name, expandedArgs, input, output);
                 
-                // Handle errors
+                
                 if (exitStatus != 0) {
-                    // Error handling code
+                    
                 }
             }
             else if (auto seq = std::dynamic_pointer_cast<cmd::Sequence>(command)) {
-                // Handle sequence
+                
             }
             else {
                 const_cast<AstExecutor&>(executor).executeDirectly(command, input, output);

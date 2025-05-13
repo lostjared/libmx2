@@ -139,6 +139,7 @@ namespace html {
         out << "    .literal { color: #10b981; }\n";
         out << "    .variable { color: #38bdf8; }\n";  
         out << "    .symbol { color: #ec4899; font-weight: 500; }\n";
+        out << "    .command-substitution { color: #fb923c; }\n";
         out << "    /* Responsive design */\n";
         out << "    @media (max-width: 768px) {\n";
         out << "      body { padding: 1rem; }\n";
@@ -399,6 +400,14 @@ namespace html {
                             result += "<span class=\"variable\">" + escapeHtml(arg.value) + "</span>";
                         } else if (arg.type == cmd::ARG_STRING_LITERAL) {
                             result += "<span class=\"string\">&quot;" + escapeHtml(formatEscapeSequences(arg.value)) + "&quot;</span>";
+                        } else if (arg.type == cmd::ARG_COMMAND_SUBST) {
+                            result += "<span class=\"operator\">$(</span>";
+                            if (arg.cmdNode) {
+                                result += formatNodeInline(arg.cmdNode);
+                            } else {
+                                result += "<span class=\"command-substitution\">" + escapeHtml(arg.value.substr(2, arg.value.length() - 3)) + "</span>";
+                            }
+                            result += "<span class=\"operator\">)</span>";
                         } else if (cmd->name == "printf" || cmd->name == "echo" || cmd->name == "puts" || 
                                    cmd->name == "print" || cmd->name == "say") {
                             if (arg_index == 0) {
@@ -501,6 +510,14 @@ namespace html {
                             line += "<span class=\"variable\">" + escapeHtml(arg.value) + "</span>";
                         } else if (arg.type == cmd::ARG_STRING_LITERAL) {
                             line += "<span class=\"string\">&quot;" + escapeHtml(formatEscapeSequences(arg.value)) + "&quot;</span>";
+                        } else if (arg.type == cmd::ARG_COMMAND_SUBST) {
+                            line += "<span class=\"operator\">$(</span>";
+                            if (arg.cmdNode) {
+                                line += formatNodeInline(arg.cmdNode);
+                            } else {
+                                line += "<span class=\"command-substitution\">" + escapeHtml(arg.value.substr(2, arg.value.length() - 3)) + "</span>";
+                            }
+                            line += "<span class=\"operator\">)</span>";
                         } else if (arg.value.find_first_of("0123456789") == 0 && 
                                   arg.value.find_first_not_of("0123456789.") == std::string::npos) {
                             line += formatNumberWithPrecision(arg.value);
@@ -582,7 +599,17 @@ namespace html {
                     for (const auto& val : forStmt->values) {
                         if (val.type == cmd::ARG_VARIABLE) {
                             line += "<span class=\"variable\">" + escapeHtml(val.value) + "</span> ";
-                        } else {
+                        } 
+                        else if (val.type == cmd::ARG_COMMAND_SUBST) {
+                            line += "<span class=\"operator\">$(</span>";
+                            if (val.cmdNode) {
+                                line += formatNodeInline(val.cmdNode);
+                            } else {
+                                line += "<span class=\"command-substitution\">" + escapeHtml(val.value.substr(2, val.value.length() - 3)) + "</span>";
+                            }
+                            line += "<span class=\"operator\">)</span> ";
+                        }
+                        else {
                             line += "<span class=\"string\">&quot;" + escapeHtml(formatEscapeSequences(val.value)) + "&quot;</span> ";
                         }
                     }

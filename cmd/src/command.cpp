@@ -1101,7 +1101,13 @@ namespace cmd {
             cmd::Parser parser(scanner);
             auto ast = parser.parse();
             cmd::AstExecutor scriptExecutor;
-            scriptExecutor.execute(input, output, ast);   
+
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+            program_running = 1;
+#endif
+            scriptExecutor.execute(input, output, ast); 
+
+
             return 0;
         } catch (const scan::ScanExcept &e) {
             output << "cmd: Scan error in " << filename << ": " << e.why() << std::endl;

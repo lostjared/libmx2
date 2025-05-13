@@ -463,10 +463,70 @@ namespace cmd {
                         if (peek().getTokenType() == types::TokenType::TT_SYM && peek().getTokenValue() == "$") {
                             advance();
                             auto cmdNode = parseCommandSubstitution();
+                            std::string cmdRepresentation;
+                            if (auto cmd = std::dynamic_pointer_cast<cmd::Command>(cmdNode)) {
+                                cmdRepresentation = cmd->name;
+                                for (const auto& arg : cmd->args) {
+                                    cmdRepresentation += " ";
+                                    if (arg.type == ARG_STRING_LITERAL) {
+                                        cmdRepresentation += "\"" + arg.value + "\"";
+                                    } else {
+                                        cmdRepresentation += arg.value;
+                                    }
+                                }
+                            }
+                            else if (auto pipeline = std::dynamic_pointer_cast<cmd::Pipeline>(cmdNode)) {
+                                bool first = true;
+                                for (const auto& cmd : pipeline->commands) {
+                                    if (!first) {
+                                        cmdRepresentation += " | ";
+                                    }
+                                    first = false;
+                                    
+                                    cmdRepresentation += cmd->name;
+                                    for (const auto& arg : cmd->args) {
+                                        cmdRepresentation += " ";
+                                        if (arg.type == ARG_STRING_LITERAL) {
+                                            cmdRepresentation += "\"" + arg.value + "\"";
+                                        } else {
+                                            cmdRepresentation += arg.value;
+                                        }
+                                    }
+                                }
+                            }
+                            else if (auto seq = std::dynamic_pointer_cast<cmd::Sequence>(cmdNode)) {
+                                bool first = true;
+                                cmdRepresentation = "";
+                                for (const auto& subCmd : seq->commands) {
+                                    if (!first) {
+                                        cmdRepresentation += "; ";
+                                    }
+                                    first = false;
+                                    
+                                    if (auto cmd = std::dynamic_pointer_cast<cmd::Command>(subCmd)) {
+                                        cmdRepresentation += cmd->name;
+                                        for (const auto& arg : cmd->args) {
+                                            cmdRepresentation += " ";
+                                            if (arg.type == ARG_STRING_LITERAL) {
+                                                cmdRepresentation += "\"" + arg.value + "\"";
+                                            } else {
+                                                cmdRepresentation += arg.value;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            else {
+                                
+                                if (auto redir = std::dynamic_pointer_cast<cmd::Redirection>(cmdNode)) {
+                                    cmdRepresentation = "redirect";
+                                } else {
+                                    cmdRepresentation = "command";
+                                }
+                            }
+                            
                             Argument arg;
-                            std::ostringstream stream;
-                            cmdNode->print(stream);
-                            arg.value = "$(" + stream.str() + ")";  // For display purposes
+                            arg.value = "$(" + cmdRepresentation + ")";
                             arg.type = ARG_COMMAND_SUBST;
                             arg.cmdNode = cmdNode;
                             args.push_back(arg);
@@ -700,10 +760,71 @@ namespace cmd {
                     else if (peek().getTokenType() == types::TokenType::TT_SYM && peek().getTokenValue() == "$") {
                         advance();
                         auto cmdNode = parseCommandSubstitution();
+                        
+                        
+                        std::string cmdRepresentation;
+                        
+                        
+                        if (auto cmd = std::dynamic_pointer_cast<cmd::Command>(cmdNode)) {
+                            cmdRepresentation = cmd->name;
+                            for (const auto& arg : cmd->args) {
+                                cmdRepresentation += " ";
+                                if (arg.type == ARG_STRING_LITERAL) {
+                                    cmdRepresentation += "\"" + arg.value + "\"";
+                                } else {
+                                    cmdRepresentation += arg.value;
+                                }
+                            }
+                        }
+                        else if (auto pipeline = std::dynamic_pointer_cast<cmd::Pipeline>(cmdNode)) {
+                            bool first = true;
+                            for (const auto& cmd : pipeline->commands) {
+                                if (!first) {
+                                    cmdRepresentation += " | ";
+                                }
+                                first = false;
+                                
+                                cmdRepresentation += cmd->name;
+                                for (const auto& arg : cmd->args) {
+                                    cmdRepresentation += " ";
+                                    if (arg.type == ARG_STRING_LITERAL) {
+                                        cmdRepresentation += "\"" + arg.value + "\"";
+                                    } else {
+                                        cmdRepresentation += arg.value;
+                                    }
+                                }
+                            }
+                        }
+                        else if (auto seq = std::dynamic_pointer_cast<cmd::Sequence>(cmdNode)) {
+                            bool first = true;
+                            for (const auto& subCmd : seq->commands) {
+                                if (!first) {
+                                    cmdRepresentation += "; ";
+                                }
+                                first = false;                               
+                                if (auto cmd = std::dynamic_pointer_cast<cmd::Command>(subCmd)) {
+                                    cmdRepresentation += cmd->name;
+                                    for (const auto& arg : cmd->args) {
+                                        cmdRepresentation += " ";
+                                        if (arg.type == ARG_STRING_LITERAL) {
+                                            cmdRepresentation += "\"" + arg.value + "\"";
+                                        } else {
+                                            cmdRepresentation += arg.value;
+                                        }
+                                    }
+                                } else if (auto redir = std::dynamic_pointer_cast<cmd::Redirection>(subCmd)) {
+                                    cmdRepresentation += "redirect";
+                                } else {
+                                    cmdRepresentation += "command";
+                                }
+                            }
+                        }
+                        else {
+                            cmdRepresentation = "command";
+                        }
+                        
                         Argument arg;
-                        std::ostringstream stream;
-                        cmdNode->print(stream);
-                        arg.value = "$(" + stream.str() + ")";
+                        arg.value = "$(" + cmdRepresentation + ")";
                         arg.type = ARG_COMMAND_SUBST;
                         arg.cmdNode = cmdNode;
                         values.push_back(arg);
