@@ -1,0 +1,16 @@
+define rename(what, to, directory)
+begin
+    for file in $(ls | grep --r $(printf "%s$" what))
+    do
+    pos = $(strfindr $(strlen file) file what)
+    if test pos --ne -1 
+    then
+        pos--
+        subfile = $(index file 0 pos)
+        mkdir --p directory
+        printf "%s -> ./%s/%s.%s\n" file directory subfile to
+        cp file $(printf "./%s/%s.%s" directory subfile to)
+    fi
+    done
+end
+rename "command" "mxcmd" "mxcmd"
