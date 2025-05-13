@@ -1,0 +1,23 @@
+define deploy(binary, output)
+begin
+    for line in $(exec $(printf "ldd %s | grep -vi windows" binary))
+    do
+        pos = $(strfind 0 line "=>")
+        length = $(strlen line)
+        plen = length - pos
+        pos = pos + 3
+        file = $(index line pos plen)
+        file_o = $(strfindr $(strlen file) file "(")
+        file_o  --
+        final_file = $(index file 0 file_o)
+        pos = $(strfindr $(strlen final_file) final_file "/")
+        length = $(strlen final_file)
+        plen = length - pos - 1
+        pos++
+        final_filename = $(index final_file pos length)
+        file_path = $(printf "%s/%s" output final_filename)
+        #printf "%s -> %s\n" final_file file_path
+        mkdir --p output
+        exec $(printf "cp -rfv %s %s" final_file file_path)
+    done
+end
