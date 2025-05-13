@@ -172,12 +172,41 @@ namespace cmd {
 
     CommandRegistry AstExecutor::registry;
 
+     std::string parseEscapeSequences(const std::string& input) {
+        std::string result;
+        for (size_t i = 0; i < input.length(); ++i) {
+            if (input[i] == '\\' && i + 1 < input.length()) {
+                switch (input[i + 1]) {
+                    case 'n': result += '\n'; break;
+                    case 't': result += '\t'; break;
+                    case 'r': result += '\r'; break;
+                    case 'b': result += '\b'; break;
+                    case 'f': result += '\f'; break;
+                    case 'v': result += '\v'; break;
+                    case 'a': result += '\a'; break;
+                    case '\\': result += '\\'; break;
+                    case '\'': result += '\''; break;
+                    case '"': result += '"'; break;
+                    case '0': result += '\0'; break;
+                    default: result += input[i + 1];
+                }
+                ++i;
+            } else {
+                result += input[i];
+            }
+        }
+        return result;
+    }
+
     std::string getVar(const Argument &arg) {
         std::string a = arg.value;
         if(arg.type == ArgType::ARG_VARIABLE) {
             try {
                 state::GameState  *s = state::getGameState();
                 a = s->getVariable(arg.value);
+                if(!a.empty())
+                    a = parseEscapeSequences(a);
+                
             } catch(const state::StateException &) {
                 throw std::runtime_error("Variable name: " + arg.value + " not found");
             }

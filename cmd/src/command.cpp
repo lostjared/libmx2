@@ -698,32 +698,6 @@ namespace cmd {
         return 0;
     }
 
-    std::string parseEscapeSequences(const std::string& input) {
-        std::string result;
-        for (size_t i = 0; i < input.length(); ++i) {
-            if (input[i] == '\\' && i + 1 < input.length()) {
-                switch (input[i + 1]) {
-                    case 'n': result += '\n'; break;
-                    case 't': result += '\t'; break;
-                    case 'r': result += '\r'; break;
-                    case 'b': result += '\b'; break;
-                    case 'f': result += '\f'; break;
-                    case 'v': result += '\v'; break;
-                    case 'a': result += '\a'; break;
-                    case '\\': result += '\\'; break;
-                    case '\'': result += '\''; break;
-                    case '"': result += '"'; break;
-                    case '0': result += '\0'; break;
-                    default: result += input[i + 1];
-                }
-                ++i;
-            } else {
-                result += input[i];
-            }
-        }
-        return result;
-    }
-
     int printfCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
         if (args.empty()) {
             output << "Usage: printf FORMAT [ARGUMENTS...]" << std::endl;
