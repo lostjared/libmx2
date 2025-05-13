@@ -50,6 +50,7 @@ if(CMD)
             ${Readline_LIBRARIES}
         )
     endif()
+    target_compile_options(mxcmd-cli PRIVATE -Wall -pedantic)
 endif()
 
 
@@ -78,10 +79,9 @@ if(CONSOLE)
         ${SDL2_TTF_LIBRARIES} 
         ${SDL2_MIXER_LIBRARIES}    
     )
+    target_compile_options(cmd-console PRIVATE -Wall -pedantic)
 endif()
 
-target_compile_options(mxcmd-cli PRIVATE -Wall -pedantic)
-target_compile_options(cmd-console PRIVATE -Wall -pedantic)
 include(GNUInstallDirs)
 
 set_target_properties(mxcmd PROPERTIES
