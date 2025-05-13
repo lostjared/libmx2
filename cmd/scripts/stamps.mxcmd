@@ -1,0 +1,11 @@
+define prefix_files(ext) 
+begin
+	for i in $(ls | grep --r $(printf "%s$" ext) | sort)
+	do
+		fileext = $(exec $(printf "stat -f \"%%SB\" -t \"%%Y.%%m.%%d\" %s" i))
+		file_name = $(printf "%s-%s" fileext i)
+		mkdir --p "./dated"
+		cp i $(printf "./dated/%s" file_name)
+		printf "%s -> %s\n" i file_name
+	done
+end
