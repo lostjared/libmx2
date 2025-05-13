@@ -707,11 +707,7 @@ namespace cmd {
         state::GameState *gameState = state::getGameState();
         std::vector<std::string> expandedArgs;
         for (const auto& arg : args) {
-            if (arg.type == ARG_VARIABLE) {
-                expandedArgs.push_back(getVar(arg));
-            } else {
-                expandedArgs.push_back(arg.value);
-            }
+            expandedArgs.push_back(getVar(arg));
         }
         
         std::string formatStr = parseEscapeSequences(expandedArgs[0]);
