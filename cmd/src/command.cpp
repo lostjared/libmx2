@@ -91,23 +91,16 @@ namespace cmd {
             }
         }
         
-        const auto& pattern = args[patternIndex];
+        std::string patternStr = getVar(args[patternIndex]);
         std::vector<std::string> fileNames;
         for (size_t i = patternIndex + 1; i < args.size(); i++) {
-            std::string file_n = args[i].value;
-            if(args[i].type == ArgType::ARG_VARIABLE) {
-                try {
-                    state::GameState *s = state::getGameState();
-                    file_n = s->getVariable(args[i].value);
-                } catch(const state::StateException &) {
-                }
-            }
+            std::string file_n = getVar(args[i]);
             fileNames.push_back(file_n);
         }
         
         if (useRegex) {
             try {
-                std::regex re(pattern.value, std::regex::extended);
+                std::regex re(patternStr, std::regex::extended);
                 std::string line;
                 
                 if (!fileNames.empty()) {
@@ -133,7 +126,7 @@ namespace cmd {
                     }
                 }
             } catch (const std::regex_error& e) {
-                output << "grep: invalid regex pattern: " << pattern.value << " - " << e.what() << std::endl;
+                output << "grep: invalid regex pattern: " << patternStr << " - " << e.what() << std::endl;
                 return 1;
             }
         } else {
@@ -148,14 +141,14 @@ namespace cmd {
                     }
                     
                     while (std::getline(file, line)) {
-                        if (line.find(pattern.value) != std::string::npos) {
+                        if (line.find(patternStr) != std::string::npos) {
                             output << line << std::endl;
                         }
                     }
                 }
             } else {
                 while (std::getline(input, line)) {
-                    if (line.find(pattern.value) != std::string::npos) {
+                    if (line.find(patternStr) != std::string::npos) {
                         output << line << std::endl;
                     }
                 }
@@ -205,15 +198,7 @@ namespace cmd {
             output << "cd: expected exactly one argument" << std::endl;
             return 1;
         }
-        std::string path = args[0].value;
-        if(args[0].type == ArgType::ARG_VARIABLE) {
-            try {
-                state::GameState *s = state::getGameState();
-                path = s->getVariable(args[0].value);
-            } catch(const state::StateException  &e) {
-                throw std::runtime_error("cd: Could not find variable name");
-            }
-        }
+        std::string path = getVar(args[0]);
         try {
             std::filesystem::current_path(path);
             return 0;
@@ -224,20 +209,7 @@ namespace cmd {
     }
 
     int listCommand(const std::vector<Argument> &args, std::istream& input, std::ostream& output) {
-        std::string path = ".";
-        if (!args.empty()) {
-            path = args[0].value;
-            if(args[0].type == ArgType::ARG_VARIABLE) {
-                try {
-                    state::GameState *s = state::getGameState();
-                    path = s->getVariable(args[0].value);
-                } catch(const state::StateException &) {
-                    throw std::runtime_error("list: Could not find variable name.");
-                } catch(...) {
-
-                }
-            }
-        }
+        std::string path = args.empty() ? "." : getVar(args[0]);
         try {
             for (const auto& entry : std::filesystem::directory_iterator(path)) {
                 output << entry.path().filename().string() << std::endl;
@@ -259,15 +231,7 @@ namespace cmd {
             }
         } else {
             for (const auto& filename : args) {
-                std::string file_n = filename.value;
-                if(filename.type == ArgType::ARG_VARIABLE) {
-                    try {
-                        state::GameState *s = state::getGameState();
-                        file_n = s->getVariable(filename.value);
-                    } catch(const state::StateException  &e) {
-                        throw std::runtime_error("sort: Could not find varaible ");
-                    }
-                }
+                std::string file_n = getVar(filename);
                 std::ifstream file(file_n);
                 if (!file) {
                     output << "sort: " << file_n << ": No such file" << std::endl;
@@ -290,19 +254,8 @@ namespace cmd {
             output << "find: expected at least two arguments" << std::endl;
             return 1;
         }
-        std::string path = args[0].value;
-        std::string pattern = args[1].value;
-        state::GameState *s = state::getGameState();
-        try {
-            if(args[0].type == ArgType::ARG_VARIABLE) {
-                path = s->getVariable(args[0].value);
-            }
-            if(args[1].type == ArgType::ARG_VARIABLE) {
-                pattern = s->getVariable(args[1].value);
-            }
-        } catch(const state::StateException &e) {
-            throw  std::runtime_error("find: Could not find variable name.\n");
-        }
+        std::string path = getVar(args[0]);
+        std::string pattern = getVar(args[1]);
         
         try {
             for (const auto& entry : std::filesystem::recursive_directory_iterator(path)) {
@@ -336,15 +289,7 @@ namespace cmd {
         std::vector<std::string> dirs;
         bool success = true;
         for (const auto& arg : args) {
-            std::string a = arg.value;
-            state::GameState *s = state::getGameState();
-            try {
-                if(arg.type == ArgType::ARG_VARIABLE) {
-                    a = s->getVariable(arg.value);
-                }
-            } catch(const state::StateException  &e) {
-                throw std::runtime_error("mkdir: Could not find variable name");
-            }
+            std::string a = getVar(arg);
             if (a == "--p") {
                 parents = true;
             } else {
@@ -376,15 +321,7 @@ namespace cmd {
         std::vector<std::string> files;
         
         for (const auto& arg : args) {
-            std::string a = arg.value;
-            state::GameState *s = state::getGameState();
-            try {
-                if(arg.type == ArgType::ARG_VARIABLE) {
-                    a = s->getVariable(arg.value);
-                }
-            } catch(const state::StateException &e) {
-                throw std::runtime_error("cp: Could not find variable");
-            }
+            std::string a = getVar(arg);
             if (a == "--r" || a == "--R") {
                 recursive = true;
             } else {
@@ -422,34 +359,19 @@ namespace cmd {
             output << "mv: missing destination file operand after '" << (args.empty() ? "mv" : args[0].value) << "'" << std::endl;
             return 1;
         }
-        state::GameState *s = state::getGameState();
-        std::string dest = args.back().value;
-        try {
-            if (args.back().type == ArgType::ARG_VARIABLE) {
-                dest = s->getVariable(args.back().value);
-            }
-        }
-        catch(const state::StateException &e) {
-
-        }
+        
+        std::string dest = getVar(args.back());
+        
         bool success = true;
 
         for (size_t i = 0; i < args.size() - 1; ++i) {
-
-            std::string a = args[i].value;
-
-            try {
-                
-                if(args[i].type == ArgType::ARG_VARIABLE) {
-                    a = s->getVariable(args[i].value);
-                }
+            try {  
+                std::string a = getVar(args[i]);
                 std::filesystem::rename(a, dest);
             } catch (const std::filesystem::filesystem_error& e) {
-                output << "mv: cannot move '" << a << "' to '" << dest << "': " << e.what() << std::endl;
+                output << "mv: cannot move '" << args[i].value << "' to '" << dest << "': " << e.what() << std::endl;
                 success = false;
-            } catch(const state::StateException &e) {
-                throw std::runtime_error("mv: Could not find variable\n");
-            }
+            } 
         }
         
         return success ? 0 : 1;
@@ -462,12 +384,8 @@ namespace cmd {
         }
         bool success = true;
         for (const auto& file : args) {
-            std::string f = file.value;
             try {
-                state::GameState *s = state::getGameState();
-                if(file.type == ArgType::ARG_VARIABLE) {
-                    f = s->getVariable(file.value);
-                }
+                std::string f = getVar(file);
                 if (!std::filesystem::exists(f)) {
                     std::ofstream(f).close();
                 } else {
@@ -475,7 +393,7 @@ namespace cmd {
                     std::filesystem::last_write_time(f, now);
                 }
             } catch (const std::filesystem::filesystem_error& e) {
-                output << "touch: cannot touch '" << f << "': " << e.what() << std::endl;
+                output << "touch: cannot touch '" << file.value << "': " << e.what() << std::endl;
                 success = false;
             } catch(const state::StateException &e) { }
         }
@@ -599,16 +517,7 @@ namespace cmd {
         std::vector<std::string> files;
     
         for (const auto& arg : args) {
-            std::string a = arg.value;
-            if(arg.type == ArgType::ARG_VARIABLE) {
-                try {
-                    state::GameState *s = state::getGameState();
-                    a = s->getVariable(arg.value);
-                } catch(const state::StateException &e) {
-                    throw std::runtime_error("wc: Variable name not found");
-                }
-
-            }
+            std::string a = getVar(arg);
             if (a == "--l") {
                 countLines = true;
             } else if (a == "--w") {
@@ -693,14 +602,7 @@ namespace cmd {
         std::string filename;
         
         for (const auto& arg : args) {
-            std::string a = arg.value;
-            try {
-                if(arg.type == ArgType::ARG_VARIABLE) {
-                    state::GameState *s = state::getGameState();
-                    a = s->getVariable(arg.value);
-                }
-            } catch (const state::StateException &e) {}
-
+            std::string a = getVar(arg);
             if (a.size()>2 && a[0] == '-' && a[1] == '-') {
                 if (a.find('n') != std::string::npos) {
                     suppressOutput = true;
@@ -832,11 +734,7 @@ namespace cmd {
         std::vector<std::string> expandedArgs;
         for (const auto& arg : args) {
             if (arg.type == ARG_VARIABLE) {
-                try {
-                    expandedArgs.push_back(gameState->getVariable(arg.value));
-                } catch (const state::StateException& e) {
-                    throw std::runtime_error("Variable: " + arg.value + " is not defined");
-                }
+                expandedArgs.push_back(getVar(arg));
             } else {
                 expandedArgs.push_back(arg.value);
             }
@@ -1075,13 +973,7 @@ namespace cmd {
         state::GameState* gameState = state::getGameState();
         auto getValue = [&gameState](const cmd::Argument& arg) -> std::string {
             if (arg.type == cmd::ARG_VARIABLE) {
-                try {
-                    return gameState->getVariable(arg.value);
-                } catch (const state::StateException&) {
-                    throw std::runtime_error(" Error variable: " + arg.value + " not found");
-                    return ""; 
-                }
-
+                return getVar(arg);
             }
             return arg.value;
         };
@@ -1442,19 +1334,9 @@ namespace cmd {
     int execCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
         std::ostringstream all_args;
         for(auto &arg : args) {
-            if(arg.type == ArgType::ARG_VARIABLE) {
-                state::GameState *s = state::getGameState();
-                std::string opval;
-                try {
-                    opval = s->getVariable(arg.value);
-
-                } catch(const state::StateException &) {
-                    opval = arg.value;
-                }
-                all_args << opval << " ";
-            } else if(arg.type == ArgType::ARG_STRING_LITERAL) {
-                all_args << arg.value << " ";
-            } else if(arg.type == ArgType::ARG_LITERAL) {
+            try {
+                all_args << getVar(arg) << " ";
+            } catch(const std::runtime_error &) {
                 all_args << arg.value << " ";
             }
         }
