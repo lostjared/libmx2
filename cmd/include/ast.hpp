@@ -785,60 +785,8 @@ namespace cmd {
         mutable std::ostream* output = nullptr;
         bool returnSignal = false;
 
-        void executeNode(const std::shared_ptr<cmd::Node>& node, std::istream& input, std::ostream& output) {
-            if (returnSignal) {
-                return;
-            }
+        void executeNode(const std::shared_ptr<cmd::Node>& node, std::istream& input, std::ostream& output);
 
-            if (auto returnStmt = std::dynamic_pointer_cast<cmd::Return>(node)) {
-                executeReturn(returnStmt, input, output);
-            } else if (auto cmdDef = std::dynamic_pointer_cast<cmd::CommandDefinition>(node)) {
-                executeCommandDefinition(cmdDef, input, output);
-            } else if (auto cmd = std::dynamic_pointer_cast<cmd::Command>(node)) {
-                executeCommand(cmd, input, output);
-            } 
-            else if (auto seq = std::dynamic_pointer_cast<cmd::Sequence>(node)) {
-                executeSequence(seq, input, output);
-            }
-            else if (auto pipe = std::dynamic_pointer_cast<cmd::Pipeline>(node)) {
-                executePipeline(pipe, input, output);
-            }
-            else if (auto redir = std::dynamic_pointer_cast<cmd::Redirection>(node)) {
-                executeRedirection(redir, input, output);
-            }
-            else if (auto varAssign = std::dynamic_pointer_cast<cmd::VariableAssignment>(node)) {
-                executeVariableAssignment(varAssign, input, output);
-            }
-            else if (auto logicalAnd = std::dynamic_pointer_cast<cmd::LogicalAnd>(node)) {
-                executeLogicalAnd(logicalAnd, input, output);
-            }
-            else if (auto expr = std::dynamic_pointer_cast<cmd::Expression>(node)) {
-                if (auto unaryExpr = std::dynamic_pointer_cast<cmd::UnaryExpression>(expr)) {
-                    unaryExpr->evaluateNumber(*this); 
-                } else {
-                    expr->evaluate(*this);  // For other expressions
-                }
-            }
-            else if (auto ifStmt = std::dynamic_pointer_cast<cmd::IfStatement>(node)) {
-                executeIfStatement(ifStmt, input, output);
-            }
-            else if (auto whileStmt = std::dynamic_pointer_cast<cmd::WhileStatement>(node)) {
-                executeWhileStatement(whileStmt, input, output);
-            }
-            else if (auto forStmt = std::dynamic_pointer_cast<cmd::ForStatement>(node)) {
-                executeForStatement(forStmt, input, output);
-            }
-            else if (auto breakStmt = std::dynamic_pointer_cast<cmd::Break>(node)) {
-                throw BreakException();
-            }
-            else if (auto continueStmt = std::dynamic_pointer_cast<cmd::Continue>(node)) {
-                throw ContinueException();
-            }
-            else {
-                throw std::runtime_error("Unknown node type");
-            }
-        }
-        
         void executeCommand(const std::shared_ptr<cmd::Command>& cmd, std::istream& input, std::ostream& output) {
 
             if (cmd->args.size() == 1 && 
@@ -1033,21 +981,64 @@ namespace cmd {
         }
 
         void executeForStatement(const std::shared_ptr<cmd::ForStatement>& forStmt,
-                                 std::istream& input, std::ostream& output) {
-            
+                         std::istream& input, std::ostream& output) {
+    
             std::optional<std::string> originalValue = getVariable(forStmt->variable);
             bool hadOriginalValue = originalValue.has_value();
             try {
                 for (const auto& value : forStmt->values) {
-                    if (value.type == ARG_VARIABLE) {
+                    if (value.type == ARG_COMMAND_SUBST && value.cmdNode) {
+                        std::stringstream cmdInput, cmdOutput;
+                        executeDirectly(value.cmdNode, cmdInput, cmdOutput);
+                        std::string result = cmdOutput.str();
+                        while (!result.empty() && (result.back() == '\n' || result.back() == '\r')) {
+                            result.pop_back();
+                        }
+                        if (result.find('\n') != std::string::npos) {
+                            std::istringstream lineStream(result);
+                            std::string line;
+                            while (std::getline(lineStream, line)) {
+                                if (!line.empty()) {
+                                    setVariable(forStmt->variable, line);
+                                    try {
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+                                        if (program_running == 0) {
+                                            output << "- [ Loop interrupted ]- " << std::endl;
+                                            break;
+                                        }
+#endif
+                                        executeNode(forStmt->body, input, output);
+                                    } catch (const ContinueException&) {
+                                        continue;
+                                    }
+                                }
+                            }
+                        } else {
+                            std::istringstream wordStream(result);
+                            std::string word;
+                            while (wordStream >> word) {
+                                setVariable(forStmt->variable, word);
+                                try {
+        #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+                                    if (program_running == 0) {
+                                        output << "-[ Loop interrupted ]- " << std::endl;
+                                        break;
+                                    }
+        #endif
+                                    executeNode(forStmt->body, input, output);
+                                } catch (const ContinueException&) {
+                                    continue;
+                                }
+                            }
+                        }
+                    }
+                    else if (value.type == ARG_VARIABLE) {
                         std::optional<std::string> varValue = getVariable(value.value);
                         
                         if (varValue.has_value()) {
                             std::string valueStr = varValue.value();
                             
-                        
                             if (valueStr.find('\n') != std::string::npos) {
-                        
                                 std::istringstream lineStream(valueStr);
                                 std::string line;
                                 while (std::getline(lineStream, line)) {
@@ -1086,7 +1077,6 @@ namespace cmd {
                             } else {
                                 setVariable(forStmt->variable, valueStr);
                                 try {
-                                    
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
                                     if (program_running == 0) {
                                         output << "-[ Loop interrupted ]- " << std::endl;
@@ -1097,10 +1087,10 @@ namespace cmd {
                                 } catch (const ContinueException&) {
                                     continue;
                                 }
-
                             }
                         }
-                    } else {
+                    } 
+                    else {
                         std::string literalValue = value.value;
                         if (literalValue.size() >= 2 && 
                             ((literalValue.front() == '"' && literalValue.back() == '"') ||
@@ -1114,7 +1104,6 @@ namespace cmd {
                                     if (!line.empty()) {
                                         setVariable(forStmt->variable, line);
                                         try {
-                                            
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
                                             if (program_running == 0) {
                                                 output << "-[ Loop interrupted ]- " << std::endl;
@@ -1133,7 +1122,6 @@ namespace cmd {
                 
                         setVariable(forStmt->variable, literalValue);
                         try {
-                            
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
                             if (program_running == 0) {
                                 output << "-[ Loop interrupted ]- " << std::endl;
@@ -1146,10 +1134,8 @@ namespace cmd {
                         }
                     }
                 }
-            } catch(const BreakException&) {
-        
-            }
-            
+            } catch(const BreakException&) {}
+
             if (hadOriginalValue) {
                 setVariable(forStmt->variable, originalValue.value());
             } else {
@@ -1162,8 +1148,7 @@ namespace cmd {
             }
         }
     };
-
-
+    
     class BinaryExpression : public Expression {
     public:
         enum OpType { ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULO };

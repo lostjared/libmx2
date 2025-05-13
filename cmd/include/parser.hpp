@@ -697,6 +697,17 @@ namespace cmd {
                         arg.type = ARG_LITERAL; 
                         values.push_back(arg);
                     }
+                    else if (peek().getTokenType() == types::TokenType::TT_SYM && peek().getTokenValue() == "$") {
+                        advance();
+                        auto cmdNode = parseCommandSubstitution();
+                        Argument arg;
+                        std::ostringstream stream;
+                        cmdNode->print(stream);
+                        arg.value = "$(" + stream.str() + ")";
+                        arg.type = ARG_COMMAND_SUBST;
+                        arg.cmdNode = cmdNode;
+                        values.push_back(arg);
+                    }
                     else {
                         break;
                     }

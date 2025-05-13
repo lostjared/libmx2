@@ -112,6 +112,64 @@ namespace cmd {
         throw std::runtime_error("Unknown unary operator");
     }
 
+     void AstExecutor::executeNode(const std::shared_ptr<cmd::Node>& node, std::istream& input, std::ostream& output) {
+        if (returnSignal) {
+            return;
+        }
+
+        if (auto returnStmt = std::dynamic_pointer_cast<cmd::Return>(node)) {
+            executeReturn(returnStmt, input, output);
+        } else if (auto cmdDef = std::dynamic_pointer_cast<cmd::CommandDefinition>(node)) {
+            executeCommandDefinition(cmdDef, input, output);
+        } else if (auto cmd = std::dynamic_pointer_cast<cmd::Command>(node)) {
+            executeCommand(cmd, input, output);
+        } 
+        else if (auto seq = std::dynamic_pointer_cast<cmd::Sequence>(node)) {
+            executeSequence(seq, input, output);
+        }
+        else if (auto pipe = std::dynamic_pointer_cast<cmd::Pipeline>(node)) {
+            executePipeline(pipe, input, output);
+        }
+        else if (auto redir = std::dynamic_pointer_cast<cmd::Redirection>(node)) {
+            executeRedirection(redir, input, output);
+        }
+        else if (auto varAssign = std::dynamic_pointer_cast<cmd::VariableAssignment>(node)) {
+            executeVariableAssignment(varAssign, input, output);
+        }
+        else if (auto logicalAnd = std::dynamic_pointer_cast<cmd::LogicalAnd>(node)) {
+            executeLogicalAnd(logicalAnd, input, output);
+        }
+        else if (auto expr = std::dynamic_pointer_cast<cmd::Expression>(node)) {
+            if (auto unaryExpr = std::dynamic_pointer_cast<cmd::UnaryExpression>(expr)) {
+                unaryExpr->evaluateNumber(*this); 
+            } else {
+                expr->evaluate(*this);  
+            }
+        }
+        else if (auto cmdSubst = std::dynamic_pointer_cast<cmd::CommandSubstitution>(node)) {
+            output << cmdSubst->evaluate(*this);
+        }
+        else if (auto ifStmt = std::dynamic_pointer_cast<cmd::IfStatement>(node)) {
+            executeIfStatement(ifStmt, input, output);
+        }
+        else if (auto whileStmt = std::dynamic_pointer_cast<cmd::WhileStatement>(node)) {
+            executeWhileStatement(whileStmt, input, output);
+        }
+        else if (auto forStmt = std::dynamic_pointer_cast<cmd::ForStatement>(node)) {
+            executeForStatement(forStmt, input, output);
+        }
+        else if (auto breakStmt = std::dynamic_pointer_cast<cmd::Break>(node)) {
+            throw BreakException();
+        }
+        else if (auto continueStmt = std::dynamic_pointer_cast<cmd::Continue>(node)) {
+            throw ContinueException();
+        }
+        else {
+            throw std::runtime_error("Unknown node type");
+        }
+    }
+        
+
     CommandRegistry AstExecutor::registry;
 
     std::string getVar(const Argument &arg) {
