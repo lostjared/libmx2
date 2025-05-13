@@ -39,6 +39,7 @@ namespace cmd {
     class VariableReference;
     class VariableAssignment;
     class LogicalAnd;
+    class LogicalOr;
     class BinaryExpression;
     class UnaryExpression;
     class CommandSubstitution;
@@ -230,6 +231,33 @@ namespace cmd {
             left->print(out, indent + 6);
             out << spaces << "    </td></tr>\n";
             out << spaces << "    <tr><td colspan='2' class='symbol'>&amp;&amp;</td></tr>\n";
+            out << spaces << "    <tr><th colspan='2'>Right Operand</th></tr>\n";
+            out << spaces << "    <tr><td colspan='2'>\n";
+            right->print(out, indent + 6);
+            out << spaces << "    </td></tr>\n";
+            out << spaces << "  </table>\n";
+            out << spaces << "</div>\n";
+        }
+        
+        std::shared_ptr<Node> left;
+        std::shared_ptr<Node> right;
+    };
+
+    class LogicalOr : public Node {
+    public:
+        LogicalOr(std::shared_ptr<Node> left, std::shared_ptr<Node> right)
+            : left(std::move(left)), right(std::move(right)) {}
+        
+        void print(std::ostream& out, int indent = 0) const override {
+            std::string spaces = getIndent(indent);
+            out << spaces << "<div class='node logical-or'>\n";
+            out << spaces << "  <h3>LogicalOr</h3>\n";
+            out << spaces << "  <table>\n";
+            out << spaces << "    <tr><th colspan='2'>Left Operand</th></tr>\n";
+            out << spaces << "    <tr><td colspan='2'>\n";
+            left->print(out, indent + 6);
+            out << spaces << "    </td></tr>\n";
+            out << spaces << "    <tr><td colspan='2' class='symbol'>||</td></tr>\n";
             out << spaces << "    <tr><th colspan='2'>Right Operand</th></tr>\n";
             out << spaces << "    <tr><td colspan='2'>\n";
             right->print(out, indent + 6);
@@ -933,6 +961,13 @@ namespace cmd {
             executeNode(logicalAnd->left, input, output);
             if (lastExitStatus == 0) {
                 executeNode(logicalAnd->right, input, output);
+            }
+        }
+
+        void executeLogicalOr(const std::shared_ptr<cmd::LogicalOr>& logicalOr, std::istream& input, std::ostream& output) {
+            executeNode(logicalOr->left, input, output);
+            if (lastExitStatus != 0) {
+                executeNode(logicalOr->right, input, output);
             }
         }
 

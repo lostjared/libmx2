@@ -139,6 +139,9 @@ namespace cmd {
         else if (auto logicalAnd = std::dynamic_pointer_cast<cmd::LogicalAnd>(node)) {
             executeLogicalAnd(logicalAnd, input, output);
         }
+        else if (auto logicalOr = std::dynamic_pointer_cast<cmd::LogicalOr>(node)) {
+            executeLogicalOr(logicalOr, input, output);
+        }
         else if (auto expr = std::dynamic_pointer_cast<cmd::Expression>(node)) {
             if (auto unaryExpr = std::dynamic_pointer_cast<cmd::UnaryExpression>(expr)) {
                 unaryExpr->evaluateNumber(*this); 

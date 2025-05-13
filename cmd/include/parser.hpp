@@ -305,6 +305,11 @@ namespace cmd {
                         auto right = parseCommand();
                         left = std::make_shared<cmd::LogicalAnd>(left, right);
                     }
+                    else if (peek().getTokenValue() == "||") {
+                        advance();
+                        auto right = parseCommand();
+                        left = std::make_shared<cmd::LogicalOr>(left, right);
+                    }
                     else {
                         break;
                     }
