@@ -329,19 +329,36 @@ namespace html {
             }
             
             static std::string formatEscapeSequences(const std::string& input) {
+           
                 std::string result;
                 result.reserve(input.size() * 2);
                 
                 for (size_t i = 0; i < input.size(); ++i) {
-                    switch (input[i]) {
-                        case '\n': result += "\\n"; break;
-                        case '\t': result += "\\t"; break;
-                        case '\r': result += "\\r"; break;
-                        case '\f': result += "\\f"; break;
-                        case '\v': result += "\\v"; break;
-                        case '\b': result += "\\b"; break;
-                        case '\\': result += "\\\\"; break;
-                        default: result += input[i]; break;
+                    if (i + 1 < input.size() && input[i] == '\\') {
+                        switch (input[i+1]) {
+                               case '"':  
+                                result += "\\\""; 
+                                i++; 
+                                break;
+                            case '\'': result += "\\'"; i++; break;
+                            case 'n':  result += "\\n"; i++; break;
+                            case 't':  result += "\\t"; i++; break;
+                            case 'r':  result += "\\r"; i++; break;
+                            case 'f':  result += "\\f"; i++; break;
+                            case 'v':  result += "\\v"; i++; break;
+                            case 'b':  result += "\\b"; i++; break;
+                            case '\\': result += "\\\\"; i++; break;
+                            default:   result += "\\"; break; 
+                        }
+                    } else {
+                        switch (input[i]) {
+                            case '<': result += "&lt;"; break;
+                            case '>': result += "&gt;"; break;
+                            case '&': result += "&amp;"; break;
+                            case '"': result += "\""; break;
+                            case '\'': result += "&#39;"; break;
+                            default: result += input[i]; break;
+                        }
                     }
                 }
                 
@@ -357,7 +374,6 @@ namespace html {
                     numStr << num;
                     return "<span class=\"number\">" + escapeHtml(numStr.str()) + "</span>";
                 } catch(const std::exception&) {
-                    // If not a valid number, return as is
                     return "<span class=\"identifier\">" + escapeHtml(value) + "</span>";
                 }
             }
@@ -541,7 +557,16 @@ namespace html {
                     line += "<span class=\"variable\">" + escapeHtml(varAssign->name) + "</span> ";
                     line += "<span class=\"operator\">=</span> ";
                     
-                    if (auto exprNode = std::dynamic_pointer_cast<cmd::Expression>(varAssign->value)) {
+                    if (auto commandSubst = std::dynamic_pointer_cast<cmd::CommandSubstitution>(varAssign->value)) {
+                        line += "<span class=\"operator\">$(</span>";
+                        if (commandSubst->command) {
+                            line += formatNodeInline(commandSubst->command);
+                        } else {
+                            line += "<span class=\"comment\">/* empty command */</span>";
+                        }
+                        line += "<span class=\"operator\">)</span>";
+                    }
+                    else if (auto exprNode = std::dynamic_pointer_cast<cmd::Expression>(varAssign->value)) {
                         line += formatExpressionInline(exprNode);
                     } else {
                         line += "<span class=\"comment\">/* non-expression value */</span>";

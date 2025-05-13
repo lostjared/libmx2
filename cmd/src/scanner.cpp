@@ -325,7 +325,7 @@ namespace scan {
                         case 't': tok_value += '\t'; break;
                         case 'r': tok_value += '\r'; break;
                         case '\\': tok_value += '\\'; break;
-                        case '\"': tok_value += '\"'; break;
+                        case '\"': tok_value += "\\\""; break;
                         case '\'': tok_value += '\''; break;
                         default:
                             tok_value += '\\';
