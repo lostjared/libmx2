@@ -28,6 +28,7 @@ namespace cmd {
             registry.registerTypedCommand("wc", cmd::wcCommand);
             registry.registerTypedCommand("sed", cmd::sedCommand);
             registry.registerTypedCommand("printf", cmd::printfCommand);
+            registry.registerTypedCommand("stringf", cmd::printfCommand);
             registry.registerTypedCommand("debug_set", cmd::debugSet);
             registry.registerTypedCommand("debug_get", cmd::debugGet);
             registry.registerCommand("debug_list", cmd::debugList);
