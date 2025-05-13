@@ -903,7 +903,7 @@ namespace cmd {
                 if (auto unaryExpr = std::dynamic_pointer_cast<cmd::UnaryExpression>(varAssign->value)) {
                     if ((unaryExpr->op == cmd::UnaryExpression::INCREMENT || 
                          unaryExpr->op == cmd::UnaryExpression::DECREMENT)) {
-                        double result = unaryExpr->evaluateNumber(*this);
+                        unaryExpr->evaluateNumber(*this);
                         if (unaryExpr->position == cmd::UnaryExpression::PREFIX) {
                             auto varRef = std::dynamic_pointer_cast<cmd::VariableReference>(unaryExpr->operand);
                             if (varRef && varRef->name == varAssign->name) {

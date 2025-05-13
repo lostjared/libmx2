@@ -9,6 +9,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+ 
 add_library(mxcmd STATIC
     src/scanner.cpp
     src/string_buffer.cpp
@@ -32,6 +33,8 @@ list(APPEND header
     ${CMAKE_SOURCE_DIR}/include/version_info.hpp
 )
 include_directories(${PROJECT_SOURCE_DIR}/include ${CMAKE_INSTALL_PREFIX}/include)
+
+target_compile_options(mxcmd PRIVATE -Wall -pedantic)
 
 if(CMD)
     find_library(Readline_LIBRARIES NAMES readline)
@@ -77,6 +80,8 @@ if(CONSOLE)
     )
 endif()
 
+target_compile_options(mxcmd-cli PRIVATE -Wall -pedantic)
+target_compile_options(cmd-console PRIVATE -Wall -pedantic)
 include(GNUInstallDirs)
 
 set_target_properties(mxcmd PROPERTIES

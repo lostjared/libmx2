@@ -85,7 +85,7 @@ namespace cmd {
             useRegex = true;
             patternIndex = 1;
             
-            if (args.size() <= patternIndex) {
+            if (static_cast<int>(args.size()) <= patternIndex) {
                 output << "grep: missing pattern after " << args[0].value << std::endl;
                 return 1;
             }
@@ -477,7 +477,7 @@ namespace cmd {
                 lines.push_back(line);
             }
             
-            size_t start = lines.size() > numLines ? lines.size() - numLines : 0;
+            size_t start = lines.size() > static_cast<size_t>(numLines) ? lines.size() - static_cast<size_t>(numLines) : 0;
             for (size_t i = start; i < lines.size(); ++i) {
                 output << lines[i] << std::endl;
             }
@@ -500,7 +500,7 @@ namespace cmd {
                     lines.push_back(line);
                 }
                 
-                size_t start = lines.size() > numLines ? lines.size() - numLines : 0;
+                size_t start = lines.size() > static_cast<size_t>(numLines) ? lines.size() -static_cast<size_t>(numLines) : 0;
                 for (size_t i = start; i < lines.size(); ++i) {
                     output << lines[i] << std::endl;
                 }
@@ -704,7 +704,6 @@ namespace cmd {
             output << "Print ARGUMENTS according to FORMAT" << std::endl;
             return 1;
         }
-        state::GameState *gameState = state::getGameState();
         std::vector<std::string> expandedArgs;
         for (const auto& arg : args) {
             expandedArgs.push_back(getVar(arg));
@@ -904,14 +903,12 @@ namespace cmd {
     }
  
     int debugSearch(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
-        bool useRegex = false;
         int patternIndex = 0;
         std::string pattern = "";
         if (!args.empty() && (args[0] == "-r" || args[0] == "-e")) {
-            useRegex = true;
             patternIndex = 1;
             
-            if (args.size() <= patternIndex) {
+            if (static_cast<int>(args.size()) <= patternIndex) {
                 output << "grep: missing pattern after " << args[0] << std::endl;
                 return 1;
             }
@@ -1150,7 +1147,7 @@ namespace cmd {
         }
         int index = std::stoi(op2);
 
-        if(index >= 0 && index < values.size())
+        if(index >= 0 && index < static_cast<int>(values.size()))
             output << values.at(index);
         return 0;
     }
@@ -1200,7 +1197,7 @@ namespace cmd {
         val[0] = std::stoi(operands[1]);
         val[1] = std::stoi(operands[2]);
 
-        if(val[0] >= 0 && val[0] < operands[0].length())  {
+        if(val[0] >= 0 && val[0] < static_cast<int>(operands[0].length()))  {
             std::string temp = operands[0].substr(val[0], val[1]);
             output << temp;
             return 0;
