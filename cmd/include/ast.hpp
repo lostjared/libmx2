@@ -158,6 +158,8 @@ namespace cmd {
         std::shared_ptr<Node> cmdNode = nullptr;
     };
 
+    std::string getVar(const Argument &arg);
+
     class Command : public Node {
     public:
         Command(std::string name, std::vector<Argument> args) 

@@ -12,9 +12,6 @@
 
 
 namespace cmd {
-    // helper func
-    std::string getVar(const Argument &arg);
-    // the commands
     int exitCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
     int echoCommand(const std::vector<Argument>& args, std::istream& input, std::ostream& output); 
     int catCommand(const std::vector<Argument>& args, std::istream& input, std::ostream& output);
@@ -53,7 +50,5 @@ namespace cmd {
     int strtokCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
     int execCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
     int commandListCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
-    
-
 }
 #endif

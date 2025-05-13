@@ -1208,30 +1208,6 @@ namespace cmd {
         }
         return 0;
     }
-
-    std::string getVar(const Argument &arg) {
-        std::string a = arg.value;
-        if(arg.type == ArgType::ARG_VARIABLE) {
-            try {
-                state::GameState  *s = state::getGameState();
-                a = s->getVariable(arg.value);
-            } catch(const state::StateException &) {
-                throw std::runtime_error("Variable name: " + arg.value + " not found");
-            }
-        } else if (arg.type == ARG_COMMAND_SUBST && arg.cmdNode) {
-            AstExecutor executor;
-            std::stringstream input, output;
-            executor.executeDirectly(arg.cmdNode, input, output);
-            std::string result = output.str();
-            while (!result.empty() && (result.back() == '\n' || result.back() == '\r')) {
-                result.pop_back();
-            }
-            return result;
-        }
-        
-        return a;
-    }
-
     // index <string> start len
     int indexCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
         if(args.empty() || args.size() != 3) {
