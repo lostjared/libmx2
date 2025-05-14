@@ -53,6 +53,25 @@ namespace cmd {
         return 1;
     }
 
+    void CommandRegistry::registerExternCommand(const std::string& name, const ExternCommandInfo& info) {
+        externCommands[name] = info;
+        auto it = commands.find(name);
+        if (it != commands.end()) {
+            throw std::runtime_error("Command " + name + " already registered");
+        }
+    }
+        
+    int CommandRegistry::executeExternCommand(const std::string& name, const std::vector<Argument>& args, 
+                                std::istream& input, std::ostream& output) {
+                                
+                                
+                                
+                                
+                                
+                                
+    
+        return 0;
+    }
     
     int CommandRegistry::executeUserDefinedCommand(
         const std::string& name,

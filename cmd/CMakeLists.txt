@@ -117,6 +117,11 @@ install(TARGETS mxcmd
     PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/mxcmd  
 )
 
+install(
+    FILES ${CMAKE_SOURCE_DIR}/include/3rdparty/dylib.hpp
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/mxcmd/3rdparty
+)
+
 install(EXPORT mxcmdTargets
     FILE mxcmdTargets.cmake
     NAMESPACE libmxcmd::  
