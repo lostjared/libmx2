@@ -939,18 +939,10 @@ namespace cmd {
         if (args.empty()) {
             return 1; 
         }
-        state::GameState* gameState = state::getGameState();
-        auto getValue = [&gameState](const cmd::Argument& arg) -> std::string {
-            if (arg.type == cmd::ARG_VARIABLE) {
-                return getVar(arg);
-            }
-            return arg.value;
-        };
 
         if (args.size() == 2) {
-
             const std::string& op = args[0].value;
-            const std::string value = getValue(args[1]);
+            const std::string value = getVar(args[1]);
             
             if (op == "--z") {
                 return value.empty() ? 0 : 1; 
@@ -968,9 +960,9 @@ namespace cmd {
         }
 
         if (args.size() >= 3) {
-            const std::string leftValue = getValue(args[0]);
+            const std::string leftValue = getVar(args[0]);
             const std::string& op = args[1].value;
-            const std::string rightValue = getValue(args[2]);
+            const std::string rightValue = getVar(args[2]);
             if (op == "=") {
                 return leftValue == rightValue ? 0 : 1; 
             } else if (op == "!=") {
@@ -1035,7 +1027,7 @@ namespace cmd {
             }
         }
         if (args.size() == 1) {
-            return !getValue(args[0]).empty() ? 0 : 1;
+            return !getVar(args[0]).empty() ? 0 : 1;
         }
         return 1;
     }
