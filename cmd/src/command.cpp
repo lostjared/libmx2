@@ -1443,7 +1443,7 @@ namespace cmd {
             for(auto &arg : args) {
                 output << arg.value << " ";
             }
-            output << "@\n";
+            output << "\n";
             return 1;
         }
         std::string libPath = getVar(args[0]);
