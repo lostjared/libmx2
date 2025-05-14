@@ -1456,6 +1456,8 @@ namespace cmd {
             output << "extern: failed to load library " << libPath << "\n";
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
             program_running = 0;
+#else
+            exit(0);
 #endif
             return 1;
         }
@@ -1463,6 +1465,8 @@ namespace cmd {
             output << "extern: function " << funcName << " not found in library " << libPath << "\n";
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
             program_running = 0;
+#else
+            exit(0);
 #endif
             return 1;
         }
@@ -1479,6 +1483,8 @@ namespace cmd {
             output << "extern: failed to get function pointer for " << funcName << "\n";
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
             program_running = 0;
+#else
+            exit(0);
 #endif
             return 1;
         }
