@@ -20,7 +20,10 @@ namespace cmd {
         userDefinedCommands[name] = info;
     }
 
-    
+    bool CommandRegistry::isUserDefinedCommand(const std::string& name) const {
+        return userDefinedCommands.find(name) != userDefinedCommands.end();
+    }
+
     int CommandRegistry::executeCommand(const std::string& name,
                                         const std::vector<Argument>& args,
                                         std::istream& input,
@@ -61,7 +64,6 @@ namespace cmd {
         state::GameState* gameState = state::getGameState();
         std::unordered_map<std::string, std::optional<std::string>> origValues;
 
-        
         for (size_t i = 0; i < std::min(args.size(), info.parameters.size()); ++i) {
             const auto& paramName = info.parameters[i];
         
@@ -74,7 +76,6 @@ namespace cmd {
 
             try {
                 if (args[i].type == ARG_VARIABLE) {
-        
                     std::string val;
                     try {
                         val = gameState->getVariable(args[i].value);
@@ -84,12 +85,21 @@ namespace cmd {
                     }
                     gameState->setVariable(paramName, val);
                 }
+                else if (args[i].type == ARG_COMMAND_SUBST && args[i].cmdNode) {
+                    AstExecutor executor;
+                    std::stringstream cmdInput, cmdOutput;
+                    executor.executeDirectly(args[i].cmdNode, cmdInput, cmdOutput);
+                    std::string result = cmdOutput.str();
+                    while (!result.empty() && (result.back() == '\n' || result.back() == '\r')) {
+                        result.pop_back();
+                    }
+                    gameState->setVariable(paramName, result);
+                }
                 else {
                     gameState->setVariable(paramName, args[i].value);
                 }
             }
             catch (const std::exception& e) {
-        
                 for (auto const & kv : origValues) {
                     if (kv.second.has_value())
                         gameState->setVariable(kv.first, *kv.second);
@@ -116,14 +126,12 @@ namespace cmd {
             output << name << ": execution failed: " << e.what() << "\n";
             result = 1;
         }
-
         for (auto const & kv : origValues) {
             if (kv.second.has_value())
                 gameState->setVariable(kv.first, *kv.second);
             else
                 gameState->clearVariable(kv.first);
         }
-
         return result;
     }
 
@@ -153,4 +161,4 @@ namespace cmd {
         return commands.empty() && typedCommands.empty() && userDefinedCommands.empty();
     }
 
-} 
+}

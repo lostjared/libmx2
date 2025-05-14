@@ -33,6 +33,7 @@ namespace cmd {
 
         void printInfo(std::ostream &out);
         bool empty() const;
+        bool isUserDefinedCommand(const std::string& name) const;
 
     private:
         int executeUserDefinedCommand(const std::string& name, const UserDefinedCommandInfo& info,

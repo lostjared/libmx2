@@ -13,4 +13,10 @@ exec $(printf "cp -rfv /usr/local/include/mxcmd %s/include/" folder)
 exec $(printf "cp -rfv /usr/local/lib/cmake/libmxcmd %s/library/lib/cmake/" folder)
 end
 
-create_release "mxcmd-release"
+pos = $(argv "length")
+if test pos --eq 1
+then
+create_release $(argv 0)
+else
+printf "error: requires one  arguments folder to build\n"
+fi
