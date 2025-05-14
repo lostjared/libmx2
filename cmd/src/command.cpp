@@ -1078,7 +1078,11 @@ namespace cmd {
         } catch (const std::exception &e) {
             output << "cmd: Error in " << filename << ": " << e.what() << std::endl;
             return 1;
-        } catch (...) {
+        } 
+        catch(const AstFailure &e) {
+            throw AstFailure("Exception: Script: " + filename + " execution failed.\n");
+        } 
+        catch (...) {
             output << "cmd: Unknown error occurred while executing " << filename << std::endl;
             return 1;
         }
@@ -1119,11 +1123,11 @@ namespace cmd {
         } catch (const std::exception &e) {
             output << "cmd: Error in " << op1 << ": " << e.what() << std::endl;
             return 1;
-        } catch (...) {
+        }
+        catch (...) {
             output << "cmd: Unknown error occurred while executing " << op1 << std::endl;
             return 1;
         }
-
         return 0;
     }
 

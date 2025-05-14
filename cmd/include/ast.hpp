@@ -675,8 +675,6 @@ namespace cmd {
                 executeNode(node, defaultInput, defaultOutput);
             } catch (const std::exception& e) {
                 defaultOutput << "Exception: " << e.what() << std::endl;
-            } catch(const AstFailure &e) {
-                defaultOutput << "Failure: " << e.what() << std::endl;
             }
         }
 
@@ -861,7 +859,7 @@ namespace cmd {
             lastExitStatus = registry.executeCommand(cmd->name, cmd->args, input, output);
             if (lastExitStatus != 0 && cmd->name != "test") {
                 //output << cmd->name << ": command failed with exit status " << lastExitStatus << std::endl;
-                throw std::runtime_error(cmd->name + ": command failed with exit status " + std::to_string(lastExitStatus));        
+                throw AstFailure(cmd->name + ": command failed with exit status " + std::to_string(lastExitStatus));        
             }
         }
         

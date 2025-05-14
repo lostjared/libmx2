@@ -145,10 +145,13 @@ int main(int argc, char **argv) {
                 } catch (const scan::ScanExcept &e) {
                     std::cerr << "Scan error: " << e.why() << std::endl;
                 } catch (const std::exception &e) {
-                    std::cerr << "Error: " << e.what() << std::endl;
-                }  catch (const state::StateException &e) {
+                    std::cerr << "Exception: " << e.what() << std::endl;
+                } catch(const cmd::AstFailure &e) {
+                    std::cerr << "Exception: " << e.what() << std::endl;
+                } catch (const state::StateException &e) {
                     std::cerr << "State error: " << e.what() << std::endl;;
-                } catch (...) {
+                }
+                 catch (...) {
                     std::cerr << "Unknown error occurred." << std::endl;
                 }
             }
@@ -156,7 +159,9 @@ int main(int argc, char **argv) {
         } catch (const scan::ScanExcept &e) {
             std::cerr << "Scan error: " << e.why() << std::endl;
         } catch (const std::exception &e) {
-            std::cerr << "Error: " << e.what() << std::endl;
+            std::cerr << "Exception: " << e.what() << std::endl;
+        } catch (const cmd::AstFailure &e) {
+            std::cerr << "Exception: " << e.what() << std::endl;
         } catch (...) {
             std::cerr << "Unknown error occurred." << std::endl;
         }
@@ -220,7 +225,9 @@ int main(int argc, char **argv) {
             } catch(const std::exception &e) {
                 std::cerr << "Exception: " << e.what() << std::endl;
                 return EXIT_FAILURE;
-            } catch(...) {
+            } catch(const cmd::AstFailure &e) {
+                std::cerr << "Failure: " << e.what() << std::endl;   
+            }catch(...) {
                 std::cerr << "Unknown Error has Occoured..\n";
                 return EXIT_FAILURE;
             }

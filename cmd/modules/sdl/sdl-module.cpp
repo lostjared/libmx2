@@ -1,12 +1,23 @@
 #include "SDL.h"
 #include "ast.hpp"
 #include <map>
+#include <unordered_map>
 #include <memory>
 
-// Globals to track resources
 static SDL_Window* g_window = nullptr;
 static SDL_Renderer* g_renderer = nullptr;
 static bool g_running = false;
+std::unordered_map<std::string, SDL_Surface *> surfaces;
+class Raii {
+public:
+     ~Raii() {
+        for(auto &s : surfaces) {
+            SDL_FreeSurface(s.second);
+        }
+        surfaces.clear();
+     }
+};
+static Raii raii;
 
 extern "C" {
     int sdl_init(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
@@ -49,6 +60,49 @@ extern "C" {
         return 0;
     }
     
+    int sdl_loadsurface(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
+        if (g_window == nullptr) {
+            output << "Window must be created first" << std::endl;
+            throw cmd::AstFailure("Window must be created first");
+        }
+        if (args.size() < 1) {
+            output << "Usage: loadsurface <filename>" << std::endl;
+            throw cmd::AstFailure("Too many arguments for load surface");
+            return 1;
+        }
+        std::string filename = cmd::getVar(args[0]);
+        SDL_Surface* surface = SDL_LoadBMP(filename.c_str());
+        if (surface == nullptr) {
+            output << "SDL_LoadBMP Error: " << SDL_GetError() << std::endl;
+            throw cmd::AstFailure("Error loading bitmap: " + std::string(SDL_GetError()));
+            return 1;
+        }
+        static int offset = 0;
+        std::string s = std::to_string(offset);
+        surfaces[s] = surface;
+        output << offset++;
+        return 0;
+    }
+
+    int sdl_freesurface(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
+        if (g_window == nullptr) {
+            output << "Window must be created first" << std::endl;
+            return 1;
+        }
+        if (args.size() < 1) {
+            output << "Usage: freesurface id" << std::endl;
+            return 1;
+        }
+        std::string num = cmd::getVar(args[0]);
+        auto pos = surfaces.find(num);
+        if(pos != surfaces.end()) {
+            SDL_FreeSurface(pos->second);
+            surfaces.erase(pos);
+        } else {
+            output << "Error: Surface not found..\n";
+        }
+        return 0;
+    }
     
     int sdl_create_renderer(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
         if (g_window == nullptr) {

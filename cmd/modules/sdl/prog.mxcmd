@@ -2,11 +2,15 @@
 
 cmd "sdl-script.mxcmd"
 
+
+background_image=""
+
 define init_sdl()
 begin
     sdl_init
     sdl_window "MXCMD Window" 1440 1080
     sdl_renderer -1 "software"
+    #background_image=$(sdl_loadsurface "img.bmp")
     return 0
 end
 
@@ -22,7 +26,7 @@ begin
     let running = 1
     while test running --eq 1 
     do
-        sdl_set_color 255 255 255 255
+        sdl_set_color 0 0 0 255
         sdl_clear
         sdl_present
         sdl_events
