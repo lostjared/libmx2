@@ -13,7 +13,7 @@ namespace cmd {
 
     
     class Node;
-    class Argument;
+    struct Argument;
 
     using CommandFunction = std::function<int(const std::vector<std::string>&, std::istream&, std::ostream&)>;
     using TypedCommandFunction = std::function<int(const std::vector<Argument>&, std::istream&, std::ostream&)>;
