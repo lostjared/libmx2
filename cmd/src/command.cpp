@@ -1454,10 +1454,12 @@ namespace cmd {
         std::shared_ptr<Library> &lib = reg.setLibrary(libPath);
         if(!lib) {
             output << "extern: failed to load library " << libPath << "\n";
+            program_running = 0;
             return 1;
         }
         if(!lib->hasSymbol(funcName)) {
             output << "extern: function " << funcName << " not found in library " << libPath << "\n";
+            program_running = 0;
             return 1;
         }
         ExternCommandInfo info;
@@ -1471,6 +1473,7 @@ namespace cmd {
             return 0;
         } else {
             output << "extern: failed to get function pointer for " << funcName << "\n";
+            program_running = 0;
             return 1;
         }
     }
