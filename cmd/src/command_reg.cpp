@@ -59,7 +59,7 @@ namespace cmd {
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
         program_running = 0;
 #else
-        exit(0);
+        throw std::runtime_error("Command not found: " + name);
 #endif
 
         return 1;
