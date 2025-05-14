@@ -1,3 +1,5 @@
+#!/usr/bin/env mxcmd-cli
+
 cmd "sdl-script.mxcmd"
 
 define init_sdl()
