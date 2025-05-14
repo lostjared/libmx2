@@ -142,6 +142,9 @@ namespace cmd {
         else if (auto logicalAnd = std::dynamic_pointer_cast<cmd::LogicalAnd>(node)) {
             executeLogicalAnd(logicalAnd, input, output);
         }
+        else if (auto logicalNot = std::dynamic_pointer_cast<LogicalNot>(node)) {
+            executeLogicalNot(logicalNot, input, output);
+        }
         else if (auto logicalOr = std::dynamic_pointer_cast<cmd::LogicalOr>(node)) {
             executeLogicalOr(logicalOr, input, output);
         }

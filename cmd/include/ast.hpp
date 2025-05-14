@@ -40,6 +40,7 @@ namespace cmd {
     class VariableAssignment;
     class LogicalAnd;
     class LogicalOr;
+    class LogicalNot;
     class BinaryExpression;
     class UnaryExpression;
     class CommandSubstitution;
@@ -268,6 +269,26 @@ namespace cmd {
         
         std::shared_ptr<Node> left;
         std::shared_ptr<Node> right;
+    };
+
+    class LogicalNot : public Node {
+    public:
+        LogicalNot(std::shared_ptr<Node> operand) : operand(std::move(operand)) {}
+        
+        void print(std::ostream& out, int indent = 0) const override {
+            std::string spaces = getIndent(indent);
+            out << spaces << "<div class='node logical-not'>\n";
+            out << spaces << "  <h3>LogicalNot</h3>\n";
+            out << spaces << "  <table>\n";
+            out << spaces << "    <tr><th>Operand</th></tr>\n";
+            out << spaces << "    <tr><td>\n";
+            operand->print(out, indent + 6);
+            out << spaces << "    </td></tr>\n";
+            out << spaces << "  </table>\n";
+            out << spaces << "</div>\n";
+        }
+        
+        std::shared_ptr<Node> operand;
     };
 
     class IfStatement : public Node {
@@ -973,6 +994,12 @@ namespace cmd {
             if (lastExitStatus != 0) {
                 executeNode(logicalOr->right, input, output);
             }
+        }
+
+        void executeLogicalNot(const std::shared_ptr<cmd::LogicalNot>& logicalNot, 
+                            std::istream& input, std::ostream& output) {
+            executeNode(logicalNot->operand, input, output);
+            lastExitStatus = (lastExitStatus == 0) ? 1 : 0;
         }
 
         void executeIfStatement(const std::shared_ptr<cmd::IfStatement>& ifStmt, 

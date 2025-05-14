@@ -219,6 +219,11 @@ namespace cmd {
             }
 
             std::shared_ptr<cmd::Node> parsePipeline() {
+                if (peek().getTokenType() == types::TokenType::TT_ID && peek().getTokenValue() == "not") {
+                    advance(); 
+                    std::shared_ptr<cmd::Node> operand = parseCommand(); // Parse the command to negate
+                    return std::make_shared<cmd::LogicalNot>(operand);
+                }
                 std::shared_ptr<cmd::Node> left = parseCommand();
                 
                 while (!isAtEnd() && peek().getTokenType() == types::TokenType::TT_SYM) {
