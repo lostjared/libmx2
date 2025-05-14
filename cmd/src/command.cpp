@@ -1439,6 +1439,11 @@ namespace cmd {
  
         if(args.empty() || args.size() != 3) {
             output << "Usage: extern <library> <function> <command_name>\n";
+            output << "You have: ";
+            for(auto &arg : args) {
+                output << arg.value << " ";
+            }
+            output << "@\n";
             return 1;
         }
         std::string libPath = getVar(args[0]);

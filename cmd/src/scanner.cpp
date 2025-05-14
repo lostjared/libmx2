@@ -323,7 +323,10 @@ namespace scan {
                 }
             }
 
-    
+            if(string_buffer.peekch().has_value() && *string_buffer.peekch() == '\"') {
+                string_buffer.getch();
+            }  
+
             token.set_pos(pos);
             token.set_filename(filename);
             token.setToken(types::TokenType::TT_STR, tok_value);
@@ -363,6 +366,10 @@ namespace scan {
             } else {
                 tok_value += *ch;
             }
+        }
+
+        if(string_buffer.peekch().has_value() && *string_buffer.peekch() == '\'') {
+            string_buffer.getch();
         }
 
         token.set_pos(pos);

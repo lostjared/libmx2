@@ -198,13 +198,19 @@ namespace cmd {
             
             std::shared_ptr<cmd::Node> parseSequence() {
                 std::vector<std::shared_ptr<cmd::Node>> commands;
-                
-                while (!isAtEnd() && 
-                       !(peek().getTokenType() == types::TokenType::TT_SYM && peek().getTokenValue() == ")")) {
+                if (!isAtEnd() && 
+                    !(peek().getTokenType() == types::TokenType::TT_SYM && peek().getTokenValue() == ")")) {
                     commands.push_back(parsePipeline());
-                    match(";"); 
                 }
                 
+                while (match(";") || match("\n")) {
+                    while (match(";") || match("\n")) {}
+                    if (isAtEnd() || 
+                        (peek().getTokenType() == types::TokenType::TT_SYM && peek().getTokenValue() == ")")) {
+                        break;
+                    }
+                    commands.push_back(parsePipeline());
+                }   
                 if (commands.size() == 1) {
                     return commands[0];
                 }
@@ -401,7 +407,7 @@ namespace cmd {
                          (peek().getTokenValue() == "fi" || peek().getTokenValue() == "then" ||
                           peek().getTokenValue() == "else" || peek().getTokenValue() == "elif" ||
                           peek().getTokenValue() == "do" || peek().getTokenValue() == "done" ||
-                          peek().getTokenValue() == "end")) &&
+                          peek().getTokenValue() == "end" || peek().getTokenValue() == "extern")) &&
                        
                        (peek().getTokenType() != types::TokenType::TT_SYM || peek().getTokenValue() == "-" ||
                         peek().getTokenValue() == "$" ||
@@ -578,6 +584,7 @@ namespace cmd {
                         return std::make_shared<cmd::Redirection>(cmd, cmd::Redirection::INPUT, filename);
                     }
                 }
+
                 return cmd;
             }
 
