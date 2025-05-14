@@ -928,8 +928,8 @@ namespace cmd {
                 } 
                 else if (auto expr = std::dynamic_pointer_cast<cmd::Expression>(varAssign->value)) {
                     try {
-                    std::string value = expr->evaluate(*this);
-                    setVariable(varAssign->name, value);
+                        std::string value = expr->evaluate(*this);
+                        setVariable(varAssign->name, value);
                     } catch(const std::exception &e) {
                         output << "Assignment Error: " << e.what() << "\n";
                         lastExitStatus = 1;
@@ -986,17 +986,14 @@ namespace cmd {
         }
 
         void executeWhileStatement(const std::shared_ptr<cmd::WhileStatement>& whileStmt,std::istream& input, std::ostream& output) {
-
             try {
                 while (true) {
-
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
                     if (program_running == 0) {
                         output << "- [ Loop interrupted ]-" << std::endl;
                         break;
                     }
 #endif
-
                     executeNode(whileStmt->condition, input, output);
                     if (lastExitStatus != 0) {
                         break;

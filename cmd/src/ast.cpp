@@ -47,6 +47,7 @@ namespace cmd {
             registry.registerTypedCommand("exec", cmd::execCommand);
             registry.registerTypedCommand("cmdlist", cmd::commandListCommand);
             registry.registerTypedCommand("debug_cmd", cmd::commandListCommand);
+            registry.registerTypedCommand("argv", cmd::argvCommand);
             registry.registerTypedCommand("set", [this](const std::vector<Argument>& args, std::istream& input, std::ostream& output) {
                 if (args.size() >= 1) {
                     if (args[0].value == "-e") {

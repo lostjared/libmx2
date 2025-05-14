@@ -4,6 +4,7 @@
 #include"types.hpp"
 #include"string_buffer.hpp"
 #include"html.hpp"
+#include"command.hpp"
 #include<iostream>
 #include<string>
 #include<fstream>
@@ -34,6 +35,11 @@ void sigint_handler(int sig) {
 
 int main(int argc, char **argv) {
     std::cout << "MXCMD " << version_string << "\n(C) 1999-2025 LostSideDead Software\n\n";
+    if(argc > 2) {
+        for(int i = 2; i < argc; ++i) {
+            cmd::argv.push_back(argv[i]);
+        }
+    }
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
     struct sigaction sa;
     sa.sa_handler = sigint_handler;
@@ -154,11 +160,10 @@ int main(int argc, char **argv) {
         } catch (...) {
             std::cerr << "Unknown error occurred." << std::endl;
         }
-    } else if(argc == 2 && (std::string(argv[1]) != "--stdin" && std::string(argv[1]) != "-i")) {
+    } else if(argc >= 2 && (std::string(argv[1]) != "--stdin" && std::string(argv[1]) != "-i")) {
         cmd::AstExecutor executor{};
         bool debug_cmd = false;
         bool debug_html = false;
-        if(argc == 2 || argc == 3) {
             std::ostringstream stream;
             std::fstream file;
             if(argc == 3) {
@@ -169,6 +174,7 @@ int main(int argc, char **argv) {
                     debug_html = true;
                 }
             }
+            
             file.open(argv[1], std::ios::in);
             if(!file.is_open()) {
                 std::cerr << "Error loading file: " << argv[1] << "\n";;
@@ -184,18 +190,19 @@ int main(int argc, char **argv) {
                 }
             }
 
+
             try {
                 scan::TString string_buffer(fileContent);  // Use modified content
                 scan::Scanner scanner(string_buffer);
                 cmd::Parser parser(scanner);
                 auto ast = parser.parse();
-#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+    #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
                 program_running = 1;
-#endif
+    #endif
                 executor.execute(std::cin, std::cout, ast);
-#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+    #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
                 program_running = 0;
-#endif
+    #endif
                 if(debug_cmd || debug_html) {
                     std::cout << "Debug Information written to: debug.html\n\n";
                     std::ofstream html_file("debug.html");
@@ -217,34 +224,32 @@ int main(int argc, char **argv) {
                 std::cerr << "Unknown Error has Occoured..\n";
                 return EXIT_FAILURE;
             }
-        }
-    } else if(argc == 2 && (std::string(argv[1]) == "--stdin" || std::string(argv[1]) == "-i")) {
-               try {
-                cmd::AstExecutor executor{};
-                std::ostringstream stream;
-                stream << std::cin.rdbuf();
-                scan::TString string_buffer(stream.str());
-                scan::Scanner scanner(string_buffer);
-                cmd::Parser parser(scanner);
-                auto ast = parser.parse();
+        } else if(argc == 2 && (std::string(argv[1]) == "--stdin" || std::string(argv[1]) == "-i")) {
+            try {
+            cmd::AstExecutor executor{};
+            std::ostringstream stream;
+            stream << std::cin.rdbuf();
+            scan::TString string_buffer(stream.str());
+            scan::Scanner scanner(string_buffer);
+            cmd::Parser parser(scanner);
+            auto ast = parser.parse();
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
-                program_running = 1;
+            program_running = 1;
 #endif
-                executor.execute(std::cin, std::cout, ast);
+            executor.execute(std::cin, std::cout, ast);
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
-                program_running = 0;
+            program_running = 0;
 #endif    
-            } catch(const scan::ScanExcept &e) {
-                std::cerr << "Scan Error: " << e.why() << std::endl;
-                return EXIT_FAILURE;
-            } catch(const std::exception &e) {
-                std::cerr << "Exception: " << e.what() << std::endl;
-                return EXIT_FAILURE;
-            } catch(...) {
-                std::cerr << "Unknown Error has Occoured..\n";
-                return EXIT_FAILURE;
-            }
+        } catch(const scan::ScanExcept &e) {
+            std::cerr << "Scan Error: " << e.why() << std::endl;
+            return EXIT_FAILURE;
+        } catch(const std::exception &e) {
+            std::cerr << "Exception: " << e.what() << std::endl;
+            return EXIT_FAILURE;
+        } catch(...) {
+            std::cerr << "Unknown Error has Occoured..\n";
+            return EXIT_FAILURE;
+        }
     }
-    
     return 0;
 }

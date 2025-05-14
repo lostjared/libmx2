@@ -24,6 +24,8 @@ namespace state {
 
 namespace cmd {
 
+    std::vector<std::string> argv;
+
     int exitCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
         std::exit(0);      
         return 0;     
@@ -1410,5 +1412,33 @@ namespace cmd {
     int commandListCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
         AstExecutor::printCommandInfo(output);
         return 0;
+    }
+
+    int argvCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
+        if (args.empty()) {
+            output << "Usage: argv <index>\n";
+            return 1;
+        }
+        if(args[0].type == ArgType::ARG_STRING_LITERAL && args[0].value == "length") {
+            output << argv.size();
+            return 0;
+        } else if(args[0].type == ArgType::ARG_STRING_LITERAL && args[0].value == "all") {
+            for (size_t i = 0; i < argv.size(); ++i) {
+                output << argv.at(i) << "\n";
+            }
+            return 0;
+        } else if(args[0].type == ArgType::ARG_STRING_LITERAL) {
+            output << "argv: invalid argument: " << args[0].value << "\n";
+            return 1;
+        }
+        int index = std::stoi(getVar(args[0]));
+        if (index >= 0 && index < static_cast<int>(argv.size())) {
+            output << argv.at(index);
+        } else {
+            output << "argv: index out of range\n";
+            return 1;
+        }
+        return 0;
+
     }
 }
