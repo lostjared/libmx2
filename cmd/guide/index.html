@@ -1,0 +1,57 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="description" content="MXCMD Beta: a command-line interpreter for Windows x64 (MSYS2/MINGW64).">
+    <meta property="og:type"        content="website">
+    <meta property="og:title"       content="MXCMD Shell Interpreter">
+    <meta property="og:description" content="MXCMD Beta: a powerful shell for MSYS2/MINGW64/Linux/MacOS/BSD with scripting features.">
+    <meta property="og:image"       content="https://lostsidedead.biz/mxcmd/console-small.jpg">
+    <title>MXCMD Shell Interpreter</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav>
+    <a href="index.html">Home</a>
+    <a href="commands.html">Commands</a>
+    <a href="control_flow.html">Control Flow</a>
+    <a href="expressions.html">Expressions & Syntax</a>
+</nav>
+<div class="container">
+    <h1>MXCMD Shell Scripting Language Guide</h1>
+    <p>Welcome to the comprehensive guide for MXCMD, a lightweight shell scripting language.</p>
+    <ul>
+        <li><a href="commands.html">Supported Commands</a></li>
+        <li><a href="control_flow.html">Control Flow Constructs</a></li>
+        <li><a href="expressions.html">Expressions & Syntax</a></li>
+        <li><a href="https://github.com/lostjared/libmx2/tree/main/cmd/scripts">Examples</a></li>
+        <li><a href="/debug">AST Visualizer</a></li>
+        <li><a href="https://github.com/lostjared/libmx2/tree/main/cmd">Project GitHub</a></li>
+    </ul>
+
+
+<h1>MXCMD v1.05 Beta</h1>
+Platform: Windows x64 (MSYS2/MinGW-w64)<br>
+We’re pleased to introduce MXCMD v1.05 Beta—an early release of our command-line interpreter tailored for the MSYS2/MinGW-w64 environment on Windows x64. This beta build is provided strictly for testing and feedback; features are subject to change as we refine the tool.
+<br><br>
+Download: <b>mxcmd-release.v1.05</b> - <a href="mxcmd-release.v1.05.tar.gz">tar.gz</a> - <a href="mxcmd-release.v1.05.zip">zip</a>
+<h1>How to build from source:</h1>
+Building from Source on Linux/Unix first install the required packages, readline, git, g++, cmake.:
+<pre><code>
+git clone https://github.com/lostjared/libmx2.git --depth 1
+cd libmx2/cmd
+mkdir build
+cd build
+cmake .. -DCMD=ON
+cmake --build .
+sudo cmake --install .
+</code>
+<b>Then at your shell prompt:</b>
+<code>$ mxcmd-cli
+</code>
+<b>[mxcmd prompt appears]</b>
+</pre>
+</div>
+</body>
+</html>

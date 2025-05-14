@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Supported Commands</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+      /* Optional: make the index sticky */
+      .index {
+        position: sticky;
+        top: 0;
+        background: white;
+        padding: 1em;
+        border-bottom: 1px solid #ccc;
+      }
+      .index a {
+        margin-right: 1em;
+        text-decoration: none;
+      }
+      hr.command-separator {
+        border: 0;
+        border-top: 1px solid #ccc;
+        margin: 2em 0;
+      }
+    </style>
+</head>
+<body>
+<nav>
+    <a href="index.html">Home</a>
+    <a href="commands.html">Commands</a>
+    <a href="control_flow.html">Control Flow</a>
+    <a href="expressions.html">Expressions & Syntax</a>
+</nav>
+<div class="container">
+
+    <h1>Supported Commands</h1>
+    <br><b>All File Path's must be surrounded in quotes</b>
+    <br>
+    <!-- Index -->
+    <div class="index">
+      <strong>Jump to:</strong>
+      <a href="#exec">exec</a>
+      <a href="#argv">argv</a>
+      <a href="#exit">exit</a>
+      <a href="#echo">echo</a>
+      <a href="#cat">cat</a>
+      <a href="#grep">grep</a>
+      <a href="#print">print</a>
+      <a href="#cd">cd</a>
+      <a href="#list">list</a>
+      <a href="#sort">sort</a>
+      <a href="#find">find</a>
+      <a href="#pwd">pwd</a>
+      <a href="#mkdir">mkdir</a>
+      <a href="#cp">cp</a>
+      <a href="#mv">mv</a>
+      <a href="#touch">touch</a>
+      <a href="#head">head</a>
+      <a href="#tail">tail</a>
+      <a href="#wc">wc</a>
+      <a href="#sed">sed</a>
+      <a href="#printf">printf</a>
+      <a href="#test">test</a>
+      <a href="#cmd">cmd</a>
+      <a href="#visual">visual</a>
+      <a href="#at">at</a>
+      <a href="#len">len</a>
+      <a href="#index">index</a>
+      <a href="#strlen">strlen</a>
+      <a href="#strfind">strfind</a>
+      <a href="#debug">debug</a>
+    </div>
+
+    
+    <!-- exec -->
+    <section id="exec">
+        <h2><code>exec</code></h2>
+        <p>Execute shell command.</p>
+        <h3>Usage</h3>
+        <pre><code>exec "ls"</code></pre>
+    </section>
+
+    <hr class="command-separator">
+
+     <!-- exec -->
+    <section id="argv">
+        <h2><code>exec</code></h2>
+        <p>Acess command line arguments.</p>
+        <h3>Usage</h3>
+        <pre><code>argv index</code>><br><code>argv "length"</code><br><code>argv "all"</code></pre>
+    </section>
+
+    <hr class="command-separator">
+
+    <!-- exit -->
+    <section id="exit">
+        <h2><code>exit</code></h2>
+        <p>Terminate the shell immediately.</p>
+        <h3>Usage</h3>
+        <pre><code>exit</code></pre>
+    </section>
+
+    <hr class="command-separator">
+
+    <!-- echo -->
+    <section id="echo">
+        <h2><code>echo</code></h2>
+        <p>Prints its arguments to standard output, expanding any variables.</p>
+        <h3>Usage</h3>
+        <pre><code>echo [ARG]...</code></pre>
+        <h3>Arguments</h3>
+        <ul>
+            <li>Any number of words or variables (<code>VAR</code>).</li>
+        </ul>
+        <h3>Example</h3>
+        <pre><code>echo Hello USER</code></pre>
+    </section>
+
+    <hr class="command-separator">
+
+    <!-- cat -->
+    <section id="cat">
+        <h2><code>cat</code></h2>
+        <p>Concatenates and displays file contents, or reads from standard input if no files are specified.</p>
+        <h3>Usage</h3>
+        <pre><code>cat [FILE]...</code></pre>
+    </section>
+
+    <hr class="command-separator">
+
+    <!-- grep -->
+    <section id="grep">
+        <h2><code>grep</code></h2>
+        <p>Searches input or files for lines matching a pattern, optionally using regular expressions.</p>
+        <h3>Usage</h3>
+        <pre><code>grep [--r|--e] PATTERN [FILE]...</code></pre>
+        <h3>Options</h3>
+        <ul>
+            <li><code>--r</code> or <code>--e</code>: enable extended regex matching.</li>
+        </ul>
+    </section>
+
+    <hr class="command-separator">
+
+    <!-- print -->
+    <section id="print">
+        <h2><code>print</code></h2>
+        <p>Prints each argument on its own line; can convert values to integers.</p>
+        <h3>Usage</h3>
+        <pre><code>print [--i|--f] ARG...</code></pre>
+    </section>
+
+    <hr class="command-separator">
+
+    <!-- cd -->
+    <section id="cd">
+        <h2><code>cd</code></h2>
+        <p>Change the shell’s current working directory.</p>
+        <h3>Usage</h3>
+        <pre><code>cd DIR</code></pre>
+    </section>
+
+    <hr class="command-separator">
+
+    <!-- list (ls) -->
+    <section id="list">
+        <h2><code>list</code> (<code>ls</code>)</h2>
+        <p>List the contents of a directory.</p>
+        <h3>Usage</h3>
+        <pre><code>ls [DIR]</code></pre>
+    </section>
+
+    <hr class="command-separator">
+
+    <!-- sort -->
+    <section id="sort">
+        <h2><code>sort</code></h2>
+        <p>Sorts lines of text from files or standard input.</p>
+        <h3>Usage</h3>
+        <pre><code>sort [FILE]...</code></pre>
+    </section>
+
+    <hr class="command-separator">
+
+    <!-- find -->
+    <section id="find">
+        <h2><code>find</code></h2>
+        <p>Recursively search a directory tree for filenames containing a given pattern.</p>
+        <h3>Usage</h3>
+        <pre><code>find PATH PATTERN</code></pre>
+    </section>
+
+    <hr class="command-separator">
+
+    <!-- pwd -->
+    <section id="pwd">
+        <h2><code>pwd</code></h2>
+        <p>Print the current working directory.</p>
+        <h3>Usage</h3>
+        <pre><code>pwd</code></pre>
+    </section>
+
+    <hr class="command-separator">
+
+    <!-- mkdir -->
+    <section id="mkdir">
+        <h2><code>mkdir</code></h2>
+        <p>Create new directories.</p>
+        <h3>Usage</h3>
+        <pre><code>mkdir [--p] DIR...</code></pre>
+        <h3>Options</h3>
+        <ul>
+            <li><code>--p</code>: create parent directories as needed.</li>
+        </ul>
+    </section>
+
+    <hr class="command-separator">
+
+    <!-- cp -->
+    <section id="cp">
+        <h2><code>cp</code></h2>
+        <p>Copy files or directories.</p>
+        <h3>Usage</h3>
+        <pre><code>cp [--r] SOURCE... DEST</code></pre>
+    </section>
+
+    <hr class="command-separator">
+
+    <!-- mv -->
+    <section id="mv">
+        <h2><code>mv</code></h2>
+        <p>Rename or move files and directories.</p>
+        <h3>Usage</h3>
+        <pre><code>mv SOURCE... DEST</code></pre>
+    </section>
+
+    <hr class="command-separator">
+
+    <!-- touch -->
+    <section id="touch">
+        <h2><code>touch</code></h2>
+        <p>Update file timestamps or create files if they do not exist.</p>
+        <h3>Usage</h3>
+        <pre><code>touch FILE...</code></pre>
+    </section>
+
+    <hr class="command-separator">
+
+    <!-- head -->
+    <section id="head">
+        <h2><code>head</code></h2>
+        <p>Display the first part of files or input.</p>
+        <h3>Usage</h3>
+        <pre><code>head [--n N] [FILE]...</code></pre>
+    </section>
+
+    <hr class="command-separator">
+
+    <!-- tail -->
+    <section id="tail">
+        <h2><code>tail</code></h2>
+        <p>Display the last part of files or input.</p>
+        <h3>Usage</h3>
+        <pre><code>tail [--n N] [FILE]...</code></pre>
+    </section>
+
+    <hr class="command-separator">
+
+    <!-- wc -->
+    <section id="wc">
+        <h2><code>wc</code></h2>
+        <p>Count lines, words, and characters in files or input.</p>
+        <h3>Usage</h3>
+        <pre><code>wc [--l] [--w] [--c] [FILE]...</code></pre>
+    </section>
+
+    <hr class="command-separator">
+
+    <!-- sed -->
+    <section id="sed">
+        <h2><code>sed</code></h2>
+        <p>Perform basic stream editing via substitution expressions.</p>
+        <h3>Usage</h3>
+        <pre><code>sed [options] 's/pattern/replacement/[g]' [FILE]</code></pre>
+        <h3>Options</h3>
+        <ul>
+            <li><code>-n</code>: suppress automatic printing.</li>
+            <li><code>-i</code>: edit files in place.</li>
+        </ul>
+    </section>
+
+    <hr class="command-separator">
+
+    <!-- printf -->
+    <section id="printf">
+        <h2><code>printf</code></h2>
+        <p>Formatted printing, similar to C's <code>printf</code>.</p>
+        <h3>Usage</h3>
+        <pre><code>printf FORMAT [ARG]...</code></pre>
+    </section>
+
+    <hr class="command-separator">
+
+    <!-- test -->
+    <section id="test">
+        <h2><code>test</code></h2>
+        <p>Evaluate conditional expressions, returning status 0 for true, non-zero for false.</p>
+        <h3>Usage</h3>
+        <pre><code>test ARG...</code></pre>
+    </section>
+
+    <hr class="command-separator">
+
+    <!-- cmd -->
+    <section id="cmd">
+        <h2><code>cmd</code></h2>
+        <p>Execute an external script file within the shell environment.</p>
+        <h3>Usage</h3>
+        <pre><code>cmd SCRIPT_FILE</code></pre>
+    </section>
+
+    <hr class="command-separator">
+
+    <!-- visual -->
+    <section id="visual">
+        <h2><code>visual</code></h2>
+        <p>Render a script’s AST as HTML.</p>
+        <h3>Usage</h3>
+        <pre><code>visual SCRIPT_FILE OUTPUT_HTML</code></pre>
+    </section>
+
+    <hr class="command-separator">
+
+    <!-- at -->
+    <section id="at">
+        <h2><code>at</code></h2>
+        <p>Extract an element by index from a newline-separated list.</p>
+        <h3>Usage</h3>
+        <pre><code>at LIST INDEX</code></pre>
+    </section>
+
+    <hr class="command-separator">
+
+    <!-- len -->
+    <section id="len">
+        <h2><code>len</code></h2>
+        <p>Count items in a list, either by lines or words.</p>
+        <h3>Usage</h3>
+        <pre><code>len LIST</code></pre>
+    </section>
+
+    <hr class="command-separator">
+
+    <!-- index -->
+    <section id="index">
+        <h2><code>index</code></h2>
+        <p>Extract a substring by start position and length.</p>
+        <h3>Usage</h3>
+        <pre><code>index STRING START LENGTH</code></pre>
+    </section>
+
+    <hr class="command-separator">
+
+    <!-- strlen -->
+    <section id="strlen">
+        <h2><code>strlen</code></h2>
+        <p>Get the length of a string.</p>
+        <h3>Usage</h3>
+        <pre><code>strlen STRING</code></pre>
+    </section>
+
+    <hr class="command-separator">
+
+    <!-- strfind -->
+    <section id="strfind">
+        <h2><code>strfind</code></h2>
+        <p>Find the position of a substring within a string.</p>
+        <h3>Usage</h3>
+        <pre><code>strfind START STRING SEARCH</code></pre>
+    </section>
+
+    <hr class="command-separator">
+
+    <!-- Debug commands -->
+    <section id="debug">
+        <h2>Debug Commands</h2>
+        <ul>
+            <li><strong>debug_set</strong>: <code>debug_set &lt;VAR&gt; &lt;VAL&gt;</code> — Set a debug variable.</li>
+            <li><strong>debug_get</strong>: <code>debug_get &lt;VAR&gt;</code> — Get a debug variable.</li>
+            <li><strong>debug_list</strong>: <code>debug_list</code> — List debug variables.</li>
+            <li><strong>debug_clear</strong>: <code>debug_clear &lt;VAR&gt;</code> — Clear a debug variable.</li>
+            <li><strong>debug_clearall</strong>: <code>debug_clearall</code> — Clear all debug variables.</li>
+            <li><strong>debug_search</strong>: <code>debug_search [PATTERN]</code> — Search debug variables.</li>
+            <li><strong>dump</strong>: <code>dump FILENAME</code> — Dump variable table to a file.</li>
+        </ul>
+    </section>
+
+</div>
+</body>
+</html>

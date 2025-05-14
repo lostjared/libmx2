@@ -1,0 +1,113 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Expressions & Syntax</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav>
+    <a href="index.html">Home</a>
+    <a href="commands.html">Commands</a>
+    <a href="control_flow.html">Control Flow</a>
+    <a href="expressions.html">Expressions & Syntax</a>
+</nav>
+<div class="container">
+    <h1>Expressions & Syntax</h1>
+    <h2>Literals</h2>
+    <ul>
+        <li>Numbers: <code>42</code>, <code>3.14</code></li>
+        <li>Strings: <code>"hello"</code> or <code>'world'</code> <b>All strings like file paths have to be surrounded in quotes.</b></li>
+    </ul>
+    <h2>Variables & Assignment</h2>
+    <pre><code><var_name> = <expression>
+--<var_name>    # decrement
+<var_name>--    # decrement (postfix)
+++<var_name>    # increment
+<var_name>++    # increment (postfix)
+</code></pre>
+    <h2>Operators</h2>
+    <p>Arithmetic: <code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>%</code></p>
+    <p>Unary: prefix <code>-</code>, <code>++</code>, <code>--</code>; postfix <code>++</code>, <code>--</code></p>
+    </pre>
+    <h2>Pipelines & Redirection</h2>
+    <ul>
+        <li>Pipeline: <code>cmd1 | cmd2 | cmd3</code></li>
+        <li>Redirect output: <code>cmd &gt; file</code>, <code>cmd &gt;&gt; file</code></li>
+        <li>Redirect input: <code>cmd &lt; file</code></li>
+    </ul>
+    <h2>Logical Operators</h2>
+    <p>use && and || for boolean logic</p>
+    <pre><code>pwd && pwd
+ls || pwd
+    </code></pre>
+    <h2>User-Defined Commands</h2>
+    <pre><code>define <cmd_name>(param1, param2, ...)   # define a new command
+begin 
+    statements
+    return 0  # return a value 0 success non zero failure
+end   # end of definition
+</code></pre>
+<h2>Command Substitutions</h2>
+<p>Command substitutions allow you to capture the output of a command and use it as a value. They are denoted by <code>$(command)</code> syntax.</p>
+
+<h3>Basic Usage</h3>
+<pre><code>files = $(ls)
+count = $(exec "wc -l < \"data.txt\"")
+today = $(exec "date \"+%Y-%m-%d\"")
+</code></pre>
+
+<h3>Using Command Substitutions as Arguments</h3>
+<p>Command substitutions can be used directly as arguments to other commands:</p>
+
+<pre><code># Use ls output as an argument to another command
+cat $(exec "ls | grep \"\.txt$\" | head -n1")
+
+# Use command substitution in file operations
+cp important.txt $(printf "backup_%s.txt" $(exec "date \"+%Y%m%d\""))
+
+# Use in user-defined commands
+list_files $(pwd)
+</code></pre>
+
+<h3>Nested Command Substitutions</h3>
+<p>Command substitutions can be nested to create complex expressions:</p>
+
+<pre><code>d substitution for dynamic file naming
+report = $(cat $(printf "logs/log_%s.txt" $(exec "date \"+%Y%m%d\"")))
+
+# Complex example with multiple levels of nesting
+fileext = $(exec $(printf "stat -f \"%%SB\" -t \"%%Y.%%m.%%d\" %s" $(exec "ls | head -n1")))
+</code></pre>
+
+<h3>Command Substitution Processing</h3>
+<ul>
+  <li>The command inside <code>$()</code> is executed in a subshell</li>
+  <li>The standard output of the command replaces the substitution</li>
+  <li>Trailing newlines are automatically removed</li>
+  <li>Empty outputs are treated as empty strings</li>
+</ul>
+
+<h3>Example: Count Lines in Files with Command Substitution</h3>
+<pre><code>
+define count_text(dir, ext)
+begin
+    total = 0.000000
+    for f in $(ls | sort)
+    do
+        path = $(printf "%s/%s" dir f)
+        pos = $(strfind 0.000000 path ext)
+        if test pos --ne -1.000000
+        then
+            count = $(wc --l path)
+            total = total + count
+            printf "File: %s has %d lines\n" path count
+        fi
+    done
+    printf "total lines: %d\n" total
+end
+</code></pre>
+</div>
+</body>
+</html>
