@@ -4,11 +4,26 @@ project(mxcmd_cxx VERSION 1.05 LANGUAGES CXX C)
 
 option(CMD "Build command line interface" OFF)
 option(CONSOLE "Build graphical console" OFF)
-
+option(SHARED "Build shared version of library" OFF)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+
+if(SHARED)
+set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+
+add_library(mxcmd SHARED
+    src/scanner.cpp
+    src/string_buffer.cpp
+    src/types.cpp
+    src/command.cpp
+    src/ast.cpp
+    src/html.cpp
+    src/command_reg.cpp
+)
+
+else()
  
 add_library(mxcmd STATIC
     src/scanner.cpp
@@ -19,6 +34,8 @@ add_library(mxcmd STATIC
     src/html.cpp
     src/command_reg.cpp
 )
+
+endif()
 
 list(APPEND header 
     ${CMAKE_SOURCE_DIR}/include/command.hpp 
