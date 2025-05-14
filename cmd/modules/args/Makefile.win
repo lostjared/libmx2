@@ -1,0 +1,9 @@
+OUTPUT=args.dll
+SRC=mod.cpp
+
+all:
+	$(CXX) -std=c++20 -I/usr/local/include/mxcmd $(SRC) -shared -o $(OUTPUT) -L/usr/local/lib -lmxcmd -fPIC
+install:
+	cp -rf $(OUTPUT) /usr/local/bin
+clean:
+	rm $(OUTPUT)
