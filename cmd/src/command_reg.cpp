@@ -164,6 +164,22 @@ namespace cmd {
         return result;
     }
 
+    std::shared_ptr<Library> CommandRegistry::getLibrary(const std::string& name){
+        auto it = libraries.find(name);
+        if (it != libraries.end()) {
+            return it->second;
+        }
+        return nullptr;
+    }
+    std::shared_ptr<Library> CommandRegistry::setLibrary(const std::string& name) {
+        auto it = libraries.find(name);
+        if (it != libraries.end()) {
+            return it->second;
+        }
+        libraries[name] = std::make_shared<cmd::Library>(name);
+        return libraries[name];
+    }
+
     void CommandRegistry::printInfo(std::ostream &out) {
         auto listSorted = [](std::ostream  &o, auto &l) -> void {
             std::vector<std::string> lst;

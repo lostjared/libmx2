@@ -9,16 +9,13 @@ namespace cmd {
     public:
         Library(const std::string& path) : lib(path) {}
         ~Library() {}
-
         template<typename FuncType>
         FuncType getFunction(const std::string& name) {
             return reinterpret_cast<FuncType>(lib.get_symbol(name));
         }
-
         bool hasSymbol(const std::string& name) {
             return lib.has_symbol(name);
         }
-
     private:
         dylib lib;
     };

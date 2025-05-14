@@ -23,7 +23,7 @@ namespace cmd {
         std::string name;
         std::string libraryPath;
         std::string functionName;
-        cmd::Library *library = nullptr; // release it in destructor
+        std::shared_ptr<Library> library;
         std::function<int(const std::vector<Argument>&, std::istream&, std::ostream&)> func;
     };
     class CommandRegistry {
@@ -47,6 +47,8 @@ namespace cmd {
         bool empty() const;
         bool isUserDefinedCommand(const std::string& name) const;
 
+        std::shared_ptr<Library> getLibrary(const std::string& name);
+        std::shared_ptr<Library> setLibrary(const std::string& name);
 
     private:
         int executeUserDefinedCommand(const std::string& name, const UserDefinedCommandInfo& info,
@@ -57,6 +59,7 @@ namespace cmd {
         std::unordered_map<std::string, TypedCommandFunction> typedCommands;
         std::unordered_map<std::string, UserDefinedCommandInfo> userDefinedCommands;
         std::unordered_map<std::string, ExternCommandInfo> externCommands;
+        std::unordered_map<std::string, std::shared_ptr<cmd::Library>> libraries;
         
     };
 }
