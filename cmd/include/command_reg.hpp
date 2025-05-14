@@ -30,7 +30,7 @@ namespace cmd {
             std::string name;
             std::string libraryPath;
             std::string functionName;
-            std::function<int(const std::vector<std::string>&, std::istream&, std::ostream&)> func;
+            std::function<int(const std::vector<Argument>&, std::istream&, std::ostream&)> func;
         };
 
         void registerCommand(const std::string& name, CommandFunction func);

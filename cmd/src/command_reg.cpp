@@ -54,23 +54,27 @@ namespace cmd {
     }
 
     void CommandRegistry::registerExternCommand(const std::string& name, const ExternCommandInfo& info) {
-        externCommands[name] = info;
         auto it = commands.find(name);
         if (it != commands.end()) {
             throw std::runtime_error("Command " + name + " already registered");
         }
+        externCommands[name] = info;
     }
         
     int CommandRegistry::executeExternCommand(const std::string& name, const std::vector<Argument>& args, 
                                 std::istream& input, std::ostream& output) {
-                                
-                                
-                                
-                                
-                                
-                                
-    
-        return 0;
+        auto it = externCommands.find(name);
+        if (it != externCommands.end()) {
+            const auto& info = it->second;
+            if (info.func) {
+                return info.func(args, input, output);
+            } 
+            else {
+                output << "Function: " << info.functionName << " not found in library: " << info.libraryPath << "\n";
+                return 1;
+            }
+        }
+            return 0;
     }
     
     int CommandRegistry::executeUserDefinedCommand(
