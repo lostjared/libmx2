@@ -1,0 +1,14 @@
+define sdl()
+begin
+extern "sdl-mod" "sdl_init" "sdl_init"
+extern "sdl-mod" "sdl_create_window" "sdl_window" 
+extern "sdl-mod" "sdl_clear" "sdl_clear"
+extern "sdl-mod" "sdl_draw_rect" "sdl_rect"
+extern "sdl-mod" "sdl_draw_line" "sdl_line"
+extern "sdl-mod" "sdl_present" "sdl_present"
+extern "sdl-mod" "sdl_process_events" "sdl_events"
+extern "sdl-mod" "sdl_quit" "sdl_quit"
+return 0
+end
+
+sdl
