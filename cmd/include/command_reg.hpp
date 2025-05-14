@@ -47,8 +47,8 @@ namespace cmd {
         bool empty() const;
         bool isUserDefinedCommand(const std::string& name) const;
 
-        std::shared_ptr<Library> getLibrary(const std::string& name);
-        std::shared_ptr<Library> setLibrary(const std::string& name);
+        std::shared_ptr<Library> &getLibrary(const std::string& name);
+        std::shared_ptr<Library> &setLibrary(const std::string& name);
 
     private:
         int executeUserDefinedCommand(const std::string& name, const UserDefinedCommandInfo& info,

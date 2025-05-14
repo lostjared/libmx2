@@ -164,14 +164,14 @@ namespace cmd {
         return result;
     }
 
-    std::shared_ptr<Library> CommandRegistry::getLibrary(const std::string& name){
+    std::shared_ptr<Library> &CommandRegistry::getLibrary(const std::string& name){
         auto it = libraries.find(name);
         if (it != libraries.end()) {
             return it->second;
         }
-        return nullptr;
+        throw std::runtime_error("Library not found: " + name);
     }
-    std::shared_ptr<Library> CommandRegistry::setLibrary(const std::string& name) {
+    std::shared_ptr<Library> &CommandRegistry::setLibrary(const std::string& name) {
         auto it = libraries.find(name);
         if (it != libraries.end()) {
             return it->second;

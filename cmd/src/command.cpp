@@ -1446,7 +1446,7 @@ namespace cmd {
         std::string cmdName = getVar(args[2]);
         
         auto &reg = AstExecutor::getRegistry();
-        std::shared_ptr<Library> lib = reg.setLibrary(libPath);
+        std::shared_ptr<Library> &lib = reg.setLibrary(libPath);
         if(!lib) {
             output << "extern: failed to load library " << libPath << "\n";
             return 1;
