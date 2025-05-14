@@ -54,14 +54,8 @@ namespace cmd {
         if (it_ext != externCommands.end()) {
             return executeExternCommand(name, args, input, output);
         }
-
-        output << "Command not found: " << name << "\n";
-#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
-        program_running = 0;
-#else
+        
         throw std::runtime_error("Command not found: " + name);
-#endif
-
         return 1;
     }
 
