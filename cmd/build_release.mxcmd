@@ -9,8 +9,8 @@ mkdir --p $(printf "%s/library/include/" folder)
 mkdir --p $(printf "%s/library/lib/cmake/" folder)
 exec $(printf "cp -rfv /usr/local/bin/mxcmd-cli %s/shell/mxcmd-cli" folder)
 exec $(printf "cp -rfv /usr/local/lib/libmxcmd.a %s/library/lib/libmxcmd.a" folder)
-exec $(printf "cp -rfv /usr/local/include/mxcmd %s/include/" folder)
-exec $(printf "cp -rfv /usr/local/lib/cmake/libmxcmd %s/library/lib/cmake/" folder)
+exec $(printf "cp -rfv /usr/local/include/mxcmd %s/library/include/mxcmd" folder)
+exec $(printf "cp -rfv /usr/local/lib/cmake/libmxcmd %s/library/lib/cmake/libmxcmd" folder)
 end
 
 pos = $(argv "length")
