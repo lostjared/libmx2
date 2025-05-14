@@ -47,6 +47,7 @@ list(APPEND header
     ${CMAKE_SOURCE_DIR}/include/game_state.hpp
     ${CMAKE_SOURCE_DIR}/include/html.hpp 
     ${CMAKE_SOURCE_DIR}/include/command_reg.hpp
+    ${CMAKE_SOURCE_DIR}/include/library.hpp
     ${CMAKE_SOURCE_DIR}/include/version_info.hpp
 )
 include_directories(${PROJECT_SOURCE_DIR}/include ${CMAKE_INSTALL_PREFIX}/include)
