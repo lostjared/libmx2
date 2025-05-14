@@ -1,11 +1,6 @@
 define sdl()
 begin
-    if not extern "sdl-mod" "sdl_init" "sdl_init"
-    then
-    printf "SDL module not found. Is it installed?\n"
-    exit
-    return 1
-    fi
+    extern "sdl-mod" "sdl_init" "sdl_init"
     extern "sdl-mod" "sdl_create_window" "sdl_window" 
     extern "sdl-mod" "sdl_create_renderer" "sdl_renderer"
     extern "sdl-mod" "sdl_clear" "sdl_clear"
