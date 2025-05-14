@@ -165,20 +165,13 @@ extern "C" {
         while (SDL_PollEvent(&event)) {
             switch (event.type) {
                 case SDL_QUIT:
-                    g_running = false;
+                    exit(0);
                     break;
                 case SDL_KEYDOWN:
                     if (event.key.keysym.sym == SDLK_ESCAPE) {
-                        g_running = false;
+                        exit(0);
                     }
                     output << "Key pressed: " << SDL_GetKeyName(event.key.keysym.sym) << std::endl;
-                    break;
-                case SDL_MOUSEMOTION:
-                    output << "Mouse moved to: (" << event.motion.x << ", " << event.motion.y << ")" << std::endl;
-                    break;
-                case SDL_MOUSEBUTTONDOWN:
-                    output << "Mouse button " << (int)event.button.button << " pressed at: (" 
-                           << event.button.x << ", " << event.button.y << ")" << std::endl;
                     break;
             }
         }
@@ -221,18 +214,29 @@ extern "C" {
             SDL_DestroyRenderer(g_renderer);
             g_renderer = nullptr;
         }
-        
         if (g_window) {
             SDL_DestroyWindow(g_window);
             g_window = nullptr;
         }
-        
         return 0;
     }
     
     int sdl_quit(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
         sdl_destroy(args, input, output);
         SDL_Quit();
+        return 0;
+    }
+
+     int sdl_delay(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
+        int ms = 1000; 
+        if (args.size() > 0) {
+            ms = std::stoi(cmd::getVar(args[0]));
+        }
+        if (ms < 0) {
+            output << "Delay cannot be negative" << std::endl;
+            return 1;
+        }
+        SDL_Delay(static_cast<Uint32>(ms));
         return 0;
     }
 }

@@ -1,0 +1,33 @@
+cmd "sdl-script.mxcmd"
+
+define init_sdl()
+begin
+    sdl_init
+    sdl_window "MXCMD Window" 1440 1080
+    sdl_renderer -1 "software"
+    return 0
+end
+
+define clean_sdl()
+begin
+    sdl_quit
+    return 0
+end
+
+define main()
+begin
+    init_sdl
+    let running = 1
+    while test running --eq 1 
+    do
+        sdl_set_color 255 255 255 255
+        sdl_clear
+        sdl_present
+        sdl_events
+        sdl_delay 16
+    done
+    clean_sdl
+    return 0
+end
+
+main
