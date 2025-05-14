@@ -9,6 +9,13 @@ target_include_directories(sdl-mod PRIVATE ${SDL2_INCLUDE_DIRS}
 ${LIBCMD_INCLUDE_DIRS}
 ${LIBCMD_INCLUDE_DIRS}/mxcmd
 )
+
+if(WIN32)
+    set_target_properties(sdl-mod PROPERTIES 
+        PREFIX ""  
+    )
+endif()
+
 target_link_libraries(sdl-mod PRIVATE libmxcmd::mxcmd ${SDL2_LIBRARIES})
 
 install(TARGETS sdl-mod
