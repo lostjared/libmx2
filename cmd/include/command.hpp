@@ -54,5 +54,6 @@ namespace cmd {
     int execCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
     int commandListCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
     int argvCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
+    int externCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
 }
 #endif

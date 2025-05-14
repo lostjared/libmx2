@@ -49,6 +49,12 @@ namespace cmd {
             return executeUserDefinedCommand(name, it_ud->second,
                                             args, input, output);
         }
+
+        auto it_ext = externCommands.find(name);
+        if (it_ext != externCommands.end()) {
+            return executeExternCommand(name, args, input, output);
+        }
+
         output << "Command not found: " << name << "\n";
         return 1;
     }
@@ -177,6 +183,9 @@ namespace cmd {
         out << "}\n";
         out << "User Defined Commands {\n";
         listSorted(out, this->userDefinedCommands);
+        out << "}\n";
+        out << "Commands from Libraries {\n";
+        listSorted(out, this->externCommands);
         out << "}\n";
     }
 

@@ -17,8 +17,15 @@ namespace cmd {
 
     using CommandFunction = std::function<int(const std::vector<std::string>&, std::istream&, std::ostream&)>;
     using TypedCommandFunction = std::function<int(const std::vector<Argument>&, std::istream&, std::ostream&)>;
-    using TypedCommandFunctionPtr = std::function<int(const std::vector<Argument>&, std::istream&, std::ostream&
-    )>;
+    using TypedCommandFunctionPtr = std::function<int(const std::vector<Argument>&, std::istream&, std::ostream&)>;
+
+    struct ExternCommandInfo {
+        std::string name;
+        std::string libraryPath;
+        std::string functionName;
+        cmd::Library *library = nullptr; // release it in destructor
+        std::function<int(const std::vector<Argument>&, std::istream&, std::ostream&)> func;
+    };
     class CommandRegistry {
     public:
         struct UserDefinedCommandInfo {
@@ -26,12 +33,6 @@ namespace cmd {
             std::shared_ptr<Node> body;
         };
 
-        struct ExternCommandInfo {
-            std::string name;
-            std::string libraryPath;
-            std::string functionName;
-            std::function<int(const std::vector<Argument>&, std::istream&, std::ostream&)> func;
-        };
 
         void registerCommand(const std::string& name, CommandFunction func);
         void registerTypedCommand(const std::string& name, TypedCommandFunction func);

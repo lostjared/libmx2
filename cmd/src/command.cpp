@@ -8,6 +8,8 @@
 #include"game_state.hpp"
 #include"parser.hpp"
 #include"html.hpp"
+#include"command_reg.hpp"
+
 #if !defined(__EMSCRIPTEN__) &&  !defined(_WIN32)
 #include<unistd.h>
 #include<sys/wait.h>
@@ -1431,6 +1433,38 @@ namespace cmd {
             return 1;
         }
         return 0;
+    }
 
+    int externCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
+ 
+        if(args.empty() || args.size() != 3) {
+            output << "Usage: extern <library> <function> <command_name>\n";
+            return 1;
+        }
+        std::string libPath = getVar(args[0]);
+        std::string funcName = getVar(args[1]);
+        std::string cmdName = getVar(args[2]);
+        
+        auto &reg = AstExecutor::getRegistry();
+        Library *lib = new Library(libPath);
+        if(!lib->hasSymbol(funcName)) {
+            output << "extern: function " << funcName << " not found in library " << libPath << "\n";
+            delete lib;
+            return 1;
+        }
+        ExternCommandInfo info;
+        info.library = lib;
+        info.func = lib->getFunction<int(*)(const std::vector<cmd::Argument>&, std::istream&, std::ostream&)>(funcName);
+        info.functionName = funcName;
+        info.libraryPath = libPath;
+
+        if(info.func) {
+            reg.registerExternCommand(cmdName, info);
+            return 0;
+        } else {
+            output << "extern: failed to get function pointer for " << funcName << "\n";
+            delete lib;
+            return 1;
+        }
     }
 }

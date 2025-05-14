@@ -784,6 +784,10 @@ namespace cmd {
         CommandRegistry &getCommandRegistry() {
             return registry;
         }
+        
+        static CommandRegistry &getRegistry() {
+            return registry;
+        }
 
         void executeCommandDefinition(const std::shared_ptr<cmd::CommandDefinition>& def, 
                                       std::istream& input, std::ostream& output) {
