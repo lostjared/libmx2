@@ -5,6 +5,7 @@
 #include<sstream>
 #include<iomanip>
 #include<cstdlib>
+#include<random>
 #include"game_state.hpp"
 #include"parser.hpp"
 #include"html.hpp"
@@ -1633,6 +1634,27 @@ namespace cmd {
         }
         size_t size = std::stoul(sizeStr);
         gameState->initList(name, value, size);
+        return 0;
+    }
+
+    int newRandCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
+        if(args.empty()) {
+            throw cmd::AstFailure("Usage: rand <min> <max>");
+            return 1;
+        }
+        std::string minStr = getVar(args[0]);
+        std::string maxStr = getVar(args[1]);
+        int min = std::stoi(minStr);
+        int max = std::stoi(maxStr);
+        if(min > max) {
+            throw cmd::AstFailure("Usage: rand <min> <max>");
+            return 1;
+        }
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<> dis(min, max);
+        int randomNum = dis(gen);
+        output << randomNum;    
         return 0;
     }
 }

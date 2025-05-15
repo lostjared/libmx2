@@ -28,7 +28,8 @@ begin
     extern "sdl-mod" "sdl_get_fps" "sdl_fps"
     extern "sdl-mod" "sdl_get_ticks" "sdl_ticks"    
     extern "sdl-mod" "sdl_destroy" "sdl_destroy"
-    extern "sdl-mod" "sdl_quit" "sdl_quit"    
+    extern "sdl-mod" "sdl_quit" "sdl_quit" 
+    extern "sdl-mod" "sdl_color_string" "sdl_color_string"   
     return 0
 end
 

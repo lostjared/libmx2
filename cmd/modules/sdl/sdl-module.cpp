@@ -387,6 +387,30 @@ extern "C" {
         
         return 0;
     }
+
+    
+    int sdl_color_string(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
+        if(args.empty()) {
+            output << "Usage: color_string \"r g b a\"" << std::endl;
+            return 1;
+        }
+        int r = 0, g = 0, b = 0, a = 255;
+        if (args.size() > 0) {
+            std::string value = getVar(args[0]);
+            std::istringstream stream(value);
+            stream >> r >> g >> b >> a;
+            if (stream.fail()) {
+                output << "Invalid color values" << std::endl;
+                return 1;
+            }
+        }
+        if (r < 0 || r > 255 || g < 0 || g > 255 || b < 0 || b > 255 || a < 0 || a > 255) {
+            output << "Invalid color values. Must be between 0 and 255." << std::endl;
+            return 1;
+        }
+        SDL_SetRenderDrawColor(g_renderer, r, g, b, a);
+        return 0;
+    }
     
     int sdl_draw_triangle(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
         if (g_renderer == nullptr) {

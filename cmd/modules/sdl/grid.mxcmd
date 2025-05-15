@@ -1,0 +1,103 @@
+#!/usr/bin/env mxcmd-cli
+
+cmd "sdl-script.mxcmd"
+
+let width=1280
+let height=720
+let grid = "grid"
+let block = "block"
+let grid_w = 32
+let grid_h = 16
+let size_w = 40
+let size_h = 45
+let size_val = (size_w * size_h) 
+list_new grid size_val "0"
+list_new block 6 "255 255 255 255"
+
+define set_grid()
+begin
+    random_blocks
+    list_set  block 0 "255 0 0 255"
+    list_set  block 1 "0 255 0 255"
+    list_set  block 2 "0 0 255 255"
+    list_set  block 3 "255 255 0 255"  
+    list_set  block 4 "255 0 255 255"
+    list_set  block 5 "0 255 255 255"  
+    list_set  block 6 "255 255 255 255"
+    return 0
+end
+
+define random_blocks()
+begin
+ let count = 0
+    while test count --lt size_val
+    do
+        let color = $(printf "%d" $(rand 0 5))
+        list_set grid count color
+        count++
+    done
+    return 0
+end
+
+define init_sdl()
+begin
+    sdl_init
+    set_grid
+    sdl_window "MXCMD Window" width height
+    sdl_renderer -1 
+    return 0
+end
+
+define clean_sdl()
+begin
+    sdl_quit
+    return 0
+end
+
+define draw_grid()
+begin
+    random_blocks
+    let x = 0
+    let grid_x = 0
+    let grid_y = 0
+    while test x --lt size_w
+    do
+        grid_y = 0
+        let y = 0
+        while test y --lt size_h
+        do
+            let grid_pos = x + y * size_w
+            let color_value = $(list_get block $(list_get grid grid_pos))
+            sdl_color_string color_value
+            sdl_rect grid_x grid_y grid_w grid_h 1
+            y++
+            grid_y = grid_y + grid_h
+        done
+        grid_x = grid_x + grid_w
+        x++
+    done
+    return  0
+end
+
+define main()
+begin
+    init_sdl
+    set_grid
+    running = 1
+    while test running --eq 1 
+    do
+        sdl_set_color 0 0 0 255
+        sdl_clear
+        draw_grid
+        sdl_present
+        result = $(sdl_events)
+        if test result --eq 0
+        then
+        break
+        fi
+    done
+    clean_sdl
+    return 0
+end
+
+main

@@ -409,11 +409,15 @@ namespace cmd {
                 while (!isAtEnd() && 
                        
                        !(peek().getTokenType() == types::TokenType::TT_ID && 
-                         (peek().getTokenValue() == "fi" || peek().getTokenValue() == "then" ||
-                          peek().getTokenValue() == "else" || peek().getTokenValue() == "elif" ||
-                          peek().getTokenValue() == "do" || peek().getTokenValue() == "done" ||
-                          peek().getTokenValue() == "end" || peek().getTokenValue() == "extern" || peek().getTokenValue() == "return")) &&
-                       
+                        (peek().getTokenValue() == "fi" || peek().getTokenValue() == "then" ||
+                        peek().getTokenValue() == "else" || peek().getTokenValue() == "elif" ||
+                        peek().getTokenValue() == "do" || peek().getTokenValue() == "done" ||
+                        peek().getTokenValue() == "end" || peek().getTokenValue() == "extern" || 
+                        peek().getTokenValue() == "return" || peek().getTokenValue() == "let" ||
+                        peek().getTokenValue() == "if" || peek().getTokenValue() == "while" ||
+                        peek().getTokenValue() == "for" || peek().getTokenValue() == "break" ||
+                        peek().getTokenValue() == "continue" || peek().getTokenValue() == "define")) &&
+                                            
                        (peek().getTokenType() != types::TokenType::TT_SYM || peek().getTokenValue() == "-" ||
                         peek().getTokenValue() == "$" ||
                         (isTestCommand && (peek().getTokenValue() == "=" || peek().getTokenValue() == "!=")) 

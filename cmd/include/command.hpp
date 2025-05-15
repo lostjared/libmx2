@@ -64,5 +64,6 @@ namespace cmd {
     int newListClearAllCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
     int newListExistsCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
     int newListInitCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
+    int newRandCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
 }
 #endif
