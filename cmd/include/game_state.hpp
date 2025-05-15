@@ -48,9 +48,8 @@ namespace state {
             if (it != lists.end()) {
                 if(!it->second.empty())
                     it->second.clear();
-                it->second.resize(number);
-                for(size_t i = 0; i < number; ++i) {
-                    it->second[i] = filln;
+                for(size_t i = 0; i <= number; ++i) {
+                    it->second.push_back(filln);
                 }
             } else {
                 throw StateException("List not found: " + filln);
@@ -61,9 +60,9 @@ namespace state {
             auto it = lists.find(name);
             if (it != lists.end()) {
                 if (index < it->second.size()) {
-                    it->second[index] = value;
+                    it->second.at(index) = value;
                 } else {
-                    throw StateException("Index out of bounds for list: " + name);
+                    throw StateException("Index: " + std::to_string(index) + " out of bounds for list: " + name);
                 }
             } else {
                 throw StateException("List not found: " + name);
@@ -77,11 +76,7 @@ namespace state {
         std::string getFromList(const std::string& name, int index) const {
             auto it = lists.find(name);
             if (it != lists.end()) {
-                if (index >= 0 && index < static_cast<int>(it->second.size())) {
-                    return it->second[index];
-                } else {
-                    throw StateException("Index out of bounds for list: " + name);
-                }
+                    return it->second.at(index);
             }
             throw StateException("List not found: " + name);
         }

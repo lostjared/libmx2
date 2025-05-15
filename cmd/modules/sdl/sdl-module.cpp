@@ -397,12 +397,28 @@ extern "C" {
         int r = 0, g = 0, b = 0, a = 255;
         if (args.size() > 0) {
             std::string value = getVar(args[0]);
-            std::istringstream stream(value);
-            stream >> r >> g >> b >> a;
-            if (stream.fail()) {
-                output << "Invalid color values" << std::endl;
+            auto tokenize = [](const std::string& str) -> std::vector<std::string> {
+                std::vector<std::string> tokens;
+                std::istringstream iss(str);
+                std::string token;
+                while (iss >> token) {
+                    tokens.push_back(token);
+                }
+                return tokens;
+            };
+            std::vector<std::string> num = tokenize(value);
+            if(num.empty()) {
+                output << "Error: invalid color value..\n";
                 return 1;
             }
+            if(num.size() > 0)
+                r = std::stoi(num[0]);
+            if(num.size() > 1)
+                g = std::stoi(num[1]);
+            if(num.size() > 2)
+                b = std::stoi(num[2]);
+            if(num.size() > 3)
+                a = std::stoi(num[3]);
         }
         if (r < 0 || r > 255 || g < 0 || g > 255 || b < 0 || b > 255 || a < 0 || a > 255) {
             output << "Invalid color values. Must be between 0 and 255." << std::endl;

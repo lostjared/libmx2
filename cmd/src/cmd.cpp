@@ -226,9 +226,14 @@ int main(int argc, char **argv) {
                 std::cerr << "Exception: " << e.what() << std::endl;
                 return EXIT_FAILURE;
             } catch(const cmd::AstFailure &e) {
-                std::cerr << "Failure: " << e.what() << std::endl;   
-            }catch(...) {
-                std::cerr << "Unknown Error has Occoured..\n";
+                std::cerr << "Failure: " << e.what() << std::endl;
+                return EXIT_FAILURE;   
+            } catch(const state::StateException &e) {
+                std::cerr << "State Exception: " << e.what() << std::endl;
+            } 
+            catch(...) {
+                std::cerr << "Fatal Error has occoured.\n";
+                throw;
                 return EXIT_FAILURE;
             }
         } else if(argc == 2 && (std::string(argv[1]) == "--stdin" || std::string(argv[1]) == "-i")) {

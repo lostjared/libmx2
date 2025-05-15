@@ -11,38 +11,10 @@ let grid_h = 16
 let size_w = 40
 let size_h = 45
 let size_val = (size_w * size_h) 
-list_new grid size_val "-1"
-list_new block 6 "-1"
-
-define set_grid()
-begin
-    random_blocks
-    list_set  block 0 "255 0 0 255"
-    list_set  block 1 "0 255 0 255"
-    list_set  block 2 "0 0 255 255"
-    list_set  block 3 "255 255 0 255"  
-    list_set  block 4 "255 0 255 255"
-    list_set  block 5 "0 255 255 255"  
-    list_set  block 6 "0 0 255 255"
-    return 0
-end
-
-define random_blocks()
-begin
-    let count = 0
-    while test count --lt size_val
-    do
-        let color = $(printf "%d" $(rand 1 5))
-        list_set grid count color
-        count++
-    done
-    return 0
-end
 
 define init_sdl()
 begin
     sdl_init
-    set_grid
     sdl_window "MXCMD Window" width height
     sdl_renderer -1 
     return 0
@@ -56,7 +28,6 @@ end
 
 define draw_grid()
 begin
-    random_blocks
     let x = 0
     let y = 0
     let grid_x = 0
@@ -67,13 +38,7 @@ begin
         x = 0
         while test x --lt size_w
         do
-            let grid_pos = (y * size_w) + x
-            let color_value = $(list_get block $(list_get grid grid_pos))
-            if test color_value --eq -1
-            then
-                let color_value = $(list_get block 0)
-            fi
-            sdl_color_string color_value
+            sdl_color_string $(printf "%d %d %d 255" $(rand 0 255) $(rand 0 255) $(rand 0 255))
             sdl_rect grid_x grid_y grid_w grid_h 1
             x = x + 1
             grid_x = grid_x + grid_w

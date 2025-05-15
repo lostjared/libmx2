@@ -56,7 +56,6 @@ namespace cmd {
             registry.registerTypedCommand("list_clear", cmd::newListClearCommand);
             registry.registerTypedCommand("list_add", cmd::newListAddCommand);
             registry.registerTypedCommand("list_remove", cmd::newListRemoveCommand);
-            registry.registerTypedCommand("list_get", cmd::newListGetCommand);
             registry.registerTypedCommand("list_set", cmd::newListSetCommand);
             registry.registerTypedCommand("list_erase", cmd::newListClearCommand);
             registry.registerTypedCommand("list_clear", cmd::newListClearAllCommand);
