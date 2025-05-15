@@ -1,0 +1,61 @@
+#!/usr/bin/env mxcmd-cli
+
+cmd "sdl-script.mxcmd"
+
+
+width=1280
+height=720
+
+define init_sdl()
+begin
+    sdl_init
+    sdl_window "MXCMD Window" width height
+    sdl_renderer -1 "software"
+    return 0
+end
+
+define clean_sdl()
+begin
+    sdl_freesurface background_image
+    sdl_quit
+    return 0
+end
+
+define draw_triangle()
+begin
+    sdl_set_color 255 0 0 255
+    let center_x=width/2
+    let center_y=height/2+50
+    let size=350
+    let x1=center_x
+    let y1=center_y-size
+    let x2=center_x-size
+    let y2=center_y+size/2
+    let x3=center_x+size
+    let y3=center_y+size/2
+    sdl_triangle x1 y1 x2 y2 x3 y3 1
+    return  0
+end
+
+define main()
+begin
+    init_sdl
+    let running = 1
+    while test running --eq 1 
+    do
+        sdl_set_color 0 0 0 255
+        sdl_clear
+        draw_triangle
+        sdl_present
+        let result = $(sdl_events)
+        if test result --eq 0
+        then
+        break
+        fi
+        sdl_delay 16
+    done
+    clean_sdl
+    return 0
+end
+
+main
