@@ -1493,4 +1493,146 @@ namespace cmd {
             return 1;
         }
     }
+
+    
+    int newListCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
+        if (args.empty()) {
+            output << "Usage: list_new <name>\n";
+            return 1;
+        }
+        std::string name = getVar(args[0]);
+        state::GameState *gameState = state::getGameState();
+        if (gameState->hasList(name)) {
+            output << "Error: List '" << name << "' already exists." << std::endl;
+            return 1;
+        }
+        gameState->createList(name);
+        if(args.size() > 2) {
+            std::string value = getVar(args[2]);
+            std::string value2 = getVar(args[1]);
+            gameState->initList(name, value, std::stoul(value2));
+        }
+
+        return 0;
+    }
+    int newListAddCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
+        if (args.size() < 2) {
+            output << "Usage: list_add <name> <value>\n";
+            return 1;
+        }
+        std::string name = getVar(args[0]);
+        std::string value = getVar(args[1]);
+        state::GameState *gameState = state::getGameState();
+        if (!gameState->hasList(name)) {
+            output << "Error: List '" << name << "' already exists." << std::endl;
+            return 1;
+        }
+        gameState->addToList(name, value);
+        return 0;
+    }
+    int newListRemoveCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
+        if (args.size() < 2) {
+            output << "Usage: list_remove <name> <value>\n";
+            return 1;
+        }
+        std::string name = getVar(args[0]);
+        std::string value = getVar(args[1]);
+        state::GameState *gameState = state::getGameState();
+        if (!gameState->hasList(name)) {
+            output << "Error: List '" << name << "' already exists." << std::endl;
+            return 1;
+        }
+        gameState->removeFromList(name, value);
+        return 0;
+    }
+    int newListGetCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
+        if (args.size() < 2) {
+            throw cmd::AstFailure("Usage: list_get <name> <index>");
+            return 1;
+        }
+        std::string name = getVar(args[0]);
+        std::string indexStr = getVar(args[1]);
+        state::GameState *gameState = state::getGameState();
+        if (!gameState->hasList(name)) {
+            throw cmd::AstFailure("Error: List '" + name + "' does not exist.");
+            return 1;
+        }
+        int index = std::stoi(indexStr);
+        std::string value = gameState->getFromList(name, index);
+        if (value.empty()) {
+            throw cmd::AstFailure( "Error: Index out of range.");
+            return 1;
+        }
+        output << value;
+        return 0;
+    }
+
+    int newListSetCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
+        if (args.size() < 3) {
+            output << "Usage: list_set <name> <index> <value>\n";
+            return 1;
+        }
+        std::string name = getVar(args[0]);
+        std::string indexStr = getVar(args[1]);
+        std::string value = getVar(args[2]);
+        state::GameState *gameState = state::getGameState();
+        if (!gameState->hasList(name)) {
+            output << "Error: List '" << name << "' does not exist." << std::endl;
+            return 1;
+        }
+        size_t index = std::stoul(indexStr);
+        gameState->setList(name, index, value);
+        return 0;
+    }
+    
+    int newListClearCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
+        if (args.empty()) {
+            output << "Usage: list_clear <name>\n";
+            return 1;
+        }
+        std::string name = getVar(args[0]);
+        state::GameState *gameState = state::getGameState();
+        if (!gameState->hasList(name)) {
+            output << "Error: List '" << name << "' does not exist." << std::endl;
+            return 1;
+        }
+        gameState->clearList(name);
+        return 0;
+    }
+    int newListClearAllCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
+        state::GameState *gameState = state::getGameState();
+        gameState->clearAllLists();
+        return 0;
+    }
+    int newListExistsCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
+        if (args.empty()) {
+            throw cmd::AstFailure("Usage: list_exists <name>");
+            return 1;
+        }
+        std::string name = getVar(args[0]);
+        state::GameState *gameState = state::getGameState();
+        if (gameState->hasList(name)) {
+            output << "0";
+        } else {
+            output << "1";
+        }
+        return 0;
+    }
+    int newListInitCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
+        if(args.empty()) {
+            output << "Usage: list_init <name> <value> <size>\n";
+            return 1;
+        }
+        std::string name = getVar(args[0]);
+        std::string value = getVar(args[1]);
+        std::string sizeStr = getVar(args[2]);
+        state::GameState *gameState = state::getGameState();
+        if (!gameState->hasList(name)) {
+            output << "Error: List '" << name << "' does not exist." << std::endl;
+            return 1;
+        }
+        size_t size = std::stoul(sizeStr);
+        gameState->initList(name, value, size);
+        return 0;
+    }
 }

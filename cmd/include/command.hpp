@@ -55,5 +55,14 @@ namespace cmd {
     int commandListCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
     int argvCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
     int externCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
+    int newListCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
+    int newListAddCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
+    int newListRemoveCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
+    int newListGetCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
+    int newListSetCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
+    int newListClearCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
+    int newListClearAllCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
+    int newListExistsCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
+    int newListInitCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
 }
 #endif

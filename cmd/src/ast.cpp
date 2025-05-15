@@ -49,6 +49,19 @@ namespace cmd {
             registry.registerTypedCommand("debug_cmd", cmd::commandListCommand);
             registry.registerTypedCommand("argv", cmd::argvCommand);
             registry.registerTypedCommand("extern", cmd::externCommand);
+            registry.registerTypedCommand("list_new", cmd::newListCommand);
+            registry.registerTypedCommand("list_add", cmd::newListAddCommand);
+            registry.registerTypedCommand("list_remove", cmd::newListRemoveCommand); 
+            registry.registerTypedCommand("list_get", cmd::newListGetCommand);
+            registry.registerTypedCommand("list_clear", cmd::newListClearCommand);
+            registry.registerTypedCommand("list_add", cmd::newListAddCommand);
+            registry.registerTypedCommand("list_remove", cmd::newListRemoveCommand);
+            registry.registerTypedCommand("list_get", cmd::newListGetCommand);
+            registry.registerTypedCommand("list_set", cmd::newListSetCommand);
+            registry.registerTypedCommand("list_erase", cmd::newListClearCommand);
+            registry.registerTypedCommand("list_clear", cmd::newListClearAllCommand);
+            registry.registerTypedCommand("list_exists", newListExistsCommand);
+            registry.registerTypedCommand("list_init", cmd::newListInitCommand);
             registry.registerTypedCommand("set", [this](const std::vector<Argument>& args, std::istream& input, std::ostream& output) {
                 if (args.size() >= 1) {
                     if (args[0].value == "-e") {
