@@ -34,7 +34,11 @@ begin
         sdl_clear
         sdl_copysurface background_image 0 0 width height
         sdl_present
-        sdl_events
+        let result = $(sdl_events)
+        if test result --eq 0
+        then
+        break
+        fi
         sdl_delay 16
     done
     clean_sdl

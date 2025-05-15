@@ -412,7 +412,7 @@ namespace cmd {
                          (peek().getTokenValue() == "fi" || peek().getTokenValue() == "then" ||
                           peek().getTokenValue() == "else" || peek().getTokenValue() == "elif" ||
                           peek().getTokenValue() == "do" || peek().getTokenValue() == "done" ||
-                          peek().getTokenValue() == "end" || peek().getTokenValue() == "extern")) &&
+                          peek().getTokenValue() == "end" || peek().getTokenValue() == "extern" || peek().getTokenValue() == "return")) &&
                        
                        (peek().getTokenType() != types::TokenType::TT_SYM || peek().getTokenValue() == "-" ||
                         peek().getTokenValue() == "$" ||
