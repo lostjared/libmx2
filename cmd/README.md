@@ -9,7 +9,7 @@ Online guide: https://lostsidedead.biz/mxcmd
 Visualizer/Code Formatter: https://lostsidedead.biz/debug
 
 ## Features
-
+- **Scripting Support**: Wrte scripts for bach processing etc.
 - **File Operations**: Manage files/directories (cat, cp, mv, mkdir, etc.)
 - **Text Processing**: Filter, search, and manipulate text (grep, sed, sort, wc)
 - **System Interaction**: Navigate and inspect the environment (cd, pwd, ls)
@@ -17,6 +17,7 @@ Visualizer/Code Formatter: https://lostsidedead.biz/debug
 
 ## Key Implementation Details
 
+- **Accedss to C++ functions**: extern for accessing shared objects
 - **Regex Support**: `grep` and `sed` use C++ `<regex>` with ECMAScript syntax
 - **Filesystem**: Utilizes C++17 `<filesystem>` for cross-platform path handling
 - **State Management**: `debug` commands interact with a singleton `GameState`
