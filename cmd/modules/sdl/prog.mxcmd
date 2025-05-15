@@ -4,11 +4,13 @@ cmd "sdl-script.mxcmd"
 
 
 background_image=""
+width=1280
+height=720
 
 define init_sdl()
 begin
     sdl_init
-    sdl_window "MXCMD Window" 1440 1080
+    sdl_window "MXCMD Window" width height
     sdl_renderer -1 "software"
     background_image=$(sdl_loadsurface "./img.bmp")
     printf "img.bmp loaded\n"
@@ -30,7 +32,7 @@ begin
     do
         sdl_set_color 0 0 0 255
         sdl_clear
-        sdl_copysurface background_image 0 0 1440 1080
+        sdl_copysurface background_image 0 0 width height
         sdl_present
         sdl_events
         sdl_delay 16
