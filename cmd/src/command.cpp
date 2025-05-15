@@ -1637,6 +1637,22 @@ namespace cmd {
         return 0;
     }
 
+    int newListLenCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
+        if (args.empty()) {
+            throw cmd::AstFailure("Usage: list_len <name>");
+            return 1;
+        }
+        std::string name = getVar(args[0]);
+        state::GameState *gameState = state::getGameState();
+        if (!gameState->hasList(name)) {
+            throw cmd::AstFailure("Error: List '" + name + "' does not exist.");
+            return 1;
+        }
+        size_t len = gameState->getListLength(name);
+        output << len;
+        return 0;
+    }
+
     int newRandCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
         if(args.empty()) {
             throw cmd::AstFailure("Usage: rand <min> <max>");
