@@ -16,7 +16,6 @@ end
 
 define clean_sdl()
 begin
-    sdl_freesurface background_image
     sdl_quit
     return 0
 end
