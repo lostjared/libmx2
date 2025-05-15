@@ -10,6 +10,16 @@ ${LIBCMD_INCLUDE_DIRS}
 ${LIBCMD_INCLUDE_DIRS}/mxcmd
 )
 
+if(RELEASE)
+    set(CMAKE_BUILD_TYPE Release)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
+else()
+    set(CMAKE_BUILD_TYPE Debug)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
+endif()
+
 if(WIN32)
     set_target_properties(sdl-mod PROPERTIES 
         PREFIX ""  
