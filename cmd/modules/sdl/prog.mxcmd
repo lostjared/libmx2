@@ -10,12 +10,14 @@ begin
     sdl_init
     sdl_window "MXCMD Window" 1440 1080
     sdl_renderer -1 "software"
-    #background_image=$(sdl_loadsurface "img.bmp")
+    background_image=$(sdl_loadsurface "./img.bmp")
+    printf "img.bmp loaded\n"
     return 0
 end
 
 define clean_sdl()
 begin
+    sdl_freesurface background_image
     sdl_quit
     return 0
 end
@@ -28,6 +30,7 @@ begin
     do
         sdl_set_color 0 0 0 255
         sdl_clear
+        sdl_copysurface background_image 0 0 1440 1080
         sdl_present
         sdl_events
         sdl_delay 16

@@ -13,6 +13,7 @@ begin
     extern "sdl-mod" "sdl_delay" "sdl_delay"
     extern "sdl-mod" "sdl_loadsurface" "sdl_loadsurface"
     extern "sdl-mod" "sdl_freesurface" "sdl_freesurface"
+    extern "sdl-mod" "sdl_copysurface" "sdl_copysurface"
 end
 
 sdl

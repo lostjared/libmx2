@@ -84,13 +84,54 @@ extern "C" {
         return 0;
     }
 
+    int sdl_copysurface(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
+        if (g_renderer == nullptr) {
+            output << "Renderer must be created first" << std::endl;
+            throw cmd::AstFailure("Renderer must be created first");
+            return 1;
+        }
+        if (args.size() < 3) {
+            output << "Usage: copysurface <surface_id> <x> <y>" << std::endl;
+            throw cmd::AstFailure("Not enough arguments for copysurface");
+            return 1;
+        }
+        std::string surface_id = cmd::getVar(args[0]);
+        int x = std::stoi(cmd::getVar(args[1]));
+        int y = std::stoi(cmd::getVar(args[2]));
+        auto it = surfaces.find(surface_id);
+        if (it == surfaces.end()) {
+            output << "Surface not found: " << surface_id << std::endl;
+            throw cmd::AstFailure("Surface not found");
+            return 1;
+        }
+        SDL_Surface* surface = it->second;
+        int w = surface->w;
+        int h = surface->h;
+        if(args.size() >= 5) {
+            w = std::stoi(cmd::getVar(args[3]));
+            h = std::stoi(cmd::getVar(args[4]));
+        }
+        SDL_Texture* texture = SDL_CreateTextureFromSurface(g_renderer, surface);
+        if (texture == nullptr) {
+            output << "Failed to create texture: " << SDL_GetError() << std::endl;
+            throw cmd::AstFailure("Failed to create texture");
+            return 1;
+        }
+        SDL_Rect dst_rect = {x, y, w, h};
+        SDL_RenderCopy(g_renderer, texture, nullptr, &dst_rect);
+        SDL_DestroyTexture(texture);
+        return 0;
+    }
+
     int sdl_freesurface(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
         if (g_window == nullptr) {
             output << "Window must be created first" << std::endl;
+            throw cmd::AstFailure("Window must be created first");
             return 1;
         }
         if (args.size() < 1) {
             output << "Usage: freesurface id" << std::endl;
+            throw cmd::AstFailure("Usage: freesurface id");
             return 1;
         }
         std::string num = cmd::getVar(args[0]);
@@ -100,6 +141,7 @@ extern "C" {
             surfaces.erase(pos);
         } else {
             output << "Error: Surface not found..\n";
+            throw cmd::AstFailure("Surface not found");
         }
         return 0;
     }
