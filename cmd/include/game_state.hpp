@@ -85,6 +85,22 @@ namespace state {
             throw StateException("List not found: " + name);
         }
 
+        size_t getListSize(const std::string& name) const {
+            auto it = lists.find(name);
+            if (it != lists.end()) {
+                return it->second.size();
+            }
+            throw StateException("List not found: " + name);
+        }
+
+        std::vector<std::string> getListTokens(const std::string& name) const {
+            auto it = lists.find(name);
+            if (it != lists.end()) {
+                return it->second;
+            }
+            throw StateException("List not found: " + name);
+        }
+
         size_t getListLength(const std::string& name) const {
             auto it = lists.find(name);
             if (it != lists.end()) {

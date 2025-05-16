@@ -1193,10 +1193,40 @@ namespace cmd {
 
         void executeForStatement(const std::shared_ptr<cmd::ForStatement>& forStmt,
                          std::istream& input, std::ostream& output) {
-    
             std::optional<std::string> originalValue = getVariable(forStmt->variable);
             bool hadOriginalValue = originalValue.has_value();
             try {
+                if (forStmt->values.size() == 1 && forStmt->values[0].type == ARG_VARIABLE) {
+                    std::string listName = forStmt->values[0].value;
+                    state::GameState* gameState = state::getGameState();   
+                    if (gameState->hasList(listName)) {
+                        size_t listSize = gameState->getListLength(listName);
+                        for (size_t i = 0; i < listSize; i++) {
+                            std::string item = gameState->getFromList(listName, i);
+                            setVariable(forStmt->variable, item);
+                            try {
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+                                if (program_running == 0) {
+                                    output << "- [ Loop interrupted ]-" << std::endl;
+                                    break;
+                                }
+#endif
+                                executeNode(forStmt->body, input, output);
+                            } catch (const ContinueException&) {
+                                continue;
+                            }
+                        }
+                    
+                        if (hadOriginalValue) {
+                            setVariable(forStmt->variable, originalValue.value());
+                        } else {
+                            gameState->setVariable(forStmt->variable, "");
+                        }
+                        return;
+                    }
+                }
+                
+                
                 for (const auto& value : forStmt->values) {
                     if (value.type == ARG_COMMAND_SUBST && value.cmdNode) {
                         std::stringstream cmdInput, cmdOutput;
