@@ -1,5 +1,4 @@
-
-
+#!/usr/bin/env mxcmd-cli
 
 define strcmp(s1, s2)
 begin
@@ -9,12 +8,9 @@ begin
 		return 0
 	fi
 	let loop = 0
-	let length = $(strlen s1)
-	while test loop --ne length
+	while test loop --ne $(strlen s1)
 	do
-		let ch1 = $(index s1 loop 1)
-		let ch2 = $(index s2 loop 1)
-		if test ch1 "!=" ch2
+		if test $(index s1 loop 1) "!=" $(index s2 loop 1)
 		then
 			return 0
 		fi
@@ -25,17 +21,15 @@ begin
 end
 
 
-if test $(argv "length") --eq 2
+if not test $(argv "length") --eq 2
 then
-	value1=$(argv 0)
-	value2=$(argv 1)
-else
+	printf "strcmp: requires two arguments\n"
 	exit
 fi
 
-if test $(strcmp value1 value2) "=" "0"
+if test $(strcmp $(argv 0) $(argv 1)) "=" "0"
 then
 	printf "values are equal\n"
 else
-	printf "values %s %s are not equal\n" value1 value2
+	printf "values %s %s are not equal\n" $(argv 0) $(argv 1)
 fi
