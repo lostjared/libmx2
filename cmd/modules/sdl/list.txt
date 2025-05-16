@@ -1,0 +1,552 @@
+MXCMD v1.06
+(C) 1999-2025 LostSideDead Software
+
+Idx | Type           | Value
+----+----------------+--------------------------
+  0 |        Symbols | 
+
+  1 |     Identifier | cmd
+  2 |         String | sdl-script.mxcmd
+  3 |        Symbols | 
+
+  4 |        Symbols | 
+
+  5 |     Identifier | let
+  6 |     Identifier | width
+  7 |        Symbols | =
+  8 |        Numeric | 1280
+  9 |        Symbols | 
+
+ 10 |     Identifier | let
+ 11 |     Identifier | height
+ 12 |        Symbols | =
+ 13 |        Numeric | 720
+ 14 |        Symbols | 
+
+ 15 |     Identifier | let
+ 16 |     Identifier | grid
+ 17 |        Symbols | =
+ 18 |         String | grid
+ 19 |        Symbols | 
+
+ 20 |     Identifier | let
+ 21 |     Identifier | block
+ 22 |        Symbols | =
+ 23 |         String | block
+ 24 |        Symbols | 
+
+ 25 |     Identifier | let
+ 26 |     Identifier | grid_w
+ 27 |        Symbols | =
+ 28 |        Numeric | 32
+ 29 |        Symbols | 
+
+ 30 |     Identifier | let
+ 31 |     Identifier | grid_h
+ 32 |        Symbols | =
+ 33 |        Numeric | 16
+ 34 |        Symbols | 
+
+ 35 |     Identifier | let
+ 36 |     Identifier | size_w
+ 37 |        Symbols | =
+ 38 |        Numeric | 40
+ 39 |        Symbols | 
+
+ 40 |     Identifier | let
+ 41 |     Identifier | size_h
+ 42 |        Symbols | =
+ 43 |        Numeric | 45
+ 44 |        Symbols | 
+
+ 45 |     Identifier | let
+ 46 |     Identifier | size_val
+ 47 |        Symbols | =
+ 48 |        Symbols | (
+ 49 |     Identifier | size_w
+ 50 |        Symbols | *
+ 51 |     Identifier | size_h
+ 52 |        Symbols | )
+ 53 |        Symbols | 
+
+ 54 |     Identifier | list_new
+ 55 |     Identifier | grid
+ 56 |     Identifier | size_val
+ 57 |         String | 0
+ 58 |        Symbols | 
+
+ 59 |     Identifier | list_new
+ 60 |     Identifier | block
+ 61 |        Symbols | 
+
+ 62 |     Identifier | list_add
+ 63 |     Identifier | block
+ 64 |         String | 255 0 0 255
+ 65 |        Symbols | 
+
+ 66 |     Identifier | list_add
+ 67 |     Identifier | block
+ 68 |         String | 0 255 0 255
+ 69 |        Symbols | 
+
+ 70 |     Identifier | list_add
+ 71 |     Identifier | block
+ 72 |         String | 0 0 255 255
+ 73 |        Symbols | 
+
+ 74 |     Identifier | list_add
+ 75 |     Identifier | block
+ 76 |         String | 255 255 0 255
+ 77 |        Symbols | 
+
+ 78 |     Identifier | list_add
+ 79 |     Identifier | block
+ 80 |         String | 255 0 255 255
+ 81 |        Symbols | 
+
+ 82 |     Identifier | list_add
+ 83 |     Identifier | block
+ 84 |         String | 0 255 255 255
+ 85 |        Symbols | 
+
+ 86 |     Identifier | list_add
+ 87 |     Identifier | block
+ 88 |         String | 0 255 255 255
+ 89 |        Symbols | 
+
+ 90 |     Identifier | list_add
+ 91 |     Identifier | block
+ 92 |         String | 255 255 255 255
+ 93 |        Symbols | 
+
+ 94 |        Symbols | 
+
+ 95 |     Identifier | define
+ 96 |     Identifier | set_grid
+ 97 |        Symbols | (
+ 98 |        Symbols | )
+ 99 |        Symbols | 
+
+100 |     Identifier | begin
+101 |        Symbols | 
+
+102 |     Identifier | random_blocks
+103 |        Symbols | 
+
+104 |     Identifier | return
+105 |        Numeric | 0
+106 |        Symbols | 
+
+107 |     Identifier | end
+108 |        Symbols | 
+
+109 |        Symbols | 
+
+110 |     Identifier | define
+111 |     Identifier | random_blocks
+112 |        Symbols | (
+113 |        Symbols | )
+114 |        Symbols | 
+
+115 |     Identifier | begin
+116 |        Symbols | 
+
+117 |     Identifier | let
+118 |     Identifier | count
+119 |        Symbols | =
+120 |        Numeric | 0
+121 |        Symbols | 
+
+122 |     Identifier | let
+123 |     Identifier | index_val
+124 |        Symbols | =
+125 |     Identifier | size_val
+126 |        Symbols | -
+127 |        Numeric | 1
+128 |        Symbols | 
+
+129 |     Identifier | while
+130 |     Identifier | test
+131 |     Identifier | count
+132 |       Argument | --lt
+133 |     Identifier | index_val
+134 |        Symbols | 
+
+135 |     Identifier | do
+136 |        Symbols | 
+
+137 |     Identifier | let
+138 |     Identifier | color
+139 |        Symbols | =
+140 |        Symbols | $
+141 |        Symbols | (
+142 |     Identifier | printf
+143 |         String | %d
+144 |        Symbols | $
+145 |        Symbols | (
+146 |     Identifier | rand
+147 |        Numeric | 1
+148 |        Numeric | 5
+149 |        Symbols | )
+150 |        Symbols | )
+151 |        Symbols | 
+
+152 |     Identifier | list_set
+153 |     Identifier | grid
+154 |     Identifier | count
+155 |     Identifier | color
+156 |        Symbols | 
+
+157 |     Identifier | count
+158 |        Symbols | ++
+159 |        Symbols | 
+
+160 |     Identifier | done
+161 |        Symbols | 
+
+162 |     Identifier | return
+163 |        Numeric | 0
+164 |        Symbols | 
+
+165 |     Identifier | end
+166 |        Symbols | 
+
+167 |        Symbols | 
+
+168 |     Identifier | define
+169 |     Identifier | init_sdl
+170 |        Symbols | (
+171 |        Symbols | )
+172 |        Symbols | 
+
+173 |     Identifier | begin
+174 |        Symbols | 
+
+175 |     Identifier | sdl_init
+176 |        Symbols | 
+
+177 |     Identifier | set_grid
+178 |        Symbols | 
+
+179 |     Identifier | sdl_window
+180 |         String | MXCMD Window
+181 |     Identifier | width
+182 |     Identifier | height
+183 |        Symbols | 
+
+184 |     Identifier | sdl_renderer
+185 |        Symbols | -
+186 |        Numeric | 1
+187 |        Symbols | 
+
+188 |     Identifier | return
+189 |        Numeric | 0
+190 |        Symbols | 
+
+191 |     Identifier | end
+192 |        Symbols | 
+
+193 |        Symbols | 
+
+194 |     Identifier | define
+195 |     Identifier | clean_sdl
+196 |        Symbols | (
+197 |        Symbols | )
+198 |        Symbols | 
+
+199 |     Identifier | begin
+200 |        Symbols | 
+
+201 |     Identifier | sdl_quit
+202 |        Symbols | 
+
+203 |     Identifier | return
+204 |        Numeric | 0
+205 |        Symbols | 
+
+206 |     Identifier | end
+207 |        Symbols | 
+
+208 |        Symbols | 
+
+209 |     Identifier | define
+210 |     Identifier | draw_grid
+211 |        Symbols | (
+212 |        Symbols | )
+213 |        Symbols | 
+
+214 |     Identifier | begin
+215 |        Symbols | 
+
+216 |     Identifier | random_blocks
+217 |        Symbols | 
+
+218 |     Identifier | let
+219 |     Identifier | x
+220 |        Symbols | =
+221 |        Numeric | 0
+222 |        Symbols | 
+
+223 |     Identifier | let
+224 |     Identifier | y
+225 |        Symbols | =
+226 |        Numeric | 0
+227 |        Symbols | 
+
+228 |     Identifier | let
+229 |     Identifier | grid_x
+230 |        Symbols | =
+231 |        Numeric | 0
+232 |        Symbols | 
+
+233 |     Identifier | let
+234 |     Identifier | grid_y
+235 |        Symbols | =
+236 |        Numeric | 0
+237 |        Symbols | 
+
+238 |     Identifier | while
+239 |     Identifier | test
+240 |     Identifier | y
+241 |       Argument | --lt
+242 |     Identifier | size_h
+243 |        Symbols | 
+
+244 |     Identifier | do
+245 |        Symbols | 
+
+246 |     Identifier | grid_x
+247 |        Symbols | =
+248 |        Numeric | 0
+249 |        Symbols | 
+
+250 |     Identifier | x
+251 |        Symbols | =
+252 |        Numeric | 0
+253 |        Symbols | 
+
+254 |     Identifier | while
+255 |     Identifier | test
+256 |     Identifier | x
+257 |       Argument | --lt
+258 |     Identifier | size_w
+259 |        Symbols | 
+
+260 |     Identifier | do
+261 |        Symbols | 
+
+262 |     Identifier | let
+263 |     Identifier | grid_pos
+264 |        Symbols | =
+265 |        Symbols | (
+266 |     Identifier | y
+267 |        Symbols | *
+268 |     Identifier | size_w
+269 |        Symbols | )
+270 |        Symbols | +
+271 |     Identifier | x
+272 |        Symbols | 
+
+273 |     Identifier | let
+274 |     Identifier | pos_val
+275 |        Symbols | =
+276 |     Identifier | size_val
+277 |        Symbols | -
+278 |        Numeric | 2
+279 |        Symbols | 
+
+280 |     Identifier | let
+281 |     Identifier | color_value
+282 |        Symbols | =
+283 |        Symbols | $
+284 |        Symbols | (
+285 |     Identifier | list_get
+286 |     Identifier | block
+287 |        Symbols | $
+288 |        Symbols | (
+289 |     Identifier | list_get
+290 |     Identifier | grid
+291 |     Identifier | grid_pos
+292 |        Symbols | )
+293 |        Symbols | )
+294 |        Symbols | 
+
+295 |     Identifier | if
+296 |     Identifier | test
+297 |     Identifier | color_value
+298 |       Argument | --eq
+299 |        Symbols | -
+300 |        Numeric | 1
+301 |        Symbols | 
+
+302 |     Identifier | then
+303 |        Symbols | 
+
+304 |     Identifier | let
+305 |     Identifier | color_value
+306 |        Symbols | =
+307 |        Symbols | $
+308 |        Symbols | (
+309 |     Identifier | list_get
+310 |     Identifier | block
+311 |        Numeric | 0
+312 |        Symbols | )
+313 |        Symbols | 
+
+314 |     Identifier | printf
+315 |         String | Color value is -1, using default color: %s at %d
+
+316 |        Symbols | $
+317 |        Symbols | (
+318 |     Identifier | list_get
+319 |     Identifier | block
+320 |        Numeric | 0
+321 |        Symbols | )
+322 |     Identifier | grid_pos
+323 |        Symbols | 
+
+324 |     Identifier | fi
+325 |        Symbols | 
+
+326 |     Identifier | sdl_color_string
+327 |     Identifier | color_value
+328 |        Symbols | 
+
+329 |     Identifier | sdl_rect
+330 |     Identifier | grid_x
+331 |     Identifier | grid_y
+332 |     Identifier | grid_w
+333 |     Identifier | grid_h
+334 |        Numeric | 1
+335 |        Symbols | 
+
+336 |     Identifier | x
+337 |        Symbols | =
+338 |     Identifier | x
+339 |        Symbols | +
+340 |        Numeric | 1
+341 |        Symbols | 
+
+342 |     Identifier | grid_x
+343 |        Symbols | =
+344 |     Identifier | grid_x
+345 |        Symbols | +
+346 |     Identifier | grid_w
+347 |        Symbols | 
+
+348 |     Identifier | done
+349 |        Symbols | 
+
+350 |     Identifier | grid_y
+351 |        Symbols | =
+352 |     Identifier | grid_y
+353 |        Symbols | +
+354 |     Identifier | grid_h
+355 |        Symbols | 
+
+356 |     Identifier | y
+357 |        Symbols | =
+358 |     Identifier | y
+359 |        Symbols | +
+360 |        Numeric | 1
+361 |        Symbols | 
+
+362 |     Identifier | done
+363 |        Symbols | 
+
+364 |     Identifier | return
+365 |        Numeric | 0
+366 |        Symbols | 
+
+367 |     Identifier | end
+368 |        Symbols | 
+
+369 |        Symbols | 
+
+370 |     Identifier | define
+371 |     Identifier | main
+372 |        Symbols | (
+373 |        Symbols | )
+374 |        Symbols | 
+
+375 |     Identifier | begin
+376 |        Symbols | 
+
+377 |     Identifier | init_sdl
+378 |        Symbols | 
+
+379 |     Identifier | running
+380 |        Symbols | =
+381 |        Numeric | 1
+382 |        Symbols | 
+
+383 |     Identifier | while
+384 |     Identifier | test
+385 |     Identifier | running
+386 |       Argument | --eq
+387 |        Numeric | 1
+388 |        Symbols | 
+
+389 |     Identifier | do
+390 |        Symbols | 
+
+391 |     Identifier | sdl_set_color
+392 |        Numeric | 0
+393 |        Numeric | 0
+394 |        Numeric | 0
+395 |        Numeric | 255
+396 |        Symbols | 
+
+397 |     Identifier | sdl_clear
+398 |        Symbols | 
+
+399 |     Identifier | draw_grid
+400 |        Symbols | 
+
+401 |     Identifier | sdl_present
+402 |        Symbols | 
+
+403 |     Identifier | result
+404 |        Symbols | =
+405 |        Symbols | $
+406 |        Symbols | (
+407 |     Identifier | sdl_events
+408 |        Symbols | )
+409 |        Symbols | 
+
+410 |     Identifier | if
+411 |     Identifier | test
+412 |     Identifier | result
+413 |       Argument | --eq
+414 |        Numeric | 0
+415 |        Symbols | 
+
+416 |     Identifier | then
+417 |        Symbols | 
+
+418 |     Identifier | break
+419 |        Symbols | 
+
+420 |     Identifier | fi
+421 |        Symbols | 
+
+422 |     Identifier | done
+423 |        Symbols | 
+
+424 |     Identifier | clean_sdl
+425 |        Symbols | 
+
+426 |     Identifier | return
+427 |        Numeric | 0
+428 |        Symbols | 
+
+429 |     Identifier | end
+430 |        Symbols | 
+
+431 |        Symbols | 
+
+432 |     Identifier | main
+433 |        Symbols | 
+
+434 |        Symbols | 
+

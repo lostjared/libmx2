@@ -97,7 +97,6 @@ namespace state {
             auto it = lists.find(name);
             if (it != lists.end()) {
                 it->second.push_back(value);
-                std::cout << "Added value: " << value << " to list: " << name << std::endl;
             } else {
                 throw StateException("List not found: " + name);
             }
