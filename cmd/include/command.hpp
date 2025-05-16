@@ -75,5 +75,9 @@ namespace cmd {
     int newRandCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
     int exprCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
     int getLineCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
+    int regexMatchCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
+    int regexReplaceCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
+    int regexSearchCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
+    int regexSplitCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
 }
 #endif

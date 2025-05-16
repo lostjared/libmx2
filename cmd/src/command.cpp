@@ -2051,7 +2051,7 @@ namespace cmd {
 
     int getLineCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
         if (args.empty()) {
-            output << "Usage: get_line var\n";
+            output << "Usage: getline var\n";
             return 1;
         }
         std::string line;
@@ -2063,6 +2063,65 @@ namespace cmd {
         state::GameState *gameState = state::getGameState();
         std::string var = args[0].value;
         gameState->setVariable(var, line);
+        return 0;
+    }
+
+    int regexMatchCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
+        if (args.empty() || args.size() != 2) {
+            output << "Usage: regex_match <pattern> <string>\n";
+            return 1;
+        }
+        std::string pattern = getVar(args[0]);
+        std::string str = getVar(args[1]);
+        std::regex re(pattern);
+        if (std::regex_match(str, re)) {
+            output << "1";
+        } else {
+            output << "0";
+        }
+        return 0;
+    }
+    int regexReplaceCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
+        if (args.empty() || args.size() != 3) {
+            output << "Usage: regex_replace <pattern> <replacement> <string>\n";
+            return 1;
+        }
+        std::string pattern = getVar(args[0]);
+        std::string replacement = getVar(args[1]);
+        std::string str = getVar(args[2]);
+        std::regex re(pattern);
+        std::string result = std::regex_replace(str, re, replacement);
+        output << result;
+        return 0;
+    }
+    int regexSearchCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
+        if (args.empty() || args.size() != 2) {
+            output << "Usage: regex_search <pattern> <string>\n";
+            return 1;
+        }
+        std::string pattern = getVar(args[0]);
+        std::string str = getVar(args[1]);
+        std::regex re(pattern);
+        if (std::regex_search(str, re)) {
+            output << "1";
+        } else {
+            output << "0";
+        }
+        return 0;
+    }
+    int regexSplitCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
+        if (args.empty() || args.size() != 2) {
+            output << "Usage: regex_split <pattern> <string>\n";
+            return 1;
+        }
+        std::string pattern = getVar(args[0]);
+        std::string str = getVar(args[1]);
+        std::regex re(pattern);
+        std::sregex_token_iterator it(str.begin(), str.end(), re, -1);
+        std::sregex_token_iterator end;
+        for (; it != end; ++it) {
+            output << *it << "\n";
+        }
         return 0;
     }
 }

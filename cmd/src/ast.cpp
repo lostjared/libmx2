@@ -72,6 +72,10 @@ namespace cmd {
             registry.registerTypedCommand("rand", cmd::newRandCommand);
             registry.registerTypedCommand("expr", cmd::exprCommand);
             registry.registerTypedCommand("getline", cmd::getLineCommand);
+            registry.registerTypedCommand("regex_match", cmd::regexMatchCommand);
+            registry.registerTypedCommand("regex_replace", cmd::regexReplaceCommand);
+            registry.registerTypedCommand("regex_search", cmd::regexSearchCommand);
+            registry.registerTypedCommand("regex_split", cmd::regexSplitCommand);
             registry.registerTypedCommand("set", [this](const std::vector<Argument>& args, std::istream& input, std::ostream& output) {
                 if (args.size() >= 1) {
                     if (args[0].value == "-e") {
