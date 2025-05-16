@@ -1678,7 +1678,8 @@ namespace cmd {
         enum class ExprTokenType {
             END, NUMBER, PLUS, MINUS, MUL, DIV, MOD, LPAREN, RPAREN,
             PLUSEQ, MINUSEQ, XOR, OR, AND,
-            LOGICAL_AND, LOGICAL_OR, NOT
+            LOGICAL_AND, LOGICAL_OR, NOT,
+            EQ, NEQ, GT, GTE, LT, LTE  
         };
 
         struct ExprToken {
@@ -1733,6 +1734,19 @@ namespace cmd {
                 } else if (val == "!") {
                     current = {ExprTokenType::NOT, 0};
                 } 
+                else if (val == "=") {
+                    current = {ExprTokenType::EQ, 0};
+                } else if (val == "!=") {
+                    current = {ExprTokenType::NEQ, 0};
+                } else if (val == ">") {
+                    current = {ExprTokenType::GT, 0};
+                } else if (val == ">=") {
+                    current = {ExprTokenType::GTE, 0};
+                } else if (val == "<") {
+                    current = {ExprTokenType::LT, 0};
+                } else if (val == "<=") {
+                    current = {ExprTokenType::LTE, 0};
+                }
                 else {
                     current = {ExprTokenType::END, 0};
                 }
@@ -1781,7 +1795,7 @@ namespace cmd {
                     } else if (lexer.peek().type == ExprTokenType::OR) {
                         lexer.consume();
                         val |= parseAdd();
-                    } else {  // AND
+                    } else {  
                         lexer.consume();
                         val &= parseAdd();
                     }
@@ -1789,16 +1803,47 @@ namespace cmd {
                 return val;
             }
 
-            int parseLogical() {
+            int parseComparison() {
                 int val = parseBitwise();
+                while (lexer.peek().type == ExprTokenType::EQ ||
+                       lexer.peek().type == ExprTokenType::NEQ ||
+                       lexer.peek().type == ExprTokenType::GT ||
+                       lexer.peek().type == ExprTokenType::GTE ||
+                       lexer.peek().type == ExprTokenType::LT ||
+                       lexer.peek().type == ExprTokenType::LTE) {
+                    if (lexer.peek().type == ExprTokenType::EQ) {
+                        lexer.consume();
+                        val = (val == parseBitwise());
+                    } else if (lexer.peek().type == ExprTokenType::NEQ) {
+                        lexer.consume();
+                        val = (val != parseBitwise());
+                    } else if (lexer.peek().type == ExprTokenType::GT) {
+                        lexer.consume();
+                        val = (val > parseBitwise());
+                    } else if (lexer.peek().type == ExprTokenType::GTE) {
+                        lexer.consume();
+                        val = (val >= parseBitwise());
+                    } else if (lexer.peek().type == ExprTokenType::LT) {
+                        lexer.consume();
+                        val = (val < parseBitwise());
+                    } else {  
+                        lexer.consume();
+                        val = (val <= parseBitwise());
+                    }
+                }
+                return val;
+            }
+
+            int parseLogical() {
+                int val = parseComparison();
                 while (lexer.peek().type == ExprTokenType::LOGICAL_OR ||
-                    lexer.peek().type == ExprTokenType::LOGICAL_AND) {
+                       lexer.peek().type == ExprTokenType::LOGICAL_AND) {
                     if (lexer.peek().type == ExprTokenType::LOGICAL_OR) {
                         lexer.consume();
-                        val = val || parseBitwise();
+                        val = val || parseComparison();
                     } else {
                         lexer.consume();
-                        val = val && parseBitwise();
+                        val = val && parseComparison();
                     }
                 }
                 return val;
