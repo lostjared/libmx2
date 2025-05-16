@@ -956,16 +956,19 @@ namespace cmd {
 
             std::shared_ptr<cmd::Node> parseScript() {
                 std::vector<std::shared_ptr<cmd::Node>> statements;
+                while (!isAtEnd() && (match(";") || match("\n"))) {}
                 while (!isAtEnd()) {
-                    while (!isAtEnd() && 
-                          (match(";") || match("\n"))) {
+                    uint64_t startPos = current;       
+                    statements.push_back(parseStatement());
+                    bool foundSeparator = false;
+                    while (!isAtEnd() && (match(";") || match("\n"))) {
+                        foundSeparator = true;
                     }
-                    
-                    if (!isAtEnd()) {
-                        statements.push_back(parseStatement());
-                        while (!isAtEnd() && 
-                              (match(";") || match("\n"))) {
-                        }
+                    if (!foundSeparator && !isAtEnd()) {
+                        break;
+                    }
+                    if (current == startPos) {
+                        break;
                     }
                 }
                 
