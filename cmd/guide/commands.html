@@ -76,6 +76,11 @@
       <a href="#expr">expr</a>
       <a href="#commands">commands</a>
       <a href="#debug">debug</a>
+      <a href="#getline">getline</a>
+      <a href="#regex_match">regex_match</a>
+      <a href="#regex_replace">regex_replace</a>
+      <a href="#regex_search">regex_search</a>
+      <a href="#regex_split">regex_split</a>
     </div>
 
     
@@ -91,7 +96,7 @@
 
      <!-- exec -->
     <section id="argv">
-        <h2><code>exec</code></h2>
+        <h2><code>argv</code></h2>
         <p>Acess command line arguments.</p>
         <h3>Usage</h3>
         <pre><code>argv index</code><br><code>argv "length"</code><br><code>argv "all"</code></pre>
@@ -436,6 +441,13 @@
             <li><strong>list_exists</strong>: <code>list_exists NAME</code> — Check if a list exists</li>
             <li><strong>list_init</strong>: <code>list_init NAME VALUE SIZE</code> — Initialize a list with a value repeated SIZE times</li>
             <li><strong>list_len</strong>: <code>list_len NAME</code> — Get the length of a list</li>
+            <li><strong>list_tokens</strong>: <code>list_tokens NAME</code> — Display all values in a list, one per line</li>
+            <li><strong>list_sort</strong>: <code>list_sort NAME</code> — Sort a list in ascending order</li>
+            <li><strong>list_reverse</strong>: <code>list_reverse NAME</code> — Reverse the order of elements in a list</li>
+            <li><strong>list_shuffle</strong>: <code>list_shuffle NAME</code> — Randomly shuffle the elements of a list</li>
+            <li><strong>list_copy</strong>: <code>list_copy SOURCE DEST</code> — Copy a list to a new list</li>
+            <li><strong>list_pop</strong>: <code>list_pop NAME</code> — Remove and return the last element of a list</li>
+            <li><strong>list_concat</strong>: <code>list_concat LIST1 LIST2</code> — Concatenate the second list to the first</li>
         </ul>
     </section>
 
@@ -488,6 +500,69 @@ expr "10 > 5 && 3 < 4"  # Returns 1 (true)</code></pre>
         </ul>
     </section>
 
+    <!-- getline -->
+    <section id="getline">
+    <h2><code>getline</code></h2>
+    <p>Read a line from standard input.</p>
+    <h3>Usage</h3>
+    <pre><code>getline variable</code></pre>
+    <h3>Example</h3>
+    <pre><code>printf "enter input: " && getline value</code></pre>
+</section>
+
+<hr class="command-separator">
+
+<!-- regex_match -->
+<section id="regex_match">
+    <h2><code>regex_match</code></h2>
+    <p>Check if a string fully matches a regular expression pattern.</p>
+    <h3>Usage</h3>
+    <pre><code>regex_match STRING PATTERN</code></pre>
+    <h3>Example</h3>
+    <pre><code>if test $(regex_match email "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$") -eq 1
+then
+    echo "Valid email format"
+fi</code></pre>
+</section>
+
+<hr class="command-separator">
+
+<!-- regex_replace -->
+<section id="regex_replace">
+    <h2><code>regex_replace</code></h2>
+    <p>Replace parts of a string that match a regular expression pattern.</p>
+    <h3>Usage</h3>
+    <pre><code>regex_replace STRING PATTERN REPLACEMENT</code></pre>
+    <h3>Example</h3>
+    <pre><code>sanitized = $(regex_replace input "[^a-zA-Z0-9]" "_")</code></pre>
+</section>
+
+<hr class="command-separator">
+
+<!-- regex_search -->
+<section id="regex_search">
+    <h2><code>regex_search</code></h2>
+    <p>Search for matches of a regular expression pattern within a string.</p>
+    <h3>Usage</h3>
+    <pre><code>regex_search STRING PATTERN</code></pre>
+    <h3>Example</h3>
+    <pre><code>if test $(regex_search text "[0-9]{3}-[0-9]{3}-[0-9]{4}") -eq 1
+then
+    echo "Found a phone number"
+fi</code></pre>
+</section>
+
+<hr class="command-separator">
+
+<!-- regex_split -->
+<section id="regex_split">
+    <h2><code>regex_split</code></h2>
+    <p>Split a string using a regular expression pattern as the delimiter.</p>
+    <h3>Usage</h3>
+    <pre><code>regex_split STRING PATTERN</code></pre>
+    <h3>Example</h3>
+    <pre><code>parts = $(regex_split "a,b;c|d" "[,;|]")</code></pre>
+</section>
 </div>
 </body>
 </html>
