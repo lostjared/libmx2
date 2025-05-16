@@ -9,7 +9,8 @@
 #include<unordered_map>
 #include<regex>
 #include<set>
-
+#include<random>
+#include<algorithm>
 
 namespace state {
 
@@ -92,6 +93,65 @@ namespace state {
             }
             throw StateException("List not found: " + name);
         }
+        
+        void sortList(const std::string& name) {
+            auto it = lists.find(name);
+            if (it != lists.end()) {
+                std::sort(it->second.begin(), it->second.end());
+            } else {
+                throw StateException("List not found: " + name);
+            }
+        }
+
+        void shuffleList(const std::string& name) {
+            auto it = lists.find(name);
+            if (it != lists.end()) {
+                std::shuffle(it->second.begin(), it->second.end(), std::mt19937(std::random_device()()));
+            } else {
+                throw StateException("List not found: " + name);
+            }
+        }
+
+        void reverseList(const std::string& name) {
+            auto it = lists.find(name);
+            if (it != lists.end()) {
+                std::reverse(it->second.begin(), it->second.end());
+            } else {
+                throw StateException("List not found: " + name);
+            }
+        }
+
+        void copyList(const std::string& name, const std::string& newName) {
+            auto it = lists.find(name);
+            if (it != lists.end()) {
+                lists[newName] = it->second;
+            } else {
+                throw StateException("List not found: " + name);
+            }
+        }
+        
+        void concatList(const std::string& name, const std::string& newName) {
+            auto it = lists.find(name);
+            auto it2 = lists.find(newName);
+            if (it != lists.end() && it2 != lists.end()) {
+                it->second.insert(it->second.end(), it2->second.begin(), it2->second.end());
+            } else {
+                throw StateException("List not found: " + name + " or " + newName);
+            }
+        }
+        
+        void popList(const std::string& name) {
+            auto it = lists.find(name);
+            if (it != lists.end()) {
+                if (!it->second.empty()) {
+                    it->second.pop_back();
+                } else {
+                    throw StateException("List is empty: " + name);
+                }
+            } else {
+                throw StateException("List not found: " + name);
+            }
+        }
 
         std::vector<std::string> getListTokens(const std::string& name) const {
             auto it = lists.find(name);
@@ -118,17 +178,19 @@ namespace state {
             }
 
         }
-        void removeFromList(const std::string& name, const std::string& value) {
+        void removeFromList(const std::string& name, const size_t pos) {
             auto it = lists.find(name);
             if (it != lists.end()) {
                 auto &list = it->second;
-                auto pos = std::find(list.begin(), list.end(), value);
-                if (pos != list.end()) {
-                    list.erase(pos);
+                if (pos < list.size()) {
+                    list.erase(list.begin() + pos);
                 } else {
-                    throw StateException("Value not found in list: " + name);
+                    throw StateException("Index " + std::to_string(pos) + 
+                                        " out of bounds for list: " + name + 
+                                        " (size: " + std::to_string(list.size()) + ")");
                 }
-            } else {
+            } 
+            else {
                 throw StateException("List not found: " + name);
             }
         }
@@ -136,6 +198,7 @@ namespace state {
             auto it = lists.find(name);
             if (it != lists.end()) {
                 it->second.clear();
+                lists.erase(it);
             } else {
                 throw StateException("List not found: " + name);
             }

@@ -1552,7 +1552,8 @@ namespace cmd {
             output << "Error: List '" << name << "' already exists." << std::endl;
             return 1;
         }
-        gameState->removeFromList(name, value);
+        size_t val = std::stoul(value);
+        gameState->removeFromList(name, val);
         return 0;
     }
     int newListGetCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
@@ -1630,12 +1631,12 @@ namespace cmd {
     }
     int newListInitCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
         if(args.empty()) {
-            output << "Usage: list_init <name> <value> <size>\n";
+            output << "Usage: list_init <name> <size> <value>\n";
             return 1;
         }
         std::string name = getVar(args[0]);
-        std::string value = getVar(args[1]);
-        std::string sizeStr = getVar(args[2]);
+        std::string value = getVar(args[2]);
+        std::string sizeStr = getVar(args[1]);
         state::GameState *gameState = state::getGameState();
         if (!gameState->hasList(name)) {
             output << "Error: List '" << name << "' does not exist." << std::endl;
@@ -1663,7 +1664,6 @@ namespace cmd {
     }
 
     int newListTokens(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
-
         if(args.empty()) {
             throw cmd::AstFailure("Usage: list_tokens <name>");
             return 1;
@@ -1674,8 +1674,116 @@ namespace cmd {
             throw cmd::AstFailure("Error: List '" + name + "' does not exist.");
             return 1;
         }
+        for(size_t i = 0; i < gameState->getListLength(name); ++i) {
+            std::string value = gameState->getFromList(name, i);
+            output << value << "\n";
+        }
+        return 0;
+    }
+
+    
+    int newListSortCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
+        if (args.empty()) {
+            throw cmd::AstFailure("Usage: list_sort <name>");
+            return 1;
+        }
+        std::string name = getVar(args[0]); 
+        state::GameState *gameState = state::getGameState();
+        if (!gameState->hasList(name)) {
+            throw cmd::AstFailure("Error: List '" + name + "' does not exist.");
+            return 1;
+        }
+        gameState->sortList(name);  
+        return 0;
+    }
+    int newListReverseCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
+        if (args.empty()) {
+            throw cmd::AstFailure("Usage: list_reverse <name>");
+            return 1;
+        }
+        std::string name = getVar(args[0]);
+        state::GameState *gameState = state::getGameState();
+        if (!gameState->hasList(name)) {
+            throw cmd::AstFailure("Error: List '" + name + "' does not exist.");
+            return 1;
+        }
+        gameState->reverseList(name);   
+        return 0;
+    }
+    int newListShuffleCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream  &output) {
+        if (args.empty()) {
+            throw cmd::AstFailure("Usage: list_shuffle <name>");
+            return 1;
+        }
+        std::string name = getVar(args[0]); 
+        state::GameState *gameState = state::getGameState();
+        if (!gameState->hasList(name)) {
+            throw cmd::AstFailure("Error: List '" + name + "' does not exist.");
+            return 1;
+        }   
+        gameState->shuffleList(name);
+        return 0;
+    }
+
+    int newListCopyCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
+        if (args.empty()) {
+            throw cmd::AstFailure("Usage: list_copy <name>");
+            return 1;
+        }
+        if(args.size() < 2) {
+            throw cmd::AstFailure("Usage: list_copy <name> <name2>");
+            return 1;
+        }
+        std::string name1 = getVar(args[0]);
+        std::string name2 = getVar(args[1]);
+
+        state::GameState *gameState = state::getGameState();
+        if (!gameState->hasList(name1)) {
+            throw cmd::AstFailure("Error: List '" + name1 + "' does not exist.");
+            return 1;
+        }
+        gameState->copyList(name1, name2);
+        return 0;
+    }
+
+    int newListPopCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
+        if (args.empty()) {
+            throw cmd::AstFailure("Usage: list_pop <name>");
+            return 1;
+        }
+        std::string name = getVar(args[0]);
+        state::GameState *gameState = state::getGameState();
+        if (!gameState->hasList(name)) {
+            throw cmd::AstFailure("Error: List '" + name + "' does not exist.");
+            return 1;
+        }
+        gameState->popList(name);
+        return 0;
+    }
+
+    int concatListCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
+        if (args.empty()) {
+            throw cmd::AstFailure("Usage: list_concat <name1> <name2>");
+            return 1;
+        }
+        if(args.size() < 2) {
+            throw cmd::AstFailure("Usage: list_concat <name1> <name2> <name3>");
+            return 1;
+        }
+        std::string name1 = getVar(args[0]);
+        std::string name2 = getVar(args[1]);
         
 
+        state::GameState *gameState = state::getGameState();
+        if (!gameState->hasList(name1)) {
+            throw cmd::AstFailure("Error: List '" + name1 + "' does not exist.");
+            return 1;
+        }
+        if(!gameState->hasList(name2)) {
+            throw cmd::AstFailure("Error: List '" + name2 + "' does not exist.");
+            return 1;
+        }
+        gameState->concatList(name1, name2);
         return 0;
     }
 

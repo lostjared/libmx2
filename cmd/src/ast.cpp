@@ -61,8 +61,15 @@ namespace cmd {
             registry.registerTypedCommand("list_clear", cmd::newListClearAllCommand);
             registry.registerTypedCommand("list_exists", newListExistsCommand);
             registry.registerTypedCommand("list_init", cmd::newListInitCommand);
-            registry.registerTypedCommand("rand", cmd::newRandCommand);
             registry.registerTypedCommand("list_len", cmd::newListLenCommand);
+            registry.registerTypedCommand("list_tokens", cmd::newListTokens);
+            registry.registerTypedCommand("list_sort", cmd::newListSortCommand);
+            registry.registerTypedCommand("list_reverse", cmd::newListReverseCommand);
+            registry.registerTypedCommand("list_shuffle", cmd::newListShuffleCommand);
+            registry.registerTypedCommand("list_copy", cmd::newListCopyCommand);
+            registry.registerTypedCommand("list_pop", cmd::newListPopCommand);
+            registry.registerTypedCommand("list_concat", cmd::concatListCommand);
+            registry.registerTypedCommand("rand", cmd::newRandCommand);
             registry.registerTypedCommand("expr", cmd::exprCommand);
             registry.registerTypedCommand("set", [this](const std::vector<Argument>& args, std::istream& input, std::ostream& output) {
                 if (args.size() >= 1) {

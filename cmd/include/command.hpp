@@ -66,6 +66,12 @@ namespace cmd {
     int newListInitCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
     int newListLenCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
     int newListTokens(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
+    int newListSortCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
+    int newListReverseCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
+    int newListShuffleCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
+    int newListCopyCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
+    int newListPopCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
+    int concatListCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
     int newRandCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
     int exprCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
 }
