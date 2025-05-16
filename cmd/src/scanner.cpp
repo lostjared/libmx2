@@ -183,6 +183,13 @@ namespace scan {
     }
 
     std::optional<TToken> Scanner::grabDigits() {
+
+        auto is_op =[](char ch) -> bool {
+            return ch == '+' || ch == '-' || ch == '*' || ch == '/' || ch == '%' ||
+                ch == '^' || ch == '|' || ch == '&' ||
+                ch == '(' || ch == ')';
+        };
+
         auto ch = string_buffer.backward_step(1);
         TToken token;
         auto pos = string_buffer.cur_line();
@@ -195,7 +202,7 @@ namespace scan {
             while(true) {
                 ch = string_buffer.getch();
                 if(!ch.has_value()) break;
-                if(isspace(*ch)) break;
+                if(isspace(*ch) || is_op(*ch)) break;
                 ch_t = token_map.lookup_int8(*ch);
                 if(!ch_t.has_value() || (*ch_t != types::CharType::TT_DIGIT && *ch != '.')) break;
                 if(*ch == '.') {
