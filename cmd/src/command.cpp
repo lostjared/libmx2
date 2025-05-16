@@ -1059,6 +1059,16 @@ namespace cmd {
         buffer << file.rdbuf();
         std::string script = buffer.str();
 
+        state::GameState *gameState = state::getGameState();
+        try {
+            gameState->clearAllLists();
+            gameState->clearVariables();
+
+        } catch(state::StateException &e) {
+            output << "cmd: Error in " << filename << ": " << e.what() << std::endl;
+            return 1;
+        }
+
         try {
             scan::TString string_buffer(script);
             scan::Scanner scanner(string_buffer);
