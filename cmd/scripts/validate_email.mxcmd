@@ -1,0 +1,20 @@
+#!/usr/bin/env mxcmd-cli
+
+define is_email_valid(email)
+begin
+    if test $(regex_match "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$" email) --eq "1"
+    then
+        echo "Valid email format"
+    else
+        echo "Invalid email format"
+    fi
+    return 0
+end
+
+if test $(argv "length") --eq 0
+then
+    echo "Usage: validate_email <email>"
+    exit
+fi
+
+is_email_valid $(argv 0)
