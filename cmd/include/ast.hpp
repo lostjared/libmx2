@@ -69,6 +69,8 @@ namespace cmd {
         const char* what() const noexcept { return "Continue statement"; }
     };
 
+    class ReturnException {};
+
     class Node {
     public:
         virtual ~Node() = default;
@@ -672,7 +674,10 @@ namespace cmd {
                     return;
                 }
 #endif
-                executeNode(node, defaultInput, defaultOutput);
+                try {
+                    executeNode(node, defaultInput, defaultOutput);
+                } catch(const ReturnException &) {}
+                
             } catch (const std::exception& e) {
                 defaultOutput << "Exception: " << e.what() << std::endl;
             }
@@ -820,6 +825,7 @@ namespace cmd {
             double result = returnStmt->value->evaluateNumber(*this);
             lastExitStatus = static_cast<int>(result);
             returnSignal = true;
+            throw ReturnException();
         }
 
         static void printCommandInfo(std::ostream &out) {

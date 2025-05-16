@@ -1,0 +1,41 @@
+
+
+
+define strcmp(s1, s2)
+begin
+	if test $(strlen s1) "!=" $(strlen s2)
+	then
+		printf "1"
+		return 0
+	fi
+	let loop = 0
+	let length = $(strlen s1)
+	while test loop --ne length
+	do
+		let ch1 = $(index s1 loop 1)
+		let ch2 = $(index s2 loop 1)
+		if test ch1 "!=" ch2
+		then
+			return 0
+		fi
+		loop ++
+	done
+	printf "0"
+	return 0
+end
+
+
+if test $(argv "length") --eq 2
+then
+	value1=$(argv 0)
+	value2=$(argv 1)
+else
+	exit
+fi
+
+if test $(strcmp value1 value2) "=" "0"
+then
+	printf "values are equal\n"
+else
+	printf "values %s %s are not equal\n" value1 value2
+fi
