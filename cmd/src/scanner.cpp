@@ -61,13 +61,20 @@ namespace scan {
                 tokens.push_back(token);
                 continue;
             }
+            if(*ch == '"') {
+                auto token = grabString();
+                if(token.has_value()) {
+                    tokens.push_back(*token);
+                }
+                continue;
+            }
+
             if(ch.has_value() && *ch == '#') { 
                 do {
                     ch = string_buffer.getch();
                 } while(ch.has_value() && *ch != '\n');
                 string_buffer.backward_step(1);
                 continue;
-
             } else if(ch.has_value() && *ch == '/') {
                 auto ch2 = string_buffer.curch();
                 if(ch2.has_value() && *ch2 == '/') {
@@ -188,6 +195,7 @@ namespace scan {
             while(true) {
                 ch = string_buffer.getch();
                 if(!ch.has_value()) break;
+                if(isspace(*ch)) break;
                 ch_t = token_map.lookup_int8(*ch);
                 if(!ch_t.has_value() || (*ch_t != types::CharType::TT_DIGIT && *ch != '.')) break;
                 if(*ch == '.') {
@@ -322,11 +330,6 @@ namespace scan {
                     tok_value += *ch;
                 }
             }
-
-            if(string_buffer.peekch().has_value() && *string_buffer.peekch() == '\"') {
-                string_buffer.getch();
-            }  
-
             token.set_pos(pos);
             token.set_filename(filename);
             token.setToken(types::TokenType::TT_STR, tok_value);

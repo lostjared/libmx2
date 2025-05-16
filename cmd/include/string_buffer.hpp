@@ -224,6 +224,7 @@ namespace scan {
             token_map['\\'] = CharType::TT_SYMBOL;
             token_map['\''] = CharType::TT_SINGLE;
             token_map['\"'] = CharType::TT_STRING;  
+            token_map['"'] = CharType::TT_STRING;  
             token_map['@'] = CharType::TT_SYMBOL;   
             token_map['$'] = CharType::TT_SYMBOL;
         }

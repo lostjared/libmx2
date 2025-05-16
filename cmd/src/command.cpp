@@ -1513,7 +1513,6 @@ namespace cmd {
             std::string value2 = getVar(args[1]);
             gameState->initList(name, value, std::stoul(value2));
         }
-
         return 0;
     }
     int newListAddCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {

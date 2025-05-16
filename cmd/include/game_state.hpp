@@ -47,9 +47,10 @@ namespace state {
             auto it = lists.find(name);
             if (it != lists.end()) {
                 if(!it->second.empty())
-                    it->second.clear();
-                for(size_t i = 0; i <= number; ++i) {
-                    it->second.push_back(filln);
+                    it->second.clear();    
+                it->second.resize(number);
+                for(size_t i = 0; i < number; ++i) {
+                    it->second.at(i) = filln;
                 }
             } else {
                 throw StateException("List not found: " + filln);
@@ -76,6 +77,9 @@ namespace state {
         std::string getFromList(const std::string& name, int index) const {
             auto it = lists.find(name);
             if (it != lists.end()) {
+                    if(index < 0 || index > static_cast<int>(it->second.size()-1)) {
+                        throw StateException("Index of: " + name + " out of range: " + std::to_string(index));
+                    }
                     return it->second.at(index);
             }
             throw StateException("List not found: " + name);
@@ -93,9 +97,11 @@ namespace state {
             auto it = lists.find(name);
             if (it != lists.end()) {
                 it->second.push_back(value);
+                std::cout << "Added value: " << value << " to list: " << name << std::endl;
             } else {
                 throw StateException("List not found: " + name);
             }
+
         }
         void removeFromList(const std::string& name, const std::string& value) {
             auto it = lists.find(name);

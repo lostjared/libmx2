@@ -3,7 +3,7 @@
 
 namespace types {
 
-    std::vector<std::string> strTokenType {"Identifier", "Symbols", "String", "Numeric", "NULL"};
+    std::vector<std::string> strTokenType {"Identifier", "Argument", "Symbols", "String", "Numeric", "NULL"};
     std::vector<std::string> strCharType  {"Characters", "Digits", "Symbols", "String", "Quote", "Space", "NULL"};
 
     void print_type_TokenType(std::ostream &out, const TokenType &tt) {

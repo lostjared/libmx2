@@ -14,6 +14,7 @@
 #include<functional>
 #include<unordered_map>
 #include<sstream>
+#include <iomanip>
 #include<readline/readline.h>
 #include<readline/history.h>
 #include"version_info.hpp"
@@ -32,6 +33,18 @@ void sigint_handler(int sig) {
     }
 }
 #endif
+
+void dumpTokens(scan::Scanner &scan, std::ostream& out = std::cout) {
+    out << "Idx | Type           | Value\n";
+    out << "----+----------------+--------------------------\n";
+    for (size_t i = 0; i < scan.size(); ++i) {
+        std::ostringstream data;
+        types::print_type_TokenType(data,scan[i].getTokenType());
+        out << std::setw(3) << i << " | "
+            << std::setw(14) << data.str() << " | "
+            << scan[i].getTokenValue() << "\n";
+    }
+}
 
 int main(int argc, char **argv) {
     std::cout << "MXCMD " << version_string << "\n(C) 1999-2025 LostSideDead Software\n\n";
@@ -169,14 +182,18 @@ int main(int argc, char **argv) {
         cmd::AstExecutor executor{};
         bool debug_cmd = false;
         bool debug_html = false;
+        bool debug_tokens = false;
             std::ostringstream stream;
             std::fstream file;
             if(argc == 3) {
                 if(std::string(argv[2]) == "-d") {
                     debug_cmd = true;
                 }
-                if(std::string(argv[2]) == "-f") {
+                else if(std::string(argv[2]) == "-f") {
                     debug_html = true;
+                }
+                else if(std::string(argv[2]) == "-t") {
+                    debug_tokens = true;
                 }
             }
             
@@ -201,6 +218,12 @@ int main(int argc, char **argv) {
                 scan::Scanner scanner(string_buffer);
                 cmd::Parser parser(scanner);
                 auto ast = parser.parse();
+
+                if(debug_tokens) {
+                    dumpTokens(scanner, std::cout);
+                    return 0;
+                }
+
     #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
                 program_running = 1;
     #endif
