@@ -11,16 +11,19 @@ let grid_h = 16
 let size_w = 40
 let size_h = 45
 let size_val = (size_w * size_h) 
-list_new grid size_val "0"
-list_new block
-list_add  block "255 0 0 255"
-list_add  block "0 255 0 255"
-list_add  block "0 0 255 255"
-list_add  block "255 255 0 255"  
-list_add  block "255 0 255 255"
-list_add  block "0 255 255 255" 
-list_add  block "0 255 255 255"
-list_add  block "255 255 255 255"
+
+define new_lists()
+begin
+    list_new grid size_val "0"
+    list_new block
+    list_add  block "255 0 0 255"
+    list_add  block "0 255 0 255"
+    list_add  block "0 0 255 255"
+    list_add  block "255 255 0 255"  
+    list_add  block "255 0 255 255"
+    list_add  block "0 255 255 255" 
+    list_add  block "0 255 255 255"
+end
     
 define set_grid()
 begin
@@ -44,6 +47,7 @@ end
 define init_sdl()
 begin
     sdl_init
+    new_lists
     set_grid
     sdl_window "MXCMD Window" width height
     sdl_renderer -1 
@@ -72,11 +76,6 @@ begin
             let grid_pos = (y * size_w) + x
             let pos_val = size_val - 2
             let color_value = $(list_get block $(list_get grid grid_pos))
-            if test color_value --eq -1
-            then
-                let color_value = $(list_get block 0)
-                printf "Color value is -1, using default color: %s at %d\n" $(list_get block 0) grid_pos
-            fi
             sdl_color_string color_value
             sdl_rect grid_x grid_y grid_w grid_h 1
             x = x + 1
