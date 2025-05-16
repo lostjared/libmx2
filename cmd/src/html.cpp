@@ -281,6 +281,7 @@ namespace html {
         out << "      font-size: 14px;\n";
         out << "      line-height: 1.2;\n";  
         out << "      white-space: pre;\n";
+        out << "      font-variant-ligatures: none; \n";
         out << "    }\n";
         out << "    /* Syntax highlighting classes */\n";
         out << "    .keyword { color: var(--keyword); }\n";
