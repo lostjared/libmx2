@@ -1,6 +1,9 @@
 #include "html.hpp"
 
 namespace html {
+
+    int precision_level = 6;
+
     // thanks claude for this interface. 
     void gen_html(std::ostream& out, const std::shared_ptr<cmd::Node>& node) {
         out << "<!DOCTYPE html>\n";
@@ -373,10 +376,22 @@ namespace html {
                 return result;
             }
 
+            static std::string nodeToString(const std::shared_ptr<cmd::Node>& node) {
+                if (!node) return "";
+                return node->toString();
+            }
+
             static std::string formatNumberWithPrecision(const std::string& value) {
                 std::ostringstream numStr;
-                numStr << std::fixed << std::setprecision(6);
-                
+                try {
+                    double num = std::stod(value);
+                     if (num == std::floor(num)) {
+                        numStr << std::fixed << std::setprecision(0);
+                    } else {
+                        numStr << std::fixed << std::setprecision(precision_level);
+                    }
+                } catch(const std::exception&) {}
+
                 try {
                     double num = std::stod(value);
                     numStr << num;
@@ -397,7 +412,7 @@ namespace html {
             
             static std::string formatNodeInline(const std::shared_ptr<cmd::Node>& node) {
                 if (!node) {
-                    return "<span class=\"comment\">/* null */</span>";
+                    return "<span class=\"comment\">[null]</span>";
                 }
                 
                 if (auto expr = std::dynamic_pointer_cast<cmd::Expression>(node)) {
@@ -496,7 +511,7 @@ namespace html {
                     return formatNodeInline(logOr->left) + " <span class=\"operator\">||</span> " + formatNodeInline(logOr->right);
                 }
                 
-                return "<span class=\"comment\">/* complex condition */</span>";
+                return nodeToString(node);
             }
             
         private:
@@ -694,7 +709,8 @@ namespace html {
                             }
                         }
                     } else {
-                        line += "<span class=\"comment\">/* complex command */</span>";
+                        
+                        line += nodeToString(redirNode->command);
                     }
                     
                     
@@ -765,7 +781,7 @@ namespace html {
                     if (auto condExpr = std::dynamic_pointer_cast<cmd::Expression>(whileStmt->condition)) {
                         line += formatExpressionInline(condExpr);
                     } else {
-                        line += "<span class=\"comment\">/* command condition */</span>";
+                        line += nodeToString(whileStmt->condition);
                     }
                     
                     line += "</span>";
@@ -785,7 +801,7 @@ namespace html {
                         std::string lastLine = lines.back();
                         lines.pop_back();
                         lastLine += " <span class=\"operator\">&&</span> ";
-                        lastLine += formatNodeInline(logicalAnd->right);  // Use inline formatting like LogicalOr
+                        lastLine += formatNodeInline(logicalAnd->right);  
                         lines.push_back(lastLine);
                     }
                 }
@@ -821,10 +837,8 @@ namespace html {
                     } 
                     else if (unaryExpr->op == cmd::UnaryExpression::NEGATE) {
                         if (auto numLit = std::dynamic_pointer_cast<cmd::NumberLiteral>(unaryExpr->operand)) {
-                            // Format negative numbers as a single unit with 6 decimal places
                             line += formatNumberWithPrecision(std::to_string(-numLit->value));
                         } else {
-                            // Otherwise keep the separate operator + operand format
                             line += "<span class=\"operator\">-</span>";
                             line += formatExpressionInline(std::dynamic_pointer_cast<cmd::Expression>(unaryExpr->operand));
                         }
@@ -858,15 +872,14 @@ namespace html {
                 }
                 else {
                     
-                    lines.push_back("<span class=\"code-line\">" + indent +
-                                   "<span class=\"comment\">// Unsupported node type</span></span>");
+                    lines.push_back("<span class=\"code-line\">" + indent + nodeToString(node) + "</span>");
                 }
             }
             
             
             static std::string formatExpressionInline(const std::shared_ptr<cmd::Expression>& expr) {
                 if (!expr) {
-                    return "<span class=\"comment\">/* null */</span>";
+                    return "<span class=\"comment\">[null]</span>";
                 }
                 if (auto strLit = std::dynamic_pointer_cast<cmd::StringLiteral>(expr)) {
                     return "<span class=\"string\">&quot;" + escapeHtml(formatEscapeSequences(strLit->value)) + "&quot;</span>";
@@ -884,7 +897,7 @@ namespace html {
                     if (auto leftExpr = std::dynamic_pointer_cast<cmd::Expression>(binExpr->left)) {
                         result += formatExpressionInline(leftExpr);
                     } else {
-                        result += "<span class=\"comment\">/* ? */</span>";
+                        result += nodeToString(binExpr->left);
                     }
                     
             
@@ -903,7 +916,7 @@ namespace html {
                     if (auto rightExpr = std::dynamic_pointer_cast<cmd::Expression>(binExpr->right)) {
                         result += formatExpressionInline(rightExpr);
                     } else {
-                        result += "<span class=\"comment\">/* ? */</span>";
+                        result += nodeToString(binExpr->right);
                     }
                     
                     return result;
@@ -957,7 +970,7 @@ namespace html {
                     } else if (cmdSubst->command) {
                         result += formatNodeInline(cmdSubst->command);
                     } else {
-                        result += "<span class=\"comment\">/* empty cmd */</span>";
+                        result += "<span class=\"comment\">[empty command]</span>";
                     }
                     
                     result += "<span class=\"operator\">)</span>";
@@ -985,10 +998,8 @@ namespace html {
                     } 
                     else if (unaryExpr->op == cmd::UnaryExpression::NEGATE) {
                         if (auto numLit = std::dynamic_pointer_cast<cmd::NumberLiteral>(unaryExpr->operand)) {
-                            // Format negative numbers as a single unit with 6 decimal places
                             result += formatNumberWithPrecision(std::to_string(-numLit->value));
                         } else {
-                            // Otherwise keep the separate operator + operand format
                             result += "<span class=\"operator\">-</span>";
                             result += formatExpressionInline(std::dynamic_pointer_cast<cmd::Expression>(unaryExpr->operand));
                         }
@@ -997,7 +1008,7 @@ namespace html {
                     return result;
                 }
                 
-                return "<span class=\"comment\">/* unknown expression */</span>";
+                return nodeToString(expr);
             }
         };
 

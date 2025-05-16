@@ -73,6 +73,7 @@ namespace cmd {
     public:
         virtual ~Node() = default;
         virtual void print(std::ostream& out, int indent = 0) const = 0;
+        virtual std::string toString() const { return "Node"; }
         virtual void execute(const AstExecutor& executor) const {}
 
     protected:
@@ -118,6 +119,9 @@ namespace cmd {
             out << spaces << "  <h3>Break</h3>\n";
             out << spaces << "</div>\n";
         }
+        std::string toString() const override {
+            return "<span class=\"keyword\">break</span>";
+        }
     };
 
     class Continue : public Node {
@@ -128,6 +132,9 @@ namespace cmd {
             out << spaces << "  <h3>Continue</h3>\n";
             out << spaces << "</div>\n";
         }
+        std::string toString() const override {
+            return "<span class=\"keyword\">continue</span>";
+        }
     };
 
     class Expression : public Node {
@@ -135,6 +142,9 @@ namespace cmd {
         virtual ~Expression() = default;
         virtual std::string evaluate(const AstExecutor& executor) const = 0;
         virtual double evaluateNumber(const AstExecutor& executor) const = 0;
+        virtual std::string toString() const override {
+            return  "Expression";
+        }
     };
     
     class Return : public Node {
@@ -150,6 +160,9 @@ namespace cmd {
             out << spaces << "  </div>\n";
             out << spaces << "</div>\n";
         }
+        std::string toString() const override {
+            return "return "+ value->toString();
+        }   
         std::shared_ptr<Expression> value;
     };
           
@@ -183,6 +196,21 @@ namespace cmd {
             out << spaces << "  </table>\n";
             out << spaces << "</div>\n";
         }
+
+        std::string toString() const override {
+            std::string result = "<span class=\"command\">" + escapeHtml(name) + "</span>";
+            for (const auto& arg : args) {
+                result += " ";
+                if (arg.type == ARG_VARIABLE) {
+                    result += "<span class=\"variable\">" + escapeHtml(arg.value) + "</span>";
+                } else if (arg.type == ARG_STRING_LITERAL) {
+                    result += "<span class=\"string\">\"" + escapeHtml(arg.value) + "\"</span>";
+                } else {
+                    result += "<span class=\"argument\">" + escapeHtml(arg.value) + "</span>";
+                }
+            }
+            return result;
+        }
         
         std::string name;
         std::vector<Argument> args;
@@ -210,6 +238,18 @@ namespace cmd {
             out << spaces << "    </td></tr>\n";
             out << spaces << "  </table>\n";
             out << spaces << "</div>\n";
+        }
+
+        std::string toString() const override {
+            std::string result = "<span class=\"keyword\">function</span> <span class=\"function\">" + escapeHtml(name) + "</span>(<span class=\"variable\">";
+            for (size_t i = 0; i < parameters.size(); i++) {
+                result += escapeHtml(parameters[i]);
+                if (i < parameters.size() - 1) {
+                    result += "</span>, <span class=\"variable\">";
+                }
+            }
+            result += "</span>) {\n" + body->toString() + "\n}";
+            return result;
         }
         
         std::string name;
@@ -240,6 +280,10 @@ namespace cmd {
             out << spaces << "</div>\n";
         }
         
+        std::string toString() const override {
+            return left->toString() + " <span class=\"operator\">&amp;&amp;</span> " + right->toString();
+        }
+
         std::shared_ptr<Node> left;
         std::shared_ptr<Node> right;
     };
@@ -266,6 +310,9 @@ namespace cmd {
             out << spaces << "  </table>\n";
             out << spaces << "</div>\n";
         }
+        std::string toString() const override {
+            return left->toString() + " <span class=\"operator\">||</span> " + right->toString();
+        }
         
         std::shared_ptr<Node> left;
         std::shared_ptr<Node> right;
@@ -287,7 +334,9 @@ namespace cmd {
             out << spaces << "  </table>\n";
             out << spaces << "</div>\n";
         }
-        
+        std::string toString() const override {
+            return "<span class=\"operator\">!</span>" + operand->toString();
+        }
         std::shared_ptr<Node> operand;
     };
 
@@ -329,6 +378,18 @@ namespace cmd {
             out << spaces << "</div>\n";
         }
         
+        std::string toString() const override {
+            std::string result = "<span class=\"keyword\">if</span> ";
+            for (const auto& branch : branches) {
+                result += branch.condition->toString() + " <span class=\"keyword\">then</span> " + branch.action->toString() + " ";
+            }
+            if (elseAction) {
+                result += " <span class=\"keyword\">else</span> " + elseAction->toString();
+            }
+            result += " <span class=\"keyword\">fi</span>";
+            return result;
+        }
+
         std::vector<Branch> branches;  
         std::shared_ptr<Node> elseAction;  
     };
@@ -354,6 +415,9 @@ namespace cmd {
             out << spaces << "    <tr><td class='symbol'>done</td></tr>\n";
             out << spaces << "  </table>\n";
             out << spaces << "</div>\n";
+        }
+        std::string toString() const override {
+            return "<span class=\"keyword\">while</span> " + condition->toString() + " <span class=\"keyword\">do</span> " + body->toString() + " <span class=\"keyword\">done</span>";
         }
         
         std::shared_ptr<Node> condition;
@@ -388,6 +452,15 @@ namespace cmd {
             out << spaces << "  </table>\n";
             out << spaces << "</div>\n";
         }
+
+        std::string toString() const override {
+            std::string result = "<span class=\"keyword\">for</span> <span class=\"variable\">" + escapeHtml(variable) + "</span> <span class=\"keyword\">in</span> ";
+            for (const auto& val : values) {
+                result += val.value + " ";
+            }
+            result += "<span class=\"keyword\">do</span> " + body->toString() + " <span class=\"keyword\">done</span>";
+            return result;
+        }
         
         std::string variable;
         std::vector<Argument> values;
@@ -417,6 +490,17 @@ namespace cmd {
             out << spaces << "</div>\n";
         }
 
+        std::string toString() const override {
+            std::string result;
+            for (size_t i = 0; i < commands.size(); i++) {
+                result += commands[i]->toString();
+                if (i < commands.size() - 1) {
+                    result += " <span class=\"operator\">|</span> ";
+                }
+            }
+            return result;
+        }
+
         std::vector<std::shared_ptr<Command>> commands;
     };
 
@@ -429,28 +513,42 @@ namespace cmd {
             : command(std::move(command)), type(type), file(std::move(file)) {}
 
         void print(std::ostream& out, int indent = 0) const override {
-                std::string spaces = getIndent(indent);
-                out << spaces << "<div class='node redirection'>\n";
-                out << spaces << "  <h3>Redirection</h3>\n";
-                out << spaces << "  <table>\n";
-                out << spaces << "    <tr><th>Type</th><td class='symbol'>";
-                
-                if (type == INPUT) {
-                    out << "&lt; (Input)";
-                } else if (type == OUTPUT) {
-                    out << "&gt; (Output)";
-                } else {
-                    out << "&gt;&gt; (Append)";
-                }
-                
-                out << "</td></tr>\n";
-                out << spaces << "    <tr><th>File</th><td class='filename'>" << escapeHtml(file) << "</td></tr>\n";
-                out << spaces << "    <tr><th>Command</th><td>\n";
-                command->print(out, indent + 6);
-                out << spaces << "    </td></tr>\n";
-                out << spaces << "  </table>\n";
-                out << spaces << "</div>\n";
+            std::string spaces = getIndent(indent);
+            out << spaces << "<div class='node redirection'>\n";
+            out << spaces << "  <h3>Redirection</h3>\n";
+            out << spaces << "  <table>\n";
+            out << spaces << "    <tr><th>Type</th><td class='symbol'>";
+            
+            if (type == INPUT) {
+                out << "&lt; (Input)";
+            } else if (type == OUTPUT) {
+                out << "&gt; (Output)";
+            } else {
+                out << "&gt;&gt; (Append)";
             }
+            
+            out << "</td></tr>\n";
+            out << spaces << "    <tr><th>File</th><td class='filename'>" << escapeHtml(file) << "</td></tr>\n";
+            out << spaces << "    <tr><th>Command</th><td>\n";
+            command->print(out, indent + 6);
+            out << spaces << "    </td></tr>\n";
+            out << spaces << "  </table>\n";
+            out << spaces << "</div>\n";
+        }
+
+        std::string toString() const override {
+            std::string result;
+            if (type == INPUT) {
+                result += "< " + file + " ";
+            } else if (type == OUTPUT) {
+                result += "> " + file + " ";
+            } else {
+                result += ">> " + file + " ";
+            }
+            result += command->toString();
+            return result;
+        }
+
         std::shared_ptr<Node> command;
         Type type;
         std::string file;
@@ -476,6 +574,18 @@ namespace cmd {
             out << spaces << "  </table>\n";
             out << spaces << "</div>\n";
         }
+
+        std::string toString() const override {
+            std::string result;
+            for (size_t i = 0; i < commands.size(); i++) {
+                result += commands[i]->toString();
+                if (i < commands.size() - 1) {
+                    result += " <span class=\"operator\">;</span> ";
+                }
+            }
+            return result;
+        }
+
         std::vector<std::shared_ptr<Node>> commands;
     };
 
@@ -508,6 +618,10 @@ namespace cmd {
             }
         }
         
+        std::string toString() const override {
+            return "<span class=\"string\">\"" + escapeHtml(value) + "\"</span>";
+        }
+
         std::string value;
     };
     
@@ -528,6 +642,10 @@ namespace cmd {
             out << spaces << "  </table>\n";
             out << spaces << "</div>\n";
         }
+
+        std::string toString() const override {
+            return "<span class=\"variable\">" + escapeHtml(name) + "</span> <span class=\"operator\">=</span> " + value->toString();
+        }
         
         std::string name;
         std::shared_ptr<Node> value;
@@ -547,6 +665,10 @@ namespace cmd {
             out << spaces << "</div>\n";
         }
         
+        std::string toString() const override {
+            return "<span class=\"number\">" + std::to_string(value) + "</span>";
+        }
+
         std::string evaluate(const AstExecutor& executor) const override {
             return std::to_string(value);
         }
@@ -570,6 +692,10 @@ namespace cmd {
             out << spaces << "    <tr><td class='variable'>" << escapeHtml(name) << "</td></tr>\n";
             out << spaces << "  </table>\n";
             out << spaces << "</div>\n";
+        }
+
+        std::string toString() const override {
+            return "<span class=\"variable\">" + escapeHtml(name) + "</span>";
         }
         
         std::string evaluate(const AstExecutor& executor) const override;
@@ -607,6 +733,26 @@ namespace cmd {
             out << spaces << "    </td></tr>\n";
             out << spaces << "  </table>\n";
             out << spaces << "</div>\n";
+        }
+
+        std::string toString() const override {
+            std::string result;
+            if (position == PREFIX) {
+                if (op == INCREMENT) 
+                    result += "<span class=\"operator\">++</span>";
+                else if (op == DECREMENT) 
+                    result += "<span class=\"operator\">--</span>";
+                else 
+                    result += "<span class=\"operator\">-</span>";
+            }
+            result += operand->toString();
+            if (position == POSTFIX) {
+                if (op == INCREMENT) 
+                    result += "<span class=\"operator\">++</span>";
+                else 
+                    result += "<span class=\"operator\">--</span>";
+            }
+            return result;
         }
         
         std::string evaluate(const AstExecutor& executor) const override {
@@ -923,7 +1069,6 @@ namespace cmd {
 
         void executeVariableAssignment(const std::shared_ptr<cmd::VariableAssignment>& varAssign, std::istream& input, std::ostream& output) {   
             try {
-                // Special handling for unary expressions (++/--) to avoid double-assignment
                 if (auto unaryExpr = std::dynamic_pointer_cast<cmd::UnaryExpression>(varAssign->value)) {
                     if ((unaryExpr->op == cmd::UnaryExpression::INCREMENT || 
                          unaryExpr->op == cmd::UnaryExpression::DECREMENT)) {
@@ -1223,8 +1368,8 @@ namespace cmd {
             out << spaces << "  <table>\n";
             out << spaces << "    <tr><th>Operator</th><td class='operator'>";
             switch (op) {
-                case ADD: out << "+"; break;
-                case SUBTRACT: out << "-"; break;
+                case ADD: out << "++"; break;
+                case SUBTRACT: out << "--"; break;
                 case MULTIPLY: out << "*"; break;
                 case DIVIDE: out << "/"; break;
                 case MODULO: out << "%"; break;
@@ -1238,6 +1383,18 @@ namespace cmd {
             out << spaces << "    </td></tr>\n";
             out << spaces << "  </table>\n";
             out << spaces << "</div>\n";
+        }
+
+        std::string toString() const override {
+            std::string opSymbol;
+            switch (op) {
+                case ADD: opSymbol = "+"; break;
+                case SUBTRACT: opSymbol = "-"; break;
+                case MULTIPLY: opSymbol = "*"; break;
+                case DIVIDE: opSymbol = "/"; break;
+                case MODULO: opSymbol = "%"; break;
+            }
+            return left->toString() + " <span class=\"operator\">" + opSymbol + "</span> " + right->toString();
         }
           
         std::string evaluate(const AstExecutor& executor) const override {
@@ -1332,7 +1489,6 @@ namespace cmd {
             }
             
             std::string result = output.str();
-            // Trim trailing newlines
             while (!result.empty() && (result.back() == '\n' || result.back() == '\r')) {
                 result.pop_back();
             }
@@ -1349,6 +1505,10 @@ namespace cmd {
             }
         }
         
+        std::string toString() const override {
+            return "<span class=\"operator\">$(</span> " + command->toString() + " <span class=\"operator\">)</span>";
+        }
+
         std::shared_ptr<Node> command;
         bool isVar;
     };   
