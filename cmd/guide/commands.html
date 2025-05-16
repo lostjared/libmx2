@@ -517,9 +517,9 @@ expr "10 > 5 && 3 < 4"  # Returns 1 (true)</code></pre>
     <h2><code>regex_match</code></h2>
     <p>Check if a string fully matches a regular expression pattern.</p>
     <h3>Usage</h3>
-    <pre><code>regex_match STRING PATTERN</code></pre>
+    <pre><code>regex_match PATTERN STRING</code></pre>
     <h3>Example</h3>
-    <pre><code>if test $(regex_match email "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$") -eq 1
+    <pre><code>if test $(regex_match "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$" email) --eq "1"
 then
     echo "Valid email format"
 fi</code></pre>
@@ -532,9 +532,9 @@ fi</code></pre>
     <h2><code>regex_replace</code></h2>
     <p>Replace parts of a string that match a regular expression pattern.</p>
     <h3>Usage</h3>
-    <pre><code>regex_replace STRING PATTERN REPLACEMENT</code></pre>
+    <pre><code>regex_replace PATTERN REPLACEMENT STRING</code></pre>
     <h3>Example</h3>
-    <pre><code>sanitized = $(regex_replace input "[^a-zA-Z0-9]" "_")</code></pre>
+    <pre><code>sanitized = $(regex_replace "[^a-zA-Z0-9]" "_" string)</code></pre>
 </section>
 
 <hr class="command-separator">
@@ -544,9 +544,9 @@ fi</code></pre>
     <h2><code>regex_search</code></h2>
     <p>Search for matches of a regular expression pattern within a string.</p>
     <h3>Usage</h3>
-    <pre><code>regex_search STRING PATTERN</code></pre>
+    <pre><code>regex_search PATTERN STRING</code></pre>
     <h3>Example</h3>
-    <pre><code>if test $(regex_search text "[0-9]{3}-[0-9]{3}-[0-9]{4}") -eq 1
+    <pre><code>if test $(regex_search "[0-9]{3}-[0-9]{3}-[0-9]{4}" text) --eq "1"
 then
     echo "Found a phone number"
 fi</code></pre>
@@ -559,9 +559,9 @@ fi</code></pre>
     <h2><code>regex_split</code></h2>
     <p>Split a string using a regular expression pattern as the delimiter.</p>
     <h3>Usage</h3>
-    <pre><code>regex_split STRING PATTERN</code></pre>
+    <pre><code>regex_split PATTERN</code></pre>
     <h3>Example</h3>
-    <pre><code>parts = $(regex_split "a,b;c|d" "[,;|]")</code></pre>
+    <pre><code>parts = $(regex_split "," "a,b,c" )</code></pre>
 </section>
 </div>
 </body>
