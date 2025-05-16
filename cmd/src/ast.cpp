@@ -63,6 +63,7 @@ namespace cmd {
             registry.registerTypedCommand("list_init", cmd::newListInitCommand);
             registry.registerTypedCommand("rand", cmd::newRandCommand);
             registry.registerTypedCommand("list_len", cmd::newListLenCommand);
+            registry.registerTypedCommand("expr", cmd::exprCommand);
             registry.registerTypedCommand("set", [this](const std::vector<Argument>& args, std::istream& input, std::ostream& output) {
                 if (args.size() >= 1) {
                     if (args[0].value == "-e") {

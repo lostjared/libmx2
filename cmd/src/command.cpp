@@ -1672,4 +1672,201 @@ namespace cmd {
         output << randomNum;    
         return 0;
     }
+
+    namespace expr_parser {
+        
+        enum class ExprTokenType {
+            END, NUMBER, PLUS, MINUS, MUL, DIV, MOD, LPAREN, RPAREN,
+            PLUSEQ, MINUSEQ, XOR, OR, AND,
+            LOGICAL_AND, LOGICAL_OR, NOT
+        };
+
+        struct ExprToken {
+            ExprTokenType type;
+            int value; 
+        };
+
+        class ExprLexer {
+        public:
+            ExprLexer(const std::string& input) : scanner(input), pos(0) {
+                scanner.scan();
+                next();
+            }
+
+            void next() {
+                if (pos >= scanner.size()) {
+                    current = {ExprTokenType::END, 0};
+                    return;
+                }
+                auto t = scanner[pos++];
+                auto val = t.getTokenValue();
+                if (t.getTokenType() == types::TokenType::TT_NUM) {
+                    current = {ExprTokenType::NUMBER, std::stoi(val)};
+                } else if (val == "+") {
+                    current = {ExprTokenType::PLUS, 0};
+                } else if (val == "-") {
+                    current = {ExprTokenType::MINUS, 0};
+                } else if (val == "*") {
+                    current = {ExprTokenType::MUL, 0};
+                } else if (val == "/") {
+                    current = {ExprTokenType::DIV, 0};
+                } else if (val == "%") {
+                    current = {ExprTokenType::MOD, 0};
+                } else if (val == "(") {
+                    current = {ExprTokenType::LPAREN, 0};
+                } else if (val == ")") {
+                    current = {ExprTokenType::RPAREN, 0};
+                } else if (val == "+=") {
+                    current = {ExprTokenType::PLUSEQ, 0};
+                } else if (val == "-=") {
+                    current = {ExprTokenType::MINUSEQ, 0};
+                } else if (val == "^") {
+                    current = {ExprTokenType::XOR, 0};
+                } else if (val == "|") {
+                    current = {ExprTokenType::OR, 0};
+                } else if (val == "&") {
+                    current = {ExprTokenType::AND, 0};
+                } else if (val == "&&") {
+                    current = {ExprTokenType::LOGICAL_AND, 0};
+                } else if (val == "||") {
+                    current = {ExprTokenType::LOGICAL_OR, 0};
+                } else if (val == "!") {
+                    current = {ExprTokenType::NOT, 0};
+                } 
+                else {
+                    current = {ExprTokenType::END, 0};
+                }
+            }
+
+            ExprToken peek() const { return current; }
+            void consume() { next(); }
+
+        private:
+            scan::Scanner scanner;
+            size_t pos;
+            ExprToken current;
+        };
+
+        class ExprParser {
+        public:
+            ExprParser(ExprLexer& lexer) : lexer(lexer) {}
+
+            int parse() { return parseLogical(); }
+
+        private:
+            ExprLexer& lexer;
+
+            int parseExpr() {
+                int val = parseBitwise();
+                while (lexer.peek().type == ExprTokenType::PLUS || lexer.peek().type == ExprTokenType::MINUS) {
+                    if (lexer.peek().type == ExprTokenType::PLUS) {
+                        lexer.consume();
+                        val += parseBitwise();
+                    } else if (lexer.peek().type == ExprTokenType::MINUS) {
+                        lexer.consume();
+                        val -= parseBitwise();
+                    }
+                }
+                return val;
+            }
+
+            int parseBitwise() {
+                int val = parseTerm();
+                while (lexer.peek().type == ExprTokenType::XOR ||
+                    lexer.peek().type == ExprTokenType::OR ||
+                    lexer.peek().type == ExprTokenType::AND) {
+                    if (lexer.peek().type == ExprTokenType::XOR) {
+                        lexer.consume();
+                        val ^= parseTerm();
+                    } else if (lexer.peek().type == ExprTokenType::OR) {
+                        lexer.consume();
+                        val |= parseTerm();
+                    } else if (lexer.peek().type == ExprTokenType::AND) {
+                        lexer.consume();
+                        val &= parseTerm();
+                    }
+                }
+                return val;
+            }
+
+            int parseLogical() {
+                int val = parseBitwise();
+                while (lexer.peek().type == ExprTokenType::LOGICAL_OR ||
+                    lexer.peek().type == ExprTokenType::LOGICAL_AND) {
+                    if (lexer.peek().type == ExprTokenType::LOGICAL_OR) {
+                        lexer.consume();
+                        val = val || parseBitwise();
+                    } else if (lexer.peek().type == ExprTokenType::LOGICAL_AND) {
+                        lexer.consume();
+                        val = val && parseBitwise();
+                    }
+                }
+                return val;
+            }
+
+            int parseTerm() {
+                int val = parseFactor();
+                while (lexer.peek().type == ExprTokenType::MUL ||
+                    lexer.peek().type == ExprTokenType::DIV ||
+                    lexer.peek().type == ExprTokenType::MOD) {
+                    if (lexer.peek().type == ExprTokenType::MUL) {
+                        lexer.consume();
+                        val *= parseFactor();
+                    } else if (lexer.peek().type == ExprTokenType::DIV) {
+                        lexer.consume();
+                        int denom = parseFactor();
+                        if (denom == 0) throw std::runtime_error("Division by zero");
+                        val /= denom;
+                    } else if (lexer.peek().type == ExprTokenType::MOD) {
+                        lexer.consume();
+                        int denom = parseFactor();
+                        if (denom == 0) throw std::runtime_error("Modulo by zero");
+                        val %= denom;
+                    }
+                }
+                return val;
+            }
+
+            int parseFactor() {
+                if (lexer.peek().type == ExprTokenType::NOT) {
+                    lexer.consume();
+                    return !parseFactor();
+                } else if (lexer.peek().type == ExprTokenType::NUMBER) {
+                    int val = lexer.peek().value;
+                    lexer.consume();
+                    return val;
+                } else if (lexer.peek().type == ExprTokenType::LPAREN) {
+                    lexer.consume();
+                    int val = parseLogical();
+                    if (lexer.peek().type != ExprTokenType::RPAREN)
+                        throw std::runtime_error("Expected ')'");
+                    lexer.consume();
+                    return val;
+                } else if (lexer.peek().type == ExprTokenType::MINUS) {
+                    lexer.consume();
+                    return -parseFactor();
+                } else {
+                    throw std::runtime_error("Unexpected token in expression");
+                }
+            }
+        };
+    }
+
+    int exprCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
+        if (args.empty()) {
+            throw AstFailure("Usage: expr <expression>\n");
+            return 1;
+        }
+        std::string expression = getVar(args[0]);
+        try {
+            expr_parser::ExprLexer lexer(expression);
+            expr_parser::ExprParser parser(lexer);
+            int result = parser.parse();
+            output << result;
+            return 0;
+        } catch (const std::exception& e) {
+            throw AstFailure("expr: error: " + std::string(e.what()));
+            return 1;
+        }
+    }
 }
