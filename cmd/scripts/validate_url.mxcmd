@@ -1,0 +1,14 @@
+#!/usr/bin/env mxcmd-cli
+
+if test $(argv "length") --eq "0"
+then
+    printf "Usage: %s <url>\n" $(argv 0)
+    exit
+fi
+
+if test $(regex_match "^(https?:\\/\\/)([A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?\\.)+([A-Za-z]{2,})(?::(\\d{1,5}))?(?:\\/[^\\s]*)?$" $(argv 0)) --eq "1"
+then
+    printf "Valid URL: %s\n" $(argv 0)
+else
+    printf "Invalid URL: %s\n" $(argv 0)
+fi
