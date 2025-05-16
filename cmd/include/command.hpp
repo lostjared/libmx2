@@ -74,5 +74,6 @@ namespace cmd {
     int concatListCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
     int newRandCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
     int exprCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
+    int getLineCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
 }
 #endif

@@ -71,6 +71,7 @@ namespace cmd {
             registry.registerTypedCommand("list_concat", cmd::concatListCommand);
             registry.registerTypedCommand("rand", cmd::newRandCommand);
             registry.registerTypedCommand("expr", cmd::exprCommand);
+            registry.registerTypedCommand("getline", cmd::getLineCommand);
             registry.registerTypedCommand("set", [this](const std::vector<Argument>& args, std::istream& input, std::ostream& output) {
                 if (args.size() >= 1) {
                     if (args[0].value == "-e") {

@@ -1,0 +1,10 @@
+
+
+define addtwo()
+begin
+    printf "Enter first number: "  && getline x
+    printf  "Enter second number: " && getline y
+    printf "The sum of %d and %d is %d\n" x y $(expr $(printf "%d+%d" x y))
+end
+
+addtwo

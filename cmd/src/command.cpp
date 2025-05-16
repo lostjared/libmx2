@@ -1025,7 +1025,7 @@ namespace cmd {
                     return 2;
                 }
             } else {
-                std::cout << "test: unknown operator: " << op << std::endl;
+                output << "test: unknown operator: " << op << std::endl;
                 return 2;
             }
         }
@@ -2047,5 +2047,22 @@ namespace cmd {
             throw AstFailure("expr: error: " + std::string(e.what()));
             return 1;
         }
+    }
+
+    int getLineCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
+        if (args.empty()) {
+            output << "Usage: get_line var\n";
+            return 1;
+        }
+        std::string line;
+        std::getline(input, line);
+        if(line.empty()) {
+            return 0;
+        }
+
+        state::GameState *gameState = state::getGameState();
+        std::string var = args[0].value;
+        gameState->setVariable(var, line);
+        return 0;
     }
 }
