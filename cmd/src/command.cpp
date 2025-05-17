@@ -28,8 +28,7 @@ namespace state {
 namespace cmd {
 
     std::vector<std::string> argv;
-    std::string app_name;
-    
+    std::string app_name;    
 
     int exitCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
         if(args.empty()) {
@@ -2137,5 +2136,40 @@ namespace cmd {
             output << *it << "\n";
         }
         return 0;
+    }
+
+    int tokenizeCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
+        if(args.empty()) {
+            output << "Usage: tokenize <filename>\n";
+            return 1; 
+        }
+        if(args.size() > 0) {
+            std::string filename = getVar(args[0]);
+            std::ostringstream stream;
+            std::ifstream file(filename);
+            if(!file.is_open()) {
+                output << "tokenize: Failure to load file: " <<  filename << "\n";
+                return 1;
+            }
+            stream << file.rdbuf();
+            try {
+                scan::Scanner scanner(stream.str());
+                scanner.scan();
+                output << "Idx | Type           | Value\n";
+                output  << "----+----------------+--------------------------\n";
+                for (size_t i = 0; i < scanner.size(); ++i) {
+                    std::ostringstream data;
+                    types::print_type_TokenType(data,scanner[i].getTokenType());
+                    output << std::setw(3) << i << " | "
+                        << std::setw(14) << data.str() << " | "
+                        << scanner[i].getTokenValue() << "\n";
+                }        
+            } catch(scan::ScanExcept &e) {
+                output << e.why() << "\n";
+                return 1;
+            }
+            return 0;
+        }
+        return 1;
     }
 }

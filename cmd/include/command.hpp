@@ -80,5 +80,7 @@ namespace cmd {
     int regexReplaceCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
     int regexSearchCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
     int regexSplitCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
+    int tokenizeCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output);
 }
+
 #endif

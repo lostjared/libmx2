@@ -76,6 +76,7 @@ namespace cmd {
             registry.registerTypedCommand("regex_replace", cmd::regexReplaceCommand);
             registry.registerTypedCommand("regex_search", cmd::regexSearchCommand);
             registry.registerTypedCommand("regex_split", cmd::regexSplitCommand);
+            registry.registerTypedCommand("tokenize", cmd::tokenizeCommand);
             registry.registerTypedCommand("set", [this](const std::vector<Argument>& args, std::istream& input, std::ostream& output) {
                 if (args.size() >= 1) {
                     if (args[0].value == "-e") {

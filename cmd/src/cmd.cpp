@@ -22,6 +22,7 @@
 #include <signal.h>
 #include <unistd.h>
 #endif
+#include<cstdlib>
 
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
 void sigint_handler(int sig) {
@@ -302,5 +303,5 @@ int main(int argc, char **argv) {
             return EXIT_FAILURE;
         }
     }
-    return 0;
+    return EXIT_SUCCESS;
 }
