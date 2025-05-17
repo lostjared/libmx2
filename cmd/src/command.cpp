@@ -28,9 +28,18 @@ namespace state {
 namespace cmd {
 
     std::vector<std::string> argv;
+    std::string app_name;
+    
 
     int exitCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
-        std::exit(0);      
+        if(args.empty()) {
+              throw Exit_Exception(0);
+              return 0;
+        } else if(args.size() == 1) {
+            int exitCode = std::stoi(args[0]);
+            throw Exit_Exception(exitCode);
+        }
+        throw Exit_Exception(0);
         return 0;     
     }
     
@@ -1047,14 +1056,12 @@ namespace cmd {
              (filename.front() == '\'' && filename.back() == '\''))) {
             filename = filename.substr(1, filename.size() - 2);
         }
-
+        cmd::app_name = filename;
         std::ifstream file(filename);
         if (!file.is_open()) {
             output << "cmd: cannot open file '" << filename << "': No such file or directory" << std::endl;
             return 1;
         }
-
-
         std::stringstream buffer;
         buffer << file.rdbuf();
         std::string script = buffer.str();
@@ -1439,7 +1446,11 @@ namespace cmd {
                 output << argv.at(i) << "\n";
             }
             return 0;
-        } else if(args[0].type == ArgType::ARG_STRING_LITERAL) {
+        } else if(args[0].type == ArgType::ARG_STRING_LITERAL && args[0].value == "app") {
+            output << app_name;
+            return 0;
+        } 
+        else if(args[0].type == ArgType::ARG_STRING_LITERAL) {
             output << "argv: invalid argument: " << args[0].value << "\n";
             return 1;
         }

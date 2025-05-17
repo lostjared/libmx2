@@ -48,6 +48,7 @@ void dumpTokens(scan::Scanner &scan, std::ostream& out = std::cout) {
 
 int main(int argc, char **argv) {
     std::cout << "MXCMD " << version_string << "\n(C) 1999-2025 LostSideDead Software\n\n";
+    cmd::app_name = argv[0];
     if(argc > 2) {
         for(int i = 2; i < argc; ++i) {
             cmd::argv.push_back(argv[i]);
@@ -163,6 +164,8 @@ int main(int argc, char **argv) {
                     std::cerr << "Exception: " << e.what() << std::endl;
                 } catch (const state::StateException &e) {
                     std::cerr << "State error: " << e.what() << std::endl;;
+                } catch(const cmd::Exit_Exception  &e) {
+                    std::cout << "\nExit: " << e.getCode() << std::endl;
                 }
                  catch (...) {
                     std::cerr << "Unknown error occurred." << std::endl;
@@ -196,7 +199,7 @@ int main(int argc, char **argv) {
                     debug_tokens = true;
                 }
             }
-            
+            cmd::app_name = argv[1];
             file.open(argv[1], std::ios::in);
             if(!file.is_open()) {
                 std::cerr << "Error loading file: " << argv[1] << "\n";;
@@ -211,7 +214,6 @@ int main(int argc, char **argv) {
                     fileContent = fileContent.substr(newlinePos + 1);
                 }
             }
-
 
             try {
                 scan::TString string_buffer(fileContent);  // Use modified content
@@ -244,6 +246,7 @@ int main(int argc, char **argv) {
                 }
             } catch(const scan::ScanExcept &e) {
                 std::cerr << "Scan Error: " << e.why() << std::endl;
+            
                 return EXIT_FAILURE;
             } catch(const std::exception &e) {
                 std::cerr << "Exception: " << e.what() << std::endl;
@@ -253,7 +256,10 @@ int main(int argc, char **argv) {
                 return EXIT_FAILURE;   
             } catch(const state::StateException &e) {
                 std::cerr << "State Exception: " << e.what() << std::endl;
-            } 
+            } catch(const cmd::Exit_Exception &e) {
+                std::cout << "\nExit: " << e.getCode() << std::endl;
+                return e.getCode();
+            }
             catch(...) {
                 std::cerr << "Fatal Error has occoured.\n";
                 throw;
@@ -281,7 +287,17 @@ int main(int argc, char **argv) {
         } catch(const std::exception &e) {
             std::cerr << "Exception: " << e.what() << std::endl;
             return EXIT_FAILURE;
-        } catch(...) {
+        } catch(cmd::AstFailure &e) {
+            std::cerr << "Failure: " << e.what() << std::endl;
+            return EXIT_FAILURE;
+        } catch(state::StateException &e) {
+            std::cerr << "State Exception: " << e.what() << std::endl;
+            return EXIT_FAILURE;
+        } catch(cmd::Exit_Exception &e) {
+            std::cout << "\nExit: " << e.getCode() << std::endl;
+            return e.getCode();
+        }
+        catch(...) {
             std::cerr << "Unknown Error has Occoured..\n";
             return EXIT_FAILURE;
         }

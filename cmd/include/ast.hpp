@@ -70,6 +70,14 @@ namespace cmd {
     };
 
     class ReturnException {};
+    
+    class Exit_Exception {
+    public:
+        explicit Exit_Exception(int code) : code(code) {}
+        int getCode() const { return code; }
+    private:
+        int code;
+    };
 
     class Node {
     public:
