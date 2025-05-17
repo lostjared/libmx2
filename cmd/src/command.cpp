@@ -1063,7 +1063,10 @@ namespace cmd {
         try {
             gameState->clearAllLists();
             gameState->clearVariables();
-
+            cmd::argv.clear();
+            for(size_t i = 1; i < args.size(); ++i) {
+                cmd::argv.push_back(getVar(args[i]));
+            }
         } catch(state::StateException &e) {
             output << "cmd: Error in " << filename << ": " << e.what() << std::endl;
             return 1;
