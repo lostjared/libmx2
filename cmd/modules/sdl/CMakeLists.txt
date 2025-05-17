@@ -6,9 +6,13 @@ find_package(libmxcmd REQUIRED)
 add_library(sdl-mod SHARED sdl-module.cpp)
 include(GNUInstallDirs)
 target_include_directories(sdl-mod PRIVATE ${SDL2_INCLUDE_DIRS} 
-${LIBCMD_INCLUDE_DIRS}
-${LIBCMD_INCLUDE_DIRS}/mxcmd
+    ${LIBCMD_INCLUDE_DIRS}
+    ${LIBCMD_INCLUDE_DIRS}/mxcmd
 )
+
+if(NOT DEFINED MODULE_INSTALL_DIR)
+  set(MODULE_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/lib")
+endif()
 
 if(RELEASE)
     set(CMAKE_BUILD_TYPE Release)
@@ -23,6 +27,11 @@ endif()
 if(WIN32)
     set_target_properties(sdl-mod PROPERTIES 
         PREFIX ""  
+    )
+else()
+    set_target_properties(sdl-mod PROPERTIES 
+        INSTALL_RPATH "${MODULE_INSTALL_DIR}"
+        BUILD_WITH_INSTALL_RPATH TRUE
     )
 endif()
 
