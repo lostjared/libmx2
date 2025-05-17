@@ -4,15 +4,20 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(OpenGL_GL_PREFERENCE "GLVND")
-
+set(CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_PREFIX}/lib)
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON) 
 option(DEBUG_MODE "Debug mode" OFF)
-
 if(DEBUG_MODE)
   add_compile_definitions(DEBUG_MODE)
   message(STATUS "Debug Enabled")
-  set(COMPILE_FLAG "-g")
+  set(CMAKE_BUILD_TYPE Debug)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
 else() 
-  set(COMPILE_FLAG "")
+  set(CMAKE_BUILD_TYPE Release)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
   message(STATUS "Release mode enabled") 
 endif()
 
@@ -21,7 +26,7 @@ if(UNIX AND NOT APPLE)
 endif()
 
 
-add_compile_options(-O2 -Wall ${COMPILE_FLAG}) 
+add_compile_options(-Wall) 
 
 
 find_package(SDL2 REQUIRED)
