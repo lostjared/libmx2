@@ -209,7 +209,7 @@ int main(int argc, char **argv) {
             stream << file.rdbuf();
             std::string fileContent = stream.str();
             
-            if(fileContent.empty()) {
+            if(!fileContent.empty()) {
                 fileContent.erase(
                     std::remove(fileContent.begin(), fileContent.end(), '\r'),
                         fileContent.end()
@@ -224,7 +224,7 @@ int main(int argc, char **argv) {
             }
 
             try {
-                scan::TString string_buffer(fileContent);  // Use modified content
+                scan::TString string_buffer(fileContent); 
                 scan::Scanner scanner(string_buffer);
                 cmd::Parser parser(scanner);
                 auto ast = parser.parse();
