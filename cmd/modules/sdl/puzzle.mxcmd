@@ -2,18 +2,19 @@
 
 cmd "sdl-script.mxcmd"
 
-let width=640
-let height=480
+let width=800
+let height=600
 let grid = "#grid"
 
     
 let block = "#block"
 let game_block = "#game_block"
-let grid_w = 32
+let grid_w = 39
 let grid_h = 16
-let size_w = width / grid_w
-let size_h = height / grid_h
+let size_w = 8
+let size_h = 22
 let size_val = (size_w * size_h) 
+let background_image = ""
 let game_block_pos_x = size_w/2
 let game_block_pos_y = 0
 
@@ -266,10 +267,12 @@ begin
     return 0
 end
 
+let start_x = 225
+let start_y = 125
 define draw_game_block()
 begin
-    let g_pos_x =  game_block_pos_x * 32
-    let g_pos_y  = game_block_pos_y * 16;
+    let g_pos_x =  (game_block_pos_x * grid_w) + start_x
+    let g_pos_y  = (game_block_pos_y * grid_h) + start_y;
     sdl_color_string $(list_get block $(list_get game_block 0))
     sdl_rect g_pos_x g_pos_y grid_w grid_h 1
     sdl_color_string $(list_get block $(list_get game_block 1))
@@ -284,11 +287,11 @@ define draw_grid()
 begin
     let x = 0
     let y = 0
-    let grid_x = 0
-    let grid_y = 0
+    let grid_x = start_x
+    let grid_y = start_y
     while test y --lt size_h
     do
-        grid_x = 0
+        grid_x = start_x
         x = 0
         while test x --lt size_w
         do
@@ -320,10 +323,26 @@ end
 
 define get_loc(xv, yv)
 begin
+    if  test xv --lt 0 || test xv --gt size_w
+    then
+        printf "0"
+        return 0s
+    fi
+    if  test yv --lt 0 || test yv --ge size_h
+    then
+        printf "0"
+        return 0
+    fi
     let gposx = (yv * size_w) + xv
+
+    if test gposx --lt size_val then
     printf "%s" gposx
     return 0
+    fi
+    printf "0"
+    return 0
 end
+
 
 define set_block_grid()
 begin
@@ -445,14 +464,21 @@ begin
     return 0
 end
 
+define load_gfx()  
+begin
+    background_image=$(sdl_loadsurface "./res/bg.bmp")
+    return 0
+end
+
+
 define main()
 begin
     init_sdl
+    load_gfx
     last_drop_time = $(sdl_ticks)
-    let drop_speed = 100
+    let drop_speed = 10
     while test $(sdl_events) --ne 0 
     do
-        printf "Ticks: %d\n" $(sdl_ticks)
         check_input
         let current_time = $(sdl_ticks)
         let time_diff = $(expr $(printf "%d-%d" current_time last_drop_time))
@@ -463,9 +489,9 @@ begin
         fi
         sdl_set_color 0 0 0 255
         sdl_clear
+        sdl_copysurface background_image 0 0 width height
         draw_grid
         sdl_present
-        #sdl_delay 16
     done
     clean_sdl
     return 0
