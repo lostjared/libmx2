@@ -4,8 +4,8 @@ cmd "sdl-script.mxcmd"
 
 let width=1280
 let height=720
-let grid = "grid"
-let block = "block"
+let grid = "#grid"
+let block = "#block"
 let game_block = "#game_block"
 let grid_w = 32
 let grid_h = 16
@@ -117,6 +117,54 @@ begin
     return  0
 end
 
+define get_loc(xv, yv)
+begin
+    let gposx = (yv * size_w) + xv
+    printf "%s" gposx
+    return 0
+end
+
+define set_block_grid()
+begin
+    let val = $(list_get game_block 0)
+    let gpos = $(get_loc game_block_pos_x game_block_pos_y)
+    list_set grid gpos val
+    let val = $(list_get game_block 1)
+    let pos1 = game_block_pos_y + 1
+    let gpos = $(get_loc game_block_pos_x pos1)
+    list_set grid gpos val
+    let val = $(list_get game_block 2)
+    let pos2 = game_block_pos_y + 2
+    let gpos = $(get_loc game_block_pos_x pos2)
+    list_set grid gpos val
+
+    return 0
+end
+
+define move_down()
+begin
+    let pos = game_block_pos_y + 2
+    if test pos --lt $(expr $(printf "%d-1" size_h))
+    then
+        posb = $(get_loc game_block_pos_x $(expr $(printf "%d+3" game_block_pos_y)))
+        let val = $(list_get grid posb)
+        if test val "=" "0" then
+            game_block_pos_y = game_block_pos_y + 1
+        else
+            set_block_grid
+            game_block_pos_y = 0
+            game_block_pos_x = size_w/2
+            random_game_block
+        fi
+    else
+        set_block_grid
+        game_block_pos_y = 0
+        game_block_pos_x = size_w/2
+        random_game_block
+    fi
+    return 0
+end
+
 define check_input()
 begin
     if test $(sdl_key "Left") --eq  "1"
@@ -132,6 +180,10 @@ begin
             then
                 game_block_pos_x = game_block_pos_x + 1
             fi
+    fi
+    if test $(sdl_key "Down") --eq  "1"
+    then
+            move_down
     fi
     return 0
 end
