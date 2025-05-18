@@ -141,7 +141,7 @@ namespace scan {
                         case types::CharType::TT_SPACE:
                             while (true) {
                                 auto next = string_buffer.peekch(0);
-                                if(next.has_value() && (*next == ' ' || *next == '\t')) { string_buffer.getch();  continue; }
+                                if(next.has_value() && (*next == ' ' || *next == '\t' ||  *next == '\r')) { string_buffer.getch();  continue; }
                                 if (!next.has_value() || token_map.lookup_int8(*next) != types::CharType::TT_SPACE) {
                                     break;
                                 }
