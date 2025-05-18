@@ -61,6 +61,15 @@ namespace scan {
                 tokens.push_back(token);
                 continue;
             }
+
+
+            if (*ch == '\r') {
+                auto next = string_buffer.peekch(0);
+                if (next.has_value() && *next == '\n') {
+                    continue;
+                }
+            }
+
             if(*ch == '"') {
                 auto token = grabString();
                 if(token.has_value()) {
