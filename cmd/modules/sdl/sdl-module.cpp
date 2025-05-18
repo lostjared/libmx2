@@ -1,4 +1,5 @@
 #include "SDL.h"
+#include "SDL_ttf.h"
 #include "ast.hpp"
 #include <map>
 #include <unordered_map>
@@ -428,6 +429,88 @@ extern "C" {
         return 0;
     }
     
+    int sdl_draw_text(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {       
+        static std::unordered_map<std::string, TTF_Font*> font_cache;
+        class FontCacheRaii {
+        public:
+            ~FontCacheRaii() {
+                for (auto& pair : font_cache) {
+                    TTF_CloseFont(pair.second);
+                }
+                font_cache.clear();
+                if (TTF_WasInit()) {
+                    TTF_Quit();
+                }
+            }
+        };
+        static FontCacheRaii font_cache_raii;
+        
+        if (g_renderer == nullptr) {
+            output << "Renderer must be created first" << std::endl;
+            return 1;
+        }
+        
+        if (!TTF_WasInit()) {
+            if (TTF_Init() < 0) {
+                output << "TTF_Init Error: " << TTF_GetError() << std::endl;
+                return 1;
+            }
+        }
+        
+        if (args.size() < 4) {
+            output << "Usage: sdl_draw_text <text> <x> <y> <font_path> [size=24] [r=255] [g=255] [b=255] [a=255]" << std::endl;
+            return 1;
+        }
+        
+        std::string text = cmd::getVar(args[0]);
+        int x = std::stoi(cmd::getVar(args[1]));
+        int y = std::stoi(cmd::getVar(args[2]));
+        std::string font_path = cmd::getVar(args[3]);
+        
+        int font_size = 24;  
+        if (args.size() > 4) {
+            font_size = std::stoi(cmd::getVar(args[4]));
+        }
+        
+        SDL_Color color = {255, 255, 255, 255};
+        if (args.size() > 5) color.r = static_cast<Uint8>(std::stoi(cmd::getVar(args[5])));
+        if (args.size() > 6) color.g = static_cast<Uint8>(std::stoi(cmd::getVar(args[6])));
+        if (args.size() > 7) color.b = static_cast<Uint8>(std::stoi(cmd::getVar(args[7])));
+        if (args.size() > 8) color.a = static_cast<Uint8>(std::stoi(cmd::getVar(args[8])));
+        std::string font_key = font_path + "_" + std::to_string(font_size);
+        TTF_Font* font = nullptr;
+        auto it = font_cache.find(font_key);
+        
+        if (it == font_cache.end()) {
+            font = TTF_OpenFont(font_path.c_str(), font_size);
+            if (font == nullptr) {
+                output << "TTF_OpenFont Error: " << TTF_GetError() << " (Path: " << font_path << ")" << std::endl;
+                return 1;
+            }
+            font_cache[font_key] = font;
+        } else {
+            font = it->second;
+        }
+        
+            SDL_Surface* surface = TTF_RenderText_Blended(font, text.c_str(), color);
+        if (surface == nullptr) {
+            output << "TTF_RenderText Error: " << TTF_GetError() << std::endl;
+            return 1;
+        }
+        SDL_Texture* texture = SDL_CreateTextureFromSurface(g_renderer, surface);
+        if (texture == nullptr) {
+            SDL_FreeSurface(surface);
+            output << "SDL_CreateTextureFromSurface Error: " << SDL_GetError() << std::endl;
+            return 1;
+        }
+        SDL_Rect dst_rect = {x, y, surface->w, surface->h};
+        SDL_RenderCopy(g_renderer, texture, nullptr, &dst_rect);
+        SDL_FreeSurface(surface);
+        SDL_DestroyTexture(texture);
+        return 0;
+    }
+    
+
     int sdl_draw_triangle(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
         if (g_renderer == nullptr) {
             output << "Renderer must be created first" << std::endl;
@@ -825,7 +908,7 @@ extern "C" {
     
     int sdl_quit(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
         sdl_destroy(args, input, output);
-	SDL_PumpEvents();
+    	SDL_PumpEvents();
         SDL_Quit();
         return 0;
     }

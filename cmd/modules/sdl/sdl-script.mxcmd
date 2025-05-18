@@ -30,6 +30,7 @@ begin
     extern "sdl-mod" "sdl_destroy" "sdl_destroy"
     extern "sdl-mod" "sdl_quit" "sdl_quit" 
     extern "sdl-mod" "sdl_color_string" "sdl_color_string"   
+    extern "sdl-mod" "sdl_draw_text" "sdl_draw_text"
     return 0
 end
 
