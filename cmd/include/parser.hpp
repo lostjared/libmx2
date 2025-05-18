@@ -155,7 +155,7 @@ namespace cmd {
                         auto cmdNode = parseCommandSubstitution();
                         return std::make_shared<cmd::CommandSubstitution>(cmdNode, false);
                     } else {
-                        throw std::runtime_error("Expected '(' after '$' for command substitution");
+                        throw std::runtime_error("Expected '(' after '$' for command subsitution found: " + peek().getTokenValue() + " on Line: " + std::to_string(peek().get_pos().first));
                     }
                 }
             
@@ -599,7 +599,7 @@ namespace cmd {
 
             std::shared_ptr<cmd::Node> parseCommandSubstitution() {
                 if (!match("(")) {
-                    throw std::runtime_error("Expected '(' after '$' for command substitution");
+                    throw std::runtime_error("Expected '(' after '$' for command substitution  instead found: " + peek().getTokenValue() + " on Line: " + std::to_string(peek().get_pos().first));
                 }
                 auto commandNode = parseSequence();
                 if (!match(")")) {

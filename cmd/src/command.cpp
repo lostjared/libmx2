@@ -984,7 +984,7 @@ namespace cmd {
                     double right = std::stod(rightValue);
                     return left == right ? 0 : 1; 
                 } catch (const std::exception&) {
-                    output << "test: integer expression expected" << std::endl;
+                    output << "test: integer expression expected instead i found: " << leftValue << " " << rightValue << std::endl;
                     return 2;
                 }
             } else if (op == "--ne") {
@@ -993,7 +993,7 @@ namespace cmd {
                     double right = std::stod(rightValue);
                     return left != right ? 0 : 1; 
                 } catch (const std::exception&) {
-                    output << "test: integer expression expected" << std::endl;
+                    output << "test: integer expression expected instead i found: " << leftValue << " " << rightValue << std::endl;
                     return 2;
                 }
             } else if (op == "--gt") {
@@ -1002,7 +1002,7 @@ namespace cmd {
                     double right = std::stod(rightValue);
                     return left > right ? 0 : 1; 
                 } catch (const std::exception&) {
-                    output << "test: integer expression expected" << std::endl;
+                    output << "test: integer expression expected instead i found: " << leftValue << " " << rightValue << std::endl;
                     return 2;
                 }
             } else if (op == "--ge") {
@@ -1011,7 +1011,7 @@ namespace cmd {
                     double right = std::stod(rightValue);
                     return left >= right ? 0 : 1;
                 } catch (const std::exception&) {
-                    output << "test: integer expression expected" << std::endl;
+                    output << "test: integer expression expected instead i found: " << leftValue << " " << rightValue << std::endl;
                     return 2;
                 }
             } else if (op == "--lt") {
@@ -1020,7 +1020,7 @@ namespace cmd {
                     double right = std::stod(rightValue);
                     return left < right ? 0 : 1; 
                 } catch (const std::exception&) {
-                    output << "test: integer expression expected" << std::endl;
+                    output << "test: integer expression expected instead i found: " << leftValue << " " << rightValue << std::endl;
                     return 2;
                 }
             } else if (op == "--le") {
@@ -1029,7 +1029,7 @@ namespace cmd {
                     double right = std::stod(rightValue);
                     return left <= right ? 0 : 1;
                 } catch (const std::exception&) {
-                    output << "test: integer expression expected" << std::endl;
+                    output << "test: integer expression expected instead i found: " << leftValue << " " << rightValue << std::endl;
                     return 2;
                 }
             } else {

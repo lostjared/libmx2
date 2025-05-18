@@ -2,15 +2,17 @@
 
 cmd "sdl-script.mxcmd"
 
-let width=1280
-let height=720
+let width=640
+let height=480
 let grid = "#grid"
+
+    
 let block = "#block"
 let game_block = "#game_block"
 let grid_w = 32
 let grid_h = 16
-let size_w = 40
-let size_h = 45
+let size_w = width / grid_w
+let size_h = height / grid_h
 let size_val = (size_w * size_h) 
 let game_block_pos_x = size_w/2
 let game_block_pos_y = 0
@@ -29,6 +31,194 @@ begin
     list_add  block "0 255 255 255"
     list_add  block "0 150 25 122"
     list_new game_block 3 "0"
+    return 0
+end
+
+define check_for_matches()
+begin
+    let found_match = 0
+    let y = 0
+    while test y --lt size_h
+    do
+        let x = 0
+        while test x --lt $(expr $(printf "%d-2" size_w))
+        do
+            let pos = $(get_loc x y)
+            let color = $(list_get grid pos)
+            
+            if test color --ne "0"
+            then
+                let pos2 = $(get_loc $(expr $(printf "%d+1" x)) y)
+                let pos3 = $(get_loc $(expr $(printf "%d+2" x)) y)
+                let color2 = $(list_get grid pos2)
+                let color3 = $(list_get grid pos3)
+                
+                if test color "=" color2 && test color "=" color3
+                then
+                    found_match = 1
+                    # Directly set matched cells to 0
+                    list_set grid pos "0"
+                    list_set grid pos2 "0"
+                    list_set grid pos3 "0"
+                    printf "%d" found_match
+                    return 0
+                fi
+            fi
+            x = $(expr $(printf "%d+1" x))
+        done
+        y = $(expr $(printf "%d+1" y))
+    done
+    
+    let x = 0
+    while test x --lt size_w
+    do
+        let y = 0
+        while test y --lt $(expr $(printf "%d-2" size_h))
+        do
+            let pos = $(get_loc x y)
+            let color = $(list_get grid pos)
+            
+            if test color --ne "0"
+            then
+                let pos2 = $(get_loc x $(expr $(printf "%d+1" y)))
+                let pos3 = $(get_loc x $(expr $(printf "%d+2" y)))
+                let color2 = $(list_get grid pos2)
+                let color3 = $(list_get grid pos3)
+                
+                if test color "=" color2 && test color "=" color3
+                then
+                    found_match = 1
+                    # Directly set matched cells to 0
+                    list_set grid pos "0"
+                    list_set grid pos2 "0"
+                    list_set grid pos3 "0"
+                    printf "%d" found_match
+                    return 0
+                fi
+            fi
+            y = $(expr $(printf "%d+1" y))
+        done
+        x = $(expr $(printf "%d+1" x))
+    done
+    
+    # Check diagonal (top-left to bottom-right)
+    let y = 0
+    while test y --lt $(expr $(printf "%d-2" size_h))
+    do
+        let x = 0
+        while test x --lt $(expr $(printf "%d-2" size_w))
+        do
+            let pos = $(get_loc x y)
+            let color = $(list_get grid pos)
+            
+            if test color --ne "0"
+            then
+                let pos2 = $(get_loc $(expr $(printf "%d+1" x)) $(expr $(printf "%d+1" y)))
+                let pos3 = $(get_loc $(expr $(printf "%d+2" x)) $(expr $(printf "%d+2" y)))
+                let color2 = $(list_get grid pos2)
+                let color3 = $(list_get grid pos3)
+                
+                if test color "=" color2 && test color "=" color3
+                then
+                    found_match = 1
+                    # Directly set matched cells to 0
+                    list_set grid pos "0"
+                    list_set grid pos2 "0"
+                    list_set grid pos3 "0"
+                    printf "%d" found_match
+                    return 0
+                fi
+            fi
+            x = $(expr $(printf "%d+1" x))
+        done
+        y = $(expr $(printf "%d+1" y))
+    done
+    
+    # Check diagonal (top-right to bottom-left)
+    let y = 0
+    while test y --lt $(expr $(printf "%d-2" size_h))
+    do
+        let x = $(expr $(printf "%d-1" size_w))
+        while test x --gt 1
+        do
+            let pos = $(get_loc x y)
+            let color = $(list_get grid pos)
+            
+            if test color --ne "0"
+            then
+                let pos2 = $(get_loc $(expr $(printf "%d-1" x)) $(expr $(printf "%d+1" y)))
+                let pos3 = $(get_loc $(expr $(printf "%d-2" x)) $(expr $(printf "%d+2" y)))
+                let color2 = $(list_get grid pos2)
+                let color3 = $(list_get grid pos3)
+                
+                if test color "=" color2 && test color "=" color3
+                then
+                    found_match = 1
+                    # Directly set matched cells to 0
+                    list_set grid pos "0"
+                    list_set grid pos2 "0"
+                    list_set grid pos3 "0"
+                    printf "%d" found_match
+                    return 0
+                fi
+            fi
+            x = $(expr $(printf "%d-1" x))
+        done
+        y = $(expr $(printf "%d+1" y))
+    done
+    
+    printf "%d" found_match
+    return 0
+end
+
+define proc_blocks()
+begin
+    let moved = 0
+    let iterations = 0
+    while test iterations --lt size_h
+    do
+
+        let any_moved = 0
+        let y = size_h - 2
+        while test y --ge 0
+        do
+            let x = 0
+            while test x --lt size_w
+            do
+                let current_pos = $(get_loc x y)
+                let color = $(list_get grid current_pos)
+                
+                if test color --ne "0"
+                then
+                    let below_pos = $(get_loc x $(expr $(printf "%d+1" y)))
+                    let below_color = $(list_get grid below_pos)
+                    
+                    if test below_color --eq "0"
+                    then
+                        
+                        list_set grid below_pos color
+                        list_set grid current_pos "0"
+                        moved = 1
+                        any_moved = 1
+                        break
+                    fi
+                fi
+                
+                x++
+            done
+            y--
+        done
+        
+
+        if test any_moved --eq 0
+        then
+            break
+        fi
+        
+        iterations++
+    done
+    
+    printf "%d" moved
     return 0
 end
 
@@ -114,6 +304,17 @@ begin
         y = y + 1
     done
     draw_game_block
+
+
+    let found_match = $(check_for_matches)
+    if test found_match --eq 1
+    then
+        let moved = $(proc_blocks)
+        if test moved --eq 1
+        then
+           printf "Blocks moved down\n"
+        fi
+    fi      
     return  0
 end
 
@@ -165,25 +366,81 @@ begin
     return 0
 end
 
+define test_block(xx, yy)
+begin
+    if test xx --lt 0
+    then
+        printf "0"
+        return 0
+    fi
+    if test xx --ge size_w
+    then
+        printf "0"
+        return 0
+    fi
+    if test yy --lt 0
+    then
+        printf "0"
+        return 0
+    fi
+    if test yy --ge size_h
+    then
+        printf "0"
+        return 0
+    fi
+
+    let gpos = $(get_loc xx yy)
+    let val = $(list_get grid gpos)
+    if test val --eq "0"
+    then
+        printf "0"
+    else
+        printf "1"
+    fi
+    return 0
+end
+
+define swap_colors()
+begin
+    let color1 = $(list_get game_block 0)
+    let color2 = $(list_get game_block 1)
+    let color3 = $(list_get game_block 2)
+    list_set game_block 0 color2
+    list_set game_block 1 color3
+    list_set game_block 2 color1
+    return 0
+end
+
 define check_input()
 begin
     if test $(sdl_key "Left") --eq  "1"
     then
         if test $(expr $(printf "%d > 0" game_block_pos_x)) --eq "1"
         then
-            game_block_pos_x = game_block_pos_x - 1
+            if test $(test_block $(expr $(printf "%d-1" game_block_pos_x)) $(expr $(printf "%d+1" game_block_pos_y))) --eq "0"
+            then
+                game_block_pos_x = game_block_pos_x - 1
+            fi
         fi  
     fi
     if test $(sdl_key "Right") --eq  "1"
         then
-            if test $(expr $(printf "%d < 39" game_block_pos_x)) --eq "1"
+            if test $(expr $(printf "%d < %d-1" game_block_pos_x size_w)) --eq "1"
             then
-                game_block_pos_x = game_block_pos_x + 1
+                if test $(test_block $(expr $(printf "%d+1" game_block_pos_x)) $(expr $(printf "%d+2" game_block_pos_y))) --eq "0"
+                then
+                    game_block_pos_x = game_block_pos_x + 1
+                fi
             fi
     fi
     if test $(sdl_key "Down") --eq  "1"
     then
             move_down
+    fi
+
+    if test $(sdl_key "Up") --eq  "1"
+    then
+        swap_colors
     fi
     return 0
 end
@@ -191,15 +448,24 @@ end
 define main()
 begin
     init_sdl
-    running = 1
+    last_drop_time = $(sdl_ticks)
+    let drop_speed = 100
     while test $(sdl_events) --ne 0 
     do
+        printf "Ticks: %d\n" $(sdl_ticks)
         check_input
+        let current_time = $(sdl_ticks)
+        let time_diff = $(expr $(printf "%d-%d" current_time last_drop_time))
+        if test time_diff --ge drop_speed
+        then
+            move_down
+            last_drop_time = current_time
+        fi
         sdl_set_color 0 0 0 255
         sdl_clear
         draw_grid
         sdl_present
-        sdl_delay 16
+        #sdl_delay 16
     done
     clean_sdl
     return 0

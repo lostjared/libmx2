@@ -79,7 +79,7 @@ namespace state {
             auto it = lists.find(name);
             if (it != lists.end()) {
                     if(index < 0 || index > static_cast<int>(it->second.size()-1)) {
-                        throw StateException("Index of: " + name + " out of range: " + std::to_string(index));
+                        throw StateException("list_get: Index of: " + name + " out of range: " + std::to_string(index) + " len: " + std::to_string(it->second.size()));
                     }
                     return it->second.at(index);
             }
