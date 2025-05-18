@@ -9,7 +9,7 @@ let grid = "#grid"
     
 let block = "#block"
 let game_block = "#game_block"
-let grid_w = 39
+let grid_w = 38
 let grid_h = 16
 let size_w = 8
 let size_h = 22
@@ -20,6 +20,8 @@ let background_image = ""
 let grid_image = ""
 let game_block_pos_x = size_w/2
 let game_block_pos_y = 0
+let start_x = 230
+let start_y = 125
 
 define new_lists()
 begin
@@ -270,8 +272,6 @@ begin
     return 0
 end
 
-let start_x = 223
-let start_y = 125
 define draw_game_block()
 begin
     let g_pos_x =  (game_block_pos_x * grid_w) + start_x
@@ -306,7 +306,7 @@ begin
             sdl_color_string color_value
             sdl_rect grid_x grid_y grid_c_w grid_c_h 1
             x = x + 1
-            grid_x = grid_x + grid_w
+            grid_x = grid_x + grid_w 
         done
         grid_y = grid_y + grid_h
         y = y + 1
@@ -497,7 +497,9 @@ begin
         sdl_set_color 0 0 0 255
         sdl_clear
         sdl_copysurface background_image 0 0 width height
-        sdl_copysurface grid_image start_x start_y grid_size_w grid_size_h
+        pos_x = start_x-1
+        pos_w = grid_size_w+1
+        sdl_copysurface grid_image pos_x start_y pos_w grid_size_h
         draw_grid
         sdl_present
     done
