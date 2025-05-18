@@ -1,0 +1,156 @@
+#!/usr/bin/env mxcmd-cli
+
+cmd "sdl-script.mxcmd"
+
+let width=1280
+let height=720
+let grid = "grid"
+let block = "block"
+let game_block = "#game_block"
+let grid_w = 32
+let grid_h = 16
+let size_w = 40
+let size_h = 45
+let size_val = (size_w * size_h) 
+let game_block_pos_x = size_w/2
+let game_block_pos_y = 0
+
+define new_lists()
+begin
+    list_new grid size_val "0"
+    list_new block
+    list_add  block "0 0 0 0"
+    list_add  block "255 0 0 255"
+    list_add  block "0 255 0 255"
+    list_add  block "0 0 255 255"
+    list_add  block "255 255 0 255"  
+    list_add  block "255 0 255 255"
+    list_add  block "0 255 255 255" 
+    list_add  block "0 255 255 255"
+    list_add  block "0 150 25 122"
+    list_new game_block 3 "0"
+    return 0
+end
+
+define random_game_block()
+begin
+    list_set game_block 0 $(printf "%d"$(rand 1 6))
+    list_set game_block 1 $(printf "%d"$(rand 1 6))
+    list_set game_block 2 $(printf "%d"$(rand 1 6)) 
+    return 0
+end
+    
+define set_grid()
+begin
+    #random_blocks
+    random_game_block
+    return 0
+end
+
+define random_blocks()
+begin
+    let count = 0
+    let index_val = size_val - 1
+    while test count --lt index_val
+    do
+        let color = $(printf "%d" $(rand 1 5))
+        list_set grid count color
+        count++
+    done
+    return 0
+end
+
+define init_sdl()
+begin
+    sdl_init
+    new_lists
+    set_grid
+    sdl_window "MXCMD Window" width height
+    sdl_renderer -1 
+    return 0
+end
+
+define clean_sdl()
+begin
+    sdl_quit
+    return 0
+end
+
+define draw_game_block()
+begin
+    let g_pos_x =  game_block_pos_x * 32
+    let g_pos_y  = game_block_pos_y * 16;
+    sdl_color_string $(list_get block $(list_get game_block 0))
+    sdl_rect g_pos_x g_pos_y grid_w grid_h 1
+    sdl_color_string $(list_get block $(list_get game_block 1))
+    g_pos_y = g_pos_y + grid_h
+    sdl_rect g_pos_x g_pos_y grid_w grid_h 1
+    sdl_color_string $(list_get block $(list_get game_block 2))
+    g_pos_y = g_pos_y + grid_h
+    sdl_rect g_pos_x g_pos_y grid_w grid_h 1
+end
+
+define draw_grid()
+begin
+    let x = 0
+    let y = 0
+    let grid_x = 0
+    let grid_y = 0
+    while test y --lt size_h
+    do
+        grid_x = 0
+        x = 0
+        while test x --lt size_w
+        do
+            let grid_pos = (y * size_w) + x
+            let pos_val = size_val - 2
+            let color_value = $(list_get block $(list_get grid grid_pos))
+            sdl_color_string color_value
+            sdl_rect grid_x grid_y grid_w grid_h 1
+            x = x + 1
+            grid_x = grid_x + grid_w
+        done
+        grid_y = grid_y + grid_h
+        y = y + 1
+    done
+    draw_game_block
+    return  0
+end
+
+define check_input()
+begin
+    if test $(sdl_key "Left") --eq  "1"
+    then
+        if test $(expr $(printf "%d > 0" game_block_pos_x)) --eq "1"
+        then
+            game_block_pos_x = game_block_pos_x - 1
+        fi  
+    fi
+    if test $(sdl_key "Right") --eq  "1"
+        then
+            if test $(expr $(printf "%d < 39" game_block_pos_x)) --eq "1"
+            then
+                game_block_pos_x = game_block_pos_x + 1
+            fi
+    fi
+    return 0
+end
+
+define main()
+begin
+    init_sdl
+    running = 1
+    while test $(sdl_events) --ne 0 
+    do
+        check_input
+        sdl_set_color 0 0 0 255
+        sdl_clear
+        draw_grid
+        sdl_present
+        sdl_delay 16
+    done
+    clean_sdl
+    return 0
+end
+
+main
