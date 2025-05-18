@@ -312,6 +312,7 @@ begin
     let found_match = $(check_for_matches)
     if test found_match --eq 1
     then
+        score = score + 3
         let moved = $(proc_blocks)
         if test moved --eq 1
         then
@@ -476,7 +477,7 @@ begin
     init_sdl
     load_gfx
     last_drop_time = $(sdl_ticks)
-    let drop_speed = 10
+    let drop_speed = 500
     while test $(sdl_events) --ne 0 
     do
         check_input
