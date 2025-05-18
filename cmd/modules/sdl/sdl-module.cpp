@@ -612,7 +612,11 @@ extern "C" {
         g_mouse_buttons[1] = (mouse_state & SDL_BUTTON(2)) != 0;  
         g_mouse_buttons[2] = (mouse_state & SDL_BUTTON(3)) != 0;  
         
-        while (SDL_PollEvent(&event)) {
+#ifdef _APPLE__
+        if (SDL_PollEvent(&event)) {
+#else
+	while(SDL_PollEvent(&event)) {
+#endif
             auto it = g_event_handlers.find(event.type);
             if (it != g_event_handlers.end()) {
                 it->second(event);

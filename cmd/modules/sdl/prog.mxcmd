@@ -28,17 +28,12 @@ define main()
 begin
     init_sdl
     let running = 1
-    while test running --eq 1 
+    while test $(sdl_events) --ne 0 
     do
         sdl_set_color 0 0 0 255
         sdl_clear
         sdl_copysurface background_image 0 0 width height
         sdl_present
-        let result = $(sdl_events)
-        if test result --eq 0
-        then
-        break
-        fi
         sdl_delay 16
     done
     clean_sdl
