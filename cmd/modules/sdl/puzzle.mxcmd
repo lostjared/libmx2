@@ -270,7 +270,7 @@ begin
     return 0
 end
 
-let start_x = 226
+let start_x = 223
 let start_y = 125
 define draw_game_block()
 begin
