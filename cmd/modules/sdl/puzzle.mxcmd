@@ -22,6 +22,7 @@ let game_block_pos_x = size_w/2
 let game_block_pos_y = 0
 let start_x = 230
 let start_y = 125
+let score = 0
 
 define new_lists()
 begin
@@ -321,7 +322,7 @@ begin
         let moved = $(proc_blocks)
         if test moved --eq 1
         then
-           printf "Blocks moved down\n"
+           printf "Blocks moved down: %d\n" score
         fi
     fi      
     return  0
@@ -501,6 +502,8 @@ begin
         pos_w = grid_size_w+1
         sdl_copysurface grid_image pos_x start_y pos_w grid_size_h
         draw_grid
+        sdl_draw_text $(printf "Score: %d" score) start_x 80 "./res/font.ttf" 18 255 255 255 255
+        sdl_draw_text "MasterPiece MXCMD" $(expr $(printf "%d+100" start_x)) 80 "./res/font.ttf" 18 $(printf "%d" $(rand 0 255)) $(printf "%d" $(rand 0 255)) $(printf "%d" $(rand 0 255)) 255
         sdl_present
     done
     clean_sdl
