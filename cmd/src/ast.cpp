@@ -245,7 +245,7 @@ namespace cmd {
                     a = parseEscapeSequences(a);
                 
             } catch(const state::StateException &) {
-                throw std::runtime_error("Variable name: " + arg.value + " not found");
+                throw std::runtime_error("Variable name: " + arg.value + " not found its type: " +  std::to_string(static_cast<int>(arg.type)));
             }
         } else if (arg.type == ARG_COMMAND_SUBST && arg.cmdNode) {
             AstExecutor executor;

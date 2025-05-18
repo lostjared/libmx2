@@ -1064,7 +1064,12 @@ namespace cmd {
         std::stringstream buffer;
         buffer << file.rdbuf();
         std::string script = buffer.str();
-
+        if(script.empty()) {
+            script.erase(
+                std::remove(script.begin(), script.end(), '\r'),
+                    script.end()
+            );
+        }
         state::GameState *gameState = state::getGameState();
         try {
             gameState->clearAllLists();

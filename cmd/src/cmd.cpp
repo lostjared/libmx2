@@ -209,6 +209,13 @@ int main(int argc, char **argv) {
             stream << file.rdbuf();
             std::string fileContent = stream.str();
             
+            if(fileContent.empty()) {
+                fileContent.erase(
+                    std::remove(fileContent.begin(), fileContent.end(), '\r'),
+                        fileContent.end()
+                );
+            }
+
             if (fileContent.size() >= 2 && fileContent[0] == '#' && fileContent[1] == '!') {
                 size_t newlinePos = fileContent.find('\n');
                 if (newlinePos != std::string::npos) {

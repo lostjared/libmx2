@@ -64,7 +64,7 @@ namespace scan {
 
 
             if (*ch == '\r') {
-                auto next = string_buffer.peekch(0);
+                auto next = string_buffer.getch();
                 if (next.has_value() && *next == '\n') {
                     continue;
                 }
