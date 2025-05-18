@@ -821,6 +821,7 @@ extern "C" {
     
     int sdl_quit(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
         sdl_destroy(args, input, output);
+	SDL_PumpEvents();
         SDL_Quit();
         return 0;
     }
