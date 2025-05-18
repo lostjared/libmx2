@@ -40,8 +40,13 @@ define main()
 begin
     init_sdl
     let running = 1
-    while test $(sdl_events) --ne 0 
+    while test running --ne 0 
     do
+        let event = $(sdl_events)
+        if test $(sdl_key "Escape") --eq 1 || test event --eq 0
+        then
+            running = 0
+        fi      
         sdl_set_color 0 0 0 255
         sdl_clear
         draw_triangle
