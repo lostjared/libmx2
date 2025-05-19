@@ -81,6 +81,7 @@
       <a href="#regex_replace">regex_replace</a>
       <a href="#regex_search">regex_search</a>
       <a href="#regex_split">regex_split</a>
+      <a href="#tokenize">tokenize</a>
     </div>
 
     
@@ -563,6 +564,19 @@ fi</code></pre>
     <h3>Example</h3>
     <pre><code>parts = $(regex_split "," "a,b,c" )</code></pre>
 </section>
+
+<hr class="command-separator">
+
+<!-- tokenize -->
+<section id="tokenize">
+    <h2><code>tokenize</code></h2>
+    <p>Split a MXCMD command or program into tokens using whitespace as the delimiter.</p>
+    <h3>Usage</h3>
+    <pre><code>tokenize STRING</code></pre>
+    <h3>Example</h3>
+    <pre><code>tokens = $(tokenize "this is a test")</code></pre>
+</section>
+
 </div>
 </body>
 </html>
