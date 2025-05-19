@@ -31,7 +31,7 @@ $ mxcmd-cli
 
 ## Optional compile SDL module
 ```bash
-cd libmx2/modules/sdl
+cd libmx2/cmd/modules/sdl
 mkdir build && cd build
 cmake .. 
 cmake --build .
