@@ -12,6 +12,22 @@ Visualizer/Code Formatter: https://lostsidedead.biz/debug
 
 MXCMD Beta: a lightweight shell scripting language and command-line interpreter for Windows x64 (MSYS2/MinGW-w64), Linux, macOS, and BSD. This guide provides an overview of supported commands, control flow constructs, and expressions & syntax.
 
+## How to build from source:
+Building from Source on Linux/Unix first install the required packages, readline, git, g++, cmake.:
+```bash
+git clone https://github.com/lostjared/libmx2.git --depth 1
+cd libmx2/cmd
+mkdir build
+cd build
+cmake .. -DCMD=ON -DSHARED=ON
+cmake --build .
+sudo cmake --install .
+```
+
+Then at your shell prompt:
+```bash
+$ mxcmd-cli
+```
 ## Table of Contents
 
 - [Supported Commands](#supported-commands)
