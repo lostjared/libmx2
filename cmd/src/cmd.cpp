@@ -47,14 +47,41 @@ void dumpTokens(scan::Scanner &scan, std::ostream& out = std::cout) {
     }
 }
 
-int main(int argc, char **argv) {
-    std::cout << "MXCMD " << version_string << "\n(C) 1999-2025 LostSideDead Software\n\n";
-    cmd::app_name = argv[0];
-    if(argc > 2) {
-        for(int i = 2; i < argc; ++i) {
-            cmd::argv.push_back(argv[i]);
-        }
+void execute_command(const std::string &text) {
+    try {
+        cmd::AstExecutor executor{};
+        scan::TString string_buffer(text);
+        scan::Scanner scanner(string_buffer);
+        cmd::Parser parser(scanner);
+        auto ast = parser.parse();
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+        program_running = 1;
+#endif
+        executor.execute(std::cin, std::cout, ast);
+        exit(0);
+    } catch (const scan::ScanExcept &e) {
+        std::cerr << "Scan error: " << e.why() << std::endl;
+        exit(EXIT_FAILURE);
+    } catch (const std::exception &e) {
+        std::cerr << "Exception: " << e.what() << std::endl;
+        exit(EXIT_FAILURE);
+    } catch(const cmd::AstFailure &e) {
+        std::cerr << "Exception: " << e.what() << std::endl;
+        exit(EXIT_FAILURE);
+    } catch (const state::StateException &e) {
+        std::cerr << "State error: " << e.what() << std::endl;;
+        exit(EXIT_FAILURE);
+    } catch(const cmd::Exit_Exception  &e) {
+        std::cout << "\nExit: " << e.getCode() << std::endl;
+        exit(e.getCode());
     }
+    catch (...) {
+        std::cerr << "Unknown error occurred." << std::endl;
+        exit(EXIT_FAILURE);
+    }
+}
+
+int main(int argc, char **argv) {
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
     struct sigaction sa;
     sa.sa_handler = sigint_handler;
@@ -62,7 +89,17 @@ int main(int argc, char **argv) {
     sa.sa_flags = 0;
     sigaction(SIGINT, &sa, nullptr);
 #endif
-
+    if(argc == 3 && std::string(argv[1]) == "-c") {
+        execute_command(argv[2]);
+        exit(0);
+    }
+    std::cout << "MXCMD " << version_string << "\n(C) 1999-2025 LostSideDead Software\n\n";
+    cmd::app_name = argv[0];
+    if(argc > 2) {
+        for(int i = 2; i < argc; ++i) {
+            cmd::argv.push_back(argv[i]);
+        }
+    }
     if(argc == 1) {
         bool active = true;
         bool debug_cmd = false;

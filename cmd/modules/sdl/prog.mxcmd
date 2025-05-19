@@ -12,7 +12,7 @@ begin
     sdl_init
     sdl_window "MXCMD Window" width height
     sdl_renderer -1 "software"
-    background_image=$(sdl_loadsurface "./img.bmp")
+    background_image=$(sdl_loadsurface "./res/img.bmp")
     printf "img.bmp loaded\n"
     return 0
 end
