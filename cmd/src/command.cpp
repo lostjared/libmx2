@@ -2157,8 +2157,15 @@ namespace cmd {
                 return 1;
             }
             stream << file.rdbuf();
+            std::string fileContent = stream.str();
+            if(!fileContent.empty()) {
+                fileContent.erase(
+                    std::remove(fileContent.begin(), fileContent.end(), '\r'),
+                        fileContent.end()
+                );
+            }
             try {
-                scan::Scanner scanner(stream.str());
+                scan::Scanner scanner(fileContent);
                 scanner.scan();
                 output << "Idx | Type           | Value\n";
                 output  << "----+----------------+--------------------------\n";
