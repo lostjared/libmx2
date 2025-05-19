@@ -500,7 +500,21 @@ extern "math" "add_numbers" "add"
 
 - **list_new**: `list_new NAME` — Create a new list  
 - **list_add**: `list_add NAME VALUE` — Add a value to a list  
-- **list_remove**: `list_remove NAME INDEX` — Remove an item at specified index … (and so on for all list commands)
+- **list_remove**: `list_remove NAME INDEX` — INDEX — Remove an item at specified index
+- **list_get**: `list_get NAME INDEX` — Get an item at specified index
+- **list_set**: `list_set NAME INDEX VALUE` — Set an item at specified index
+- **list_clear**: `list_clear NAME` — Clear a specific list
+- **list_clearall**: `list_clearall` — Clear all lists
+- **list_exists**: `list_exists NAME` — Check if a list exists
+- **list_init**: `list_init NAME VALUE SIZE` — Initialize a list with a value repeated SIZE times
+- **list_len**: `list_len NAME` — Get the length of a list
+- **list_tokens**: `list_tokens NAME` — Display all values in a list, one per line
+- **list_sort**: `list_sort NAME` — Sort a list in ascending order
+- **list_reverse**: `list_reverse NAME` — Reverse the order of elements in a list
+- **list_shuffle**: `list_shuffle NAME` — Randomly shuffle the elements of a list
+- **list_copy**: `list_copy SOURCE DEST` — Copy a list to a new list
+- **list_pop**: `list_pop NAME` — Remove and return the last element of a list
+- **list_concat**: `list_concat LIST1 LIST2` — Concatenate the second list to the first
 
 ---
 
