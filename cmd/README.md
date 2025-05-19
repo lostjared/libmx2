@@ -1,6 +1,7 @@
 # MXCMD - Shell Interpreter / Console for MX2
 
 ![image](https://github.com/user-attachments/assets/d6662a16-7b34-4272-a069-ace2a9eb766e)
+![Screenshot 2025-05-01 202552](https://github.com/user-attachments/assets/20d28250-a13d-4de6-91a3-8bcc47d445fc)
 
 Online guide: https://lostsidedead.biz/mxcmd
 
