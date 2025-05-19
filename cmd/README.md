@@ -17,7 +17,7 @@ Create a Shared Library / module for MX2 to run in the interpreter as standalone
 
 # Issues:
 
-In the embdded termianal,  commands run single threaded inthe foreground thread, I need to make them run
+In the embdded termianal,  commands run single threaded in the foreground thread, I need to make them run
 in a background thread so the foreground thread doesn't lock up when in a loop or processing a script.
 
 
