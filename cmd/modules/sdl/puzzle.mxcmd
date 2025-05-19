@@ -484,10 +484,17 @@ begin
     init_sdl
     load_gfx
     last_drop_time = $(sdl_ticks)
-    let drop_speed = 500
+    let last_input_time = $(sdl_ticks) 
+    
+    let drop_speed = 650
     while test $(sdl_events) --ne 0 
     do
-        check_input
+        let current_time = $(sdl_ticks)
+        if test $(expr $(printf "%d-%d" current_time last_input_time)) --ge 100
+        then
+            check_input
+            last_input_time = current_time
+        fi
         let current_time = $(sdl_ticks)
         let time_diff = $(expr $(printf "%d-%d" current_time last_drop_time))
         if test time_diff --ge drop_speed
@@ -505,6 +512,7 @@ begin
         sdl_draw_text $(printf "Score: %d" score) start_x 80 "./res/font.ttf" 18 255 255 255 255
         sdl_draw_text "MasterPiece MXCMD" $(expr $(printf "%d+100" start_x)) 80 "./res/font.ttf" 18 $(printf "%d" $(rand 0 255)) $(printf "%d" $(rand 0 255)) $(printf "%d" $(rand 0 255)) 255
         sdl_present
+        sdl_delay 16
     done
     clean_sdl
     return 0
