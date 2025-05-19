@@ -15,6 +15,12 @@ MXCMD Beta: a lightweight shell scripting language and command-line interpreter 
 
 Create a Shared Library / module for MX2 to run in the interpreter as standalone instead of using MXCMD in the embedded terminal
 
+# Issues:
+
+In the embdded termianal,  commands run single threaded inthe foreground thread, I need to make them run
+in a background thread so the foreground thread doesn't lock up when in a loop or processing a script.
+
+
 ## How to build from source:
 Building from Source on Linux/Unix first install the required packages, readline, git, g++, cmake.:
 ```bash
