@@ -621,10 +621,10 @@ regex_split PATTERN "a,b,c"
 ---
 
 ### tokenize
-Split a MXCMD command or program into tokens using whitespace as the delimiter.
+Split a MXCMD command or program into tokens using the built in Scanner/Lexer
 
 #### Usage
 ```bash
-tokenize STRING
+tokenize filename
 ```
 
