@@ -28,6 +28,16 @@ Then at your shell prompt:
 ```bash
 $ mxcmd-cli
 ```
+
+## Optional compile SDL module
+```bash
+cd libmx2/modules/sdl
+mkdir build && cd build
+cmake .. 
+cmake --build .
+sudo  cmake --install .
+```
+
 ## Table of Contents
 
 - [Supported Commands](#supported-commands)
