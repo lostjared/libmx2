@@ -106,7 +106,7 @@ public:
                 window->console.print("https://lostsidedead.biz\n");
                 return true;
             }
-            return false;
+            return window->console.procDefaultCommands(args);
         });
     }
 
