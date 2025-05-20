@@ -148,9 +148,8 @@ public:
                 }
                 return true;
             }
-            return false;
+            return window->console.procDefaultCommands(args);
         });
-    
     }
 
     void draw(gl::GLWindow *win) override {
