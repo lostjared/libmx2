@@ -857,7 +857,7 @@ public:
                 window->console.print("Death");
                 return true;
             }
-            return false;
+            return window->console.procDefaultCommands(args);
         });
         
         win->console.print("Space3D MX2\nLostSideDead Software\nhttps://lostsidedead.biz\n");
