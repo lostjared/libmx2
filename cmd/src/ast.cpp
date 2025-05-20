@@ -147,7 +147,6 @@ namespace cmd {
         if (returnSignal) {
             return;
         }
-
         if (auto returnStmt = std::dynamic_pointer_cast<cmd::Return>(node)) {
             executeReturn(returnStmt, input, output);
         } else if (auto cmdDef = std::dynamic_pointer_cast<cmd::CommandDefinition>(node)) {
@@ -203,6 +202,7 @@ namespace cmd {
         }
         else {
             throw std::runtime_error("Unknown node type");
+        
         }
     }
         

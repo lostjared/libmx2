@@ -777,8 +777,24 @@ namespace cmd {
 
     class AstExecutor {
     public:
-        AstExecutor();    
+        AstExecutor(); 
+        
+        static AstExecutor  &getExecutor() {
+            static AstExecutor instance;
+            return instance;
+        }
+        
         bool on_fail = true;
+        std::function<void(const std::string &)> updateCallback = nullptr;
+        void setUpdateCallback(std::function<void(const std::string &)> callback) {
+            updateCallback = std::move(callback);
+        }
+
+        void execUpdateCallback(const std::string &text) {
+            if (updateCallback) {
+                updateCallback(text);
+            }
+        }
 
         void setTerm(const bool &t) {
             on_fail = t;
@@ -801,11 +817,12 @@ namespace cmd {
             registry.registerCommand(name, func);
         }
 
-        void execute(std::istream &defaultInput, std::ostream &defaultOutput, const std::shared_ptr<cmd::Node>& node) {
+        void execute(std::istream &defaultInput, std::ostream &defaultOutputStream, const std::shared_ptr<cmd::Node>& node) {
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
             program_running = 1;
 #endif
             returnSignal = false;         
+            std::ostringstream defaultOutput;
             try {
                 #ifdef DEBUG_MODE_ON
                 if (std::dynamic_pointer_cast<cmd::Command>(node)) {
@@ -828,13 +845,17 @@ namespace cmd {
                     return;
                 }
 #endif
+
+
                 try {
                     executeNode(node, defaultInput, defaultOutput);
                 } catch(const ReturnException &) {}
-                
+                execUpdateCallback(defaultOutput.str());  
             } catch (const std::exception& e) {
                 defaultOutput << "Exception: " << e.what() << std::endl;
+               execUpdateCallback(defaultOutput.str());  
             }
+            defaultOutputStream << defaultOutput.str();
         }
 
         void setVariable(const std::string& name, const std::string& value) {
@@ -1174,15 +1195,17 @@ namespace cmd {
             }
         }
 
-        void executeWhileStatement(const std::shared_ptr<cmd::WhileStatement>& whileStmt,std::istream& input, std::ostream& output) {
+        void executeWhileStatement(const std::shared_ptr<cmd::WhileStatement>& whileStmt,std::istream& input, std::ostream& outputStream) {
             try {
                 while (true) {
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
                     if (program_running == 0) {
-                        output << "- [ Loop interrupted ]-" << std::endl;
+                        outputStream << "- [ Loop interrupted ]-" << std::endl;
                         break;
                     }
 #endif
+
+                    std::ostringstream output;
                     executeNode(whileStmt->condition, input, output);
                     if (lastExitStatus != 0) {
                         break;
@@ -1191,7 +1214,10 @@ namespace cmd {
                         executeNode(whileStmt->body, input, output);
                     } catch(const ContinueException&) {
                        continue;
-                    } 
+                    }
+
+                    execUpdateCallback(output.str());
+                    outputStream << output.str();
                 }
             }
             catch (const BreakException&) {

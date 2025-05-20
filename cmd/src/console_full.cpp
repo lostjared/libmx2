@@ -30,7 +30,7 @@ public:
     Game() = default;
     virtual ~Game() override {}
 
-    cmd::AstExecutor executor;
+    cmd::AstExecutor &executor = cmd::AstExecutor::getExecutor();
     bool cmd_echo = true;
     
     void load(gl::GLWindow *win) override {
@@ -62,9 +62,15 @@ public:
                         scan::Scanner scanner(string_buffer);
                         cmd::Parser parser(scanner);
                         auto ast = parser.parse();
-                        std::stringstream output_stream;
-                        executor.execute(input_stream, output_stream, ast);
-                        window->console.thread_safe_print(output_stream.str());
+                        executor.setUpdateCallback([window](std::string text) {
+                            window->console.print(text);
+                            SDL_Event ev{SDL_USEREVENT};
+                            SDL_PushEvent(&ev);    
+                            SDL_PumpEvents();
+                            SDL_Delay(1);
+                        });
+
+                        executor.execute(input_stream, std::cout, ast);
                         SDL_Event ev{SDL_USEREVENT};
                         SDL_PushEvent(&ev);
                     } catch(const scan::ScanExcept &e) {
@@ -82,11 +88,15 @@ public:
                     } catch(...) {
                         window->console.thread_safe_print("Unknown Error: Command execution failed\n");
                     }
+                    SDL_Event ev{SDL_USEREVENT};
+                    SDL_PushEvent(&ev);
                 }).detach();
                 
                 return 0;
             } catch(const std::exception &e) {
                 win->console.thread_safe_print("Error: " + std::string(e.what()) + "\n");
+                SDL_Event ev{SDL_USEREVENT};
+                SDL_PushEvent(&ev);
                 return 1;
             }
         });

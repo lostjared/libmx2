@@ -712,6 +712,7 @@ namespace cmd {
     }
 
     int printfCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
+
         if (args.empty()) {
             output << "Usage: printf FORMAT [ARGUMENTS...]" << std::endl;
             output << "Print ARGUMENTS according to FORMAT" << std::endl;
@@ -839,7 +840,7 @@ namespace cmd {
             
             pos = specPos + 1;
         }
-        
+
         return 0;
     }
 
