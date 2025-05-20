@@ -212,7 +212,6 @@ public:
     }
 
     void update(float deltaTime) {
-
         static float time_f = 0.0f;
         time_f += deltaTime;
         program.setUniform("time_f", time_f);

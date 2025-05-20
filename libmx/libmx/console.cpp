@@ -228,11 +228,17 @@ namespace console {
                         if (lastCloseBrace != std::string::npos) {
                             processedCommand.erase(lastCloseBrace, 1);
                         }    
-                        this->thread_safe_print(multilineBuffer);
                         procCmd(processedCommand);
                         multilineBuffer.clear();
                     } else {
                         this->thread_safe_print(cmd + "\n");
+                        needsRedraw = true;
+                        needsReflow = true;
+                        scrollToBottom();
+#ifndef __EMSCRIPTEN__
+                        this->process_message_queue();
+#endif
+                    
                     }
                 } else {
                     inputBuffer.clear();
@@ -253,8 +259,7 @@ namespace console {
                             this->thread_safe_print(cmd + "\n");
                             return;
                         }
-                    }
-                    
+                    }    
                     procCmd(cmd);
                 }
                 
@@ -471,7 +476,12 @@ namespace console {
                 continue;
             }
 
-            int width = (c == '\t') ? c_chars.characters['A']->w * 4 : c_chars.characters['A']->w;
+            auto it_A = c_chars.characters.find('A');
+            if (it_A == c_chars.characters.end()) {
+                return;
+            }
+            int width = (c == '\t') ? it_A->second->w * 4 : it_A->second->w;
+
             auto it = c_chars.characters.find(c);
             if (it != c_chars.characters.end()) {
                 width = (c == '\t') ? c_chars.characters['A']->w * 4 : it->second->w;
@@ -766,13 +776,15 @@ namespace console {
                         needsReflow = true;
                     }
                 }});
+                return;
             } else if(callbackSet && window != nullptr) {
                 if(!callback(this->window, tokens)) {
                     needsReflow = true;
                 }
-            }    
+            } 
+            return;   
         }
-        if(callbackEnter != nullptr && window != nullptr && enterCallbackSet) {
+        else if(callbackEnter != nullptr && window != nullptr && enterCallbackSet) {
             command_queue.push({cmd_text, [this, cmd_text](const std::string& text, std::ostream& output) {
                 if (window && callbackEnter) {
                     callbackEnter(window, text);
@@ -783,7 +795,7 @@ namespace console {
             processCommandQueue();
 #endif
 
-            needsReflow = true;
+        needsReflow = true;
         } else if(callbackSet  && window != nullptr) {
             if(!callback(this->window, tokens)) {
                 needsReflow = true;

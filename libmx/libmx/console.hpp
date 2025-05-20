@@ -181,10 +181,13 @@ namespace console {
             size_t length;          
         };
         std::vector<TextLine> lines;  
-        bool inMultilineMode = false;
+        bool inMultilineMode;
+        int braceCount;
         std::string multilineBuffer;
-        int braceCount = 0;
-        std::string originalPrompt;      
+        std::string originalPrompt;
+        std::string continuationPrompt; 
+        void processMultilineInput(const std::string& cmd);
+        bool checkBraceBalance(const std::string& text);  
         void calculateLines();
         std::unique_ptr<std::thread> worker_thread;
         CommandQueue command_queue;
