@@ -99,7 +99,6 @@ namespace console {
     }
 
     Console::~Console() {
-        // Shutdown worker thread
         worker_active = false;
         command_queue.shutdown();
         if (worker_thread && worker_thread->joinable()) {
@@ -680,7 +679,6 @@ namespace console {
                     thread_safe_print("Unknown error occurred\n");
                 }
                 
-                // Signal UI thread to refresh console
                 if (window) {
                     SDL_Event ev;
                     ev.type = SDL_USEREVENT;
@@ -698,7 +696,6 @@ namespace console {
             std::string msg = message_queue.front();
             message_queue.pop();
             
-            // Update console buffer directly
             std::string currentText = data.str();
             currentText.append(msg);
             data.str("");
@@ -711,15 +708,13 @@ namespace console {
         scrollToBottom();
     }
 
-    // Add thread-safe input callback
+    
     void Console::setInputCallback(std::function<int(gl::GLWindow *win, const std::string &)> callback) {
         std::lock_guard<std::mutex> lock(console_mutex);
         callbackEnter = callback;
     }
 
-    // Add thread-safe procCmd implementation that uses the command queue
     void Console::procCmd(const std::string &cmd_text) {
-        // Handle history update - no need to change this part
         if (!cmd_text.empty()) {
             if (!inMultilineMode || braceCount == 0) {
                 if (commandHistory.empty() || commandHistory.back() != cmd_text) {
@@ -733,13 +728,9 @@ namespace console {
         }
         historyIndex = -1;
         tempBuffer.clear();
-
-        // If semicolon or newline, handle it with callback
         if (cmd_text.find('\n') != std::string::npos || cmd_text.find(';') != std::string::npos) {
             if (callbackEnter != nullptr) {
-                // Using a lambda to create a thread-safe command execution
                 command_queue.push({cmd_text, [this, cmd_text](const std::string& text, std::ostream& output) {
-                    // This executes in the worker thread
                     if (callbackEnter && window) {
                         callbackEnter(window, text);
                     }
@@ -748,17 +739,11 @@ namespace console {
             needsReflow = true;
             return;
         }
-
-        // For normal commands, tokenize and handle them directly in this thread
-        std::vector<std::string> tokens = tokenize(cmd_text);
-        
+        std::vector<std::string> tokens = tokenize(cmd_text); 
         if (tokens.empty()) {
             return;
         }
-        
-        // Handle built-in commands as before
         if (tokens[0] == "settext" && tokens.size() == 5) {
-            // settext command implementation
             SDL_Color col;
             int size = atoi(tokens[1].c_str());
             col.r = atoi(tokens[2].c_str());
@@ -803,18 +788,14 @@ namespace console {
             this->print("author\n");
         }
         else {
-            // For custom commands, use the callback mechanism
             if(callbackEnter != nullptr) {
-                // Execute in worker thread
                 command_queue.push({cmd_text, [this, cmd_text](const std::string& text, std::ostream& output) {
                     if (window && callbackEnter) {
                         callbackEnter(window, text);
                     }
                 }});
                 return;
-            }
-            
-            // Try token-based callback
+            }   
             if (callbackSet) {
                 if(!callback(this->window, tokens)) {
                     this->print("- Unknown command: " + tokens[0] + "\n");

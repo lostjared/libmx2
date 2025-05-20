@@ -26,8 +26,7 @@ typedef unsigned int GLuint;
 #endif
 
 namespace console {
-
-    // Thread-safe message queue for console commands
+    
     class CommandQueue {
     public:
         struct Command {
