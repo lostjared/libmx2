@@ -13,9 +13,9 @@
 #include"argz.hpp"
 #endif
 
-#include<cmd/ast.hpp>
-#include<cmd/scanner.hpp>
-#include<cmd/parser.hpp>
+#include<mxcmd/ast.hpp>
+#include<mxcmd/scanner.hpp>
+#include<mxcmd/parser.hpp>
 
 #if defined(__EMSCRIPTEN__) || defined(__ANDORID__)
     const char *m_vSource = R"(#version 300 es
@@ -173,6 +173,15 @@
 
 class Game : public gl::GLObject {
     cmd::AstExecutor executor;
+    std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> new_game = nullptr;
+    std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> drop_game = nullptr;
+    std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> toggle_console = nullptr;
+    std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> left_game = nullptr;
+    std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> right_game = nullptr;
+    std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> down_game= nullptr;
+    std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> shift_game = nullptr;
+    std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> rotate_game= nullptr;
+    std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> settimeout_game= nullptr;
 public:
 
     bool cmd_echo = true;
@@ -216,97 +225,95 @@ public:
         resize(win, win->w, win->h);
         mouse_x = mouse_y = 0;
       
-        //executor.addCommand("newgame", new_game);
-/*
-        drop_game = [&](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
-            mp.grid.game_piece.drop();
-            output << "Piece Drop\n";
-            return 0;
-        };
         
-      
-        toggle_console = [&](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
-            window_handle->console_visible = false;
-            window_handle->console.hide();
+        new_game = [win,this](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
+            mp.newGame();
+            win->console.print("Piece Drop\n");
             return 0;
         };
-
-        left_game = [&](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
+        left_game = [win, this](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
             mp.grid.game_piece.moveLeft();
-            output << "Piece:  Move Left\n";
+            win->console.print("Piece: Move Left\n");
             return 0;
         };
-        
-        right_game = [&](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
+
+        right_game = [win, this](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
             mp.grid.game_piece.moveRight();
-            output << "Piece:  Move Right\n";
+            win->console.print("Piece: Move Right\n");
             return 0;
         };
-      
-        down_game =  [&](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
+
+        down_game = [win, this](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
             mp.grid.game_piece.moveDown();
-            output << "Piece:  Move Down\n";
+            win->console.print("Piece: Move Down\n");
             return 0;
         };
 
-        rotate_game =  [&](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
+        rotate_game = [win, this](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
             mp.grid.game_piece.shiftDirection();
-            output << "Piece: Rotated\n";
+            win->console.print("Piece: Rotated\n");
             return 0;
         };
 
-        shift_game =  [&](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
+        shift_game = [win, this](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
             mp.grid.game_piece.shiftColors();
-            output << "Piece: Shiftedn\n";
+            win->console.print("Piece: Shifted\n");
             return 0;
         };
 
-        
-        settimeout_game =  [&](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
+        settimeout_game = [win, this](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
             if(!args.empty() && args.size() == 1) {
-                int value = std::stoi(args[0]);b
+                int value = std::stoi(args[0]);
                 mp.timeout = value;
-                output << "Game Timeout Set to: " << value << "\n";
+                win->console.printf("Game Timeout Set to: %d\n", value);
                 return 0;
             } else {
-                output << "timeout: requires one argument the timeout\n";
+                win->console.print("timeout: requires one argument the timeout\n");
                 return 1;
             }
             return 1;
         };
 
-  */      
+        toggle_console = [win, this](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
+            win->console_visible = false;
+            win->console.hide();
+            return 0;
+        };
 
-   /*     executor.addCommand("drop", drop_game);
-        executor.addCommand("toggle"q, toggle_console);
+        drop_game = [win, this](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
+            mp.grid.game_piece.drop();
+            win->console.print("Piece Drop\n");
+            return 0;
+        };
+        
+        executor.addCommand("newgame", new_game);
+        executor.addCommand("drop", drop_game);
+        executor.addCommand("toggle", toggle_console);
         executor.addCommand("left",left_game);
         executor.addCommand("right", right_game);
         executor.addCommand("down", down_game);
         executor.addCommand("rotate", rotate_game);
         executor.addCommand("shift", shift_game);
         executor.addCommand("timeout", settimeout_game);
-        */
-
-        
-        
-            
+        win->console.setPrompt("$> ");
         win->console.setInputCallback([this, win](gl::GLWindow *window, const std::string &text) -> int {
             try {
                 std::cout << "Executing: " << text << std::endl;
                 if(text == "@echo_on") {
                     cmd_echo = true;
-                    win->console.thread_safe_print("Echoing commands on.\n");
+                    window->console.thread_safe_print("Echoing commands on.\n");
                     return 0;
                 } else if(text == "@echo_off") {
                     cmd_echo = false;
-                    win->console.thread_safe_print("Echoing commands off.\n");
+                    window->console.thread_safe_print("Echoing commands off.\n");
                     return 0;
                 } 
                 if(cmd_echo) {
-                    win->console.thread_safe_print("$ " + text + "\n");
+                    window->console.thread_safe_print("$ " + text + "\n");
                 }
-                std::thread([this, text, win]() {
+                std::thread([this, text, window]() {
                     try {
+                        std::cout << "Executing: " << text << std::endl;
                         std::stringstream input_stream(text);
                         scan::TString string_buffer(text);
                         scan::Scanner scanner(string_buffer);
@@ -314,22 +321,23 @@ public:
                         auto ast = parser.parse();
                         std::stringstream output_stream;
                         executor.execute(input_stream, output_stream, ast);
-                        win->console.thread_safe_print(output_stream.str());
+                        window->console.thread_safe_print(output_stream.str());
                         SDL_Event ev{SDL_USEREVENT};
                         SDL_PushEvent(&ev);
                     } catch(const scan::ScanExcept &e) {
-                        win->console.thread_safe_print("Scanner Exception: " + e.why() + "\n");
-                    }
-                    catch(const std::runtime_error &e) {
-                        win->console.thread_safe_print("Runtime Exception: " + std::string(e.what()) + "\n");
+                        window->console.thread_safe_print("Scanner Exception: " + e.why() + "\n");
+                    } catch(const cmd::Exit_Exception &e) {
+                        window->console.thread_safe_print("Execution " + std::to_string(e.getCode()) + "\n");
+                    } catch(const std::runtime_error &e) {
+                        window->console.thread_safe_print("Runtime Exception: " + std::string(e.what()) + "\n");
                     } catch(const std::exception &e) {
-                        win->console.thread_safe_print("Exception: " + std::string(e.what()) + "\n");
+                        window->console.thread_safe_print("Exception: " + std::string(e.what()) + "\n");
                     } catch (const state::StateException &e) {
-                        win->console.thread_safe_print("State Exception: " + std::string(e.what()) + "\n");
+                        window->console.thread_safe_print("State Exception: " + std::string(e.what()) + "\n");
                     } catch(const cmd::AstFailure  &e) {
-                        win->console.thread_safe_print("Failure: " + std::string(e.what()) + "\n");
+                        window->console.thread_safe_print("Failure: " + std::string(e.what()) + "\n");
                     } catch(...) {
-                        win->console.thread_safe_print("Unknown Error: Command execution failed\n");
+                        window->console.thread_safe_print("Unknown Error: Command execution failed\n");
                     }
                 }).detach();
                 
@@ -338,9 +346,7 @@ public:
                 win->console.thread_safe_print("Error: " + std::string(e.what()) + "\n");
                 return 1;
             }
-        });
-
-        win->console.print("MasterPiece3D MX2 v1.0\nLostSideDead Software\nhttps://lostsidedead.biz\nNew Game Started\n");
+        });      
     }
     virtual void draw(gl::GLWindow *win) override {
         Uint32 currentTime = SDL_GetTicks();
@@ -752,6 +758,7 @@ public:
         setObject(new Intro());
         object->load(this);
         activateConsole(util.getFilePath("data/font.ttf"),16,{255,255,255});
+        console.hide();
         updateViewport();
     }
 

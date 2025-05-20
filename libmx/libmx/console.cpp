@@ -715,6 +715,7 @@ namespace console {
     void Console::setInputCallback(std::function<int(gl::GLWindow *win, const std::string &)> callback) {
         std::lock_guard<std::recursive_mutex> lock(console_mutex);
         callbackEnter = callback;
+        this->enterCallbackSet = true;
     }
 
     void Console::procCmd(const std::string &cmd_text) {
@@ -737,7 +738,7 @@ namespace console {
         }
 
         if (cmd_text.find('\n') != std::string::npos || cmd_text.find(';') != std::string::npos) {
-            if(callbackEnter != nullptr && window != nullptr) {
+            if(callbackEnter != nullptr && window != nullptr && enterCallbackSet) {
                 command_queue.push({cmd_text, [this, cmd_text](const std::string& text, std::ostream& output) {
                     if (callbackEnter && window) {
                         callbackEnter(window, text);
@@ -750,7 +751,7 @@ namespace console {
                 }
             }    
         }
-        if(callbackEnter != nullptr && window != nullptr) {
+        if(callbackEnter != nullptr && window != nullptr && enterCallbackSet) {
             command_queue.push({cmd_text, [this, cmd_text](const std::string& text, std::ostream& output) {
                 if (window && callbackEnter) {
                     callbackEnter(window, text);

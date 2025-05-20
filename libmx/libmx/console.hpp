@@ -161,6 +161,7 @@ namespace console {
         CommandQueue command_queue;
         std::atomic<bool> worker_active{true};
         void worker_thread_func();
+        bool enterCallbackSet = false;
     };
 
     class GLConsole {
@@ -189,9 +190,14 @@ namespace console {
         void setWindow(gl::GLWindow *win) { console.window = win; } 
         bool procDefaultCommands(const std::vector<std::string> &cmd);
         void clear_callbacks() {
-            console.callback = nullptr;
-            console.callbackEnter = nullptr;
+            console.callback = [](gl::GLWindow *window, const std::vector<std::string> &args) -> bool {
+                return false;
+            };
+            console.callbackEnter = [](gl::GLWindow *window, const std::string &text) -> int {
+                return 0;
+            };
             console.callbackSet = false;
+            console.enterCallbackSet = false;
         }
         template<typename... Args>
         void printf(const char *format, Args... args) {

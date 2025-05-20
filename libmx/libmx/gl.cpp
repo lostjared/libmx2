@@ -152,6 +152,7 @@ namespace gl {
     void GLWindow::setObject(gl::GLObject *o) {
         object.reset(o); 
         console.setWindow(this);
+        console.clear_callbacks();
     }
 
     void GLWindow::showConsole(bool show) { 
