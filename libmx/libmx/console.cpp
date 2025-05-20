@@ -724,25 +724,21 @@ namespace console {
 
     void Console::process_message_queue() {
         THREAD_GUARD(console_mutex);
-        if (message_queue.empty()) return;
-        
-        while (!message_queue.empty()) {
-            std::string msg = message_queue.front();
+        if(message_queue.empty()) return;
+        while(!message_queue.empty()) {
+            data << message_queue.front();
             message_queue.pop();
-            
-            std::string currentText = data.str();
-            currentText.append(msg);
-            data.str("");
-            data << currentText;
-            cursorPos = data.str().length();
-            
-            needsReflow = true;
-            needsRedraw = true;
         }
+        static constexpr size_t MAX_CHARS = 50000;
+        auto s = data.str();
+        if (s.size() > MAX_CHARS) {
+            s = s.substr(s.size() - MAX_CHARS);
+            data.str("");
+            data << s;
+        }
+        needsReflow = needsRedraw = true;
         scrollToBottom();
     }
-
-    
     void Console::setInputCallback(std::function<int(gl::GLWindow *win, const std::string &)> callback) {
         THREAD_GUARD(console_mutex);
         callbackEnter = callback;

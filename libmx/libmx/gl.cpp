@@ -189,7 +189,6 @@ namespace gl {
         }
         while(SDL_PollEvent(&e)) {
             if(e.type == SDL_USEREVENT) {
-                console.process_message_queue();
                 console.refresh();
             } else if(console_active && e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_F3) {
                 if(console_active) {

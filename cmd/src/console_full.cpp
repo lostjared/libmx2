@@ -57,22 +57,30 @@ public:
                 std::thread([this, text, window]() {
                     try {
                         std::cout << "Executing: " << text << std::endl;
+                        std::string lineBuf;
+
+                        executor.setUpdateCallback(
+                            [&lineBuf,window](const std::string &chunk) {
+                                lineBuf += chunk;
+                                size_t nl;
+                                while ((nl = lineBuf.find('\n')) != std::string::npos) {
+                                    std::string oneLine = lineBuf.substr(0, nl+1);
+                                    lineBuf.erase(0, nl+1);
+                                    window->console.thread_safe_print(oneLine);
+                                    window->console.process_message_queue();             }
+                            }
+                        );
                         std::stringstream input_stream(text);
                         scan::TString string_buffer(text);
                         scan::Scanner scanner(string_buffer);
                         cmd::Parser parser(scanner);
                         auto ast = parser.parse();
-                        executor.setUpdateCallback([window](std::string text) {
-                            window->console.print(text);
-                            SDL_Event ev{SDL_USEREVENT};
-                            SDL_PushEvent(&ev);    
-                            SDL_PumpEvents();
-                            SDL_Delay(1);
-                        });
-
                         executor.execute(input_stream, std::cout, ast);
-                        SDL_Event ev{SDL_USEREVENT};
-                        SDL_PushEvent(&ev);
+                        if(!lineBuf.empty()) {
+                            window->console.thread_safe_print(lineBuf);
+                            SDL_Event ev{SDL_USEREVENT};
+                            SDL_PushEvent(&ev);
+                        }
                     } catch(const scan::ScanExcept &e) {
                         window->console.thread_safe_print("Scanner Exception: " + e.why() + "\n");
                     } catch(const cmd::Exit_Exception &e) {

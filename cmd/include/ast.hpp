@@ -1196,11 +1196,11 @@ namespace cmd {
         }
 
         void executeWhileStatement(const std::shared_ptr<cmd::WhileStatement>& whileStmt,std::istream& input, std::ostream& outputStream) {
-            std::ostringstream output;
             try {
 
                     
                 while (true) {
+                    std::ostringstream output;
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
                     if (program_running == 0) {
                         outputStream << "- [ Loop interrupted ]-" << std::endl;
@@ -1210,6 +1210,7 @@ namespace cmd {
 
                     executeNode(whileStmt->condition, input, output);
                     if (lastExitStatus != 0) {
+                        execUpdateCallback(output.str());    
                         break;
                     }
                     try {
@@ -1218,23 +1219,17 @@ namespace cmd {
                        continue;
                     }
                     
-                    
-
-                    static int iterationCount = 0;
+                    static size_t iterationCount = 0;
                     if(++iterationCount % 10 == 0) {
                         execUpdateCallback(output.str());
-                        output.str("");
+                        iterationCount = 0;
                     }
-                    
                     outputStream << output.str();
                 }
             }
             catch (const BreakException&) {
                 
             }
-            execUpdateCallback(output.str());
-            output.str("");
-            
         }
 
         void executeForStatement(const std::shared_ptr<cmd::ForStatement>& forStmt,
