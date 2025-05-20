@@ -1283,6 +1283,7 @@ namespace cmd {
                                         }
 #endif
                                         executeNode(forStmt->body, input, output);
+                                        execUpdateCallback("");
                                     } catch (const ContinueException&) {
                                         continue;
                                     }
@@ -1301,6 +1302,7 @@ namespace cmd {
                                     }
         #endif
                                     executeNode(forStmt->body, input, output);
+                                    execUpdateCallback("");
                                 } catch (const ContinueException&) {
                                     continue;
                                 }
@@ -1327,6 +1329,7 @@ namespace cmd {
                                             }
 #endif
                                             executeNode(forStmt->body, input, output);
+                                            execUpdateCallback("");
                                         } catch (const ContinueException&) {
                                             continue;
                                         } 
@@ -1345,6 +1348,7 @@ namespace cmd {
                                         }
 #endif
                                         executeNode(forStmt->body, input, output);
+                                        execUpdateCallback("");
                                     } catch (const ContinueException&) {
                                         continue;
                                     }
@@ -1359,6 +1363,7 @@ namespace cmd {
                                     }
 #endif
                                     executeNode(forStmt->body, input, output);
+                                    execUpdateCallback("");
                                 } catch (const ContinueException&) {
                                     continue;
                                 }
@@ -1386,6 +1391,7 @@ namespace cmd {
                                             }
 #endif
                                             executeNode(forStmt->body, input, output);
+                                            execUpdateCallback("");
                                         } catch (const ContinueException&) {
                                             continue;
                                         }
@@ -1421,6 +1427,7 @@ namespace cmd {
                     setVariable(forStmt->variable, "");
                 }
             }
+            execUpdateCallback  ("");
         }
     };
 
