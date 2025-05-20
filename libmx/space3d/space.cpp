@@ -810,7 +810,7 @@ public:
             if(args.size() == 1  && args[0] == "newgame") {
                 die();
                 newGame();
-                window->console.printf("New Game\n");
+                window->console.print("New Game\n");
                 return true;
             }   
             if(args.size() == 2 && args[0] == "level") {
@@ -854,13 +854,13 @@ public:
                 return true;
             } else if(args.size() == 1 && args[0] == "die") {
                 die();
-                window->console.printf("Death");
+                window->console.print("Death");
                 return true;
             }
             return false;
         });
         
-        win->console.printf("Space3D MX2\nLostSideDead Software\nhttps://lostsidedead.biz\n");
+        win->console.print("Space3D MX2\nLostSideDead Software\nhttps://lostsidedead.biz\n");
     }
 #ifndef __EMSCRIPTEN__
     Uint32 lastUpdateTime = SDL_GetTicks();

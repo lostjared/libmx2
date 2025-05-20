@@ -336,7 +336,7 @@ public:
             return 0;
         }); 
 
-        win->console.printf("MasterPiece3D MX2 v1.0\nLostSideDead Software\nhttps://lostsidedead.biz\nNew Game Started\n");
+        win->console.print("MasterPiece3D MX2 v1.0\nLostSideDead Software\nhttps://lostsidedead.biz\nNew Game Started\n");
     }
     virtual void draw(gl::GLWindow *win) override {
         Uint32 currentTime = SDL_GetTicks();
@@ -472,7 +472,7 @@ public:
             case SDL_KEYUP:
             if(e.key.keysym.sym == SDLK_RETURN) {
                 dropPiece();
-                win->console.printf("Drop Piece\n");
+                win->console.print("Drop Piece\n");
             }
             break;
             case SDL_KEYDOWN:
@@ -485,14 +485,14 @@ public:
                 break;
                 case SDLK_UP:
                     mp.grid.game_piece.shiftColors();
-                    win->console.printf("Shift Colors\n");
+                    win->console.print("Shift Colors\n");
                 break;
                 case SDLK_DOWN:
                     mp.grid.game_piece.moveDown();
                 break;
                 case SDLK_SPACE:
                     mp.grid.game_piece.shiftDirection();
-                    win->console.printf("Shift Direction\n");
+                    win->console.print("Shift Direction\n");
                 break;
                 case SDLK_w:
                     rotateX += 0.5f;

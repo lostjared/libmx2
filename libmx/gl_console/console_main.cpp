@@ -50,7 +50,7 @@ public:
         object->load(this);
         activateConsole(util.getFilePath("data/font.ttf"), 16, {255, 255, 255, 255});
         showConsole(true);
-        console.printf("Console Initialized\n");
+        console.print("Console Initialized\n");
         console.setPrompt("mx> ");
     }
     

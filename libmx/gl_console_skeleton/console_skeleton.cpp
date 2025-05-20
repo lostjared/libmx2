@@ -26,7 +26,7 @@ public:
 
     void load(gl::GLWindow *win) override {
         font.loadFont(win->util.getFilePath("data/font.ttf"), 36);
-        win->console.printf("Console Skeleton Example\nLostSideDead Software\nhttps://lostsidedead.biz\n");
+        win->console.print("Console Skeleton Example\nLostSideDead Software\nhttps://lostsidedead.biz\n");
         win->console.setPrompt("mx> ");
 #if defined(__EMSCRIPTEN__) 
     const char *vSource = R"(#version 300 es
@@ -102,8 +102,8 @@ public:
                 window->quit();
                 return true;
             } else if(args.size() == 1 && args[0] == "author") {
-                window->console.printf("Coded by Jared Bruni\nLostSideDead Software\n");
-                window->console.printf("https://lostsidedead.biz\n");
+                window->console.print("Coded by Jared Bruni\nLostSideDead Software\n");
+                window->console.print("https://lostsidedead.biz\n");
                 return true;
             }
             return false;

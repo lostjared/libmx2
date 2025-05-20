@@ -26,7 +26,7 @@ public:
 
     void load(gl::GLWindow *win) override {
         font.loadFont(win->util.getFilePath("data/font.ttf"), 36);
-        win->console.printf("Console Skeleton Example\nLostSideDead Software\nhttps://lostsidedead.biz\n");
+        win->console.print("Console Skeleton Example\nLostSideDead Software\nhttps://lostsidedead.biz\n");
         win->console.setPrompt("mx> ");
 #if defined(__EMSCRIPTEN__) 
     const char *vSource = R"(#version 300 es
@@ -122,16 +122,16 @@ public:
                 window->quit();
                 return true;
             } else if(args.size() == 1 && args[0] == "author") {
-                window->console.printf("Coded by Jared Bruni\nLostSideDead Software\n");
-                window->console.printf("https://lostsidedead.biz\n");
+                window->console.print("Coded by Jared Bruni\nLostSideDead Software\n");
+                window->console.print("https://lostsidedead.biz\n");
                 return true;
             } else if(args.size() == 2 && args[0] == "stretch" && args[1] == "on") {
                 window->console.setStretch(true);
-                window->console.printf("Stretching is now ON\n");
+                window->console.print("Stretching is now ON\n");
                 return true;
             } else if(args.size() == 2 && args[0] == "stretch" && args[1] == "off") {
                 window->console.setStretch(false);
-                window->console.printf("Stretching is now OFF\n");
+                window->console.print("Stretching is now OFF\n");
                 return true;
             } else if(args.size() == 3 && args[0] == "size") {
                 int ww = std::stoi(args[1]);
@@ -141,10 +141,10 @@ public:
             } else if(args.size() == 2 && args[0] == "stretch_height") {
                 if(args[1] == "1") {
                     window->console.setStretchHeight(1);
-                    window->console.printf("Stretch height set to 1\n");
+                    window->console.print("Stretch height set to 1\n");
                 } else if(args[1] == "0") {
                     window->console.setStretchHeight(0);
-                    window->console.printf("Stretch height set to 0\n");
+                    window->console.print("Stretch height set to 0\n");
                 }
                 return true;
             }
