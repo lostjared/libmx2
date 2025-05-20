@@ -67,7 +67,8 @@ public:
                                     std::string oneLine = lineBuf.substr(0, nl+1);
                                     lineBuf.erase(0, nl+1);
                                     window->console.thread_safe_print(oneLine);
-                                    window->console.process_message_queue();             }
+                                    window->console.process_message_queue();             
+                                }
                             }
                         );
                         std::stringstream input_stream(text);
