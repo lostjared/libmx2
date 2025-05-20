@@ -59,14 +59,53 @@ namespace console {
         }
     }
 
+    void CommandQueue::push(const Command& cmd) {
+        std::lock_guard<std::mutex> lock(queue_mutex);
+        queue.push(cmd);
+        cv.notify_one();
+    }
+
+    bool CommandQueue::pop(Command& cmd) {
+        std::unique_lock<std::mutex> lock(queue_mutex);
+        cv.wait_for(lock, std::chrono::milliseconds(100), 
+            [this] { return !queue.empty() || !active; });
+        
+        if (!active && queue.empty())
+            return false;
+            
+        if (!queue.empty()) {
+            cmd = queue.front();
+            queue.pop();
+            return true;
+        }
+        return false;
+    }
+
+    void CommandQueue::shutdown() {
+        {
+            std::lock_guard<std::mutex> lock(queue_mutex);
+            active = false;
+        }
+        cv.notify_all();
+    }
+
     Console::Console() { 
         inMultilineMode = false;
         braceCount = 0;
         multilineBuffer = "";
         originalPrompt = "$ ";
+        worker_active = true;
+        worker_thread = std::make_unique<std::thread>(&Console::worker_thread_func, this);
     }
 
     Console::~Console() {
+        // Shutdown worker thread
+        worker_active = false;
+        command_queue.shutdown();
+        if (worker_thread && worker_thread->joinable()) {
+            worker_thread->join();
+        }
+        
         if(surface) {
             SDL_FreeSurface(surface);
             surface = nullptr;
@@ -108,15 +147,10 @@ namespace console {
     }
     
     void Console::print(const std::string &str) {
-        mx::system_out << str;
-        mx::system_out.flush();
-        std::string currentText = data.str();
-        currentText.append(str);   
-        
-        data.str("");
-        data << currentText;
+        std::lock_guard<std::mutex> lock(console_mutex);
+        data << str;
         cursorPos = data.str().length();
-        needsReflow = true; 
+        needsReflow = true;
         needsRedraw = true;
         scrollToBottom();
     }
@@ -624,7 +658,68 @@ namespace console {
         return data;
     }
 
+    void Console::thread_safe_print(const std::string &str) {
+        std::lock_guard<std::mutex> lock(console_mutex);
+        message_queue.push(str);
+        needsRedraw = true;
+    }
+
+    void Console::worker_thread_func() {
+        while (worker_active) {
+            CommandQueue::Command cmd;
+            if (command_queue.pop(cmd)) {
+                std::ostringstream result;
+                try {
+                    cmd.callback(cmd.text, result);
+                    if (!result.str().empty()) {
+                        thread_safe_print(result.str());
+                    }
+                } catch (const std::exception& e) {
+                    thread_safe_print("Error: " + std::string(e.what()) + "\n");
+                } catch (...) {
+                    thread_safe_print("Unknown error occurred\n");
+                }
+                
+                // Signal UI thread to refresh console
+                if (window) {
+                    SDL_Event ev;
+                    ev.type = SDL_USEREVENT;
+                    SDL_PushEvent(&ev);
+                }
+            }
+        }
+    }
+
+    void Console::process_message_queue() {
+        std::lock_guard<std::mutex> lock(console_mutex);
+        if (message_queue.empty()) return;
+        
+        while (!message_queue.empty()) {
+            std::string msg = message_queue.front();
+            message_queue.pop();
+            
+            // Update console buffer directly
+            std::string currentText = data.str();
+            currentText.append(msg);
+            data.str("");
+            data << currentText;
+            cursorPos = data.str().length();
+            
+            needsReflow = true;
+            needsRedraw = true;
+        }
+        scrollToBottom();
+    }
+
+    // Add thread-safe input callback
+    void Console::setInputCallback(std::function<int(gl::GLWindow *win, const std::string &)> callback) {
+        std::lock_guard<std::mutex> lock(console_mutex);
+        callbackEnter = callback;
+    }
+
+    // Add thread-safe procCmd implementation that uses the command queue
     void Console::procCmd(const std::string &cmd_text) {
+        // Handle history update - no need to change this part
         if (!cmd_text.empty()) {
             if (!inMultilineMode || braceCount == 0) {
                 if (commandHistory.empty() || commandHistory.back() != cmd_text) {
@@ -639,21 +734,31 @@ namespace console {
         historyIndex = -1;
         tempBuffer.clear();
 
+        // If semicolon or newline, handle it with callback
         if (cmd_text.find('\n') != std::string::npos || cmd_text.find(';') != std::string::npos) {
             if (callbackEnter != nullptr) {
-                    callbackEnter(this->window, cmd_text);
+                // Using a lambda to create a thread-safe command execution
+                command_queue.push({cmd_text, [this, cmd_text](const std::string& text, std::ostream& output) {
+                    // This executes in the worker thread
+                    if (callbackEnter && window) {
+                        callbackEnter(window, text);
+                    }
+                }});
             }
             needsReflow = true;
             return;
         }
 
+        // For normal commands, tokenize and handle them directly in this thread
         std::vector<std::string> tokens = tokenize(cmd_text);
         
         if (tokens.empty()) {
             return;
         }
         
+        // Handle built-in commands as before
         if (tokens[0] == "settext" && tokens.size() == 5) {
+            // settext command implementation
             SDL_Color col;
             int size = atoi(tokens[1].c_str());
             col.r = atoi(tokens[2].c_str());
@@ -671,8 +776,8 @@ namespace console {
             }
             this->print("Font updated to size " + tokens[1] + 
                         " color: " + tokens[2] + "," + tokens[3] + "," + tokens[4] + "\n");
-            
-        } else if(tokens.size() == 1 && tokens[0] == "clear") {
+        } 
+        else if(tokens.size() == 1 && (tokens[0] == "clear" || tokens[0] == "cls")) {
             this->print("\n");
             data.str("");
             inputBuffer.clear();
@@ -682,29 +787,14 @@ namespace console {
             needsRedraw = true;
             needsReflow = true;
             scrollToBottom();
-        } else if (tokens.size() == 1 && tokens[0] == "cls") {
-            this->print("\n");
-            data.str("");
-            inputBuffer.clear();
-            inputCursorPos = 0;
-            cursorPos = 0;
-            stopPosition = 0;
-            needsRedraw = true;
-            needsReflow = true;
-            scrollToBottom();
-        } else if (tokens.size() == 1 && tokens[0] == "about") {
+        } 
+        else if (tokens.size() == 1 && tokens[0] == "about") {
             this->print("- MX2 Engine LostSideDead Software\nhttps://lostsidedead.biz\n");
-        } else if(tokens.size() == 1  && tokens[0] == "author") {
+        } 
+        else if(tokens.size() == 1  && tokens[0] == "author") {
             this->print("- MX2 Engine Coded by Jared Bruni.\nhttps://lostsidedead.biz\n");
-        } else if(tokens.size() == 1 && (tokens[0] == "clear" || tokens[0] == "cls")) {
-            this->print("\n");
-            data.str("");
-            inputBuffer.clear();
-            inputCursorPos = 0;
-            cursorPos = 0;
-            stopPosition = 0;
-            scrollToBottom();
-        } else if (tokens.size() == 1 && tokens[0] == "help") {
+        } 
+        else if (tokens.size() == 1 && tokens[0] == "help") {
             this->print("- MX2 Console Help\n");
             this->print("Commands:\n");
             this->print("settext <size> <r> <g> <b>\n");
@@ -713,15 +803,18 @@ namespace console {
             this->print("author\n");
         }
         else {
-
+            // For custom commands, use the callback mechanism
             if(callbackEnter != nullptr) {
-                if (callbackEnter(this->window, cmd_text) == 0) {
-                    needsReflow = true;
-                    return;
-                }
-                needsReflow = true;
+                // Execute in worker thread
+                command_queue.push({cmd_text, [this, cmd_text](const std::string& text, std::ostream& output) {
+                    if (window && callbackEnter) {
+                        callbackEnter(window, text);
+                    }
+                }});
+                return;
             }
-    
+            
+            // Try token-based callback
             if (callbackSet) {
                 if(!callback(this->window, tokens)) {
                     this->print("- Unknown command: " + tokens[0] + "\n");
@@ -779,6 +872,18 @@ namespace console {
             glDeleteTextures(1, &texture);
             texture = 0;
         }
+    }
+
+    void GLConsole::thread_safe_print(const std::string &data) {
+        console.thread_safe_print(data);
+    }
+
+    void GLConsole::process_message_queue() {
+        console.process_message_queue();
+    }
+
+    void GLConsole::setInputCallback(std::function<int(gl::GLWindow *window, const std::string &)> callback) {
+        console.setInputCallback(callback);
     }
 
     GLuint GLConsole::loadTextFromSurface(SDL_Surface *surf) {
