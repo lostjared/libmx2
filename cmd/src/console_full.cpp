@@ -1,4 +1,5 @@
 #include"mx.hpp"
+#include"gl.hpp"
 #include"argz.hpp"
 #include"ast.hpp"
 #include"parser.hpp"
@@ -10,7 +11,7 @@
 #include <GLES3/gl3.h>
 #endif
 
-#include"gl.hpp"
+
 #include"loadpng.hpp"
 
 #define CHECK_GL_ERROR() \
@@ -36,47 +37,59 @@ public:
     void load(gl::GLWindow *win) override {
         font.loadFont(win->util.getFilePath("data/font.ttf"), 36);
         win->console.printf("Console Skeleton Example\nLostSideDead Software\nhttps://lostsidedead.biz\n");
-        win->console.setPrompt("mx> ");
+        win->console.setPrompt("$ ");
         win->console_visible = true;
         win->console.show();
         output = &win->console.bufferData();
-        win->console.setInputCallback([&](gl::GLWindow *window, const std::string &text) -> int {
+        win->console.setInputCallback([this, win](gl::GLWindow *window, const std::string &text) -> int {
             try {
-                    std::cout << "Executing: " << text << std::endl;
-                    if(text == "@echo_on") {
-                        cmd_echo = true;
-                        *output << "Echoing commands on." << "\n";
-                        return 0;
-                    } else if(text == "@echo_off") {
-                        cmd_echo = false;
-                        *output << "Echoing commands off." << "\n";
-                        return 0;
-                    } 
-                    if(cmd_echo) {
-                        *output << "$ " << text << "\n";
-                    }
-                    std::stringstream input_stream(text);
-                    scan::TString string_buffer(text);
-                    scan::Scanner scanner(string_buffer);
-                    cmd::Parser parser(scanner);
-                    auto ast = parser.parse();
-                    executor.execute(input_stream, *output, ast);
+                std::cout << "Executing: " << text << std::endl;
+                if(text == "@echo_on") {
+                    cmd_echo = true;
+                    win->console.thread_safe_print("Echoing commands on.\n");
                     return 0;
-            } catch(const scan::ScanExcept &e) {
-                *output << "Scan error: " << e.why() << std::endl;
-                return 1;
-            } catch(const std::exception &e) { 
-                *output << "Error: " << e.what() << std::endl;
-                return 1;
-            } catch (const state::StateException &e) {
-                *output << "State error: " << e.what() << std::endl;
-                return 1;
-            } 
-            catch(...) {
-                *output << "Unknown error occurred." << std::endl;
+                } else if(text == "@echo_off") {
+                    cmd_echo = false;
+                    win->console.thread_safe_print("Echoing commands off.\n");
+                    return 0;
+                } 
+                if(cmd_echo) {
+                    win->console.thread_safe_print("$ " + text + "\n");
+                }
+                std::thread([this, text, win]() {
+                    try {
+                        std::stringstream input_stream(text);
+                        scan::TString string_buffer(text);
+                        scan::Scanner scanner(string_buffer);
+                        cmd::Parser parser(scanner);
+                        auto ast = parser.parse();
+                        std::stringstream output_stream;
+                        executor.execute(input_stream, output_stream, ast);
+                        win->console.thread_safe_print(output_stream.str());
+                        SDL_Event ev{SDL_USEREVENT};
+                        SDL_PushEvent(&ev);
+                    } catch(const scan::ScanExcept &e) {
+                        win->console.thread_safe_print("Scanner Exception: " + e.why() + "\n");
+                    } catch(const cmd::Exit_Exception &e) {
+                        win->console.thread_safe_print("Execution " + std::to_string(e.getCode()) + "\n");
+                    } catch(const std::runtime_error &e) {
+                        win->console.thread_safe_print("Runtime Exception: " + std::string(e.what()) + "\n");
+                    } catch(const std::exception &e) {
+                        win->console.thread_safe_print("Exception: " + std::string(e.what()) + "\n");
+                    } catch (const state::StateException &e) {
+                        win->console.thread_safe_print("State Exception: " + std::string(e.what()) + "\n");
+                    } catch(const cmd::AstFailure  &e) {
+                        win->console.thread_safe_print("Failure: " + std::string(e.what()) + "\n");
+                    } catch(...) {
+                        win->console.thread_safe_print("Unknown Error: Command execution failed\n");
+                    }
+                }).detach();
+                
+                return 0;
+            } catch(const std::exception &e) {
+                win->console.thread_safe_print("Error: " + std::string(e.what()) + "\n");
                 return 1;
             }
-            return 0;
         });
 #if defined(__EMSCRIPTEN__) 
     const char *vSource = R"(#version 300 es
@@ -182,7 +195,13 @@ public:
         update(deltaTime);
     }
     
-    void event(gl::GLWindow *win, SDL_Event &e) override {}
+    void event(gl::GLWindow *win, SDL_Event &e) override {
+        if (e.type == SDL_USEREVENT) {
+            win->console.process_message_queue();
+            win->console.refresh();
+        }
+    }
+
     void update(float deltaTime) {
 
         static float time_f = 0.0f;
@@ -201,10 +220,10 @@ class MainWindow : public gl::GLWindow {
 public:
     MainWindow(std::string path, int tw, int th) : gl::GLWindow("Console Skeleton", tw, th) {
         setPath(std::filesystem::current_path().string()+"/"+path);
-        setObject(new Game());
-        object->load(this);
-        
         activateConsole({25, 25, tw-50, th-50}, util.getFilePath("data/font.ttf"), 16, {255, 255, 255, 255});
+        showConsole(true);
+        setObject(new Game());  
+        object->load(this);
     }
     
     ~MainWindow() override {}
