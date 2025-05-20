@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(libmx2 VERSION 1.10.0)
+project(libmx2 VERSION 1.11.0)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -25,9 +25,7 @@ if(UNIX AND NOT APPLE)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
 endif()
 
-
 add_compile_options(-Wall) 
-
 
 find_package(SDL2 REQUIRED)
 find_package(SDL2_ttf REQUIRED)
