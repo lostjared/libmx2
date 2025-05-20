@@ -1,5 +1,6 @@
 #include"font.hpp"
 #include<iostream>
+#include<filesystem>
 namespace mx {
         Font::Font(const std::string &tf) {
             loadFont(tf, 14);
@@ -13,6 +14,7 @@ namespace mx {
         }
 
         Font::Font(const std::string &tf, int size) {
+            the_font = nullptr;
             loadFont(tf, size);
         }
         
@@ -44,9 +46,17 @@ namespace mx {
                 TTF_CloseFont(the_font);
                 the_font = nullptr;
             }
+
+            if(!std::filesystem::exists(fname)) {
+                mx::system_err << "mx: Error loading font: " << fname << "\n";
+                throw mx::Exception("Error loading font: " + fname);
+                return false;
+            }
+            
             the_font = TTF_OpenFont(fname.c_str(), size);
             if(!the_font) {
                 mx::system_err << "mx: Error opening font: " << TTF_GetError() << "\n";
+                throw mx::Exception("Error opening font");
                 return false;
             }
             return true;

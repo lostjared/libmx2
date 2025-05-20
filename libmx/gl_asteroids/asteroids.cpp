@@ -2122,8 +2122,6 @@ class Game : public gl::GLObject {
     int lives = 5;
     int score = 0;
     bool inverted_controls = true;
-    console::GLConsole console;
-    bool console_visible = false;
 public:
     Game() = default;
     virtual ~Game() override {
@@ -2132,12 +2130,9 @@ public:
     }
     void load(gl::GLWindow *win) override {
         font.loadFont(win->util.getFilePath("data/font.ttf"), 18);
-        console.load(win, win->util.getFilePath("data/font.ttf"),16,{255,255,255,225});
-        console.println("Asteroids MX2");
-        console.println("written by LostSideDead Software\nhttps://lostsidedead.biz");
-        
-        con = &console;
-        
+        win->console.println("Asteroids MX2");
+        win->console.println("written by LostSideDead Software\nhttps://lostsidedead.biz");
+        con = &win->console;
         emiter.load(win);
         emiter.setTextureID(gl::loadTexture(win->util.getFilePath("data/star.png")));        
         field.load(win);
@@ -2148,10 +2143,9 @@ public:
             planet.isActive = false;
             planet.isDestroyed = true;
         }
-        
         randomizePlanetPositions();
         field.repositionStarsAroundCamera(ship.cameraPosition);
-        console.setCallback(win, [&](gl::GLWindow *window, const std::vector<std::string> &args) -> bool {
+        win->console.setCallback(win, [&](gl::GLWindow *window, const std::vector<std::string> &args) -> bool {
             if(args.size() == 0) {
                 return false;
             }
@@ -2165,13 +2159,17 @@ public:
                 ship.position = glm::vec3(x, y, z);
                 ship.rotation = glm::vec3(0.0f, 0.0f, 0.0f);
                 ship.velocity = glm::vec3(0.0f);
-                console.printf("Ship position set to: %f, %f, %f\n", x, y, z);
+                window->console.printf("Ship position set to: %f, %f, %f\n", x, y, z);
                 return true;
             } else if(args.size() == 1 && args[0] == "toggle") {
-                console_visible = !console_visible;
+                window->console_visible = !window->console_visible;
+                if(window->console_visible)
+                    window->console.show();
+                else
+                    window->console.hide();
                 return true;
             } 
-            return false;
+            return window->console.procDefaultCommands(args);
         });
     }
     
@@ -2230,7 +2228,7 @@ public:
             for (const auto& p : planets) {
                 if (!p.isActive && p.isDestroyed) availablePlanets++;
             }
-            con->printf("Available asteroids after initialization: %s/%d\n", availablePlanets, planets.size());
+            con->printf("Available asteroids after initialization: %d/%d\n", availablePlanets, planets.size());
         }
     }
 
@@ -2247,7 +2245,7 @@ public:
         
         handleInput(win, deltaTime);
         
-        if(console_visible == true)
+        if(win->console_visible == true)
             ship.setPause(true);
         else 
             ship.setPause(false);
@@ -2388,20 +2386,11 @@ public:
             win->text.printText_Solid(font, 25.0f, 225.0f, "Controller: " + con_str);
             win->text.printText_Solid(font, 25.0f, 250.0f, "Press ENTER to randomize asteroids");
         }
-
-        if(console_visible) {
-            glEnable(GL_BLEND);
-            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-            glDepthMask(GL_FALSE);
-            console.draw(win);
-            glDepthMask(GL_TRUE);
-            glDisable(GL_BLEND);
-        }
     }
     
     void handleInput(gl::GLWindow* win, float deltaTime) {
 
-        if(console_visible == true) {
+        if(win->console_visible == true) {
             return;
         }
 
@@ -2476,7 +2465,6 @@ public:
                 
                 rollInput = -0.5f;
             } else {
-                
                 rollInput = (targetRoll - ship.rotation.z) * 0.05f;
             }
             
@@ -2565,33 +2553,31 @@ public:
     
     void event(gl::GLWindow *win, SDL_Event &e) override {
 
-        switch(e.type) {
-            case SDL_KEYDOWN:
-                if(console_visible == false && e.key.keysym.sym == SDLK_RETURN) {
-                    randomizePlanetPositions();
-                    emiter.reset();
-                } else if(e.key.keysym.sym == SDLK_F1) {
-                    debug_menu = !debug_menu;
-                } else if(e.key.keysym.sym == SDLK_F2) {
-                    inverted_controls = !inverted_controls;
-                } else if(e.key.keysym.sym == SDLK_F3) {
-                    console_visible = !console_visible;
-                }
-                break;
-        }
-
-        if(controller.connectEvent(e)) {
-            mx::system_out << "Controller connected...\n";
-            console.print(" - Controller connected\n");
-        }
-
-        if(console_visible) {
-            console.event(win, e);
-        }
+        if (e.type == SDL_KEYDOWN) {
+            if (e.key.keysym.sym == SDLK_ESCAPE) {
+                win->setObject(new Intro());
+                win->object->load(win);
+                return;
+            }
+            if (e.key.keysym.sym == SDLK_F1) {
+                debug_menu = !debug_menu;
+            }
+            if (e.key.keysym.sym == SDLK_F2) {
+                inverted_controls = !inverted_controls;
+            }
+            if (e.key.keysym.sym == SDLK_F3) {
+                win->console_visible = !win->console_visible;
+             
+                if(win->console_visible)
+                    win->console.show();
+                else
+                    win->console.hide();
+            }
+        }   
     }
     
     virtual void resize(gl::GLWindow *win, int w, int h) override {
-        console.resize(win, w , h);   
+        win->console.resize(win, w , h);   
     }
 
 private:
@@ -2616,7 +2602,8 @@ public:
         }
         setObject(new Intro());
         object->load(this);
-    }
+        activateConsole(util.getFilePath("data/font.ttf"), 16, {255, 255, 255, 255});
+    }   
     
     ~MainWindow() override {}
     

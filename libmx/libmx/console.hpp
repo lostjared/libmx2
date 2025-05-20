@@ -64,11 +64,13 @@ namespace console {
         FADE_OUT 
     };
 
+    class GLConsole;
+
     class Console {
     public:
         Console();
         ~Console();
-        
+        friend class GLConsole;
         mx::mxUtil *util;
         void create(int x, int y, int w, int h);
         void load(const std::string &fnt, int size, const SDL_Color &col);
@@ -103,7 +105,7 @@ namespace console {
         void hide();
         void reload();
         bool loaded() const { 
-            std::lock_guard<std::mutex> lock(console_mutex);
+            std::lock_guard<std::recursive_mutex> lock(console_mutex);
             return c_chars.characters.size() > 0; 
         }
         void setTextAttrib(const int size, const SDL_Color &col);
@@ -115,7 +117,7 @@ namespace console {
         FadeState fadeState = FADE_NONE;
         void process_message_queue();     
     protected:
-        mutable std::mutex console_mutex;
+        mutable std::recursive_mutex console_mutex;
         std::queue<std::string> message_queue;
         ConsoleChars c_chars;
         std::string font;
@@ -165,7 +167,7 @@ namespace console {
     public:
         GLConsole();
         ~GLConsole();
-        
+        friend class Console;
         void load(gl::GLWindow *win, const SDL_Rect &rc, const std::string &fnt, int size, const SDL_Color &col);
         void load(gl::GLWindow *win, const std::string &fnt, int size, const SDL_Color &col);
         void draw(gl::GLWindow *win);
@@ -184,35 +186,23 @@ namespace console {
         void setTextAttrib(const int size, const SDL_Color &col);
         int getWidth() const;
         int getHeight() const;
+        bool procDefaultCommands(const std::vector<std::string> &cmd);
         
-        void printf(const char *s) {
-            if(s == nullptr) return;
-            std::ostringstream ss;
-            while(*s) {
-                ss << *s++;
+        template<typename... Args>
+        void printf(const char *format, Args... args) {
+            if (format == nullptr) return;
+            int size = std::snprintf(nullptr, 0, format, args...);
+            if (size < 0) {
+                print("[printf formatting error]\n");
+                return;
             }
-            print(ss.str());
+            std::vector<char> buffer(static_cast<size_t>(size) + 1);
+            std::snprintf(buffer.data(), buffer.size(), format, args...);
+            print(std::string(buffer.data())); 
         }
 
         std::ostream &bufferData() { return console.bufferData(); }
         std::istream &inputData();
-
-        template<typename T, typename... Args>
-        void printf(const char *s, T value, Args... args) {
-            std::ostringstream ss;
-            while(s && *s) {
-                if(*s == '%' && *++s!='%') {
-                    ss << value;
-                    std::string temp = ss.str();
-                    ss.str("");
-                    printf(++s, args...);
-                    return;
-                }
-                ss << *s++;
-            }
-            print(ss.str());
-        }
-   
         void process_message_queue();
         bool isVisible() const { return console.isVisible(); }
         bool isFading() const { return console.isFading(); }

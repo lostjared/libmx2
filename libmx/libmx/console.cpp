@@ -145,15 +145,16 @@ namespace console {
         c_chars.clear();
     }
     
+ 
     void Console::print(const std::string &str) {
-        std::lock_guard<std::mutex> lock(console_mutex);
-        data << str;
+        std::lock_guard<std::recursive_mutex> lock(console_mutex);
+        data << str; 
         cursorPos = data.str().length();
         needsReflow = true;
         needsRedraw = true;
         scrollToBottom();
     }
-
+ 
     void Console::setCallback(gl::GLWindow *window, std::function<bool(gl::GLWindow *win, const std::vector<std::string> &)> callback) {
         this->callback = callback;
         this->window = window;
@@ -207,11 +208,11 @@ namespace console {
                         if (lastCloseBrace != std::string::npos) {
                             processedCommand.erase(lastCloseBrace, 1);
                         }    
-                        this->print(multilineBuffer);
+                        this->thread_safe_print(multilineBuffer);
                         procCmd(processedCommand);
                         multilineBuffer.clear();
                     } else {
-                        this->print(cmd + "\n");
+                        this->thread_safe_print(cmd + "\n");
                     }
                 } else {
                     inputBuffer.clear();
@@ -229,7 +230,7 @@ namespace console {
                             originalPrompt = promptText;
                             promptText = "... ";
                             multilineBuffer = cmd + "\n";
-                            this->print(cmd + "\n");
+                            this->thread_safe_print(cmd + "\n");
                             return;
                         }
                     }
@@ -267,7 +268,7 @@ namespace console {
                             processedCommand = multilineBuffer + inputBuffer;
                             inMultilineMode = false;
                             promptText = originalPrompt;
-                            this->print(inputBuffer + "\n");
+                            this->thread_safe_print(inputBuffer + "\n");
                             inputBuffer.clear();
                             inputCursorPos = 0;
                             multilineBuffer.clear();
@@ -427,6 +428,7 @@ namespace console {
     }
 
     void Console::calculateLines() {
+        std::lock_guard<std::recursive_mutex> lock(console_mutex);
         if (!surface || c_chars.characters.empty() || c_chars.characters.find('A') == c_chars.characters.end()) {
             return;
         }
@@ -476,6 +478,7 @@ namespace console {
     }
 
     SDL_Surface *Console::drawText() {
+         std::lock_guard<std::recursive_mutex> lock(console_mutex);
         if (fadeState != FADE_NONE) {
             Uint32 currentTime = SDL_GetTicks();
             Uint32 elapsedTime = currentTime - fadeStartTime;
@@ -658,9 +661,10 @@ namespace console {
     }
 
     void Console::thread_safe_print(const std::string &str) {
-        std::lock_guard<std::mutex> lock(console_mutex);
+        std::lock_guard<std::recursive_mutex> lock(console_mutex);
         message_queue.push(str);
         needsRedraw = true;
+        needsReflow = true;
     }
 
     void Console::worker_thread_func() {
@@ -689,7 +693,7 @@ namespace console {
     }
 
     void Console::process_message_queue() {
-        std::lock_guard<std::mutex> lock(console_mutex);
+        std::lock_guard<std::recursive_mutex> lock(console_mutex);
         if (message_queue.empty()) return;
         
         while (!message_queue.empty()) {
@@ -710,7 +714,7 @@ namespace console {
 
     
     void Console::setInputCallback(std::function<int(gl::GLWindow *win, const std::string &)> callback) {
-        std::lock_guard<std::mutex> lock(console_mutex);
+        std::lock_guard<std::recursive_mutex> lock(console_mutex);
         callbackEnter = callback;
     }
 
@@ -728,84 +732,66 @@ namespace console {
         }
         historyIndex = -1;
         tempBuffer.clear();
+        std::vector<std::string> tokens = tokenize(cmd_text); 
+        if (tokens.empty()) {
+            return;
+        }
+
         if (cmd_text.find('\n') != std::string::npos || cmd_text.find(';') != std::string::npos) {
-            if (callbackEnter != nullptr) {
+             if (callbackSet) {
+                if(!callback(this->window, tokens)) {
+                    needsReflow = true;
+                }
+            } else if (callbackEnter != nullptr) {
                 command_queue.push({cmd_text, [this, cmd_text](const std::string& text, std::ostream& output) {
                     if (callbackEnter && window) {
                         callbackEnter(window, text);
                     }
                 }});
-            }
-            needsReflow = true;
-            return;
-        }
-        std::vector<std::string> tokens = tokenize(cmd_text); 
-        if (tokens.empty()) {
-            return;
-        }
-        if (tokens[0] == "settext" && tokens.size() == 5) {
-            SDL_Color col;
-            int size = atoi(tokens[1].c_str());
-            col.r = atoi(tokens[2].c_str());
-            col.g = atoi(tokens[3].c_str());
-            col.b = atoi(tokens[4].c_str());
-            col.a = 255;
-            if(size < 8) size = 8;
-            if(size > 64) size = 64;
-            font_size = size;
-            color = col;
-            if(!font.empty())
-                c_chars.load(font, size, col);
-            else {
-                c_chars.load(util->getFilePath("data/font.ttf"), size, col);
-            }
-            this->print("Font updated to size " + tokens[1] + 
-                        " color: " + tokens[2] + "," + tokens[3] + "," + tokens[4] + "\n");
-        } 
-        else if(tokens.size() == 1 && (tokens[0] == "clear" || tokens[0] == "cls")) {
-            this->print("\n");
-            data.str("");
-            inputBuffer.clear();
-            inputCursorPos = 0;
-            cursorPos = 0;
-            stopPosition = 0;
-            needsRedraw = true;
-            needsReflow = true;
-            scrollToBottom();
-        } 
-        else if (tokens.size() == 1 && tokens[0] == "about") {
-            this->print("- MX2 Engine LostSideDead Software\nhttps://lostsidedead.biz\n");
-        } 
-        else if(tokens.size() == 1  && tokens[0] == "author") {
-            this->print("- MX2 Engine Coded by Jared Bruni.\nhttps://lostsidedead.biz\n");
-        } 
-        else if (tokens.size() == 1 && tokens[0] == "help") {
-            this->print("- MX2 Console Help\n");
-            this->print("Commands:\n");
-            this->print("settext <size> <r> <g> <b>\n");
-            this->print("clear\n");
-            this->print("about\n");
-            this->print("author\n");
-        }
-        else {
-            if(callbackEnter != nullptr) {
-                command_queue.push({cmd_text, [this, cmd_text](const std::string& text, std::ostream& output) {
-                    if (window && callbackEnter) {
-                        callbackEnter(window, text);
-                    }
-                }});
+            } else {
+                needsReflow = true;
                 return;
-            }   
-            if (callbackSet) {
+            }
+        } else {
+             if (callbackSet) {
                 if(!callback(this->window, tokens)) {
-                    this->print("- Unknown command: " + tokens[0] + "\n");
                     needsReflow = true;
                 }
                 needsReflow = true;
+            } else if(callbackEnter != nullptr) {
+                    command_queue.push({cmd_text, [this, cmd_text](const std::string& text, std::ostream& output) {
+                        if (window && callbackEnter) {
+                            callbackEnter(window, text);
+                        }
+                    }});
+                    needsReflow = true;
+                    return; 
             } else {
-                this->print("- Unknown command: " + tokens[0] + "\n");
+                needsReflow = true;
             }
         }
+
+        /*
+        else {
+            if (callbackSet) {
+                if(!callback(this->window, tokens)) {
+                    this->thread_safe_print("- Unknown command: " + tokens[0] + "\n");
+                    needsReflow = true;
+                }
+                needsReflow = true;
+            } else if(callbackEnter != nullptr) {
+                    command_queue.push({cmd_text, [this, cmd_text](const std::string& text, std::ostream& output) {
+                        if (window && callbackEnter) {
+                            callbackEnter(window, text);
+                        }
+                    }});
+                    needsReflow = true;
+                    return; 
+            } else {
+                this->thread_safe_print("- Unknown command: " + tokens[0] + "\n");
+                needsReflow = true;
+            }
+        }*/
         updateCursorPosition();
         checkScroll();
     }
@@ -972,11 +958,13 @@ namespace console {
     }
 
     void GLConsole::print(const std::string &data) {
-        console.print(data);
+        console.thread_safe_print(data);
+        SDL_Event ev{SDL_USEREVENT};
+        SDL_PushEvent(&ev);
     }
 
     void GLConsole::println(const std::string &data) {
-        console.print(data + "\n");
+        print(data + "\n");
     }
 
     void GLConsole::event(gl::GLWindow *win, SDL_Event &e) {
@@ -1040,5 +1028,32 @@ namespace console {
     int GLConsole::getWidth() const { return console.getWidth(); }
     int GLConsole::getHeight() const { return console.getHeight(); }  
 
-        
+    bool GLConsole::procDefaultCommands(const std::vector<std::string> &cmd) {
+        if (cmd.empty()) {
+            return true;
+        } else if (cmd.size() > 0 && cmd[0] == "clear") {
+            console.clear();
+            return true;
+        } else if (cmd.size() > 0 && cmd[0] == "exit") {
+            print("Exiting console...\n");
+            exit(0);
+            return true;
+        } else if(cmd.size() == 5 && cmd[0] == "settext") {
+                int size = std::stoi(cmd[1]);
+                SDL_Color color;
+                color.r = std::stoi(cmd[2]);
+                color.g = std::stoi(cmd[3]);
+                color.b = std::stoi(cmd[4]);
+                color.a = 255;
+                setTextAttrib(size, color);
+                print("Text attributes set to size " + std::to_string(size) + 
+                        " and color (" + std::to_string(color.r) + ", " + 
+                        std::to_string(color.g) + ", " + std::to_string(color.b) + ")\n");
+                return true;
+        } else {
+                print("Unknown command: " + cmd[0] + "\n");
+                return false;
+        }
+        return false;
+    }
 }
