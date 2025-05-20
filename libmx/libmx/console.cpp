@@ -157,7 +157,6 @@ namespace console {
  
     void Console::setCallback(gl::GLWindow *window, std::function<bool(gl::GLWindow *win, const std::vector<std::string> &)> callback) {
         this->callback = callback;
-        this->window = window;
         callbackSet = true;
     }
 
@@ -738,60 +737,31 @@ namespace console {
         }
 
         if (cmd_text.find('\n') != std::string::npos || cmd_text.find(';') != std::string::npos) {
-             if (callbackSet) {
-                if(!callback(this->window, tokens)) {
-                    needsReflow = true;
-                }
-            } else if (callbackEnter != nullptr) {
+            if(callbackEnter != nullptr && window != nullptr) {
                 command_queue.push({cmd_text, [this, cmd_text](const std::string& text, std::ostream& output) {
                     if (callbackEnter && window) {
                         callbackEnter(window, text);
+                        needsReflow = true;
                     }
                 }});
-            } else {
-                needsReflow = true;
-                return;
-            }
-        } else {
-             if (callbackSet) {
+            } else if(callbackSet && window != nullptr) {
                 if(!callback(this->window, tokens)) {
                     needsReflow = true;
                 }
-                needsReflow = true;
-            } else if(callbackEnter != nullptr) {
-                    command_queue.push({cmd_text, [this, cmd_text](const std::string& text, std::ostream& output) {
-                        if (window && callbackEnter) {
-                            callbackEnter(window, text);
-                        }
-                    }});
-                    needsReflow = true;
-                    return; 
-            } else {
+            }    
+        }
+        if(callbackEnter != nullptr && window != nullptr) {
+            command_queue.push({cmd_text, [this, cmd_text](const std::string& text, std::ostream& output) {
+                if (window && callbackEnter) {
+                    callbackEnter(window, text);
+                }
+            }});
+            needsReflow = true;
+        } else if(callbackSet  && window != nullptr) {
+            if(!callback(this->window, tokens)) {
                 needsReflow = true;
             }
         }
-
-        /*
-        else {
-            if (callbackSet) {
-                if(!callback(this->window, tokens)) {
-                    this->thread_safe_print("- Unknown command: " + tokens[0] + "\n");
-                    needsReflow = true;
-                }
-                needsReflow = true;
-            } else if(callbackEnter != nullptr) {
-                    command_queue.push({cmd_text, [this, cmd_text](const std::string& text, std::ostream& output) {
-                        if (window && callbackEnter) {
-                            callbackEnter(window, text);
-                        }
-                    }});
-                    needsReflow = true;
-                    return; 
-            } else {
-                this->thread_safe_print("- Unknown command: " + tokens[0] + "\n");
-                needsReflow = true;
-            }
-        }*/
         updateCursorPosition();
         checkScroll();
     }

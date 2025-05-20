@@ -172,22 +172,11 @@
 #endif
 
 class Game : public gl::GLObject {
+    cmd::AstExecutor executor;
 public:
 
-    cmd::AstExecutor executor{};
-    std::ostream *output;
     bool cmd_echo = true;
-    std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> new_game = nullptr;
-    std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> drop_game = nullptr;
-    std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> toggle_console = nullptr;
-    std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> left_game = nullptr;
-    std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> right_game = nullptr;
-    std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> down_game= nullptr;
-    std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> shift_game = nullptr;
-    std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> rotate_game= nullptr;
-    std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> settimeout_game= nullptr;
-
-
+ 
     Game(int diff) : mp(diff) {
         mp.grid.game_piece.setCallback([]() {});
     }
@@ -200,6 +189,9 @@ public:
     gl::GLWindow *window_handle = nullptr;
 
     virtual void load(gl::GLWindow *win) override {
+        if (win == nullptr) {
+            throw mx::Exception("Window is null");
+        }
         window_handle = win;
         fade_in = true;
         mp.newGame();
@@ -223,12 +215,9 @@ public:
         font.loadFont(win->util.getFilePath("data/font.ttf"), 24);
         resize(win, win->w, win->h);
         mouse_x = mouse_y = 0;
-        output = &win->console.bufferData();
-        new_game = [&](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
-            mp.newGame();
-            output << "New Game Started\n";
-            return 0;
-        };
+      
+        //executor.addCommand("newgame", new_game);
+/*
         drop_game = [&](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
             mp.grid.game_piece.drop();
             output << "Piece Drop\n";
@@ -275,7 +264,7 @@ public:
         
         settimeout_game =  [&](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
             if(!args.empty() && args.size() == 1) {
-                int value = std::stoi(args[0]);
+                int value = std::stoi(args[0]);b
                 mp.timeout = value;
                 output << "Game Timeout Set to: " << value << "\n";
                 return 0;
@@ -286,55 +275,70 @@ public:
             return 1;
         };
 
-        executor.addCommand("newgame", new_game);
-        executor.addCommand("drop", drop_game);
-        executor.addCommand("toggle", toggle_console);
+  */      
+
+   /*     executor.addCommand("drop", drop_game);
+        executor.addCommand("toggle"q, toggle_console);
         executor.addCommand("left",left_game);
         executor.addCommand("right", right_game);
         executor.addCommand("down", down_game);
         executor.addCommand("rotate", rotate_game);
         executor.addCommand("shift", shift_game);
         executor.addCommand("timeout", settimeout_game);
+        */
 
-        win->console.setInputCallback([&](gl::GLWindow *window, const std::string &text) -> int {
+        
+        
+            
+        win->console.setInputCallback([this, win](gl::GLWindow *window, const std::string &text) -> int {
             try {
-                    std::cout << "Executing: " << text << std::endl;
-                    if(text == "@echo_on") {
-                        cmd_echo = true;
-                        *output << "Echoing commands on." << "\n";
-                        return 0;
-                    } else if(text == "@echo_off") {
-                        cmd_echo = false;
-                        *output << "Echoing commands off." << "\n";
-                        return 0;
-                    } 
-                    
-                    if(cmd_echo) {
-                        *output << "$ " << text << "\n";
-                    }
-                    std::stringstream input_stream(text);
-                    scan::TString string_buffer(text);
-                    scan::Scanner scanner(string_buffer);
-                    cmd::Parser parser(scanner);
-                    auto ast = parser.parse();
-                    executor.execute(input_stream, *output, ast);
+                std::cout << "Executing: " << text << std::endl;
+                if(text == "@echo_on") {
+                    cmd_echo = true;
+                    win->console.thread_safe_print("Echoing commands on.\n");
                     return 0;
-            } catch(const scan::ScanExcept &e) {
-                *output << "Scan error: " << e.why() << std::endl;
-                return 1;
-            } catch(const std::exception &e) { 
-                *output << "Error: " << e.what() << std::endl;
-                return 1;
-            } catch (const state::StateException &e) {
-                *output << "State error: " << e.what() << std::endl;
-                return 1;
-            } 
-            catch(...) {
-                *output << "Unknown error occurred." << std::endl;
+                } else if(text == "@echo_off") {
+                    cmd_echo = false;
+                    win->console.thread_safe_print("Echoing commands off.\n");
+                    return 0;
+                } 
+                if(cmd_echo) {
+                    win->console.thread_safe_print("$ " + text + "\n");
+                }
+                std::thread([this, text, win]() {
+                    try {
+                        std::stringstream input_stream(text);
+                        scan::TString string_buffer(text);
+                        scan::Scanner scanner(string_buffer);
+                        cmd::Parser parser(scanner);
+                        auto ast = parser.parse();
+                        std::stringstream output_stream;
+                        executor.execute(input_stream, output_stream, ast);
+                        win->console.thread_safe_print(output_stream.str());
+                        SDL_Event ev{SDL_USEREVENT};
+                        SDL_PushEvent(&ev);
+                    } catch(const scan::ScanExcept &e) {
+                        win->console.thread_safe_print("Scanner Exception: " + e.why() + "\n");
+                    }
+                    catch(const std::runtime_error &e) {
+                        win->console.thread_safe_print("Runtime Exception: " + std::string(e.what()) + "\n");
+                    } catch(const std::exception &e) {
+                        win->console.thread_safe_print("Exception: " + std::string(e.what()) + "\n");
+                    } catch (const state::StateException &e) {
+                        win->console.thread_safe_print("State Exception: " + std::string(e.what()) + "\n");
+                    } catch(const cmd::AstFailure  &e) {
+                        win->console.thread_safe_print("Failure: " + std::string(e.what()) + "\n");
+                    } catch(...) {
+                        win->console.thread_safe_print("Unknown Error: Command execution failed\n");
+                    }
+                }).detach();
+                
+                return 0;
+            } catch(const std::exception &e) {
+                win->console.thread_safe_print("Error: " + std::string(e.what()) + "\n");
                 return 1;
             }
-            return 0;
-        }); 
+        });
 
         win->console.print("MasterPiece3D MX2 v1.0\nLostSideDead Software\nhttps://lostsidedead.biz\nNew Game Started\n");
     }
@@ -746,8 +750,8 @@ public:
             SDL_FreeSurface(ico);
         }
         setObject(new Intro());
-        activateConsole(util.getFilePath("data/font.ttf"),16,{255,255,255});
         object->load(this);
+        activateConsole(util.getFilePath("data/font.ttf"),16,{255,255,255});
         updateViewport();
     }
 

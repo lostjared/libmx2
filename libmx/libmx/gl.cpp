@@ -150,15 +150,8 @@ namespace gl {
     }
 
     void GLWindow::setObject(gl::GLObject *o) {
-        object.reset(o);
-        if(console_active) {
-            console.setCallback(this, [](gl::GLWindow *window, const std::vector<std::string> &args) -> bool {
-                return false;
-            });
-            console.setInputCallback([](gl::GLWindow *window, const std::string &text) -> int {
-                return 0;
-            });
-        } 
+        object.reset(o); 
+        console.setWindow(this);
     }
 
     void GLWindow::showConsole(bool show) { 

@@ -186,8 +186,13 @@ namespace console {
         void setTextAttrib(const int size, const SDL_Color &col);
         int getWidth() const;
         int getHeight() const;
+        void setWindow(gl::GLWindow *win) { console.window = win; } 
         bool procDefaultCommands(const std::vector<std::string> &cmd);
-        
+        void clear_callbacks() {
+            console.callback = nullptr;
+            console.callbackEnter = nullptr;
+            console.callbackSet = false;
+        }
         template<typename... Args>
         void printf(const char *format, Args... args) {
             if (format == nullptr) return;

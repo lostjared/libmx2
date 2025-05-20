@@ -30,34 +30,33 @@ public:
     Game() = default;
     virtual ~Game() override {}
 
-    cmd::AstExecutor executor{};
-    std::ostream *output;
+    cmd::AstExecutor executor;
     bool cmd_echo = true;
     
     void load(gl::GLWindow *win) override {
         font.loadFont(win->util.getFilePath("data/font.ttf"), 36);
-        win->console.printf("Console Skeleton Example\nLostSideDead Software\nhttps://lostsidedead.biz\n");
-        win->console.setPrompt("$ ");
+        win->console.print("Console Skeleton Example\nLostSideDead Software\nhttps://lostsidedead.biz\n");
+        win->console.setPrompt("$> ");
         win->console_visible = true;
         win->console.show();
-        output = &win->console.bufferData();
         win->console.setInputCallback([this, win](gl::GLWindow *window, const std::string &text) -> int {
             try {
                 std::cout << "Executing: " << text << std::endl;
                 if(text == "@echo_on") {
                     cmd_echo = true;
-                    win->console.thread_safe_print("Echoing commands on.\n");
+                    window->console.thread_safe_print("Echoing commands on.\n");
                     return 0;
                 } else if(text == "@echo_off") {
                     cmd_echo = false;
-                    win->console.thread_safe_print("Echoing commands off.\n");
+                    window->console.thread_safe_print("Echoing commands off.\n");
                     return 0;
                 } 
                 if(cmd_echo) {
-                    win->console.thread_safe_print("$ " + text + "\n");
+                    window->console.thread_safe_print("$ " + text + "\n");
                 }
-                std::thread([this, text, win]() {
+                std::thread([this, text, window]() {
                     try {
+                        std::cout << "Executing: " << text << std::endl;
                         std::stringstream input_stream(text);
                         scan::TString string_buffer(text);
                         scan::Scanner scanner(string_buffer);
@@ -65,23 +64,23 @@ public:
                         auto ast = parser.parse();
                         std::stringstream output_stream;
                         executor.execute(input_stream, output_stream, ast);
-                        win->console.thread_safe_print(output_stream.str());
+                        window->console.thread_safe_print(output_stream.str());
                         SDL_Event ev{SDL_USEREVENT};
                         SDL_PushEvent(&ev);
                     } catch(const scan::ScanExcept &e) {
-                        win->console.thread_safe_print("Scanner Exception: " + e.why() + "\n");
+                        window->console.thread_safe_print("Scanner Exception: " + e.why() + "\n");
                     } catch(const cmd::Exit_Exception &e) {
-                        win->console.thread_safe_print("Execution " + std::to_string(e.getCode()) + "\n");
+                        window->console.thread_safe_print("Execution " + std::to_string(e.getCode()) + "\n");
                     } catch(const std::runtime_error &e) {
-                        win->console.thread_safe_print("Runtime Exception: " + std::string(e.what()) + "\n");
+                        window->console.thread_safe_print("Runtime Exception: " + std::string(e.what()) + "\n");
                     } catch(const std::exception &e) {
-                        win->console.thread_safe_print("Exception: " + std::string(e.what()) + "\n");
+                        window->console.thread_safe_print("Exception: " + std::string(e.what()) + "\n");
                     } catch (const state::StateException &e) {
-                        win->console.thread_safe_print("State Exception: " + std::string(e.what()) + "\n");
+                        window->console.thread_safe_print("State Exception: " + std::string(e.what()) + "\n");
                     } catch(const cmd::AstFailure  &e) {
-                        win->console.thread_safe_print("Failure: " + std::string(e.what()) + "\n");
+                        window->console.thread_safe_print("Failure: " + std::string(e.what()) + "\n");
                     } catch(...) {
-                        win->console.thread_safe_print("Unknown Error: Command execution failed\n");
+                        window->console.thread_safe_print("Unknown Error: Command execution failed\n");
                     }
                 }).detach();
                 
@@ -220,9 +219,9 @@ class MainWindow : public gl::GLWindow {
 public:
     MainWindow(std::string path, int tw, int th) : gl::GLWindow("Console Skeleton", tw, th) {
         setPath(std::filesystem::current_path().string()+"/"+path);
+        setObject(new Game());
         activateConsole({25, 25, tw-50, th-50}, util.getFilePath("data/font.ttf"), 16, {255, 255, 255, 255});
-        showConsole(true);
-        setObject(new Game());  
+        showConsole(true);  
         object->load(this);
     }
     

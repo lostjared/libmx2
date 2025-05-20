@@ -2,7 +2,7 @@
 #define __AST_HPP_X_
 
 // #define DEBUG_MODE_ON
-
+#include"command_reg.hpp"
 #include<memory>
 #include<functional>
 #include<optional>
@@ -16,7 +16,7 @@
 #include<set>
 #include<cmath>
 #include"game_state.hpp"
-#include"command_reg.hpp"
+
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
 #include <signal.h>
 #include <unistd.h>
