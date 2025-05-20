@@ -215,6 +215,8 @@ int main(int argc, char **argv) {
     } catch(const mx::Excpetion &e) {
         SDL_Log("mx: Exception: %s\n", e.text().c_str());
         SDL_LogFlush();
+    } catch(std::exception &e) {
+        std::cerr << e.what() << "\n";
     }
 #else
     Arguments args = proc_args(argc, argv);

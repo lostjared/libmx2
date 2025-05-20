@@ -25,6 +25,28 @@ namespace gl {
 typedef unsigned int GLuint;
 #endif
 
+#if defined(__EMSCRIPTEN__)
+    class EmscriptenMutex {
+    public:
+        void lock() {}
+        void unlock() {}
+    };
+    
+    class EmscriptenGuard {
+    public:
+        EmscriptenGuard(EmscriptenMutex&) {}
+    };
+    
+    #define THREAD_MUTEX EmscriptenMutex
+    #define THREAD_GUARD(mutex) EmscriptenGuard guard(mutex)
+    #define THREAD_ENABLED 0
+#else
+    #define THREAD_MUTEX std::recursive_mutex
+    #define THREAD_GUARD(mutex) std::lock_guard<std::recursive_mutex> guard(mutex)
+    #define THREAD_ENABLED 1
+#endif
+
+
 namespace console {
     
     class CommandQueue {
@@ -40,8 +62,12 @@ namespace console {
         
     private:
         std::queue<Command> queue;
+#if THREAD_ENABLED
         std::mutex queue_mutex;
         std::condition_variable cv;
+#else
+        EmscriptenMutex queue_mutex;
+#endif
         std::atomic<bool> active{true};
     };
 
@@ -105,7 +131,7 @@ namespace console {
         void hide();
         void reload();
         bool loaded() const { 
-            std::lock_guard<std::recursive_mutex> lock(console_mutex);
+            THREAD_GUARD(console_mutex);
             return c_chars.characters.size() > 0; 
         }
         void setTextAttrib(const int size, const SDL_Color &col);
@@ -116,8 +142,11 @@ namespace console {
         bool needsReflow = true;
         FadeState fadeState = FADE_NONE;
         void process_message_queue();     
+#if defined(__EMSCRIPTEN__)
+        void processCommandQueue();  // Manually process commands for Emscripten
+#endif
     protected:
-        mutable std::recursive_mutex console_mutex;
+        mutable THREAD_MUTEX console_mutex;
         std::queue<std::string> message_queue;
         ConsoleChars c_chars;
         std::string font;
@@ -218,7 +247,11 @@ namespace console {
         bool isVisible() const { return console.isVisible(); }
         bool isFading() const { return console.isFading(); }
         void setStretchHeight(int value);
-        void refresh() { console.needsRedraw = true; console.needsReflow = true; }
+        void refresh() { 
+#if defined(__EMSCRIPTEN__)
+        console.processCommandQueue();
+#endif
+        console.process_message_queue(); }
     protected:
         mutable std::mutex gl_mutex;
         Console console;

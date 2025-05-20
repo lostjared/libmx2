@@ -35,13 +35,15 @@ namespace console {
     void ConsoleChars::load(const std::string &fnt, int size, const SDL_Color &col) {
         clear();
         font.reset(new mx::Font(fnt, size));
-        std::string chars = " 0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()_+[]{}|;:,.<>?`~\"\'/\\-=";
-        for (char c : chars) {
-            SDL_Surface *surface = TTF_RenderGlyph_Solid(font->unwrap(), c, col);
-            if (surface) {
-                characters[c] = surface;
-            } else {
-                std::cerr << "Failed to load character: " << c << std::endl;
+        if(font) {
+            std::string chars = " 0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()_+[]{}|;:,.<>?`~\"\'/\\-=";
+            for (char c : chars) {
+                SDL_Surface *surface = TTF_RenderGlyph_Solid(font->unwrap(), c, col);
+                if (surface) {
+                    characters[c] = surface;
+                } else {
+                    std::cerr << "Failed to load character: " << c << std::endl;
+                }
             }
         }
     }
@@ -60,19 +62,28 @@ namespace console {
     }
 
     void CommandQueue::push(const Command& cmd) {
+#if THREAD_ENABLED
         std::lock_guard<std::mutex> lock(queue_mutex);
         queue.push(cmd);
         cv.notify_one();
+#else
+        queue.push(cmd);
+#endif
     }
 
     bool CommandQueue::pop(Command& cmd) {
+#if THREAD_ENABLED
         std::unique_lock<std::mutex> lock(queue_mutex);
         cv.wait_for(lock, std::chrono::milliseconds(100), 
             [this] { return !queue.empty() || !active; });
         
         if (!active && queue.empty())
             return false;
-            
+#else
+        if (queue.empty())
+            return false;
+#endif
+        
         if (!queue.empty()) {
             cmd = queue.front();
             queue.pop();
@@ -82,11 +93,15 @@ namespace console {
     }
 
     void CommandQueue::shutdown() {
+#if THREAD_ENABLED
         {
             std::lock_guard<std::mutex> lock(queue_mutex);
             active = false;
         }
         cv.notify_all();
+#else
+        active = false;
+#endif
     }
 
     Console::Console() { 
@@ -95,15 +110,21 @@ namespace console {
         multilineBuffer = "";
         originalPrompt = "$ ";
         worker_active = true;
+        
+#if THREAD_ENABLED
         worker_thread = std::make_unique<std::thread>(&Console::worker_thread_func, this);
+#endif
     }
 
     Console::~Console() {
         worker_active = false;
         command_queue.shutdown();
+        
+#if THREAD_ENABLED
         if (worker_thread && worker_thread->joinable()) {
             worker_thread->join();
         }
+#endif
         
         if(surface) {
             SDL_FreeSurface(surface);
@@ -147,7 +168,7 @@ namespace console {
     
  
     void Console::print(const std::string &str) {
-        std::lock_guard<std::recursive_mutex> lock(console_mutex);
+        THREAD_GUARD(console_mutex);
         data << str; 
         cursorPos = data.str().length();
         needsReflow = true;
@@ -427,7 +448,7 @@ namespace console {
     }
 
     void Console::calculateLines() {
-        std::lock_guard<std::recursive_mutex> lock(console_mutex);
+        THREAD_GUARD(console_mutex);
         if (!surface || c_chars.characters.empty() || c_chars.characters.find('A') == c_chars.characters.end()) {
             return;
         }
@@ -477,7 +498,7 @@ namespace console {
     }
 
     SDL_Surface *Console::drawText() {
-         std::lock_guard<std::recursive_mutex> lock(console_mutex);
+         THREAD_GUARD(console_mutex);
         if (fadeState != FADE_NONE) {
             Uint32 currentTime = SDL_GetTicks();
             Uint32 elapsedTime = currentTime - fadeStartTime;
@@ -660,7 +681,7 @@ namespace console {
     }
 
     void Console::thread_safe_print(const std::string &str) {
-        std::lock_guard<std::recursive_mutex> lock(console_mutex);
+        THREAD_GUARD(console_mutex);
         message_queue.push(str);
         needsRedraw = true;
         needsReflow = true;
@@ -692,7 +713,7 @@ namespace console {
     }
 
     void Console::process_message_queue() {
-        std::lock_guard<std::recursive_mutex> lock(console_mutex);
+        THREAD_GUARD(console_mutex);
         if (message_queue.empty()) return;
         
         while (!message_queue.empty()) {
@@ -713,7 +734,7 @@ namespace console {
 
     
     void Console::setInputCallback(std::function<int(gl::GLWindow *win, const std::string &)> callback) {
-        std::lock_guard<std::recursive_mutex> lock(console_mutex);
+        THREAD_GUARD(console_mutex);
         callbackEnter = callback;
         this->enterCallbackSet = true;
     }
@@ -757,6 +778,11 @@ namespace console {
                     callbackEnter(window, text);
                 }
             }});
+            
+#if !THREAD_ENABLED
+            processCommandQueue();
+#endif
+
             needsReflow = true;
         } else if(callbackSet  && window != nullptr) {
             if(!callback(this->window, tokens)) {
@@ -767,6 +793,32 @@ namespace console {
         checkScroll();
     }
 
+#ifdef __EMSCRIPTEN__
+    void Console::processCommandQueue() {
+#if !THREAD_ENABLED
+        CommandQueue::Command cmd;
+        while (command_queue.pop(cmd)) {
+            std::ostringstream result;
+            try {
+                cmd.callback(cmd.text, result);
+                if (!result.str().empty()) {
+                    thread_safe_print(result.str());
+                }
+            } catch (const std::exception& e) {
+                thread_safe_print("Error: " + std::string(e.what()) + "\n");
+            } catch (...) {
+                thread_safe_print("Unknown error occurred\n");
+            }
+            
+            if (window) {
+                SDL_Event ev;
+                ev.type = SDL_USEREVENT;
+                SDL_PushEvent(&ev);
+            }
+        }
+#endif
+    }
+#endif
     void Console::startFadeIn() {
         fadeState = FADE_IN;
         fadeStartTime = SDL_GetTicks();
@@ -966,6 +1018,10 @@ namespace console {
         else if(e.type == SDL_TEXTINPUT) {
             console.keypress(e.text.text[0]);
         }
+        
+#if defined(__EMSCRIPTEN__)
+        refresh();
+#endif
     }
 
     void GLConsole::setStretchHeight(int value) {
