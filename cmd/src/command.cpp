@@ -1468,33 +1468,16 @@ namespace cmd {
             if (cmd::AstExecutor::getExecutor().checkInterrupt()) {
                 std::cout << "exec: interrupting child process (Windows)" << std::endl;
                 DWORD child_process_id_for_logging = GetProcessId(pi.hProcess); 
-                std::cout << "exec: Attempting to send CTRL_C_EVENT to console group (PID of cmd.exe: " << child_process_id_for_logging << ")" << std::endl;
-                if (!GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0)) { 
-                    std::cout << "exec: GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0) failed, error: " << GetLastError() << std::endl;
-                }
-                Sleep(500); 
                 DWORD exitCode = STILL_ACTIVE;
-                bool child_exited_gracefully = false;
-                if (GetExitCodeProcess(pi.hProcess, &exitCode)) {
-                    if (exitCode != STILL_ACTIVE) {
-                        std::cout << "exec: Child process (PID: " << child_process_id_for_logging << ") exited after CTRL_C_EVENT. Exit code: " << exitCode << std::endl;
-                        child_exited_gracefully = true;
-                    } else {
-                        std::cout << "exec: Child process (PID: " << child_process_id_for_logging << ") still active after CTRL_C_EVENT." << std::endl;
-                    }
+                bool child_exited_gracefully = false;                    
+                std::cout << "exec: Forcing termination of child process (PID: " << child_process_id_for_logging << ")." << std::endl;
+                if (!TerminateProcess(pi.hProcess, 1)) { 
+                    std::cout << "exec: TerminateProcess failed for PID " << child_process_id_for_logging << ", error: " << GetLastError() << std::endl;
                 } else {
-                    std::cout << "exec: GetExitCodeProcess failed after CTRL_C_EVENT for PID " << child_process_id_for_logging << ", error: " << GetLastError() << ". Assuming it's still active." << std::endl;
+                    std::cout << "exec: TerminateProcess call succeeded for PID " << child_process_id_for_logging << "." << std::endl;
+                    WaitForSingleObject(pi.hProcess, 200); 
                 }
-                if (!child_exited_gracefully) {
-                    
-                    std::cout << "exec: Forcing termination of child process (PID: " << child_process_id_for_logging << ")." << std::endl;
-                    if (!TerminateProcess(pi.hProcess, 1)) { 
-                        std::cout << "exec: TerminateProcess failed for PID " << child_process_id_for_logging << ", error: " << GetLastError() << std::endl;
-                    } else {
-                        std::cout << "exec: TerminateProcess call succeeded for PID " << child_process_id_for_logging << "." << std::endl;
-                        WaitForSingleObject(pi.hProcess, 200); 
-                    }
-                }
+                
                 CloseHandle(hStdOutRead);
                 CloseHandle(pi.hThread); 
                 CloseHandle(pi.hProcess);
