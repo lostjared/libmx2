@@ -13,6 +13,7 @@
 #include<iostream>
 #include<filesystem>
 #include<sstream>
+#include<atomic>
 #include<set>
 #include<cmath>
 #include"game_state.hpp"
@@ -779,11 +780,21 @@ namespace cmd {
     public:
         AstExecutor(); 
         
+
         static AstExecutor  &getExecutor() {
             static AstExecutor instance;
             return instance;
         }
         
+        std::atomic<bool> *exec_interrupt = nullptr;
+        void setInterrupt(std::atomic<bool> *interrupt) {
+            exec_interrupt = interrupt;
+        }
+
+        bool checkInterrupt() {
+            return exec_interrupt != nullptr && exec_interrupt->load();
+        }
+
         bool on_fail = true;
         std::function<void(const std::string &)> updateCallback = nullptr;
         void setUpdateCallback(std::function<void(const std::string &)> callback) {

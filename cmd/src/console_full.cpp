@@ -70,11 +70,14 @@ public:
                 }
                 if(cmd_echo) {
                     window->console.thread_safe_print("$ " + text + "\n");
+                    window->console.process_message_queue();
                 }
                 std::thread([this, text, window]() {
                     try {
                         std::cout << "Executing: " << text << std::endl;
                         std::string lineBuf;
+
+                        executor.setInterrupt(&interrupt_command);
 
                         executor.setUpdateCallback(
                             [&lineBuf,window,this](const std::string &chunk) {

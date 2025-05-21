@@ -14,6 +14,9 @@
 #if !defined(__EMSCRIPTEN__) &&  !defined(_WIN32)
 #include<unistd.h>
 #include<sys/wait.h>
+#include<signal.h>
+#include<fcntl.h>
+#include<sys/select.h>
 #endif
 #if !defined(__EMSCRIPTEN__) && defined(_WIN32)
 #include <windows.h>
@@ -1332,11 +1335,10 @@ namespace cmd {
         }
         
         if (pid == 0) {
+            setpgid(0, 0);
             close(in_pipe[1]);  
             dup2(in_pipe[0], STDIN_FILENO);
             close(in_pipe[0]);
-            
-            
             close(out_pipe[0]);  
             dup2(out_pipe[1], STDOUT_FILENO);
             dup2(out_pipe[1], STDERR_FILENO); 
@@ -1348,21 +1350,61 @@ namespace cmd {
             
             close(in_pipe[0]);  
             close(out_pipe[1]); 
-            
             close(in_pipe[1]);
+            int flags = fcntl(out_pipe[0], F_GETFL, 0);
+            fcntl(out_pipe[0], F_SETFL, flags | O_NONBLOCK);
             
             char buffer[4096];
             ssize_t bytes_read;
-            while ((bytes_read = read(out_pipe[0], buffer, sizeof(buffer) - 1)) > 0) {
-                buffer[bytes_read] = '\0';
-                output << buffer;
-                output.flush();
-            }
-            close(out_pipe[0]);
             
+            bool still_running = true;
+            while (still_running) {
+                if (cmd::AstExecutor::getExecutor().checkInterrupt()) {
+                    std::cout << "exec: interrupting process" << std::endl;
+                    if(killpg(pid, SIGINT) < 0) {
+                        output << "exec: failed to kill process" << std::endl;
+                    }
+                    usleep(100000); 
+                    if (waitpid(pid, NULL, WNOHANG) == 0) {
+                        killpg(pid, SIGKILL);
+                    }
+                    
+                    close(out_pipe[0]); 
+                    still_running = false;
+                    break;
+                }
+                fd_set read_fds;
+                FD_ZERO(&read_fds);
+                FD_SET(out_pipe[0], &read_fds);
+                
+                struct timeval tv;
+                tv.tv_sec = 0;
+                tv.tv_usec = 100000; 
+                
+                int ret = select(out_pipe[0] + 1, &read_fds, NULL, NULL, &tv);
+                
+                if (ret > 0) {
+                    while ((bytes_read = read(out_pipe[0], buffer, sizeof(buffer) - 1)) > 0) {
+                        buffer[bytes_read] = '\0';
+                        output << buffer;
+                        output.flush();
+                    }
+                    
+                    if (bytes_read == 0) {
+                        still_running = false;
+                    }
+                } else if (ret == 0) {
+                    int status;
+                    pid_t result = waitpid(pid, &status, WNOHANG);
+                    if (result != 0) {
+                        still_running = false;
+                    }
+                } else {
+                    break;
+                }
+            }
             int status;
             waitpid(pid, &status, 0);
-            
             return WEXITSTATUS(status);
         }
 #elif !defined(__EMSCRIPTEN__)  && defined(_WIN32)
