@@ -42,6 +42,7 @@ public:
         win->console.setPrompt("$> ");
         win->console_visible = true;
         win->console.show();
+        executor.setInterrupt(&interrupt_command);
         win->console.setInputCallback([this, win](gl::GLWindow *window, const std::string &text) -> int {
             try {
                 std::cout << "Executing: " << text << std::endl;

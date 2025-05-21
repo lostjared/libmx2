@@ -787,11 +787,13 @@ namespace cmd {
         }
         
         std::atomic<bool> *exec_interrupt = nullptr;
+
         void setInterrupt(std::atomic<bool> *interrupt) {
             exec_interrupt = interrupt;
         }
 
         bool checkInterrupt() {
+            std::cout << "Checking interrupt" << std::endl;
             return exec_interrupt != nullptr && exec_interrupt->load();
         }
 
