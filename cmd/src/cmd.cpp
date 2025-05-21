@@ -314,7 +314,7 @@ int main(int argc, char **argv) {
             }
         } else if(argc == 2 && (std::string(argv[1]) == "--stdin" || std::string(argv[1]) == "-i")) {
             try {
-            cmd::AstExecutor executor{};
+            cmd::AstExecutor &executor = cmd::AstExecutor::getExecutor();
             std::ostringstream stream;
             stream << std::cin.rdbuf();
             scan::TString string_buffer(stream.str());

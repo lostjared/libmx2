@@ -250,7 +250,7 @@ namespace cmd {
                 throw std::runtime_error("Variable name: " + arg.value + " not found its type: " +  std::to_string(static_cast<int>(arg.type)));
             }
         } else if (arg.type == ARG_COMMAND_SUBST && arg.cmdNode) {
-            AstExecutor executor;
+            AstExecutor &executor  = AstExecutor::getExecutor();
             std::stringstream input, output;
             executor.executeDirectly(arg.cmdNode, input, output);
             std::string result = output.str();

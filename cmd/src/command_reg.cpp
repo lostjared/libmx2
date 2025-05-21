@@ -115,7 +115,7 @@ namespace cmd {
                     gameState->setVariable(paramName, val);
                 }
                 else if (args[i].type == ARG_COMMAND_SUBST && args[i].cmdNode) {
-                    AstExecutor executor;
+                    AstExecutor &executor = AstExecutor::getExecutor();
                     std::stringstream cmdInput, cmdOutput;
                     executor.executeDirectly(args[i].cmdNode, cmdInput, cmdOutput);
                     std::string result = cmdOutput.str();

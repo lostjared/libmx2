@@ -776,6 +776,8 @@ namespace cmd {
         Position position;
     };
 
+    inline std::atomic<bool> *exec_interrupt = nullptr;
+
     class AstExecutor {
     public:
         AstExecutor(); 
@@ -786,7 +788,7 @@ namespace cmd {
             return instance;
         }
         
-        std::atomic<bool> *exec_interrupt = nullptr;
+        
 
         void setInterrupt(std::atomic<bool> *interrupt) {
             std::cout << "HERE: " << ("valid pointer=" + std::to_string(interrupt != nullptr)) << std::endl;
