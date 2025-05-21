@@ -29,7 +29,9 @@ printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
 
 class Game : public gl::GLObject {
 public:
-    Game() = default;
+    Game() {
+        cmd::AstExecutor::getExecutor().setInterrupt(&interrupt_command);
+    }
     virtual ~Game() override {}
     std::atomic<bool> interrupt_command{false};
     std::atomic<bool> program_running{false};
@@ -75,8 +77,10 @@ public:
                 }
                 std::thread([this, text, window]() {
                     try {
+                        executor.setInterrupt(&this->interrupt_command);
                         std::cout << "Executing: " << text << std::endl;
                         std::string lineBuf;
+                        
                         executor.setUpdateCallback(
                             [&lineBuf,window,this](const std::string &chunk) {
                                 lineBuf += chunk;
@@ -306,6 +310,7 @@ void eventProc() {
 }
 
 int main(int argc, char **argv) {
+    cmd::AstExecutor::getExecutor().setInterrupt(nullptr);
 #ifdef __EMSCRIPTEN__
     try {
         MainWindow main_window("/", 1920, 1080);
