@@ -827,7 +827,7 @@ namespace console {
     void Console::show() {
         startFadeIn();
     }
-
+        
     void Console::hide() {
         startFadeOut();
     }

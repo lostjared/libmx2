@@ -182,6 +182,7 @@ class Game : public gl::GLObject {
     std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> shift_game = nullptr;
     std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> rotate_game= nullptr;
     std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> settimeout_game= nullptr;
+    std::atomic<bool> running{false};
 public:
 
     bool cmd_echo = true;
@@ -349,7 +350,9 @@ public:
                         cmd::Parser parser(scanner);
                         auto ast = parser.parse();
                         std::stringstream output_stream;
+                        running = true;
                         executor.execute(input_stream, output_stream, ast);
+                        running = false;
                         if(!lineBuf.empty()) {
                             window->console.thread_safe_print(lineBuf);
                             window->console.process_message_queue();
@@ -523,7 +526,7 @@ public:
         if(win->console.isVisible()) {    
             if(e.type == SDL_KEYDOWN) {
                 if(e.key.keysym.sym == SDLK_c && (e.key.keysym.mod & KMOD_CTRL)) {
-                    if(program_running) {
+                    if(running) {
                         win->console.thread_safe_print("\nCTRL+C Interrupt - Command interrupted\n");
                         interrupt_command = true;
                     } else {
