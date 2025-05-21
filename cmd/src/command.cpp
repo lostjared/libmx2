@@ -1092,7 +1092,7 @@ namespace cmd {
             scan::Scanner scanner(string_buffer);
             cmd::Parser parser(scanner);
             auto ast = parser.parse();
-            cmd::AstExecutor scriptExecutor;
+            cmd::AstExecutor &scriptExecutor = cmd::AstExecutor::getExecutor();
 
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
             program_running = 1;

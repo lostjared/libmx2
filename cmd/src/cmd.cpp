@@ -50,7 +50,7 @@ void dumpTokens(scan::Scanner &scan, std::ostream& out = std::cout) {
 void execute_command(const std::string &text) {
     fflush(stdout);
     try {
-        cmd::AstExecutor executor{};
+        cmd::AstExecutor &executor = cmd::AstExecutor::getExecutor();
         scan::TString string_buffer(text);
         scan::Scanner scanner(string_buffer);
         cmd::Parser parser(scanner);
@@ -106,7 +106,7 @@ int main(int argc, char **argv) {
         bool active = true;
         bool debug_cmd = false;
         try {
-            cmd::AstExecutor executor{};
+            cmd::AstExecutor &executor = cmd::AstExecutor::getExecutor();
             using_history();
             read_history(".cmd_history");
             std::ostringstream input_stream;
@@ -222,7 +222,7 @@ int main(int argc, char **argv) {
             std::cerr << "Unknown error occurred." << std::endl;
         }
     } else if(argc >= 2 && (std::string(argv[1]) != "--stdin" && std::string(argv[1]) != "-i")) {
-        cmd::AstExecutor executor{};
+         cmd::AstExecutor &executor = cmd::AstExecutor::getExecutor();
         bool debug_cmd = false;
         bool debug_html = false;
         bool debug_tokens = false;
