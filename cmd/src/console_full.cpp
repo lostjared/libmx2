@@ -77,9 +77,7 @@ public:
                     try {
                         std::cout << "Executing: " << text << std::endl;
                         std::string lineBuf;
-
                         executor.setInterrupt(&interrupt_command);
-
                         executor.setUpdateCallback(
                             [&lineBuf,window,this](const std::string &chunk) {
                                 lineBuf += chunk;

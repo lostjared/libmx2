@@ -789,6 +789,7 @@ namespace cmd {
         std::atomic<bool> *exec_interrupt = nullptr;
 
         void setInterrupt(std::atomic<bool> *interrupt) {
+            std::cout << "HERE: " << ("valid pointer=" + std::to_string(interrupt != nullptr)) << std::endl;
             exec_interrupt = interrupt;
         }
 
@@ -799,7 +800,7 @@ namespace cmd {
               << ", value=" 
               << (exec_interrupt && exec_interrupt->load() ? "TRUE" : "false") 
               << std::endl;
-            return exec_interrupt != nullptr && *exec_interrupt;
+            return exec_interrupt != nullptr && exec_interrupt->load();
         }
 
         bool on_fail = true;
