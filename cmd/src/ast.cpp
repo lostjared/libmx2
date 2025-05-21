@@ -3,6 +3,8 @@
 
 namespace cmd {
 
+    CommandRegistry AstExecutor::registry;
+
     AstExecutor::AstExecutor() {
         if(registry.empty()) {
             registry.registerTypedCommand("echo", cmd::echoCommand);
@@ -207,7 +209,7 @@ namespace cmd {
     }
         
 
-    CommandRegistry AstExecutor::registry;
+ 
 
      std::string parseEscapeSequences(const std::string& input) {
         std::string result;

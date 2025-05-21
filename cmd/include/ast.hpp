@@ -999,10 +999,6 @@ namespace cmd {
             executeNode(node, input, output);
         }
         
-        CommandRegistry &getCommandRegistry() {
-            return registry;
-        }
-        
         static CommandRegistry &getRegistry() {
             return registry;
         }
@@ -1576,7 +1572,7 @@ namespace cmd {
                 }
                 
                 
-                int exitStatus = const_cast<AstExecutor&>(executor).getCommandRegistry().executeCommand(
+                int exitStatus = const_cast<AstExecutor&>(executor).getRegistry().executeCommand(
                     cmd->name, expandedArgs, input, output);
                 
                 

@@ -143,9 +143,9 @@ namespace cmd {
 
         int result = 0;
         try {
-            AstExecutor executor;
+            AstExecutor &executor = AstExecutor::getExecutor();
             for (auto const & kv : userDefinedCommands) {
-                executor.getCommandRegistry()
+                executor.getRegistry()
                         .registerUserDefinedCommand(kv.first, kv.second);
             }
             executor.execute(input, output, info.body);
