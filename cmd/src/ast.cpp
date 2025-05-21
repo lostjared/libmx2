@@ -5,6 +5,11 @@ namespace cmd {
 
     CommandRegistry AstExecutor::registry;
 
+    AstExecutor& AstExecutor::getExecutor() {
+        static AstExecutor instance;
+        return instance;
+    }
+
     AstExecutor::AstExecutor() {
         if(registry.empty()) {
             registry.registerTypedCommand("echo", cmd::echoCommand);
