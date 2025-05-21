@@ -784,17 +784,10 @@ namespace cmd {
         static AstExecutor  &getExecutor();    
 
         void setInterrupt(std::atomic<bool> *interrupt) {
-            std::cout << "HERE: " << ("valid pointer=" + std::to_string(interrupt != nullptr)) << std::endl;
             exec_interrupt = interrupt;
         }
 
         bool checkInterrupt() {
-            std::cout << "Checking interrupt" << std::endl;
-             std::cout << "Checking interrupt: pointer=" 
-              << (exec_interrupt ? "valid" : "NULL")
-              << ", value=" 
-              << (exec_interrupt && exec_interrupt->load() ? "TRUE" : "false") 
-              << std::endl;
             return exec_interrupt != nullptr && exec_interrupt->load();
         }
 

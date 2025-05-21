@@ -1452,8 +1452,6 @@ namespace cmd {
         }
         CloseHandle(hStdOutWrite);
         CloseHandle(hStdInRead);
-
-        
         if (input.peek() != EOF) {
             std::string input_str{std::istreambuf_iterator<char>(input), 
                         std::istreambuf_iterator<char>()};
@@ -1463,35 +1461,61 @@ namespace cmd {
             }
         }
         CloseHandle(hStdInWrite); 
-
-        
         char buffer[4096];
         DWORD bytesRead;
         bool still_running = true;
-        
+               char buffer[4096];
+        DWORD bytesRead;
+        bool still_running = true;
         while (still_running) {
-        
             if (cmd::AstExecutor::getExecutor().checkInterrupt()) {
-                std::cout << "exec: interrupting process" << std::endl;
-                DWORD exitCode = 0;
-                GenerateConsoleCtrlEvent(CTRL_C_EVENT, GetProcessId(pi.hProcess));
-                Sleep(500);    
-                if (GetExitCodeProcess(pi.hProcess, &exitCode) && exitCode == STILL_ACTIVE) {
-                    if (!TerminateProcess(pi.hProcess, 1)) {
-                        DWORD error = GetLastError();
-                        std::cout << "exec: failed to kill process, error code: " << error << std::endl;
+                std::cout << "exec: interrupting child process (Windows)" << std::endl;
+                DWORD child_process_id_for_logging = GetProcessId(pi.hProcess); 
+                std::cout << "exec: Attempting to send CTRL_C_EVENT to console group (PID of cmd.exe: " << child_process_id_for_logging << ")" << std::endl;
+                if (!GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0)) { 
+                    std::cout << "exec: GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0) failed, error: " << GetLastError() << std::endl;
+                }
+                Sleep(500); 
+                DWORD exitCode = STILL_ACTIVE;
+                bool child_exited_gracefully = false;
+                if (GetExitCodeProcess(pi.hProcess, &exitCode)) {
+                    if (exitCode != STILL_ACTIVE) {
+                        std::cout << "exec: Child process (PID: " << child_process_id_for_logging << ") exited after CTRL_C_EVENT. Exit code: " << exitCode << std::endl;
+                        child_exited_gracefully = true;
+                    } else {
+                        std::cout << "exec: Child process (PID: " << child_process_id_for_logging << ") still active after CTRL_C_EVENT." << std::endl;
+                    }
+                } else {
+                    std::cout << "exec: GetExitCodeProcess failed after CTRL_C_EVENT for PID " << child_process_id_for_logging << ", error: " << GetLastError() << ". Assuming it's still active." << std::endl;
+                }
+                if (!child_exited_gracefully) {
+                    
+                    std::cout << "exec: Forcing termination of child process (PID: " << child_process_id_for_logging << ")." << std::endl;
+                    if (!TerminateProcess(pi.hProcess, 1)) { 
+                        std::cout << "exec: TerminateProcess failed for PID " << child_process_id_for_logging << ", error: " << GetLastError() << std::endl;
+                    } else {
+                        std::cout << "exec: TerminateProcess call succeeded for PID " << child_process_id_for_logging << "." << std::endl;
+                        WaitForSingleObject(pi.hProcess, 200); 
                     }
                 }
                 CloseHandle(hStdOutRead);
-                WaitForSingleObject(pi.hProcess, 1000);
+                CloseHandle(pi.hThread); 
                 CloseHandle(pi.hProcess);
-                CloseHandle(pi.hThread);                
-                std::cout << "Process terminated." << std::endl;
-                return 1;
+                std::cout << "exec: Child process interrupt handling complete. Returning 1 (interrupted)." << std::endl;
+                return 0; 
             }
             
             DWORD bytesAvailable = 0;
+            
             if (!PeekNamedPipe(hStdOutRead, NULL, 0, NULL, &bytesAvailable, NULL)) {
+                
+                DWORD peek_error = GetLastError();
+                if (peek_error == ERROR_BROKEN_PIPE) {
+                    std::cout << "exec: Output pipe broken (child likely terminated)." << std::endl;
+                } else {
+                    std::cout << "exec: PeekNamedPipe failed, error: " << peek_error << std::endl;
+                }
+                still_running = false; 
                 break;
             }
             
@@ -1501,31 +1525,49 @@ namespace cmd {
                     output << buffer;
                     output.flush();
                 } else {
+                    DWORD read_error = GetLastError();
+                    if (read_error != ERROR_BROKEN_PIPE && bytesRead == 0) { 
+                         std::cout << "exec: ReadFile returned 0 bytes (EOF on pipe)." << std::endl;
+                    } else if (read_error != 0 && read_error != ERROR_BROKEN_PIPE) {
+                        std::cout << "exec: ReadFile failed, error: " << read_error << std::endl;
+                    }
+                    still_running = false;
                     break;
                 }
             } else {
-                DWORD exitCode;
-                if (GetExitCodeProcess(pi.hProcess, &exitCode)) {
-                    if (exitCode != STILL_ACTIVE) {
+                DWORD currentChildExitCode;
+                if (GetExitCodeProcess(pi.hProcess, &currentChildExitCode)) {
+                    if (currentChildExitCode != STILL_ACTIVE) {
                         still_running = false;
                     }
                 } else {
+                    std::cout << "exec: GetExitCodeProcess failed during loop, error: " << GetLastError() << std::endl;
+                    still_running = false;
                     break;
                 }
-                Sleep(50); 
+                if (still_running) {
+                    Sleep(50); 
+                }
             }
         }
         
         
-        DWORD exitCode = 0;
-        WaitForSingleObject(pi.hProcess, INFINITE);
-        GetExitCodeProcess(pi.hProcess, &exitCode);
+        DWORD final_child_exit_code = 0;
+        std::cout << "exec: Waiting for child process (PID: " << GetProcessId(pi.hProcess) << ") to fully terminate." << std::endl;
+        WaitForSingleObject(pi.hProcess, INFINITE); 
+
+        if (GetExitCodeProcess(pi.hProcess, &final_child_exit_code)) {
+            std::cout << "exec: Child process (PID: " << GetProcessId(pi.hProcess) << ") finally exited with code: " << final_child_exit_code << std::endl;
+        } else {
+            std::cout << "exec: Failed to get final exit code for child (PID: " << GetProcessId(pi.hProcess) << "), error: " << GetLastError() << std::endl;
+        }
         
         CloseHandle(hStdOutRead);
-        CloseHandle(pi.hProcess);
         CloseHandle(pi.hThread);
+        CloseHandle(pi.hProcess);
         
-        return static_cast<int>(exitCode);
+        std::cout << "exec: execCommand finished. Returning child's exit code: " << static_cast<int>(final_child_exit_code) << std::endl;
+        return static_cast<int>(final_child_exit_code);
 #endif
         return 0;
     }
