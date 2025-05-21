@@ -252,7 +252,7 @@ public:
     void event(gl::GLWindow *win, SDL_Event &e) override {
         if(e.type == SDL_KEYDOWN) {
             if(e.key.keysym.sym == SDLK_c && (e.key.keysym.mod & KMOD_CTRL)) {
-                if(program_running) {
+                if(program_running && interrupt_command == false) {
                     win->console.thread_safe_print("\nCTRL+C Interrupt - Command interrupted\n");
                     interrupt_command = true;
                 } else {
