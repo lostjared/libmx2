@@ -1459,7 +1459,11 @@ namespace cmd {
         while (true) {
             success = ReadFile(hStdOutRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL);
             if (!success || bytesRead == 0) break;
-            
+            if (cmd::AstExecutor::getExecutor().checkInterrupt()) {
+                output << "exec: interrupting process" << std::endl;
+                TerminateProcess(pi.hProcess, 0);
+                break;
+            }
             buffer[bytesRead] = '\0';
             output << buffer;
             output.flush();
