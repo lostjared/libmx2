@@ -48,6 +48,7 @@ void dumpTokens(scan::Scanner &scan, std::ostream& out = std::cout) {
 }
 
 void execute_command(const std::string &text) {
+    fflush(stdout);
     try {
         cmd::AstExecutor executor{};
         scan::TString string_buffer(text);
@@ -58,6 +59,7 @@ void execute_command(const std::string &text) {
         program_running = 1;
 #endif
         executor.execute(std::cin, std::cout, ast);
+        fflush(stdout);
         exit(0);
     } catch (const scan::ScanExcept &e) {
         std::cerr << "Scan error: " << e.why() << std::endl;

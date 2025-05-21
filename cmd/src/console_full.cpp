@@ -76,7 +76,8 @@ public:
                         scan::Scanner scanner(string_buffer);
                         cmd::Parser parser(scanner);
                         auto ast = parser.parse();
-                        executor.execute(input_stream, std::cout, ast);
+                        std::ostringstream out_stream;
+                        executor.execute(input_stream, out_stream, ast);
                         if(!lineBuf.empty()) {
                             window->console.thread_safe_print(lineBuf);
                             SDL_Event ev{SDL_USEREVENT};
