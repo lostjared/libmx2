@@ -1472,17 +1472,22 @@ namespace cmd {
         while (still_running) {
         
             if (cmd::AstExecutor::getExecutor().checkInterrupt()) {
-                output << "exec: interrupting process" << std::endl;
-                
-        
-                if (!TerminateProcess(pi.hProcess, 1)) {
-                    output << "exec: failed to kill process, error: " << GetLastError() << std::endl;
+                std::cout << "exec: interrupting process" << std::endl;
+                DWORD exitCode = 0;
+                GenerateConsoleCtrlEvent(CTRL_C_EVENT, GetProcessId(pi.hProcess));
+                Sleep(500);    
+                if (GetExitCodeProcess(pi.hProcess, &exitCode) && exitCode == STILL_ACTIVE) {
+                    if (!TerminateProcess(pi.hProcess, 1)) {
+                        DWORD error = GetLastError();
+                        std::cout << "exec: failed to kill process, error code: " << error << std::endl;
+                    }
                 }
-                
                 CloseHandle(hStdOutRead);
+                WaitForSingleObject(pi.hProcess, 1000);
                 CloseHandle(pi.hProcess);
-                CloseHandle(pi.hThread);
-                return 1;  
+                CloseHandle(pi.hThread);                
+                std::cout << "Process terminated." << std::endl;
+                return 1;
             }
             
             DWORD bytesAvailable = 0;
