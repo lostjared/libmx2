@@ -833,6 +833,7 @@ namespace console {
     }
 
     void Console::setTextAttrib(const int size, const SDL_Color &col) {
+        THREAD_GUARD(console_mutex);
         font_size = size;
         color = col;
         reload();

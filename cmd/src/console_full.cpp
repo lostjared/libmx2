@@ -50,7 +50,21 @@ public:
                     cmd_echo = false;
                     window->console.thread_safe_print("Echoing commands off.\n");
                     return 0;
-                } 
+                }  else if(text[0] == '@') {
+                    std::string command = text.substr(1);
+                    auto tokenize =[](const std::string &text) {
+                        std::vector<std::string> tokens;
+                        std::istringstream iss(text);
+                        std::string token;
+                        while (iss >> token) {
+                            tokens.push_back(token);
+                        }
+                        return tokens;
+                    };
+                    auto tokens = tokenize(command);
+                    window->console.procDefaultCommands(tokens);
+                    return  0;
+                }
                 if(cmd_echo) {
                     window->console.thread_safe_print("$ " + text + "\n");
                 }
