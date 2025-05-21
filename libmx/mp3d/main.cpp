@@ -172,7 +172,7 @@
 #endif
 
 class Game : public gl::GLObject {
-    cmd::AstExecutor executor;
+    cmd::AstExecutor &executor = cmd::AstExecutor::getExecutor();
     std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> new_game = nullptr;
     std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> drop_game = nullptr;
     std::function<int(const std::vector<std::string> &args, std::istream &input, std::ostream &output)> toggle_console = nullptr;
