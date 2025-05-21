@@ -1464,9 +1464,6 @@ namespace cmd {
         char buffer[4096];
         DWORD bytesRead;
         bool still_running = true;
-               char buffer[4096];
-        DWORD bytesRead;
-        bool still_running = true;
         while (still_running) {
             if (cmd::AstExecutor::getExecutor().checkInterrupt()) {
                 std::cout << "exec: interrupting child process (Windows)" << std::endl;
