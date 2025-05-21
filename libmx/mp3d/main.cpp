@@ -1,14 +1,14 @@
-#include "mx.hpp"
-#include "gl.hpp"
-#include "model.hpp"
-#include "quadtris.hpp"
-#include "intro.hpp"
-#include "start.hpp"
-#include "gameover.hpp"
-#include <cstdlib>
-#include <ctime>
-#include <filesystem>
-
+#include"mx.hpp"
+#include"gl.hpp"
+#include"model.hpp"
+#include"quadtris.hpp"
+#include"intro.hpp"
+#include"start.hpp"
+#include"gameover.hpp"
+#include<cstdlib>
+#include<ctime>
+#include<filesystem>
+#include<atomic>
 #if defined(__APPLE__) || defined(_WIN32) || defined(__linux__)
 #include"argz.hpp"
 #endif
@@ -196,6 +196,7 @@ public:
     }
 
     gl::GLWindow *window_handle = nullptr;
+    std::atomic<bool> interrupt_command{false};
 
     virtual void load(gl::GLWindow *win) override {
         if (win == nullptr) {
@@ -228,36 +229,42 @@ public:
         
         new_game = [win,this](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
             mp.newGame();
-            win->console.print("Piece Drop\n");
+            win->console.thread_safe_print("Piece Drop\n");
+            win->console.process_message_queue();
             return 0;
         };
         left_game = [win, this](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
             mp.grid.game_piece.moveLeft();
-            win->console.print("Piece: Move Left\n");
+            win->console.thread_safe_print("Piece: Move Left\n");
+            win->console.process_message_queue();
             return 0;
         };
 
         right_game = [win, this](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
             mp.grid.game_piece.moveRight();
-            win->console.print("Piece: Move Right\n");
+            win->console.thread_safe_print("Piece: Move Right\n");
+            win->console.process_message_queue();
             return 0;
         };
 
         down_game = [win, this](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
             mp.grid.game_piece.moveDown();
-            win->console.print("Piece: Move Down\n");
+            win->console.thread_safe_print("Piece: Move Down\n");
+            win->console.process_message_queue();
             return 0;
         };
 
         rotate_game = [win, this](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
             mp.grid.game_piece.shiftDirection();
-            win->console.print("Piece: Rotated\n");
+            win->console.thread_safe_print("Piece: Rotated\n");
+            win->console.process_message_queue();
             return 0;
         };
 
         shift_game = [win, this](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
             mp.grid.game_piece.shiftColors();
-            win->console.print("Piece: Shifted\n");
+            win->console.thread_safe_print("Piece: Shifted\n");
+            win->console.process_message_queue();
             return 0;
         };
 
@@ -265,10 +272,12 @@ public:
             if(!args.empty() && args.size() == 1) {
                 int value = std::stoi(args[0]);
                 mp.timeout = value;
-                win->console.printf("Game Timeout Set to: %d\n", value);
+                win->console.thread_safe_print("Game Timeout Set to: " + std::to_string(value) + "\n");
+                win->console.process_message_queue();
                 return 0;
             } else {
-                win->console.print("timeout: requires one argument the timeout\n");
+                win->console.thread_safe_print("timeout: requires one argument the timeout\n");
+                win->console.process_message_queue();
                 return 1;
             }
             return 1;
@@ -282,7 +291,8 @@ public:
 
         drop_game = [win, this](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
             mp.grid.game_piece.drop();
-            win->console.print("Piece Drop\n");
+            win->console.thread_safe_print("Piece Drop\n");
+            win->console.process_message_queue();
             return 0;
         };
         
@@ -302,10 +312,12 @@ public:
                 if(text == "@echo_on") {
                     cmd_echo = true;
                     window->console.thread_safe_print("Echoing commands on.\n");
+                    window->console.process_message_queue();
                     return 0;
                 } else if(text == "@echo_off") {
                     cmd_echo = false;
                     window->console.thread_safe_print("Echoing commands off.\n");
+                    window->console.process_message_queue();
                     return 0;
                 } 
                 if(cmd_echo) {
@@ -314,6 +326,23 @@ public:
                 std::thread([this, text, window]() {
                     try {
                         std::cout << "Executing: " << text << std::endl;
+                        std::string lineBuf;
+                        executor.setInterrupt(&interrupt_command);
+                        executor.setUpdateCallback(
+                            [&lineBuf,window,this](const std::string &chunk) {
+                                lineBuf += chunk;
+                                size_t nl;
+                                while ((nl = lineBuf.find('\n')) != std::string::npos) {
+                                    std::string oneLine = lineBuf.substr(0, nl+1);
+                                    lineBuf.erase(0, nl+1);
+                                    window->console.thread_safe_print(oneLine);
+                                    window->console.process_message_queue();             
+                                }
+                                if(interrupt_command) {
+                                    throw cmd::Exit_Exception(100);
+                                }
+                            }
+                        );
                         std::stringstream input_stream(text);
                         scan::TString string_buffer(text);
                         scan::Scanner scanner(string_buffer);
@@ -321,29 +350,45 @@ public:
                         auto ast = parser.parse();
                         std::stringstream output_stream;
                         executor.execute(input_stream, output_stream, ast);
-                        window->console.thread_safe_print(output_stream.str());
-                        SDL_Event ev{SDL_USEREVENT};
-                        SDL_PushEvent(&ev);
+                        if(!lineBuf.empty()) {
+                            window->console.thread_safe_print(lineBuf);
+                            window->console.process_message_queue();
+                        }
                     } catch(const scan::ScanExcept &e) {
                         window->console.thread_safe_print("Scanner Exception: " + e.why() + "\n");
+                        window->console.process_message_queue();
                     } catch(const cmd::Exit_Exception &e) {
-                        window->console.thread_safe_print("Execution " + std::to_string(e.getCode()) + "\n");
+                           if(e.getCode() == 100) {
+                            window->console.thread_safe_print("Execution interrupted\n");
+                        } else {
+                            window->console.thread_safe_print("Execution exited with code " + std::to_string(e.getCode()) + "\n");
+                            window->quit();
+                            return;
+                        }
+                        window->console.process_message_queue();
+                        interrupt_command = false;
                     } catch(const std::runtime_error &e) {
                         window->console.thread_safe_print("Runtime Exception: " + std::string(e.what()) + "\n");
+                        window->console.process_message_queue();
                     } catch(const std::exception &e) {
                         window->console.thread_safe_print("Exception: " + std::string(e.what()) + "\n");
+                        window->console.process_message_queue();
                     } catch (const state::StateException &e) {
                         window->console.thread_safe_print("State Exception: " + std::string(e.what()) + "\n");
+                        window->console.process_message_queue();
                     } catch(const cmd::AstFailure  &e) {
                         window->console.thread_safe_print("Failure: " + std::string(e.what()) + "\n");
+                        window->console.process_message_queue();
                     } catch(...) {
                         window->console.thread_safe_print("Unknown Error: Command execution failed\n");
+                        window->console.process_message_queue();
                     }
                 }).detach();
                 
                 return 0;
             } catch(const std::exception &e) {
                 win->console.thread_safe_print("Error: " + std::string(e.what()) + "\n");
+                window->console.process_message_queue();
                 return 1;
             }
         });      
@@ -475,153 +520,167 @@ public:
         }
     }
     virtual void event(gl::GLWindow *win, SDL_Event &e) override {
-
-        if(win->console_visible) return;
-
-        switch(e.type) {
-            case SDL_KEYUP:
-            if(e.key.keysym.sym == SDLK_RETURN) {
-                dropPiece();
-                win->console.print("Drop Piece\n");
+        if(win->console.isVisible()) {    
+            if(e.type == SDL_KEYDOWN) {
+                if(e.key.keysym.sym == SDLK_c && (e.key.keysym.mod & KMOD_CTRL)) {
+                    if(program_running) {
+                        win->console.thread_safe_print("\nCTRL+C Interrupt - Command interrupted\n");
+                        interrupt_command = true;
+                    } else {
+                        win->console.thread_safe_print("\nCTRL+C Interrupt - No Command Running\n");
+                    }
+                    win->console.process_message_queue();  
+                    return;
+                }
+                return;
             }
+            switch(e.type) {
+            case SDL_KEYUP:
+                if(!win->console_visible && e.key.keysym.sym == SDLK_RETURN) {
+                    dropPiece();
+                    win->console.thread_safe_print("\nCTRL+C Interrupt - No Command Running\n");
+                    win->console.process_message_queue();  
+                }
             break;
             case SDL_KEYDOWN:
-            switch(e.key.keysym.sym) {
-                case SDLK_LEFT:
-                    mp.grid.game_piece.moveLeft();
+                switch(e.key.keysym.sym) {
+                    case SDLK_LEFT:
+                        mp.grid.game_piece.moveLeft();
+                    break;
+                    case SDLK_RIGHT:
+                        mp.grid.game_piece.moveRight(); 
+                    break;
+                    case SDLK_UP:
+                        mp.grid.game_piece.shiftColors();
+                        win->console.print("Shift Colors\n");
+                    break;
+                    case SDLK_DOWN:
+                        mp.grid.game_piece.moveDown();
+                    break;
+                    case SDLK_SPACE:
+                        mp.grid.game_piece.shiftDirection();
+                        win->console.print("Shift Direction\n");
+                    break;
+                    case SDLK_w:
+                        rotateX += 0.5f;
+                        win->console.printf("RotateX: %f ", rotateX);
+                    break;
+                    case SDLK_s:
+                        rotateX -= 0.5;
+                        win->console.printf("RotateX: %f ", rotateX);
+                    break;
+                    case SDLK_a:
+                        rotateY -= 0.5f;
+                        win->console.printf("RotateY: %f ", rotateY);
+                    break;
+                    case SDLK_d:
+                        rotateY += 0.5f;
+                        win->console.printf("RotateY: %f ", rotateY);
+                    break;
+                    case SDLK_z:
+                        rotateZ -= 0.5f;
+                        win->console.printf("RotateZ: %f ", rotateZ);
+                    break;
+                    case SDLK_x:
+                        rotateZ +=  0.5f;
+                        win->console.printf("RotateZ: %f ", rotateZ);
+                    break;
+                    case SDLK_EQUALS:
+                        zoom += 0.5f;
+                        win->console.printf("Zoom: %f ",zoom);
+                    break;
+                    case SDLK_MINUS:
+                        zoom -= 0.5f;
+                        win->console.printf("Zoom: %f ",zoom);
+                    break;
+                    case SDLK_k:
+                    //std::cout << "ZOOM: " << zoom << " X,Y,Z" << rotateX << "," << rotateY << "," << rotateZ << std::endl;
+                    break;
+                }
                 break;
-                case SDLK_RIGHT:
-                    mp.grid.game_piece.moveRight(); 
-                break;
-                case SDLK_UP:
-                    mp.grid.game_piece.shiftColors();
-                    win->console.print("Shift Colors\n");
-                break;
-                case SDLK_DOWN:
-                    mp.grid.game_piece.moveDown();
-                break;
-                case SDLK_SPACE:
-                    mp.grid.game_piece.shiftDirection();
-                    win->console.print("Shift Direction\n");
-                break;
-                case SDLK_w:
-                    rotateX += 0.5f;
-                    win->console.printf("RotateX: %f ", rotateX);
-                break;
-                case SDLK_s:
-                    rotateX -= 0.5;
-                    win->console.printf("RotateX: %f ", rotateX);
-                break;
-                case SDLK_a:
-                     rotateY -= 0.5f;
-                     win->console.printf("RotateY: %f ", rotateY);
-                break;
-                case SDLK_d:
-                    rotateY += 0.5f;
-                    win->console.printf("RotateY: %f ", rotateY);
-                break;
-                case SDLK_z:
-                    rotateZ -= 0.5f;
-                    win->console.printf("RotateZ: %f ", rotateZ);
-                break;
-                case SDLK_x:
-                    rotateZ +=  0.5f;
-                    win->console.printf("RotateZ: %f ", rotateZ);
-                break;
-                case SDLK_EQUALS:
-                    zoom += 0.5f;
-                    win->console.printf("Zoom: %f ",zoom);
-                break;
-                case SDLK_MINUS:
-                    zoom -= 0.5f;
-                    win->console.printf("Zoom: %f ",zoom);
-                break;
-                case SDLK_k:
-                //std::cout << "ZOOM: " << zoom << " X,Y,Z" << rotateX << "," << rotateY << "," << rotateZ << std::endl;
-                break;
-            }
-            break;
-            case SDL_MOUSEBUTTONDOWN:
-            case SDL_FINGERDOWN:
-            {
-                int x, y;
-                if (e.type == SDL_MOUSEBUTTONDOWN) {
-                    x = e.button.x;
-                    y = e.button.y;
-                    mouse_down = true;
-                    mouse_x = x;
-                    mouse_y = y;
-                    mouse_click_time = SDL_GetTicks();
-                    double_click = false;
-                    if (SDL_GetTicks() - last_click_time < double_click_interval) {
-                        double_click = true;
-                    }
-                    last_click_time = SDL_GetTicks();
-                } else {
-                    x = e.tfinger.x * win->w;
-                    y = e.tfinger.y * win->h;
-                    num_fingers++;
-                    if (num_fingers == 1) {
+                case SDL_MOUSEBUTTONDOWN:
+                case SDL_FINGERDOWN:
+                {
+                    int x, y;
+                    if (e.type == SDL_MOUSEBUTTONDOWN) {
+                        x = e.button.x;
+                        y = e.button.y;
                         mouse_down = true;
                         mouse_x = x;
                         mouse_y = y;
-                    } else if (num_fingers == 2) {
-                        dropPiece();
-                    }
-                }
-                break;
-            }
-            case SDL_MOUSEBUTTONUP:
-            case SDL_FINGERUP:
-            {
-                if (e.type == SDL_MOUSEBUTTONUP) {
-                    mouse_down = false;
-                    int dy = e.button.y - mouse_y;
-                    if (dy < -50) {
-                        mp.grid.game_piece.shiftColors();
-                    } else if (dy > 50) {
-                        mp.grid.game_piece.shiftDirection();
-                    } else if (double_click == true) {
-                        dropPiece();
+                        mouse_click_time = SDL_GetTicks();
                         double_click = false;
+                        if (SDL_GetTicks() - last_click_time < double_click_interval) {
+                            double_click = true;
+                        }
+                        last_click_time = SDL_GetTicks();
+                    } else {
+                        x = e.tfinger.x * win->w;
+                        y = e.tfinger.y * win->h;
+                        num_fingers++;
+                        if (num_fingers == 1) {
+                            mouse_down = true;
+                            mouse_x = x;
+                            mouse_y = y;
+                        } else if (num_fingers == 2) {
+                            dropPiece();
+                        }
                     }
-                } else {
-                    num_fingers--;
-                    if (num_fingers <= 0) {
+                    break;
+                }
+                case SDL_MOUSEBUTTONUP:
+                case SDL_FINGERUP:
+                {
+                    if (e.type == SDL_MOUSEBUTTONUP) {
                         mouse_down = false;
-                        num_fingers = 0;
+                        int dy = e.button.y - mouse_y;
+                        if (dy < -50) {
+                            mp.grid.game_piece.shiftColors();
+                        } else if (dy > 50) {
+                            mp.grid.game_piece.shiftDirection();
+                        } else if (double_click == true) {
+                            dropPiece();
+                            double_click = false;
+                        }
+                    } else {
+                        num_fingers--;
+                        if (num_fingers <= 0) {
+                            mouse_down = false;
+                            num_fingers = 0;
+                        }
+                        int y = e.tfinger.y * win->h;
+                        int dy = y - mouse_y;
+                        if (dy < -50) {
+                            mp.grid.game_piece.shiftColors();
+                        } else if (dy > 50) {
+                            mp.grid.game_piece.shiftDirection();
+                        }
                     }
-                    int y = e.tfinger.y * win->h;
-                    int dy = y - mouse_y;
-                    if (dy < -50) {
-                        mp.grid.game_piece.shiftColors();
-                    } else if (dy > 50) {
-                        mp.grid.game_piece.shiftDirection();
-                    }
+                    break;
                 }
-                break;
+                case SDL_MOUSEMOTION:
+                case SDL_FINGERMOTION:
+                {
+                    int x;
+                    if (e.type == SDL_MOUSEMOTION) {
+                        x = e.motion.x;
+                    } else {
+                        x = e.tfinger.x * win->w;
+                    }
+                    if (mouse_down) {
+                        int dx = x - mouse_x;
+                        if (dx > 25) {
+                            mp.grid.game_piece.moveRight();
+                            mouse_x = x;
+                        } else if (dx < -25) {
+                            mp.grid.game_piece.moveLeft();
+                            mouse_x = x;
+                        }
+                    }
+                    break;
+                }
             }
-            case SDL_MOUSEMOTION:
-            case SDL_FINGERMOTION:
-            {
-                int x;
-                if (e.type == SDL_MOUSEMOTION) {
-                    x = e.motion.x;
-                } else {
-                    x = e.tfinger.x * win->w;
-                }
-                if (mouse_down) {
-                    int dx = x - mouse_x;
-                    if (dx > 25) {
-                        mp.grid.game_piece.moveRight();
-                        mouse_x = x;
-                    } else if (dx < -25) {
-                        mp.grid.game_piece.moveLeft();
-                        mouse_x = x;
-                    }
-                }
-                break;
-            }
+
         }
     }
 
