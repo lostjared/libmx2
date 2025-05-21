@@ -50,9 +50,9 @@ public:
                     cmd_echo = false;
                     window->console.thread_safe_print("Echoing commands off.\n");
                     return 0;
-                }  else if(text[0] == '@') {
+                }  else if(!text.empty() && text[0] == '@') {
                     std::string command = text.substr(1);
-                    auto tokenize =[](const std::string &text) {
+                    auto tokenize = [](const std::string &text) {
                         std::vector<std::string> tokens;
                         std::istringstream iss(text);
                         std::string token;
@@ -94,8 +94,7 @@ public:
                         executor.execute(input_stream, out_stream, ast);
                         if(!lineBuf.empty()) {
                             window->console.thread_safe_print(lineBuf);
-                            SDL_Event ev{SDL_USEREVENT};
-                            SDL_PushEvent(&ev);
+                            window->console.process_message_queue();
                         }
                     } catch(const scan::ScanExcept &e) {
                         window->console.thread_safe_print("Scanner Exception: " + e.why() + "\n");
@@ -112,15 +111,12 @@ public:
                     } catch(...) {
                         window->console.thread_safe_print("Unknown Error: Command execution failed\n");
                     }
-                    SDL_Event ev{SDL_USEREVENT};
-                    SDL_PushEvent(&ev);
                 }).detach();
                 
                 return 0;
             } catch(const std::exception &e) {
                 win->console.thread_safe_print("Error: " + std::string(e.what()) + "\n");
-                SDL_Event ev{SDL_USEREVENT};
-                SDL_PushEvent(&ev);
+                win->console.process_message_queue();
                 return 1;
             }
         });
@@ -229,10 +225,6 @@ public:
     }
     
     void event(gl::GLWindow *win, SDL_Event &e) override {
-        if (e.type == SDL_USEREVENT) {
-            win->console.process_message_queue();
-            win->console.refresh();
-        }
     }
 
     void update(float deltaTime) {
