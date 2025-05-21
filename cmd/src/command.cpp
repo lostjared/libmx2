@@ -1467,22 +1467,34 @@ namespace cmd {
         while (still_running) {
             if (cmd::AstExecutor::getExecutor().checkInterrupt()) {
                 std::cout << "exec: interrupting child process (Windows)" << std::endl;
-                DWORD child_process_id_for_logging = GetProcessId(pi.hProcess); 
-                DWORD exitCode = STILL_ACTIVE;
-                bool child_exited_gracefully = false;                    
-                std::cout << "exec: Forcing termination of child process (PID: " << child_process_id_for_logging << ")." << std::endl;
-                if (!TerminateProcess(pi.hProcess, 1)) { 
-                    std::cout << "exec: TerminateProcess failed for PID " << child_process_id_for_logging << ", error: " << GetLastError() << std::endl;
+                DWORD child_process_id = GetProcessId(pi.hProcess);
+                std::string kill_cmd = "taskkill /F /T /PID " + std::to_string(child_process_id);               
+                STARTUPINFO si_kill;
+                PROCESS_INFORMATION pi_kill;
+                ZeroMemory(&si_kill, sizeof(STARTUPINFO));
+                ZeroMemory(&pi_kill, sizeof(PROCESS_INFORMATION));
+                si_kill.cb = sizeof(STARTUPINFO);
+                if (CreateProcess(NULL, const_cast<LPSTR>(kill_cmd.c_str()), NULL, NULL, FALSE, 
+                                 CREATE_NO_WINDOW, NULL, NULL, &si_kill, &pi_kill)) {
+                    WaitForSingleObject(pi_kill.hProcess, 1000);
+                    CloseHandle(pi_kill.hProcess);
+                    CloseHandle(pi_kill.hThread);
+                    std::cout << "exec: taskkill command completed" << std::endl;
                 } else {
-                    std::cout << "exec: TerminateProcess call succeeded for PID " << child_process_id_for_logging << "." << std::endl;
-                    WaitForSingleObject(pi.hProcess, 200); 
+                    std::cout << "exec: Failed to launch taskkill, error: " << GetLastError() << std::endl;
+                    std::cout << "exec: Falling back to TerminateProcess" << std::endl;
+                    if (!TerminateProcess(pi.hProcess, 1)) {
+                        std::cout << "exec: TerminateProcess failed, error: " << GetLastError() << std::endl;
+                    } else {
+                        std::cout << "exec: TerminateProcess succeeded" << std::endl;
+                        WaitForSingleObject(pi.hProcess, 200);
+                    }
                 }
-                
                 CloseHandle(hStdOutRead);
-                CloseHandle(pi.hThread); 
+                CloseHandle(pi.hThread);
                 CloseHandle(pi.hProcess);
-                std::cout << "exec: Child process interrupt handling complete. Returning 1 (interrupted)." << std::endl;
-                return 0; 
+                std::cout << "exec: Child process interrupt handling complete. Returning 0" << std::endl;
+                return 0;
             }
             
             DWORD bytesAvailable = 0;
@@ -1547,7 +1559,6 @@ namespace cmd {
         CloseHandle(pi.hProcess);
         
         std::cout << "exec: execCommand finished. Returning child's exit code: " << static_cast<int>(final_child_exit_code) << std::endl;
-        return static_cast<int>(final_child_exit_code);
 #endif
         return 0;
     }
