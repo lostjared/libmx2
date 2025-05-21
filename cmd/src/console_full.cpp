@@ -10,6 +10,8 @@
 #include <emscripten/emscripten.h>
 #include <GLES3/gl3.h>
 #endif
+#include<atomic>
+#include<thread>
 
 
 #include"loadpng.hpp"
@@ -29,7 +31,8 @@ class Game : public gl::GLObject {
 public:
     Game() = default;
     virtual ~Game() override {}
-
+    std::atomic<bool> interrupt_command{false};
+    std::atomic<bool> program_running{false};
     cmd::AstExecutor &executor = cmd::AstExecutor::getExecutor();
     bool cmd_echo = true;
     
@@ -74,7 +77,7 @@ public:
                         std::string lineBuf;
 
                         executor.setUpdateCallback(
-                            [&lineBuf,window](const std::string &chunk) {
+                            [&lineBuf,window,this](const std::string &chunk) {
                                 lineBuf += chunk;
                                 size_t nl;
                                 while ((nl = lineBuf.find('\n')) != std::string::npos) {
@@ -82,6 +85,9 @@ public:
                                     lineBuf.erase(0, nl+1);
                                     window->console.thread_safe_print(oneLine);
                                     window->console.process_message_queue();             
+                                }
+                                if(interrupt_command) {
+                                    throw cmd::Exit_Exception(100);
                                 }
                             }
                         );
@@ -91,25 +97,41 @@ public:
                         cmd::Parser parser(scanner);
                         auto ast = parser.parse();
                         std::ostringstream out_stream;
+                        program_running = true;
                         executor.execute(input_stream, out_stream, ast);
                         if(!lineBuf.empty()) {
                             window->console.thread_safe_print(lineBuf);
                             window->console.process_message_queue();
                         }
+                        program_running = false;
                     } catch(const scan::ScanExcept &e) {
                         window->console.thread_safe_print("Scanner Exception: " + e.why() + "\n");
+                        window->console.process_message_queue();
                     } catch(const cmd::Exit_Exception &e) {
-                        window->console.thread_safe_print("Execution " + std::to_string(e.getCode()) + "\n");
+                        if(e.getCode() == 100) {
+                            window->console.thread_safe_print("Execution interrupted\n");
+                        } else {
+                            window->console.thread_safe_print("Execution exited with code " + std::to_string(e.getCode()) + "\n");
+                            window->quit();
+                            return;
+                        }
+                        window->console.process_message_queue();
+                        interrupt_command = false;
                     } catch(const std::runtime_error &e) {
                         window->console.thread_safe_print("Runtime Exception: " + std::string(e.what()) + "\n");
+                        window->console.process_message_queue();
                     } catch(const std::exception &e) {
                         window->console.thread_safe_print("Exception: " + std::string(e.what()) + "\n");
+                        window->console.process_message_queue();
                     } catch (const state::StateException &e) {
                         window->console.thread_safe_print("State Exception: " + std::string(e.what()) + "\n");
+                        window->console.process_message_queue();
                     } catch(const cmd::AstFailure  &e) {
                         window->console.thread_safe_print("Failure: " + std::string(e.what()) + "\n");
+                        window->console.process_message_queue();
                     } catch(...) {
                         window->console.thread_safe_print("Unknown Error: Command execution failed\n");
+                        window->console.process_message_queue();
                     }
                 }).detach();
                 
@@ -225,13 +247,24 @@ public:
     }
     
     void event(gl::GLWindow *win, SDL_Event &e) override {
+        if(e.type == SDL_KEYDOWN) {
+            if(e.key.keysym.sym == SDLK_c && (e.key.keysym.mod & KMOD_CTRL)) {
+                if(program_running) {
+                    win->console.thread_safe_print("\nCTRL+C Interrupt - Command interrupted\n");
+                    interrupt_command = true;
+                } else {
+                    win->console.thread_safe_print("\nCTRL+C Interrupt - No Command Running\n");
+                }
+                win->console.process_message_queue();  
+                return;
+            }
+        }
     }
 
     void update(float deltaTime) {
         static float time_f = 0.0f;
         time_f += deltaTime;
         program.setUniform("time_f", time_f);
-
     }
 private:
     mx::Font font;
