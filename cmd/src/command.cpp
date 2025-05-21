@@ -1407,7 +1407,7 @@ namespace cmd {
             waitpid(pid, &status, 0);
             return WEXITSTATUS(status);
         }
-#elif !defined(__EMSCRIPTEN__)  && defined(_WIN32)
+#elif !defined(__EMSCRIPTEN__) && defined(_WIN32)
         SECURITY_ATTRIBUTES sa;
         sa.nLength = sizeof(SECURITY_ATTRIBUTES);
         sa.bInheritHandle = TRUE;
@@ -1418,7 +1418,7 @@ namespace cmd {
             output << "exec: failed to create output pipe" << std::endl;
             return 1;
         }
-        SetHandleInformation(hStdOutRead, HANDLE_FLAG_INHERIT, 0); // Don't inherit read handle
+        SetHandleInformation(hStdOutRead, HANDLE_FLAG_INHERIT, 0); 
 
         HANDLE hStdInRead, hStdInWrite;
         if (!CreatePipe(&hStdInRead, &hStdInWrite, &sa, 0)) {
@@ -1427,7 +1427,7 @@ namespace cmd {
             output << "exec: failed to create input pipe" << std::endl;
             return 1;
         }
-        SetHandleInformation(hStdInWrite, HANDLE_FLAG_INHERIT, 0); // Don't inherit write handle
+        SetHandleInformation(hStdInWrite, HANDLE_FLAG_INHERIT, 0); 
 
         STARTUPINFO si;
         ZeroMemory(&si, sizeof(STARTUPINFO));
@@ -1452,28 +1452,74 @@ namespace cmd {
         }
         CloseHandle(hStdOutWrite);
         CloseHandle(hStdInRead);
-        CloseHandle(hStdInWrite);
-        DWORD bytesRead;
+
+        
+        if (input.peek() != EOF) {
+            std::string input_str{std::istreambuf_iterator<char>(input), 
+                        std::istreambuf_iterator<char>()};
+            if (!input_str.empty()) {
+                DWORD bytesWritten;
+                WriteFile(hStdInWrite, input_str.c_str(), static_cast<DWORD>(input_str.size()), &bytesWritten, NULL);
+            }
+        }
+        CloseHandle(hStdInWrite); 
+
+        
         char buffer[4096];
-        BOOL success;
-        while (true) {
-            success = ReadFile(hStdOutRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL);
-            if (!success || bytesRead == 0) break;
+        DWORD bytesRead;
+        bool still_running = true;
+        
+        while (still_running) {
+        
             if (cmd::AstExecutor::getExecutor().checkInterrupt()) {
                 output << "exec: interrupting process" << std::endl;
-                TerminateProcess(pi.hProcess, 0);
+                
+        
+                if (!TerminateProcess(pi.hProcess, 1)) {
+                    output << "exec: failed to kill process, error: " << GetLastError() << std::endl;
+                }
+                
+                CloseHandle(hStdOutRead);
+                CloseHandle(pi.hProcess);
+                CloseHandle(pi.hThread);
+                return 1;  
+            }
+            
+            DWORD bytesAvailable = 0;
+            if (!PeekNamedPipe(hStdOutRead, NULL, 0, NULL, &bytesAvailable, NULL)) {
                 break;
             }
-            buffer[bytesRead] = '\0';
-            output << buffer;
-            output.flush();
+            
+            if (bytesAvailable > 0) {
+                if (ReadFile(hStdOutRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0) {
+                    buffer[bytesRead] = '\0';
+                    output << buffer;
+                    output.flush();
+                } else {
+                    break;
+                }
+            } else {
+                DWORD exitCode;
+                if (GetExitCodeProcess(pi.hProcess, &exitCode)) {
+                    if (exitCode != STILL_ACTIVE) {
+                        still_running = false;
+                    }
+                } else {
+                    break;
+                }
+                Sleep(50); 
+            }
         }
-        WaitForSingleObject(pi.hProcess, INFINITE);
+        
+        
         DWORD exitCode = 0;
+        WaitForSingleObject(pi.hProcess, INFINITE);
         GetExitCodeProcess(pi.hProcess, &exitCode);
+        
         CloseHandle(hStdOutRead);
         CloseHandle(pi.hProcess);
         CloseHandle(pi.hThread);
+        
         return static_cast<int>(exitCode);
 #endif
         return 0;
