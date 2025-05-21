@@ -794,7 +794,12 @@ namespace cmd {
 
         bool checkInterrupt() {
             std::cout << "Checking interrupt" << std::endl;
-            return exec_interrupt != nullptr && exec_interrupt->load();
+             std::cout << "Checking interrupt: pointer=" 
+              << (exec_interrupt ? "valid" : "NULL")
+              << ", value=" 
+              << (exec_interrupt && exec_interrupt->load() ? "TRUE" : "false") 
+              << std::endl;
+            return exec_interrupt != nullptr && *exec_interrupt;
         }
 
         bool on_fail = true;
