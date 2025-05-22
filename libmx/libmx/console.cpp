@@ -1289,12 +1289,6 @@ namespace console {
             scrollOffset = (int)(progress * maxOffset);
             scrollOffset = std::max(0, std::min(maxOffset, scrollOffset));
             needsRedraw = true;
-
-            std::cout << "Drag update: mouseY="<<mouseY
-                    << ", localY="<<localY
-                    << ", prog="<<progress
-                    << ", offset="<<scrollOffset<<"/"<<maxOffset
-                    << std::endl;
     }
 
     void Console::endScrollDrag() {
