@@ -182,6 +182,7 @@ namespace console {
     }
 
     void Console::keypress(char c) {
+        THREAD_GUARD(console_mutex);
         needsRedraw = true;
         try {
             if (c == 8) {
@@ -338,6 +339,7 @@ namespace console {
     }
 
     void Console::checkForLineWrap() {
+        THREAD_GUARD(console_mutex);
         std::string text = data.str();
         if (cursorPos == 0 || c_chars.characters.empty()) return;
         
@@ -374,6 +376,7 @@ namespace console {
     }
 
     void Console::updateCursorPosition() {
+        THREAD_GUARD(console_mutex);
         if (!surface || c_chars.characters.empty()) {
             return;
         }
@@ -426,6 +429,7 @@ namespace console {
     }
 
     void Console::checkScroll() {
+        THREAD_GUARD(console_mutex);
         if (!surface || c_chars.characters.empty() || c_chars.characters.find('A') == c_chars.characters.end()) {
             return;
         }
