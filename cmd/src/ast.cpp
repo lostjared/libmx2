@@ -4,9 +4,9 @@
 namespace cmd {
 
     CommandRegistry AstExecutor::registry;
-
+    AstExecutor AstExecutor::instance;
+    
     AstExecutor& AstExecutor::getExecutor() {
-        static AstExecutor instance;
         return instance;
     }
 

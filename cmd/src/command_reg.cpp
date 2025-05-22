@@ -148,8 +148,11 @@ namespace cmd {
                 executor.getRegistry()
                         .registerUserDefinedCommand(kv.first, kv.second);
             }
+            bool previousReturnSignal = executor.getReturnSignal();
+            executor.setReturnSignal(false);
             executor.execute(input, output, info.body);
             result = executor.getLastExitStatus();
+            executor.setReturnSignal(previousReturnSignal);
         }
         catch (const std::exception& e) {
             output << name << ": execution failed: " << e.what() << "\n";

@@ -32,8 +32,8 @@ void sigint_handler(int sig) {
     if (program_running) {
         program_running = 0;
     } else {
-        std::cout << "\nMXCMD: Interrupt signal received. Exiting...\n";
-        exit(130);
+          std::cout << "\nMXCMD: Interrupt signal received. Exiting...\n";
+          exit(130);
     }
 }
 #endif
@@ -105,7 +105,6 @@ int main(int argc, char **argv) {
             cmd::argv.push_back(argv[i]);
         }
     }
-
 #ifdef _WIN32
     cmd::AstExecutor::getExecutor().getRegistry().registerTypedCommand("exec", 
         [](const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
@@ -264,8 +263,9 @@ int main(int argc, char **argv) {
                         program_running = 1;
 #endif
                         executor.execute(std::cin, std::cout, ast);
+
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
-                        program_running = 0;
+                        program_running = 1;
 #endif
                         if(debug_cmd) {
                             ast->print(std::cout);
@@ -296,8 +296,9 @@ int main(int argc, char **argv) {
         } catch (...) {
             std::cerr << "Unknown error occurred." << std::endl;
         }
+
     } else if(argc >= 2 && (std::string(argv[1]) != "--stdin" && std::string(argv[1]) != "-i")) {
-         cmd::AstExecutor &executor = cmd::AstExecutor::getExecutor();
+        cmd::AstExecutor &executor = cmd::AstExecutor::getExecutor();
         bool debug_cmd = false;
         bool debug_html = false;
         bool debug_tokens = false;
@@ -337,6 +338,8 @@ int main(int argc, char **argv) {
                 }
             }
 
+            std::atomic<bool> exec_interrupt = false;
+            executor.setInterrupt(&exec_interrupt);
             try {
                 scan::TString string_buffer(fileContent); 
                 scan::Scanner scanner(string_buffer);
@@ -351,10 +354,16 @@ int main(int argc, char **argv) {
     #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
                 program_running = 1;
     #endif
+                executor.setPath(std::filesystem::path(argv[1]).parent_path().string());
+                executor.setUpdateCallback([&exec_interrupt](const std::string &text) {
+                    if(exec_interrupt.load()) {
+                        throw cmd::Exit_Exception(100);
+                    }
+                });
                 executor.execute(std::cin, std::cout, ast);
-    #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
-                program_running = 0;
-    #endif
+
+                std::cout.flush();
+                std::cout << std::flush;
                 if(debug_cmd || debug_html) {
                     std::cout << "Debug Information written to: debug.html\n\n";
                     std::ofstream html_file("debug.html");

@@ -1056,7 +1056,7 @@ namespace cmd {
     int cmdCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
         if (args.empty()) {
             output << "cmd: missing file operand" << std::endl;
-            return 1;
+            throw AstFailure("Exception: Script: execution failed missing operand.\n");
         }
 
         std::string filename = getVar(args[0]);
@@ -1069,7 +1069,7 @@ namespace cmd {
         std::ifstream file(filename);
         if (!file.is_open()) {
             output << "cmd: cannot open file '" << filename << "': No such file or directory" << std::endl;
-            return 1;
+            throw AstFailure("Exception: Script: " + filename + " execution failed. File not found\n");
         }
         std::stringstream buffer;
         buffer << file.rdbuf();
@@ -1080,16 +1080,13 @@ namespace cmd {
                     script.end()
             );
         }
-        state::GameState *gameState = state::getGameState();
         try {
-            gameState->clearAllLists();
-            gameState->clearVariables();
             cmd::argv.clear();
             for(size_t i = 1; i < args.size(); ++i) {
                 cmd::argv.push_back(getVar(args[i]));
             }
         } catch(state::StateException &e) {
-            output << "cmd: Error in " << filename << ": " << e.what() << std::endl;
+            throw AstFailure("Exception: Script: State Exception execution failed.\n");
             return 1;
         }
 
@@ -1104,7 +1101,9 @@ namespace cmd {
             program_running = 1;
 #endif
             scriptExecutor.execute(input, output, ast); 
-
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+            program_running = 0;
+#endif
 
             return 0;
         } catch (const scan::ScanExcept &e) {
@@ -1115,7 +1114,7 @@ namespace cmd {
             return 1;
         } 
         catch(const AstFailure &e) {
-            throw AstFailure("Exception: Script: " + filename + " execution failed.\n");
+            throw AstFailure("Exception: Script: " + filename + " execution failed: " + std::string(e.what()) + "\n");
         } 
         catch (...) {
             output << "cmd: Unknown error occurred while executing " << filename << std::endl;
@@ -1626,20 +1625,20 @@ namespace cmd {
         auto &reg = AstExecutor::getRegistry();
         std::shared_ptr<Library> &lib = reg.setLibrary(libPath);
         if(!lib) {
-            output << "extern: failed to load library " << libPath << "\n";
+            std::cerr << "extern: failed to load library " << libPath << "\n";
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
             program_running = 0;
 #else
-            exit(0);
+            //exit(0);
 #endif
             return 1;
         }
         if(!lib->hasSymbol(funcName)) {
-            output << "extern: function " << funcName << " not found in library " << libPath << "\n";
+            std::cerr << "extern: function " << funcName << " not found in library " << libPath << "\n";
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
             program_running = 0;
 #else
-            exit(0);
+            //exit(0);
 #endif
             return 1;
         }
@@ -1650,14 +1649,14 @@ namespace cmd {
         info.libraryPath = libPath;
 
         if(info.func) {
-            reg.registerExternCommand(cmdName, info);
+            reg.registerExternCommand(cmdName, info);            
             return 0;
         } else {
-            output << "extern: failed to get function pointer for " << funcName << "\n";
+            std::cerr << "extern: failed to get function pointer for " << funcName << "\n";
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
             program_running = 0;
 #else
-            exit(0);
+            //exit(0);
 #endif
             return 1;
         }
