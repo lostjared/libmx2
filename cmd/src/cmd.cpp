@@ -355,11 +355,6 @@ int main(int argc, char **argv) {
                 program_running = 1;
     #endif
                 executor.setPath(std::filesystem::path(argv[1]).parent_path().string());
-                executor.setUpdateCallback([&exec_interrupt](const std::string &text) {
-                    if(exec_interrupt.load()) {
-                        throw cmd::Exit_Exception(100);
-                    }
-                });
                 executor.execute(std::cin, std::cout, ast);
 
                 std::cout.flush();

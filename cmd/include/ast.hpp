@@ -862,7 +862,10 @@ namespace cmd {
                 defaultOutput << "Exception: " << e.what() << std::endl;
                execUpdateCallback(defaultOutput.str());  
             }
-            defaultOutputStream << defaultOutput.str();
+
+            if(updateCallback == nullptr) {
+                defaultOutputStream << defaultOutput.str();
+            }
         }
 
         void setVariable(const std::string& name, const std::string& value) {
