@@ -787,6 +787,11 @@ namespace cmd {
             exec_interrupt = interrupt;
         }
 
+	void setInterruptValue(bool b) {
+	    if(exec_interrupt)
+		exec_interrupt->store(b);
+	}
+
         bool checkInterrupt() {
             return exec_interrupt != nullptr && exec_interrupt->load();
         }

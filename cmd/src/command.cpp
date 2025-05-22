@@ -1376,6 +1376,7 @@ namespace cmd {
                     
                     close(out_pipe[0]); 
                     still_running = false;
+		    AstExecutor::getExecutor().setInterruptValue(false);
                     break;
                 }
                 fd_set read_fds;

@@ -91,6 +91,7 @@ public:
                                     window->console.process_message_queue();             
                                 }
                                 if(interrupt_command) {
+				    interrupt_command = false;
                                     throw cmd::Exit_Exception(100);
                                 }
                             }
