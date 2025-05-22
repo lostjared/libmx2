@@ -1376,7 +1376,7 @@ namespace cmd {
                     
                     close(out_pipe[0]); 
                     still_running = false;
-		    AstExecutor::getExecutor().setInterruptValue(false);
+		            AstExecutor::getExecutor().setInterruptValue(false);
                     break;
                 }
                 fd_set read_fds;
@@ -1503,6 +1503,7 @@ namespace cmd {
                 CloseHandle(pi.hThread);
                 CloseHandle(pi.hProcess);
                 std::cout << "exec: Child process interrupt handling complete. Returning 0" << std::endl;
+                AstExecutor::getExecutor().setInterruptValue(false);
                 return 0;
             }
             
