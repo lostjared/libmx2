@@ -1020,6 +1020,7 @@ namespace cmd {
 
     private:
         static CommandRegistry registry;
+        static AstExecutor instance;
         std::string path;
         int lastExitStatus = 0;
         mutable std::istream* input = nullptr;
