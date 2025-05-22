@@ -1416,7 +1416,7 @@ namespace cmd {
 #elif !defined(__EMSCRIPTEN__) && defined(_WIN32)
 
 
-        std::thread([](){ 
+        std::thread([output, command_str](){ 
             SECURITY_ATTRIBUTES sa;
             sa.nLength = sizeof(SECURITY_ATTRIBUTES);
             sa.bInheritHandle = TRUE;
