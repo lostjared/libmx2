@@ -190,7 +190,7 @@ namespace console {
         if (scrollOffset != 0) {
             scrollOffset = 0;
             needsRedraw = true;
-            userScrolling = false; // Add this flag
+            userScrolling = false; 
         }
     }
 
@@ -210,33 +210,98 @@ namespace console {
         callbackSet = true;
     }
 
+    void Console::updateInputScrollOffset() {
+        if (c_chars.characters.empty()) return;
+        
+        int maxWidth = console_rect.w - 50;
+        int promptWidth = 0;
+        
+        
+        for (char c : promptText) {
+            int charWidth = 0;
+            if (c == '\t') {
+                charWidth = c_chars.characters['A']->w * 4;
+            } else {
+                auto it = c_chars.characters.find(c);
+                charWidth = (it != c_chars.characters.end()) ? 
+                            it->second->w : c_chars.characters['A']->w;
+            }
+            promptWidth += charWidth;
+        }
+        
+        
+        int cursorPixelPos = promptWidth;
+        for (int i = inputScrollOffset; i < static_cast<int>(inputCursorPos); ++i) {
+            if (i >= 0 && i < (int)inputBuffer.size()) {
+                char c = inputBuffer[i];
+                int charWidth = 0;
+                if (c == '\t') {
+                    charWidth = c_chars.characters['A']->w * 4;
+                } else {
+                    auto it = c_chars.characters.find(c);
+                    charWidth = (it != c_chars.characters.end()) ? 
+                                it->second->w : c_chars.characters['A']->w;
+                }
+                cursorPixelPos += charWidth;
+            }
+        }
+        
+        
+        while (cursorPixelPos > maxWidth && inputScrollOffset < (int)inputBuffer.size()) {
+            if (inputScrollOffset < (int)inputBuffer.size()) {
+                char c = inputBuffer[inputScrollOffset];
+                int charWidth = 0;
+                if (c == '\t') {
+                    charWidth = c_chars.characters['A']->w * 4;
+                } else {
+                    auto it = c_chars.characters.find(c);
+                    charWidth = (it != c_chars.characters.end()) ? 
+                                it->second->w : c_chars.characters['A']->w;
+                }
+                cursorPixelPos -= charWidth;
+                inputScrollOffset++;
+            } else {
+                break;
+            }
+        }
+        
+        if (static_cast<int>(inputCursorPos) < inputScrollOffset) {
+            inputScrollOffset = inputCursorPos;
+        }
+    }
+
     void Console::keypress(char c) {
         THREAD_GUARD(console_mutex);
         needsRedraw = true;
         try {
-            if (c == 8) {
-                if (!inputBuffer.empty()
-                    && inputCursorPos > 0
-                    && inputCursorPos <= inputBuffer.size()) {
-                    if (inMultilineMode 
-                        && inputCursorPos == inputBuffer.size() 
-                        && inputBuffer[inputCursorPos - 1] == '{') {
-                        braceCount--;
-                        if (braceCount == 0) {
-                            inMultilineMode = false;
-                            promptText = originalPrompt;
-                            multilineBuffer.clear();
-                        }
-                    } else if (inMultilineMode
-                               && inputCursorPos == inputBuffer.size()
-                               && inputBuffer[inputCursorPos - 1] == '}') {
-                        braceCount++;
-                    }
-                    
+            if (c == 8) { 
+                if (!inputBuffer.empty() && inputCursorPos > 0 && inputCursorPos <= inputBuffer.size()) {
                     inputBuffer.erase(inputCursorPos - 1, 1);
                     inputCursorPos--;
+                    if (inputScrollOffset > 0) {
+                        inputScrollOffset--;
+                    }
+                    
+                    if (static_cast<int>(inputCursorPos) < inputScrollOffset) {
+                        inputScrollOffset = inputCursorPos;
+                    }
+                    
+                    updateInputScrollOffset();
+                }
+            } else if (c == 127) { 
+                if (!inputBuffer.empty() && inputCursorPos < inputBuffer.size()) {
+                    inputBuffer.erase(inputCursorPos, 1);
+                    
+                    if (inputScrollOffset > static_cast<int>(inputBuffer.size())) {
+                        inputScrollOffset = std::max(0, static_cast<int>(inputBuffer.size()));
+                    }
+                    
+                    updateInputScrollOffset();
                 }
             } else if (c == 13) { 
+                
+                inputScrollOffset = 0;
+                
                 std::string cmd = inputBuffer;
                 
                 if (inMultilineMode) {
@@ -261,18 +326,22 @@ namespace console {
                         size_t lastCloseBrace = processedCommand.find_last_of('}');
                         if (lastCloseBrace != std::string::npos) {
                             processedCommand.erase(lastCloseBrace, 1);
-                        }    
+                        }
+                        inputScrollOffset = 0;    
                         procCmd(processedCommand);
                         multilineBuffer.clear();
+                        scrollOffset = 0;
+                        userScrolling = false;
+                        scrollToBottom();
+                        this->process_message_queue();
                     } else {
                         this->thread_safe_print(cmd + "\n");
                         needsRedraw = true;
                         needsReflow = true;
+                        scrollOffset = 0;
+                        userScrolling = false;
                         scrollToBottom();
-#ifndef __EMSCRIPTEN__
                         this->process_message_queue();
-#endif
-                    
                     }
                 } else {
                     inputBuffer.clear();
@@ -299,68 +368,47 @@ namespace console {
                 
                 scrollToBottom();
             } else if (c == '{') {
-                if (!promptWouldWrap) {
-                    inputBuffer.insert(inputCursorPos, 1, c);
-                    inputCursorPos++;
-                    
-                    if (!inMultilineMode) {
-                        braceCount++;  
-                    }
+                inputBuffer.insert(inputCursorPos, 1, c);
+                inputCursorPos++;
+                updateInputScrollOffset();
+                
+                if (!inMultilineMode) {
+                    braceCount++;  
                 }
             } else if (c == '}') {
-                if (!promptWouldWrap) {
-                    inputBuffer.insert(inputCursorPos, 1, c);
-                    inputCursorPos++;
-                    
-                    if (inMultilineMode) {
-                        braceCount--;
-                        if (braceCount == 0) {
-                            std::string processedCommand;
-                            size_t firstOpenBrace = multilineBuffer.find('{');
-                            if (firstOpenBrace != std::string::npos) {
-                                multilineBuffer.erase(firstOpenBrace, 1);
-                            }
-                            size_t lastCloseBrace = inputBuffer.find_last_of('}');
-                            if (lastCloseBrace != std::string::npos) {
-                                inputBuffer.erase(lastCloseBrace, 1);
-                            }
-                            processedCommand = multilineBuffer + inputBuffer;
-                            inMultilineMode = false;
-                            promptText = originalPrompt;
-                            this->thread_safe_print(inputBuffer + "\n");
-                            inputBuffer.clear();
-                            inputCursorPos = 0;
-                            multilineBuffer.clear();
-                            procCmd(processedCommand + "\n");                          
-                            needsRedraw = true;
-                            scrollToBottom();
+                inputBuffer.insert(inputCursorPos, 1, c);
+                inputCursorPos++;
+                updateInputScrollOffset();
+                
+                if (inMultilineMode) {
+                    braceCount--;
+                    if (braceCount == 0) {
+                        std::string processedCommand;
+                        size_t firstOpenBrace = multilineBuffer.find('{');
+                        if (firstOpenBrace != std::string::npos) {
+                            multilineBuffer.erase(firstOpenBrace, 1);
                         }
+                        size_t lastCloseBrace = inputBuffer.find_last_of('}');
+                        if (lastCloseBrace != std::string::npos) {
+                            inputBuffer.erase(lastCloseBrace, 1);
+                        }
+                        processedCommand = multilineBuffer + inputBuffer;
+                        inMultilineMode = false;
+                        promptText = originalPrompt;
+                        this->thread_safe_print(inputBuffer + "\n");
+                        inputBuffer.clear();
+                        inputCursorPos = 0;
+                        multilineBuffer.clear();
+                        procCmd(processedCommand + "\n");                          
+                        needsRedraw = true;
+                        scrollToBottom();
+                        this->process_message_queue();
                     }
                 }
             } else {
-                if (!promptWouldWrap) {
-                    inputBuffer.insert(inputCursorPos, 1, c);
-                    inputCursorPos++;
-                    std::string promptAndInput = promptText + inputBuffer;
-                    int totalWidth = 0;
-                    
-                    for (char ch : promptAndInput) {
-                        int width = 0;
-                        if (ch == '\t') {
-                            width = c_chars.characters['A']->w * 4;
-                        } else {
-                            auto it = c_chars.characters.find(ch);
-                            width = (it != c_chars.characters.end()) ? 
-                                    it->second->w : c_chars.characters['A']->w;
-                        }
-                        totalWidth += width;
-                    }
-                    if (totalWidth > (console_rect.w - 50)) {
-                        inputBuffer.erase(inputCursorPos - 1, 1);
-                        inputCursorPos--;
-                        promptWouldWrap = true;
-                    }
-                }
+                inputBuffer.insert(inputCursorPos, 1, c);
+                inputCursorPos++;
+                updateInputScrollOffset();
             }
         } catch (const std::exception &e) {
             std::cerr << "Error in keypress: " << e.what() << std::endl;
@@ -658,16 +706,8 @@ namespace console {
         int x = console_rect.x;
         if (inputCursorPos > inputBuffer.size())
             inputCursorPos = inputBuffer.size();
-        std::string promptAndInput = promptText + inputBuffer;
-        int cursorXPos = console_rect.x;
         
-        for (size_t i = 0; i < promptAndInput.length(); ++i) {
-            char c = promptAndInput[i];
-            
-            if (i == promptText.length() + inputCursorPos) {
-                cursorXPos = x;
-            }
-            
+        for (char c : promptText) {
             auto it = c_chars.characters.find(c);
             if (it != c_chars.characters.end()) {
                 SDL_Surface *char_surface = it->second;
@@ -679,9 +719,42 @@ namespace console {
             }
         }
         
-        if (inputCursorPos > inputBuffer.size())
-            inputCursorPos = inputBuffer.size();
-        if (inputCursorPos == inputBuffer.size()) {
+        int cursorXPos = x;
+        int maxWidth = console_rect.w - 50;
+
+        for (int i = inputScrollOffset; i < (int)inputBuffer.size(); ++i) {
+            char c = inputBuffer[i];
+            
+            if (i == static_cast<int>(inputCursorPos)) {
+                cursorXPos = x;
+            }
+            
+            int charWidth = 0;
+            if (c == '\t') {
+                charWidth = c_chars.characters['A']->w * 4;
+            } else {
+                auto it = c_chars.characters.find(c);
+                charWidth = (it != c_chars.characters.end()) ? 
+                            it->second->w : c_chars.characters['A']->w;
+            }
+            
+            if (x + charWidth > console_rect.x + maxWidth) {
+                break;
+            }
+        
+            if (c != '\t') {
+                auto it = c_chars.characters.find(c);
+                if (it != c_chars.characters.end()) {
+                    SDL_Surface *char_surface = it->second;
+                    SDL_Rect dest_rect = {x, promptY, char_surface->w, char_surface->h};
+                    SDL_BlitSurface(char_surface, nullptr, surface, &dest_rect);
+                }
+            }
+            
+            x += charWidth;
+        }
+        
+        if (inputCursorPos >= inputBuffer.size()) {
             cursorXPos = x;
         }
         
@@ -730,25 +803,34 @@ namespace console {
 
     void Console::scrollToBottom() {
         THREAD_GUARD(console_mutex);
-        if (scrollOffset == 0) {
-            cursorPos = data.str().length();
-            updateCursorPosition();
-            checkScroll();  
-            inputCursorPos = inputBuffer.length();
-        }
+        scrollOffset = 0;        
+        userScrolling = false;   
+        cursorPos = data.str().length();
+        updateCursorPosition();
+        checkScroll();  
+        inputCursorPos = inputBuffer.length();
+        needsRedraw = true;      
     }
 
     void Console::moveCursorLeft() {
         THREAD_GUARD(console_mutex);
         if (inputCursorPos > 0) {
             inputCursorPos--;
+            
+            if (static_cast<int>(inputCursorPos) < inputScrollOffset) {
+                inputScrollOffset = inputCursorPos;
+                needsRedraw = true;
+            }
+            
+            updateInputScrollOffset();
         }
     }
-    
+
     void Console::moveCursorRight() {
         THREAD_GUARD(console_mutex);
         if (inputCursorPos < inputBuffer.length()) {
             inputCursorPos++;
+            updateInputScrollOffset();
         }
     }
 
@@ -761,6 +843,8 @@ namespace console {
             historyIndex++;
             inputBuffer = commandHistory[commandHistory.size() - 1 - historyIndex];
             inputCursorPos = inputBuffer.length();
+            inputScrollOffset = 0; 
+            updateInputScrollOffset();
         }
     }
 
@@ -770,11 +854,15 @@ namespace console {
             historyIndex--;
             inputBuffer = commandHistory[commandHistory.size() - 1 - historyIndex];
             inputCursorPos = inputBuffer.length();
+            inputScrollOffset = 0;  
+            updateInputScrollOffset();
         }
         else if (historyIndex == 0) {
             historyIndex = -1;
             inputBuffer = tempBuffer;
             inputCursorPos = inputBuffer.length();
+            inputScrollOffset = 0;  
+            updateInputScrollOffset();
         }
     }
 
@@ -827,7 +915,7 @@ namespace console {
             data << message_queue.front();
             message_queue.pop();
         }
-        static constexpr size_t MAX_CHARS = 200000;
+        static constexpr size_t MAX_CHARS = 300000;
         auto s = data.str();
         if (s.size() > MAX_CHARS) {
             s = s.substr(s.size() - MAX_CHARS);
@@ -1132,6 +1220,8 @@ namespace console {
             else if(e.key.keysym.sym == SDLK_PAGEDOWN) {
                 console.scrollPageDown();
                 return;
+            } else if(e.key.keysym.sym == SDLK_DELETE) {  
+                console.keypress(127);  
             }
         }
         else if(e.type == SDL_MOUSEWHEEL) {

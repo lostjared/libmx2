@@ -117,6 +117,7 @@ namespace console {
         void moveCursorRight();
         void moveHistoryUp();    
         void moveHistoryDown();
+        void updateInputScrollOffset();
         int getHeight() const { return console_rect.h; }
         int getWidth() const { return console_rect.w; }
         std::string promptText = "$ "; 
@@ -144,7 +145,7 @@ namespace console {
         FadeState fadeState = FADE_NONE;
         void process_message_queue();     
 #if defined(__EMSCRIPTEN__)
-        void processCommandQueue();  // Manually process commands for Emscripten
+        void processCommandQueue();  
 #endif
         void scrollUp();
         void scrollDown();
@@ -170,7 +171,6 @@ namespace console {
         SDL_Rect console_rect;
         size_t cursorPos = 0;
         size_t stopPosition = 0;
-        bool promptWouldWrap = false;
         size_t inputCursorPos = 0;
         int cursorX = 0;        
         int cursorY = 0;        
@@ -186,7 +186,8 @@ namespace console {
         std::string tempBuffer;   
         unsigned char alpha = 188;                  
         Uint32 fadeStartTime = 0;
-        unsigned int fadeDuration = 500; 
+        unsigned int fadeDuration = 500;
+        int inputScrollOffset = 0; 
         struct TextLine {
             std::string text;       
             size_t startPos;        
