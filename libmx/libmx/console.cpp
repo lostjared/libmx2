@@ -166,6 +166,36 @@ namespace console {
         c_chars.clear();
     }
     
+    void Console::scrollUp() {
+        THREAD_GUARD(console_mutex);
+        userScrolling = true;
+        int maxOffset = std::max(0, (int)lines.size() - visibleLineCount);
+        if (scrollOffset < maxOffset) {
+            ++scrollOffset;
+            needsRedraw = true;
+            std::cout << "scrollUp: offset=" << scrollOffset << "/" << maxOffset << std::endl;
+        }
+    }
+
+    void Console::scrollDown() {
+        THREAD_GUARD(console_mutex);
+        userScrolling = true;
+        if (scrollOffset > 0) {
+            --scrollOffset;
+            needsRedraw = true;
+            std::cout << "scrollDown: offset=" << scrollOffset << std::endl;
+        }
+    }
+
+    void Console::resetScroll() {
+        if (scrollOffset != 0) {
+            scrollOffset = 0;
+            needsRedraw = true;
+            userScrolling = false; // Add this flag
+        }
+    }
+
+ 
  
     void Console::print(const std::string &str) {
         THREAD_GUARD(console_mutex);
@@ -344,6 +374,7 @@ namespace console {
         if (cursorPos == 0 || c_chars.characters.empty()) return;
         
         int x = console_rect.x;
+        int y = console_rect.y; 
         int charWidth = c_chars.characters['A']->w;
         int maxWidth = console_rect.w - 50;
         
@@ -353,6 +384,7 @@ namespace console {
             char c = text[i];
             if (c == '\n') {
                 x = console_rect.x;
+                y += c_chars.characters['A']->h; 
             } else {
                 int width = 0;
                 if (c == '\t') {
@@ -370,6 +402,7 @@ namespace console {
                 
                 if (x >= (console_rect.x + maxWidth)) {
                     x = console_rect.x;
+                    y += c_chars.characters['A']->h;
                 }
             }
         }
@@ -440,8 +473,9 @@ namespace console {
         int bottomPadding = charHeight + 10;
         int promptY = console_rect.y + console_rect.h - charHeight - bottomPadding;
         int maxVisibleLines = (promptY - console_rect.y) / charHeight;
+        int maxScrollbackLines = maxVisibleLines * 50; 
         
-        while (static_cast<int>(lines.size()) > maxVisibleLines && !lines.empty()) {
+        while (static_cast<int>(lines.size()) > maxScrollbackLines && !lines.empty()) {
             size_t removeLen = lines[0].length;
             std::string buffer = data.str();
             if (removeLen < buffer.length() && buffer[removeLen] == '\n') {
@@ -462,57 +496,74 @@ namespace console {
 
     void Console::calculateLines() {
         THREAD_GUARD(console_mutex);
-        if (!surface || c_chars.characters.empty() || c_chars.characters.find('A') == c_chars.characters.end()) {
+        
+        auto it_A_check = c_chars.characters.find('A'); 
+        if (!surface || c_chars.characters.empty() || it_A_check == c_chars.characters.end() || !it_A_check->second || it_A_check->second->h == 0) {
             return;
         }
         
-        lines.clear();
+        lines.clear(); 
         std::string text = data.str();
-        int maxWidth = console_rect.w - 50;
+        int maxWidth = console_rect.w - 50; 
         
         size_t lineStart = 0;
-        size_t pos = 0;
+        size_t currentPos = 0;
         int currentLineWidth = 0;
         
-        while (pos < text.length()) {
-            char c = text[pos];
+        SDL_Surface* char_A_surface = it_A_check->second;
+        int defaultCharWidth = char_A_surface->w;
+        int lineHeight = char_A_surface->h; 
+
+        while (currentPos < text.length()) {
+            char c = text[currentPos];
+            int charWidth = 0;
+
             if (c == '\n') {
-                lines.push_back({text.substr(lineStart, pos - lineStart), lineStart, pos - lineStart});
-                lineStart = pos + 1;
+                lines.push_back({text.substr(lineStart, currentPos - lineStart), lineStart, currentPos - lineStart});
+                lineStart = currentPos + 1;
                 currentLineWidth = 0;
-                pos++;
+                currentPos++;
                 continue;
             }
 
-            auto it_A = c_chars.characters.find('A');
-            if (it_A == c_chars.characters.end()) {
-                return;
+            if (c == '\t') {
+                charWidth = defaultCharWidth * 4; 
+            } else {
+                auto it_char = c_chars.characters.find(c);
+                if (it_char != c_chars.characters.end() && it_char->second) {
+                    charWidth = it_char->second->w;
+                } else {
+                    charWidth = defaultCharWidth; 
+                }
             }
-            int width = (c == '\t') ? it_A->second->w * 4 : it_A->second->w;
 
-            auto it = c_chars.characters.find(c);
-            if (it != c_chars.characters.end()) {
-                width = (c == '\t') ? c_chars.characters['A']->w * 4 : it->second->w;
+            if (lineStart < currentPos && (currentLineWidth + charWidth) > maxWidth) {
+                lines.push_back({text.substr(lineStart, currentPos - lineStart), lineStart, currentPos - lineStart});
+                lineStart = currentPos; 
+                currentLineWidth = charWidth;
+            } else {
+                currentLineWidth += charWidth;
             }
-            
-
-            currentLineWidth += width;
-            if (currentLineWidth > maxWidth) {
-
-                lines.push_back({text.substr(lineStart, pos - lineStart), lineStart, pos - lineStart});
-                lineStart = pos;
-                currentLineWidth = width;
-            }
-            
-            pos++;
+            currentPos++;
         }
-        
 
         if (lineStart < text.length()) {
             lines.push_back({text.substr(lineStart), lineStart, text.length() - lineStart});
         }
         
         needsReflow = false;
+
+        
+        int bottomPadding = lineHeight + 10;
+        int promptY = console_rect.y + console_rect.h - lineHeight - bottomPadding;
+        
+        
+        int maxVisibleLines = (promptY - console_rect.y) / lineHeight;
+        maxVisibleLines -= 1; 
+        if (maxVisibleLines < 1) maxVisibleLines = 1;
+        
+        
+        visibleLineCount = maxVisibleLines;
     }
 
     SDL_Surface *Console::drawText() {
@@ -576,10 +627,15 @@ namespace console {
     
         size_t startLine = 0;
         if (static_cast<int>(lines.size()) > maxVisibleLines) {
-            startLine = lines.size() - maxVisibleLines;
+            int totalLines = lines.size();
+            int lastVisibleLine = totalLines - 1 - scrollOffset; 
+            startLine = std::max(0, lastVisibleLine - maxVisibleLines + 1);
+        } else {
+            startLine = 0;
         }
+
         int y = console_rect.y;
-        for (size_t i = startLine; i < lines.size(); ++i) {
+        for (size_t i = startLine; i < lines.size() && i < startLine + maxVisibleLines; ++i) {
             const auto& line = lines[i];
             if (y >= promptY) break; 
             
@@ -635,6 +691,31 @@ namespace console {
             SDL_FillRect(surface, &cursorRect, SDL_MapRGBA(surface->format, 255, 255, 255, 255));
         }
         needsRedraw = false;
+        
+        int total = lines.size();
+        std::cout << "drawText: total=" << total << ", visible=" << visibleLineCount << std::endl;
+        if (total > visibleLineCount) {
+            int scrollbarWidth = 15;
+            int scrollbarX = console_rect.w - scrollbarWidth - 5; 
+            int scrollbarHeight = console_rect.h - 80; 
+            int scrollbarY = 10; 
+            
+            SDL_Rect trackRect = {scrollbarX, scrollbarY, scrollbarWidth, scrollbarHeight};
+            SDL_FillRect(surface, &trackRect, SDL_MapRGBA(surface->format, 40, 40, 40, 180));
+            
+            scrollbarRect.x = console_rect.x + trackRect.x;
+            scrollbarRect.y = console_rect.y + trackRect.y;
+            scrollbarRect.w = trackRect.w;
+            scrollbarRect.h = trackRect.h;
+
+            float thumbRatio = (float)visibleLineCount / total;
+            int thumbHeight = std::max(20, (int)(thumbRatio * scrollbarHeight));
+            float scrollProgress = 1.0f - ((float)scrollOffset / (total - visibleLineCount));
+            int thumbY = scrollbarY + (int)(scrollProgress * (scrollbarHeight - thumbHeight));
+            
+            SDL_Rect thumbRect = {scrollbarX + 1, thumbY, scrollbarWidth - 2, thumbHeight};
+            SDL_FillRect(surface, &thumbRect, SDL_MapRGBA(surface->format, 120, 120, 120, 0));  
+        } 
         flipSurface(surface);
         return surface;
     }
@@ -650,10 +731,13 @@ namespace console {
     }
 
     void Console::scrollToBottom() {
-        cursorPos = data.str().length();
-        updateCursorPosition();
-        checkScroll();  
-        inputCursorPos = inputBuffer.length();
+        THREAD_GUARD(console_mutex);
+        if (scrollOffset == 0) {
+            cursorPos = data.str().length();
+            updateCursorPosition();
+            checkScroll();  
+            inputCursorPos = inputBuffer.length();
+        }
     }
 
     void Console::moveCursorLeft() {
@@ -741,7 +825,7 @@ namespace console {
             data << message_queue.front();
             message_queue.pop();
         }
-        static constexpr size_t MAX_CHARS = 50000;
+        static constexpr size_t MAX_CHARS = 200000;
         auto s = data.str();
         if (s.size() > MAX_CHARS) {
             s = s.substr(s.size() - MAX_CHARS);
@@ -1010,6 +1094,12 @@ namespace console {
     }
 
     void GLConsole::event(gl::GLWindow *win, SDL_Event &e) {
+        if(e.type == SDL_TEXTINPUT) {
+            for(int i = 0; i < SDL_TEXTINPUTEVENT_TEXT_SIZE && e.text.text[i] != '\0'; ++i) {
+                console.keypress(e.text.text[i]);
+            }
+            return;
+        }
         if(e.type == SDL_KEYDOWN) {
             console.needsRedraw = true;
             if(e.key.keysym.sym == SDLK_ESCAPE) {
@@ -1032,10 +1122,45 @@ namespace console {
             } else if(e.key.keysym.sym == SDLK_DOWN) {
                 console.moveHistoryDown();
                 return;
+            } 
+            else if(e.key.keysym.sym == SDLK_PAGEUP) {
+                console.scrollPageUp();
+                return;
+            }
+            else if(e.key.keysym.sym == SDLK_PAGEDOWN) {
+                console.scrollPageDown();
+                return;
             }
         }
-        else if(e.type == SDL_TEXTINPUT) {
-            console.keypress(e.text.text[0]);
+        else if(e.type == SDL_MOUSEWHEEL) {
+            if (win->console_visible) {
+                int x, y;
+                SDL_GetMouseState(&x, &y);
+                console.handleMouseScroll(x, y, e.wheel.y);
+                return;
+            }
+        }
+        else if(e.type == SDL_MOUSEBUTTONDOWN) {
+            if (win->console_visible && e.button.button == SDL_BUTTON_LEFT) {
+                if (console.isMouseOverScrollbar(e.button.x, e.button.y)) {
+                    console.beginScrollDrag(e.button.y);
+                    return;
+                }
+            }
+        }
+        else if(e.type == SDL_MOUSEMOTION) {
+            if (win->console_visible && console.scrollDragging) { 
+                console.updateScrollDrag(e.motion.y);
+                return;
+            }
+        }
+        else if(e.type == SDL_MOUSEBUTTONUP) {
+            if (win->console_visible && e.button.button == SDL_BUTTON_LEFT) {
+                if (console.scrollDragging) {
+                    console.endScrollDrag();
+                }
+                return;
+            }
         }
         
 #if defined(__EMSCRIPTEN__)
@@ -1103,4 +1228,86 @@ namespace console {
         return false;
     }
 
+    void Console::scrollPageUp() {
+        THREAD_GUARD(console_mutex);
+        int pageSize = std::max(1, visibleLineCount - 1);
+        int maxOffset = std::max(0, (int)lines.size() - visibleLineCount);
+        scrollOffset = std::min(maxOffset, scrollOffset + pageSize);
+        needsRedraw = true;
+        std::cout << "scrollPageUp: offset=" << scrollOffset << "/" << maxOffset << std::endl;
+    }
+
+    void Console::scrollPageDown() {
+        THREAD_GUARD(console_mutex);
+        int pageSize = std::max(1, visibleLineCount - 1);
+        scrollOffset = std::max(0, scrollOffset - pageSize);
+        needsRedraw = true;
+        std::cout << "scrollPageDown: offset=" << scrollOffset << std::endl;
+    }
+
+    bool Console::isMouseOverScrollbar(int mouseX, int mouseY) const {
+        bool hit = mouseX >= scrollbarRect.x
+                && mouseX <  scrollbarRect.x + scrollbarRect.w
+                && mouseY >= scrollbarRect.y
+                && mouseY <  scrollbarRect.y + scrollbarRect.h;
+
+           std::cout << "Mouse check: (" << mouseX << "," << mouseY
+                << ") vs scrollbar(" 
+                << scrollbarRect.x << "," << scrollbarRect.y << ","
+                << scrollbarRect.w << "," << scrollbarRect.h << ") = "
+                << (hit ? "HIT" : "MISS") << std::endl;
+
+        return hit;
+    }
+
+    void Console::beginScrollDrag(int mouseY) {
+        scrollDragging = true;
+        scrollDragStartY = mouseY; 
+        scrollDragStartOffset = scrollOffset;
+        std::cout << "Begin drag: mouseY=" << mouseY << std::endl;
+    }
+
+    void Console::updateScrollDrag(int mouseY) {
+        if (!scrollDragging) return;
+        int total = lines.size();
+        if (total <= visibleLineCount) return;
+
+            int totalLines = lines.size();
+            if (totalLines <= visibleLineCount) return;
+
+            
+            int thumbMinH = 20;
+            int trackH    = scrollbarRect.h;
+
+            
+            int localY = mouseY - scrollbarRect.y;
+            int maxLocal = trackH - thumbMinH;
+            localY = std::max(0, std::min(maxLocal, localY));
+
+            float progress = 1.0f - (float)localY / (float)maxLocal;
+            int maxOffset = std::max(0, total - visibleLineCount);
+            scrollOffset = (int)(progress * maxOffset);
+            scrollOffset = std::max(0, std::min(maxOffset, scrollOffset));
+            needsRedraw = true;
+
+            std::cout << "Drag update: mouseY="<<mouseY
+                    << ", localY="<<localY
+                    << ", prog="<<progress
+                    << ", offset="<<scrollOffset<<"/"<<maxOffset
+                    << std::endl;
+    }
+
+    void Console::endScrollDrag() {
+        scrollDragging = false;
+        std::cout << "End drag" << std::endl;
+    }
+
+    void Console::handleMouseScroll(int mouseX, int mouseY, int wheelY) {
+        THREAD_GUARD(console_mutex);
+        if (wheelY > 0) {
+            scrollUp();
+        } else if (wheelY < 0) {
+            scrollDown();
+        }
+    }
 }

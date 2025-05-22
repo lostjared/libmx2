@@ -134,6 +134,7 @@ namespace console {
             THREAD_GUARD(console_mutex);
             return c_chars.characters.size() > 0; 
         }
+        bool isScrollDragging() const { return scrollDragging; }
         void setTextAttrib(const int size, const SDL_Color &col);
         std::ostringstream &bufferData();
         void setInputCallback(std::function<int(gl::GLWindow *win, const std::string &)> callback);
@@ -145,10 +146,21 @@ namespace console {
 #if defined(__EMSCRIPTEN__)
         void processCommandQueue();  // Manually process commands for Emscripten
 #endif
+        void scrollUp();
+        void scrollDown();
+        void resetScroll();
+        void scrollPageUp();
+        void scrollPageDown();
+        void handleMouseScroll(int mouseX, int mouseY, int wheelY);
+        bool isMouseOverScrollbar(int mouseX, int mouseY) const;
+        void beginScrollDrag(int mouseY);
+        void updateScrollDrag(int mouseY);
+        void endScrollDrag();
     protected:
         mutable THREAD_MUTEX console_mutex;
         std::queue<std::string> message_queue;
         ConsoleChars c_chars;
+        bool userScrolling = false;
         std::string font;
         int font_size = 16;
         SDL_Color color = {255, 255, 255, 255};
@@ -195,6 +207,13 @@ namespace console {
         void worker_thread_func();
         bool enterCallbackSet = false;
         void clearText();
+        
+        int visibleLineCount = 0;            // recalculated each reflow
+        int scrollOffset = 0;                // how many lines up from bottom
+        bool scrollDragging = false;
+        int scrollDragStartY = 0;
+        int scrollDragStartOffset = 0;
+        SDL_Rect scrollbarRect = {0, 0, 0, 0}; // Cached rect for hit testing
     };
 
     class GLConsole {
