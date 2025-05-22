@@ -1234,7 +1234,6 @@ namespace console {
         int maxOffset = std::max(0, (int)lines.size() - visibleLineCount);
         scrollOffset = std::min(maxOffset, scrollOffset + pageSize);
         needsRedraw = true;
-        std::cout << "scrollPageUp: offset=" << scrollOffset << "/" << maxOffset << std::endl;
     }
 
     void Console::scrollPageDown() {
@@ -1242,7 +1241,6 @@ namespace console {
         int pageSize = std::max(1, visibleLineCount - 1);
         scrollOffset = std::max(0, scrollOffset - pageSize);
         needsRedraw = true;
-        std::cout << "scrollPageDown: offset=" << scrollOffset << std::endl;
     }
 
     bool Console::isMouseOverScrollbar(int mouseX, int mouseY) const {
@@ -1250,13 +1248,6 @@ namespace console {
                 && mouseX <  scrollbarRect.x + scrollbarRect.w
                 && mouseY >= scrollbarRect.y
                 && mouseY <  scrollbarRect.y + scrollbarRect.h;
-
-           std::cout << "Mouse check: (" << mouseX << "," << mouseY
-                << ") vs scrollbar(" 
-                << scrollbarRect.x << "," << scrollbarRect.y << ","
-                << scrollbarRect.w << "," << scrollbarRect.h << ") = "
-                << (hit ? "HIT" : "MISS") << std::endl;
-
         return hit;
     }
 
@@ -1264,7 +1255,6 @@ namespace console {
         scrollDragging = true;
         scrollDragStartY = mouseY; 
         scrollDragStartOffset = scrollOffset;
-        std::cout << "Begin drag: mouseY=" << mouseY << std::endl;
     }
 
     void Console::updateScrollDrag(int mouseY) {
@@ -1293,7 +1283,6 @@ namespace console {
 
     void Console::endScrollDrag() {
         scrollDragging = false;
-        std::cout << "End drag" << std::endl;
     }
 
     void Console::handleMouseScroll(int mouseX, int mouseY, int wheelY) {
