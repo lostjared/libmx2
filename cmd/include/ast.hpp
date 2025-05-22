@@ -778,13 +778,11 @@ namespace cmd {
 
     
     class AstExecutor {
+        AstExecutor(); 
         std::atomic<bool> *exec_interrupt = nullptr;
-        static AstExecutor instance; 
-        
     public:
-        AstExecutor();
         static AstExecutor  &getExecutor();    
-        
+
         void setInterrupt(std::atomic<bool> *interrupt) {
             exec_interrupt = interrupt;
         }
@@ -855,7 +853,10 @@ namespace cmd {
                 }
 #endif
 
-                executeNode(node, defaultInput, defaultOutput);
+
+                try {
+                    executeNode(node, defaultInput, defaultOutput);
+                } catch(const ReturnException &) {}
                 execUpdateCallback(defaultOutput.str());  
             } catch (const std::exception& e) {
                 defaultOutput << "Exception: " << e.what() << std::endl;
@@ -1002,18 +1003,19 @@ namespace cmd {
             double result = returnStmt->value->evaluateNumber(*this);
             lastExitStatus = static_cast<int>(result);
             returnSignal = true;
+            throw ReturnException();
         }
 
         static void printCommandInfo(std::ostream &out) {
             registry.printInfo(out);
         }
 
-        void setReturnSignal(bool signal) {
-            returnSignal = signal;
-        }
-
         bool getReturnSignal() const {
             return returnSignal;
+        }
+
+        void setReturnSignal(bool signal) {
+            returnSignal = signal;
         }
 
     private:
