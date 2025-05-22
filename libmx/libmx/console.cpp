@@ -184,18 +184,22 @@ namespace console {
     void Console::keypress(char c) {
         needsRedraw = true;
         try {
-            if (c == 8) {  
-                if (!inputBuffer.empty() && inputCursorPos > 0) {
-                     if (inMultilineMode && inputCursorPos == inputBuffer.length() && 
-                        inputBuffer[inputCursorPos - 1] == '{') {
+            if (c == 8) {
+                if (!inputBuffer.empty()
+                    && inputCursorPos > 0
+                    && inputCursorPos <= inputBuffer.size()) {
+                    if (inMultilineMode 
+                        && inputCursorPos == inputBuffer.size() 
+                        && inputBuffer[inputCursorPos - 1] == '{') {
                         braceCount--;
                         if (braceCount == 0) {
                             inMultilineMode = false;
                             promptText = originalPrompt;
                             multilineBuffer.clear();
                         }
-                    } else if (inMultilineMode && inputCursorPos == inputBuffer.length() && 
-                               inputBuffer[inputCursorPos - 1] == '}') {
+                    } else if (inMultilineMode
+                               && inputCursorPos == inputBuffer.size()
+                               && inputBuffer[inputCursorPos - 1] == '}') {
                         braceCount++;
                     }
                     
@@ -593,6 +597,8 @@ namespace console {
         
         
         int x = console_rect.x;
+        if (inputCursorPos > inputBuffer.size())
+            inputCursorPos = inputBuffer.size();
         std::string promptAndInput = promptText + inputBuffer;
         int cursorXPos = console_rect.x;
         
@@ -614,7 +620,9 @@ namespace console {
             }
         }
         
-        if (inputCursorPos == inputBuffer.length()) {
+        if (inputCursorPos > inputBuffer.size())
+            inputCursorPos = inputBuffer.size();
+        if (inputCursorPos == inputBuffer.size()) {
             cursorXPos = x;
         }
         
