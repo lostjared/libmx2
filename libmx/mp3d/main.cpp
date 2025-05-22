@@ -357,6 +357,10 @@ public:
                             window->console.thread_safe_print(lineBuf);
                             window->console.process_message_queue();
                         }
+                        if(!output_stream.str().empty()) {
+                            window->console.thread_safe_print(output_stream.str());
+                            window->console.process_message_queue();
+                        }
                     } catch(const scan::ScanExcept &e) {
                         window->console.thread_safe_print("Scanner Exception: " + e.why() + "\n");
                         window->console.process_message_queue();
@@ -523,7 +527,7 @@ public:
         }
     }
     virtual void event(gl::GLWindow *win, SDL_Event &e) override {
-        if(win->console.isVisible()) {    
+        if(win->console_visible) {    
             if(e.type == SDL_KEYDOWN) {
                 if(e.key.keysym.sym == SDLK_c && (e.key.keysym.mod & KMOD_CTRL)) {
                     if(running) {
@@ -533,10 +537,12 @@ public:
                         win->console.thread_safe_print("\nCTRL+C Interrupt - No Command Running\n");
                     }
                     win->console.process_message_queue();  
-                    return;
+                    return;          
                 }
-                return;
             }
+            return;
+        }
+        
             switch(e.type) {
             case SDL_KEYUP:
                 if(!win->console_visible && e.key.keysym.sym == SDLK_RETURN) {
@@ -681,11 +687,9 @@ public:
                         }
                     }
                     break;
-                }
             }
-
         }
-    }
+     }
 
     virtual void resize(gl::GLWindow *win, int w, int h) override {
         program.useProgram();
