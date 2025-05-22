@@ -22,6 +22,9 @@
 #include <signal.h>
 #include <unistd.h>
 #endif
+#ifdef _WIN32
+#include<windows.h>
+#endif
 #include<cstdlib>
 
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
@@ -102,6 +105,70 @@ int main(int argc, char **argv) {
             cmd::argv.push_back(argv[i]);
         }
     }
+
+#ifdef _WIN32
+    cmd::AstExecutor.getExecutor().getRegistry().registerTypedCommand("exec", 
+        [](const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
+            SECURITY_ATTRIBUTES sa;
+            sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+            sa.bInheritHandle = TRUE;
+            sa.lpSecurityDescriptor = NULL;
+            HANDLE hStdOutRead, hStdOutWrite;
+            if (!CreatePipe(&hStdOutRead, &hStdOutWrite, &sa, 0)) {
+                output << "exec: failed to create output pipe" << std::endl;
+                return 1;
+            }
+            SetHandleInformation(hStdOutRead, HANDLE_FLAG_INHERIT, 0); 
+            HANDLE hStdInRead, hStdInWrite;
+            if (!CreatePipe(&hStdInRead, &hStdInWrite, &sa, 0)) {
+                CloseHandle(hStdOutRead);
+                CloseHandle(hStdOutWrite);
+                output << "exec: failed to create input pipe" << std::endl;
+                return 1;
+            }
+            SetHandleInformation(hStdInWrite, HANDLE_FLAG_INHERIT, 0); 
+            STARTUPINFO si;
+            ZeroMemory(&si, sizeof(STARTUPINFO));
+            si.cb = sizeof(STARTUPINFO);
+            si.hStdInput = hStdInRead;
+            si.hStdOutput = hStdOutWrite;
+            si.hStdError = hStdOutWrite;
+            si.dwFlags |= STARTF_USESTDHANDLES;
+            PROCESS_INFORMATION pi;
+            ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
+            std::string cmdLine = "cmd.exe /c " + command_str;
+            if (!CreateProcess(NULL, const_cast<LPSTR>(cmdLine.c_str()), NULL, NULL, TRUE, 
+                            CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
+                CloseHandle(hStdOutRead);
+                CloseHandle(hStdOutWrite);
+                CloseHandle(hStdInRead);
+                CloseHandle(hStdInWrite);
+                output << "exec: failed to create process" << std::endl;
+                return 1;
+            }
+            CloseHandle(hStdOutWrite);
+            CloseHandle(hStdInRead);
+            CloseHandle(hStdInWrite);
+            DWORD bytesRead;
+            char buffer[4096];
+            BOOL success;
+            while (true) {
+                success = ReadFile(hStdOutRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL);
+                if (!success || bytesRead == 0) break;
+                buffer[bytesRead] = '\0';
+                output << buffer;
+                output.flush();
+            }
+            WaitForSingleObject(pi.hProcess, INFINITE);
+            DWORD exitCode = 0;
+            GetExitCodeProcess(pi.hProcess, &exitCode);
+            CloseHandle(hStdOutRead);
+            CloseHandle(pi.hProcess);
+            CloseHandle(pi.hThread);
+            return static_cast<int>(exitCode);
+        });
+    });
+#endif
     if(argc == 1) {
         bool active = true;
         bool debug_cmd = false;
