@@ -693,7 +693,6 @@ namespace console {
         needsRedraw = false;
         
         int total = lines.size();
-        std::cout << "drawText: total=" << total << ", visible=" << visibleLineCount << std::endl;
         if (total > visibleLineCount) {
             int scrollbarWidth = 15;
             int scrollbarX = console_rect.w - scrollbarWidth - 5; 
