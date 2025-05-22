@@ -173,7 +173,7 @@ namespace console {
         if (scrollOffset < maxOffset) {
             ++scrollOffset;
             needsRedraw = true;
-            std::cout << "scrollUp: offset=" << scrollOffset << "/" << maxOffset << std::endl;
+           
         }
     }
 
@@ -183,7 +183,6 @@ namespace console {
         if (scrollOffset > 0) {
             --scrollOffset;
             needsRedraw = true;
-            std::cout << "scrollDown: offset=" << scrollOffset << std::endl;
         }
     }
 
