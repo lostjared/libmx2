@@ -107,7 +107,7 @@ int main(int argc, char **argv) {
     }
 
 #ifdef _WIN32
-    cmd::AstExecutor.getExecutor().getRegistry().registerTypedCommand("exec", 
+    cmd::AstExecutor::getExecutor().getRegistry().registerTypedCommand("exec", 
         [](const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
            std::ostringstream all_args;
            for(auto &arg : args) {
