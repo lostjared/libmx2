@@ -1452,10 +1452,8 @@ namespace cmd {
             return 1;
         }
 
-
         CloseHandle(hStdOutWrite);
         CloseHandle(hStdInRead);
-
 
         if (input.peek() != EOF) {
             std::string input_str{std::istreambuf_iterator<char>(input), 
@@ -1467,20 +1465,17 @@ namespace cmd {
         }
         CloseHandle(hStdInWrite);
 
-
-
         DWORD bytesRead;
         BOOL success;
         DWORD startTime = GetTickCount();
         bool interrupted = false;
-
+        char buffer[4096]; // Declare buffer here
 
         std::thread interrupt_thread([&]() {
             while (!interrupted) {
                 if (cmd::AstExecutor::getExecutor().checkInterrupt()) {
                     std::cout << "exec: interrupting child process (Windows)" << std::endl;
                     
-
                     if (TerminateProcess(pi.hProcess, 1)) {
                         std::cout << "exec: TerminateProcess succeeded" << std::endl;
                     } else {
@@ -1494,9 +1489,10 @@ namespace cmd {
                     interrupted = true;
                     break;
                 }
-                Sleep(100); 
+                Sleep(100);
             }
         });
+
         while (!interrupted) {
             DWORD waitResult = WaitForSingleObject(pi.hProcess, 0);
             if (waitResult == WAIT_OBJECT_0) {
@@ -1507,6 +1503,7 @@ namespace cmd {
                 }
                 break;
             }
+            
             DWORD available = 0;
             if (PeekNamedPipe(hStdOutRead, NULL, 0, NULL, &available, NULL) && available > 0) {
                 success = ReadFile(hStdOutRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL);
@@ -1519,6 +1516,7 @@ namespace cmd {
                 }
             } else {
                 Sleep(50);
+                
                 if (GetTickCount() - startTime > 5000) {
                     if (!interrupted) {
                         output << "exec: Command appears to be hung, trying to terminate..." << std::endl;
@@ -1529,15 +1527,20 @@ namespace cmd {
                 }
             }
         }
+
         interrupt_thread.join();
+
         if (!interrupted) {
             WaitForSingleObject(pi.hProcess, 5000);
         }
+
         DWORD exitCode = 0;
         GetExitCodeProcess(pi.hProcess, &exitCode);
+
         CloseHandle(hStdOutRead);
         CloseHandle(pi.hProcess);
         CloseHandle(pi.hThread);
+
         return interrupted ? 1 : static_cast<int>(exitCode);
 #endif
         return 0;
