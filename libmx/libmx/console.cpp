@@ -827,6 +827,15 @@ namespace console {
             alpha = 1;
     }
 
+    void Console::clearText() {
+        THREAD_GUARD(console_mutex);
+        data.str("");
+        data.clear();
+        lines.clear();
+        needsReflow = true;
+        needsRedraw = true;
+    }
+
     void Console::startFadeOut() {
         fadeState = FADE_OUT;
         fadeStartTime = SDL_GetTicks();
@@ -864,6 +873,10 @@ namespace console {
             glDeleteTextures(1, &texture);
             texture = 0;
         }
+    }
+
+    void GLConsole::clearText() {
+        console.clearText();
     }
 
     void GLConsole::thread_safe_print(const std::string &data) {
@@ -1061,7 +1074,7 @@ namespace console {
         if (cmd.empty()) {
             return true;
         } else if (cmd.size() > 0 && cmd[0] == "clear") {
-            console.clear();
+            console.clearText();
             return true;
         } else if (cmd.size() > 0 && cmd[0] == "exit") {
             print("Exiting console...\n");
@@ -1085,4 +1098,5 @@ namespace console {
         }
         return false;
     }
+
 }

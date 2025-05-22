@@ -194,6 +194,7 @@ namespace console {
         std::atomic<bool> worker_active{true};
         void worker_thread_func();
         bool enterCallbackSet = false;
+        void clearText();
     };
 
     class GLConsole {
@@ -250,6 +251,7 @@ namespace console {
         bool isVisible() const { return console.isVisible(); }
         bool isFading() const { return console.isFading(); }
         void setStretchHeight(int value);
+        void clearText();
         void refresh() { 
 #if defined(__EMSCRIPTEN__)
         console.processCommandQueue();
