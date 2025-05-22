@@ -309,7 +309,6 @@ public:
         win->console.setPrompt("$> ");
         win->console.setInputCallback([this, win](gl::GLWindow *window, const std::string &text) -> int {
             try {
-                std::cout << "Executing: " << text << std::endl;
                 if(text == "@echo_on") {
                     cmd_echo = true;
                     window->console.thread_safe_print("Echoing commands on.\n");
