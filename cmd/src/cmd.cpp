@@ -109,6 +109,15 @@ int main(int argc, char **argv) {
 #ifdef _WIN32
     cmd::AstExecutor.getExecutor().getRegistry().registerTypedCommand("exec", 
         [](const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
+           std::ostringstream all_args;
+           for(auto &arg : args) {
+                try {
+                    all_args << getVar(arg) << " ";
+                } catch(const std::runtime_error &) {
+                    all_args << arg.value << " ";
+                }
+            }
+            std::string command_str = all_args.str();
             SECURITY_ATTRIBUTES sa;
             sa.nLength = sizeof(SECURITY_ATTRIBUTES);
             sa.bInheritHandle = TRUE;
