@@ -1449,9 +1449,9 @@ namespace cmd {
         PROCESS_INFORMATION pi;
         ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
 
-        std::string cmdLine = "wsl.exe  " + command_str;
+        std::string cmdLine = "cmd.exe /c  " + command_str;
         if (!CreateProcess(NULL, const_cast<LPSTR>(cmdLine.c_str()), NULL, NULL, TRUE, 
-                        CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
+                        CREATE_NO_WINDOW,NULL, NULL, &si, &pi)) {
             CloseHandle(hStdOutRead);
             CloseHandle(hStdOutWrite);
             CloseHandle(hStdInRead);
