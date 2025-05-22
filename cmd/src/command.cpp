@@ -10,7 +10,9 @@
 #include"parser.hpp"
 #include"html.hpp"
 #include"command_reg.hpp"
-
+#include<thread>
+#include<atomic>
+#include<mutex>
 #if !defined(__EMSCRIPTEN__) &&  !defined(_WIN32)
 #include<unistd.h>
 #include<sys/wait.h>
