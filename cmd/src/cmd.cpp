@@ -167,7 +167,6 @@ int main(int argc, char **argv) {
             CloseHandle(pi.hThread);
             return static_cast<int>(exitCode);
         });
-    });
 #endif
     if(argc == 1) {
         bool active = true;
