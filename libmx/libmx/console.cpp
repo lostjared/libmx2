@@ -741,18 +741,21 @@ namespace console {
     }
 
     void Console::moveCursorLeft() {
+        THREAD_GUARD(console_mutex);
         if (inputCursorPos > 0) {
             inputCursorPos--;
         }
     }
     
     void Console::moveCursorRight() {
+        THREAD_GUARD(console_mutex);
         if (inputCursorPos < inputBuffer.length()) {
             inputCursorPos++;
         }
     }
 
     void Console::moveHistoryUp() {
+        THREAD_GUARD(console_mutex);
         if (historyIndex == -1 && !inputBuffer.empty()) {
             tempBuffer = inputBuffer;
         }
@@ -764,6 +767,7 @@ namespace console {
     }
 
     void Console::moveHistoryDown() {
+        THREAD_GUARD(console_mutex);
         if (historyIndex > 0) {
             historyIndex--;
             inputBuffer = commandHistory[commandHistory.size() - 1 - historyIndex];
@@ -1252,12 +1256,14 @@ namespace console {
     }
 
     void Console::beginScrollDrag(int mouseY) {
+        THREAD_GUARD(console_mutex);
         scrollDragging = true;
         scrollDragStartY = mouseY; 
         scrollDragStartOffset = scrollOffset;
     }
 
     void Console::updateScrollDrag(int mouseY) {
+        THREAD_GUARD(console_mutex);
         if (!scrollDragging) return;
         int total = lines.size();
         if (total <= visibleLineCount) return;
@@ -1282,6 +1288,7 @@ namespace console {
     }
 
     void Console::endScrollDrag() {
+        THREAD_GUARD(console_mutex);
         scrollDragging = false;
     }
 
