@@ -95,6 +95,7 @@ public:
                                 }
                             }
                         );
+
                         std::stringstream input_stream(text);
                         scan::TString string_buffer(text);
                         scan::Scanner scanner(string_buffer);
@@ -105,6 +106,10 @@ public:
                         executor.execute(input_stream, out_stream, ast);
                         if(!lineBuf.empty()) {
                             window->console.thread_safe_print(lineBuf);
+                            window->console.process_message_queue();
+                        }
+                        if(!out_stream.str().empty()) {
+                            window->console.thread_safe_print(out_stream.str());
                             window->console.process_message_queue();
                         }
                         program_running = false;

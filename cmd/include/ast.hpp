@@ -852,20 +852,18 @@ namespace cmd {
                     return;
                 }
 #endif
-
-
-                try {
-                    executeNode(node, defaultInput, defaultOutput);
-                } catch(const ReturnException &) {}
-                execUpdateCallback(defaultOutput.str());  
+                executeNode(node, defaultInput, defaultOutput);   
+            
+                if(updateCallback && &defaultOutputStream == &std::cout) {
+                    updateCallback(defaultOutput.str());
+                } else {
+                    defaultOutputStream << defaultOutput.str();
+                }   
             } catch (const std::exception& e) {
                 defaultOutput << "Exception: " << e.what() << std::endl;
-               execUpdateCallback(defaultOutput.str());  
+                execUpdateCallback(defaultOutput.str());
             }
 
-            if(updateCallback == nullptr) {
-                defaultOutputStream << defaultOutput.str();
-            }
         }
 
         void setVariable(const std::string& name, const std::string& value) {
@@ -1006,7 +1004,6 @@ namespace cmd {
             double result = returnStmt->value->evaluateNumber(*this);
             lastExitStatus = static_cast<int>(result);
             returnSignal = true;
-            throw ReturnException();
         }
 
         static void printCommandInfo(std::ostream &out) {
