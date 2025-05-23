@@ -1,4 +1,4 @@
 #ifndef __VERSION_INFO__
 #define __VERSION_INFO__
-#define version_string "v1.08"
+#define version_string "v1.09"
 #endif
