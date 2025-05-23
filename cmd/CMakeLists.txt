@@ -102,6 +102,9 @@ if(CONSOLE)
         ${SDL2_MIXER_INCLUDE_DIRS}
 	    ${GLM_INCLUDE_DIRS}
     )
+    if(WIN32)
+        set_target_properties(cmd-console PROPERTIES WIN32_EXECUTABLE TRUE)
+    endif()
     
     target_link_libraries(cmd-console PRIVATE
         mxcmd
