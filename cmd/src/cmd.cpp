@@ -87,6 +87,13 @@ void execute_command(const std::string &text) {
 }
 
 int main(int argc, char **argv) {
+    
+    cmd::AstExecutor::getExecutor().setUpdateCallback(
+        [](const std::string &chunk) {
+            std::cout << chunk;
+        }
+    );
+    
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
     struct sigaction sa;
     sa.sa_handler = sigint_handler;
