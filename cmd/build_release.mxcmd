@@ -8,7 +8,7 @@ mkdir --p $(printf "%s/shell" folder)
 mkdir --p $(printf "%s/library/include/" folder)
 mkdir --p $(printf "%s/library/lib/cmake/" folder)
 exec $(printf "cp -rfv /usr/local/bin/mxcmd-cli %s/shell/mxcmd-cli" folder)
-exec $(printf "cp -rfv /usr/local/lib/libmxcmd.a %s/library/lib/libmxcmd.a" folder)
+exec $(printf "cp -rfv /usr/local/lib/libmxcmd.dll.a %s/library/lib/libmxcmd.dll.a" folder)
 exec $(printf "cp -rfv /usr/local/include/mxcmd %s/library/include/mxcmd" folder)
 exec $(printf "cp -rfv /usr/local/lib/cmake/libmxcmd %s/library/lib/cmake/libmxcmd" folder)
 end
