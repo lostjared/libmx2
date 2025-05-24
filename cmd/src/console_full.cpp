@@ -182,7 +182,8 @@ class Game : public gl::GLObject {
             win->util.getFilePath("data/shaders/vhs.glsl"),
             win->util.getFilePath("data/shaders/fractal.glsl"),
             win->util.getFilePath("data/shaders/color-f2.glsl"),
-            win->util.getFilePath("data/shaders/color-cycle.glsl")
+            win->util.getFilePath("data/shaders/color-cycle.glsl"),
+            win->util.getFilePath("data/shaders/color-swirl.glsl")
         };   
         
         std::fstream file;
