@@ -262,6 +262,13 @@ class MainWindow : public gl::GLWindow {
 public:
     MainWindow(int shader_index, std::string path, int tw, int th) : gl::GLWindow("Console Skeleton", tw, th) {
         setPath(std::filesystem::current_path().string()+"/"+path);
+        SDL_Surface *icon = png::LoadPNG(util.getFilePath("data/term.icon.png").c_str());
+        if(icon) {
+            setWindowIcon(icon);
+            SDL_FreeSurface(icon);
+        } else {
+            std::cerr << "Failed to load window icon." << std::endl;
+        }
         setObject(new Game(shader_index));
         activateConsole({25, 25, tw-50, th-50}, util.getFilePath("data/font.ttf"), 16, {255, 255, 255, 255});
         showConsole(true);  
