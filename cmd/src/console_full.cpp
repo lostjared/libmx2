@@ -176,7 +176,8 @@ class Game : public gl::GLObject {
             win->util.getFilePath("data/shaders/default.glsl"), 
             win->util.getFilePath("data/shaders/cyclone.glsl"), 
             win->util.getFilePath("data/shaders/geometric.glsl"),
-            win->util.getFilePath("data/shaders/distort.glsl")
+            win->util.getFilePath("data/shaders/distort.glsl"),
+            win->util.getFilePath("data/shaders/atan.glsl")
         };   
         
         std::fstream file;
@@ -225,6 +226,12 @@ class Game : public gl::GLObject {
                     win->console.thread_safe_print("\nCTRL+C Interrupt - No Command Running\n");
                 }
                 win->console.process_message_queue();  
+                return;
+            }
+            if(e.key.keysym.sym == SDLK_r && (e.key.keysym.mod & KMOD_CTRL)) {
+                win->console.thread_safe_print("\nCTRL+R - Reloading Random shader\n");
+                win->console.process_message_queue();
+                setRandomShader(win, -1);
                 return;
             }
         }
