@@ -28,8 +28,10 @@ printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
 
 
 class Game : public gl::GLObject {
-public:
-    Game() {
+    int start_shader = -1;
+    public:
+
+    Game(int start_shader_ = -1) : gl::GLObject(), start_shader(start_shader_) {
         cmd::AstExecutor::getExecutor().setInterrupt(&interrupt_command);
     }
     virtual ~Game() override {}
@@ -152,99 +154,49 @@ public:
                 return 1;
             }
         });
-#if defined(__EMSCRIPTEN__) 
-    const char *vSource = R"(#version 300 es
-            precision mediump float;
-            layout (location = 0) in vec3 aPos;
-            layout (location = 1) in vec2 aTexCoord;
-
-            out vec2 TexCoord;
-
-            void main() {
-                gl_Position = vec4(aPos, 1.0); 
-                TexCoord = aTexCoord;         
-            }
-    )";
-    const char *fSource = R"(#version 300 es
-    precision highp float;
-    in vec2 TexCoord;
-    out vec4 color;
-    uniform sampler2D textTexture;
-    uniform float time_f;
-    uniform float alpha;
-
-    void main(void) {
-        vec2 tc = TexCoord;
-        float rippleSpeed = 5.0;
-        float rippleAmplitude = 0.03;
-        float rippleWavelength = 10.0;
-        float twistStrength = 1.0;
-        float radius = length(tc - vec2(0.5, 0.5));
-        float ripple = sin(tc.x * rippleWavelength + time_f * rippleSpeed) * rippleAmplitude;
-        ripple += sin(tc.y * rippleWavelength + time_f * rippleSpeed) * rippleAmplitude;
-        vec2 rippleTC = tc + vec2(ripple, ripple);
-        float angle = twistStrength * (radius - 1.0) + time_f;
-        float cosA = cos(angle);
-        float sinA = sin(angle);
-        mat2 rotationMatrix = mat2(cosA, -sinA, sinA, cosA);
-        vec2 twistedTC = (rotationMatrix * (tc - vec2(0.5, 0.5))) + vec2(0.5, 0.5);
-        vec4 originalColor = texture(textTexture, tc);
-        vec4 twistedRippleColor = texture(textTexture, mix(rippleTC, twistedTC, 0.5));
-        color = twistedRippleColor * alpha;
-    }
-)";
-#else
-    const char *vSource = R"(#version 330 core
-        layout (location = 0) in vec3 aPos;
-        layout (location = 1) in vec2 aTexCoord;
-        out vec2 TexCoord;
-        void main() {
-            gl_Position = vec4(aPos, 1.0); 
-            TexCoord = aTexCoord;        
-        }
-    )";
-
-    const char *fSource = R"(#version 330 core
-    in vec2 TexCoord;
-    out vec4 color;
-    uniform sampler2D textTexture;
-    uniform float time_f;
-    uniform float alpha;
-
-    void main(void) {
-        vec2 tc = TexCoord;
-        float rippleSpeed = 5.0;
-        float rippleAmplitude = 0.03;
-        float rippleWavelength = 10.0;
-        float twistStrength = 1.0;
-        float radius = length(tc - vec2(0.5, 0.5));
-        float ripple = sin(tc.x * rippleWavelength + time_f * rippleSpeed) * rippleAmplitude;
-        ripple += sin(tc.y * rippleWavelength + time_f * rippleSpeed) * rippleAmplitude;
-        vec2 rippleTC = tc + vec2(ripple, ripple);
-        float angle = twistStrength * (radius - 1.0) + time_f;
-        float cosA = cos(angle);
-        float sinA = sin(angle);
-        mat2 rotationMatrix = mat2(cosA, -sinA, sinA, cosA);
-        vec2 twistedTC = (rotationMatrix * (tc - vec2(0.5, 0.5))) + vec2(0.5, 0.5);
-        vec4 originalColor = texture(textTexture, tc);
-        vec4 twistedRippleColor = texture(textTexture, mix(rippleTC, twistedTC, 0.5));
-        color = twistedRippleColor * alpha;
-    }
-)";
-#endif
         std::vector<std::string> img = { "data/crystal_red.png", "data/saphire.png", "data/crystal_blue.png", "data/crystal_green.png", "data/crystal_pink.png", "data/diamond.png" };
         std::string img_index = img.at(mx::generateRandomInt(0, img.size()-1));
-        if (!program.loadProgramFromText(vSource, fSource)) {
-            throw mx::Exception("Failed to load shader program");
-        }
-        program.useProgram();
-        program.setUniform("textTexture", 0);
-        program.setUniform("time_f", 0.0f);
-        program.setUniform("alpha", 1.0f);
+        setRandomShader(win, start_shader);
         logo.initSize(win->w, win->h);
         logo.loadTexture(&program, win->util.getFilePath(img_index), 0.0f, 0.0f, win->w, win->h);
     }
 
+    void setRandomShader(gl::GLWindow *win, int index = -1) {
+        static const char *vSource = R"(#version 330 core
+            layout (location = 0) in vec3 aPos;
+            layout (location = 1) in vec2 aTexCoord;
+            out vec2 TexCoord;
+            void main() {
+                gl_Position = vec4(aPos, 1.0); 
+                TexCoord = aTexCoord;        
+            }
+        )";
+        static std::vector<std::string> shaders = { win->util.getFilePath("data/shaders/default.glsl"), win->util.getFilePath("data/shaders/cyclone.glsl"), win->util.getFilePath("data/shaders/geometric.glsl") };   
+        std::fstream file;
+        if(index == -1) {
+            file.open(shaders[mx::generateRandomInt(0, shaders.size()-1)], std::ios::in);
+        } else {
+            file.open(shaders[index], std::ios::in);
+        }
+        if (!file.is_open()) {
+            std::cerr << "Failed to open shader file." << std::endl;
+            return;
+        } 
+        std::ostringstream shader_source;
+        shader_source << file.rdbuf();
+        file.close();
+        if(program.loadProgramFromText(vSource, shader_source.str())) {
+            program.silent(true);
+            program.useProgram();
+            program.setUniform("textTexture", 0);
+            program.setUniform("time_f", 0.0f);
+            program.setUniform("alpha", 1.0f);
+            GLint windowSizeLoc = glGetUniformLocation(program.id(), "iResolution");
+            glUniform2f(windowSizeLoc, static_cast<float>(win->w), static_cast<float>(win->h));
+        } else {
+            std::cerr << "Failed to load shader program from file." << std::endl;
+        }
+    }
     
 
     void draw(gl::GLWindow *win) override {
@@ -272,8 +224,8 @@ public:
     }
 
     void update(float deltaTime) {
-        static float time_f = 0.0f;
-        time_f += deltaTime;
+        float time_f = 0.0f;
+        time_f = fmod(static_cast<float>(SDL_GetTicks()) / 1000.0f, 10000.0f);
         program.setUniform("time_f", time_f);
     }
 private:
@@ -285,9 +237,9 @@ private:
 
 class MainWindow : public gl::GLWindow {
 public:
-    MainWindow(std::string path, int tw, int th) : gl::GLWindow("Console Skeleton", tw, th) {
+    MainWindow(int shader_index, std::string path, int tw, int th) : gl::GLWindow("Console Skeleton", tw, th) {
         setPath(std::filesystem::current_path().string()+"/"+path);
-        setObject(new Game());
+        setObject(new Game(shader_index));
         activateConsole({25, 25, tw-50, th-50}, util.getFilePath("data/font.ttf"), 16, {255, 255, 255, 255});
         showConsole(true);  
         object->load(this);
@@ -314,6 +266,88 @@ void eventProc() {
     main_w->proc();
 }
 
+struct CustomArguments : Arguments {
+    int shader_index = -1;
+
+};
+
+CustomArguments proc_custom_args(int &argc, char **argv) {
+	CustomArguments args;
+	Argz<std::string> parser(argc, argv);
+    parser.addOptionSingle('h', "Display help message")
+        .addOptionSingleValue('p', "assets path")
+        .addOptionDoubleValue('P', "path", "assets path")
+        .addOptionSingleValue('r',"Resolution WidthxHeight")
+        .addOptionDoubleValue('R',"resolution", "Resolution WidthxHeight")
+        .addOptionDoubleValue('s', "shader", "Shader index")
+        .addOptionSingle('f', "fullscreen")
+        .addOptionDouble('F', "fullscreen", "fullscreen");
+    Argument<std::string> arg;
+    std::string path;
+    int value = 0;
+    int tw = 1280, th = 720;
+    bool fullscreen = false;
+    int shader_index = -1;
+    try {
+        while((value = parser.proc(arg)) != -1) {
+            switch(value) {
+                case 'h':
+                case 'v':
+                    parser.help(std::cout);
+                    exit(EXIT_SUCCESS);
+                    break;
+                case 'p':
+                case 'P':
+                    path = arg.arg_value;
+                    break;
+                case 'r':
+                case 'R': {
+                    auto pos = arg.arg_value.find("x");
+                    if(pos == std::string::npos)  {
+                    	std::cerr << "Error invalid resolution use WidthxHeight\n";
+                        std::cerr.flush();
+                        exit(EXIT_FAILURE);
+                    }
+                    std::string left, right;
+                    left = arg.arg_value.substr(0, pos);
+                    right = arg.arg_value.substr(pos+1);
+                    tw = atoi(left.c_str());
+                    th = atoi(right.c_str());
+                }
+                    break;
+                case 'f':
+                case 'F':
+                    fullscreen = true;
+                    break;
+                case 's':
+                case 'S':
+                    shader_index = atoi(arg.arg_value.c_str());
+                    break;
+
+            }
+        }
+    } catch (const ArgException<std::string>& e) {
+        std::cerr << "mx: Argument Exception" << e.text() << std::endl;
+		args.width = 1280;
+		args.height = 720;
+		args.path = ".";
+		args.fullscreen = false;
+        args.shader_index = -1;
+		return args;
+    }
+    if(path.empty()) {
+        std::cerr << "mx: No path provided trying default current directory.\n";
+        path = ".";
+    }
+	args.width = tw;
+	args.height = th;	
+	args.path = path;
+	args.fullscreen = fullscreen;
+    args.shader_index = shader_index;
+	return args;
+}
+
+
 int main(int argc, char **argv) {
     cmd::AstExecutor::getExecutor().setInterrupt(nullptr);
 #ifdef __EMSCRIPTEN__
@@ -327,9 +361,9 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 #else
-    Arguments args = proc_args(argc, argv);
+    CustomArguments args = proc_custom_args(argc, argv);
     try {
-        MainWindow main_window(args.path, args.width, args.height);
+        MainWindow main_window(args.shader_index, args.path, args.width, args.height);
         main_window.loop();
     } catch(const mx::Exception &e) {
         mx::system_err << "mx: Exception: " << e.text() << "\n";
