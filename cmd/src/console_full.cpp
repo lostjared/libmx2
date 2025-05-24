@@ -171,7 +171,14 @@ class Game : public gl::GLObject {
                 TexCoord = aTexCoord;        
             }
         )";
-        static std::vector<std::string> shaders = { win->util.getFilePath("data/shaders/default.glsl"), win->util.getFilePath("data/shaders/cyclone.glsl"), win->util.getFilePath("data/shaders/geometric.glsl") };   
+
+        static std::vector<std::string> shaders = { 
+            win->util.getFilePath("data/shaders/default.glsl"), 
+            win->util.getFilePath("data/shaders/cyclone.glsl"), 
+            win->util.getFilePath("data/shaders/geometric.glsl"),
+            win->util.getFilePath("data/shaders/distort.glsl")
+        };   
+        
         std::fstream file;
         if(index == -1) {
             file.open(shaders[mx::generateRandomInt(0, shaders.size()-1)], std::ios::in);
