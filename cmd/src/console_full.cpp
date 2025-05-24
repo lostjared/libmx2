@@ -178,7 +178,8 @@ class Game : public gl::GLObject {
             win->util.getFilePath("data/shaders/geometric.glsl"),
             win->util.getFilePath("data/shaders/distort.glsl"),
             win->util.getFilePath("data/shaders/atan.glsl"),
-            win->util.getFilePath("data/shaders/huri.glsl")
+            win->util.getFilePath("data/shaders/huri.glsl"),
+            win->util.getFilePath("data/shaders/vhs.glsl")
         };   
         
         std::fstream file;
