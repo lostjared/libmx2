@@ -177,14 +177,20 @@ class Game : public gl::GLObject {
             win->util.getFilePath("data/shaders/cyclone.glsl"), 
             win->util.getFilePath("data/shaders/geometric.glsl"),
             win->util.getFilePath("data/shaders/distort.glsl"),
-            win->util.getFilePath("data/shaders/atan.glsl")
+            win->util.getFilePath("data/shaders/atan.glsl"),
+            win->util.getFilePath("data/shaders/huri.glsl")
         };   
         
         std::fstream file;
         if(index == -1) {
-            file.open(shaders[mx::generateRandomInt(0, shaders.size()-1)], std::ios::in);
+            file.open(shaders.at(mx::generateRandomInt(0, shaders.size()-1)), std::ios::in);
         } else {
-            file.open(shaders[index], std::ios::in);
+            if(index < 0 || index >= static_cast<int>(shaders.size())) {
+                std::cerr << "Invalid shader index. Using random shader." << std::endl;
+                file.open(shaders.at(mx::generateRandomInt(0, shaders.size()-1)), std::ios::in);
+            } else {
+                file.open(shaders.at(index), std::ios::in);
+            }
         }
         if (!file.is_open()) {
             std::cerr << "Failed to open shader file." << std::endl;
