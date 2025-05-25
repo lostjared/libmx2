@@ -255,7 +255,7 @@ int main(int argc, char **argv) {
                                 continue;
                             } else {
                                 std::cout << "WSL mode enabled. Use 'wsl_off' to disable." << std::endl;
-                                cmd::cmd_type = "wsl.exe"
+                                cmd::cmd_type = "wsl.exe";
                                 continue;
                             }
 #else
