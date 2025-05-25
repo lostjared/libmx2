@@ -481,6 +481,28 @@ public:
         SDL_FreeSurface(surf);
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
+
+        win->console.setCallback(win, [this](gl::GLWindow *window, const std::vector<std::string> &args) -> int {
+            if (args.empty()) {
+                window->console.print("Usage: <command>\n");
+                return 0;
+            }
+            std::ostringstream stream;
+            for(const auto &arg : args) {
+                stream << arg << " ";
+            }
+            std::string command = stream.str();
+            window->console.print("Executing command: " + command + "\n");
+            if(args.size() == 4  && args[0] == "sudo" && args[1] == "enter" && args[2] == "the" && args[3] == "matrix") {
+                insideCube = !insideCube;
+                window->console.print("\nToggled inside cube mode: " + std::string(insideCube ? "ON" : "OFF") + "\n");
+                window->console.hide();
+                return 0;
+            } else {
+                window->console.print("You do not have permission to execute this command. Whats the magic word?\n");
+            }
+            return 0;
+        });
     }
 
     void draw(gl::GLWindow *win) override {
@@ -565,14 +587,17 @@ public:
 
         win->text.setColor({255, 255, 255, 255});
         if(menu_shown && insideCube == false) {
-            win->text.printText_Solid(font, 25.0f, 25.0f, "Matrix Cube - FPS: " + std::to_string(int(1.0f/deltaTime)));        
-            std::string cameraMode = insideCube ? "Inside" : "Outside";
-            win->text.printText_Solid(font, 25.0f, 60.0f, "Press ENTER to toggle " + cameraMode + " mode");
-            win->text.printText_Solid(font, 25.0f, 95.0f, "Use Arrow Keys to look around");
+            win->text.printText_Solid(font, 25.0f, 25.0f, "F3 To Enter Matrix");        
+            //win->text.printText_Solid(font, 25.0f, 60.0f, "Press ENTER to toggle " + cameraMode + " mode");
+            //win->text.printText_Solid(font, 25.0f, 95.0f, "Use Arrow Keys to look around");
         }
     }
     
     void event(gl::GLWindow *win, SDL_Event &e) override {
+
+        if(win->console_visible)
+            return;
+
         if (e.type == SDL_KEYDOWN) {
             switch(e.key.keysym.sym) {
                 case SDLK_RETURN: 
@@ -704,6 +729,7 @@ public:
         setPath(path);
         setObject(new Game());
         object->load(this);
+        activateConsole(util.getFilePath("data/font.ttf"), 18, {0,255,0,255});
     }
     
     ~MainWindow() override {}
