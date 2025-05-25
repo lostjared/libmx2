@@ -39,6 +39,26 @@ class Game : public gl::GLObject {
     std::atomic<bool> program_running{false};
     cmd::AstExecutor &executor = cmd::AstExecutor::getExecutor();
     bool cmd_echo = true;
+    std::mutex task_mutex;
+    std::vector<std::function<void(gl::GLWindow*)>> main_thread_tasks;
+
+    void queueTaskForMainThread(std::function<void(gl::GLWindow*)> task) {
+        std::lock_guard<std::mutex> lock(task_mutex);
+        main_thread_tasks.push_back(task);
+    }
+
+    void processMainThreadTasks(gl::GLWindow *win) {
+        std::vector<std::function<void(gl::GLWindow*)>> tasks_to_run;
+        {
+            std::lock_guard<std::mutex> lock(task_mutex);
+            if (!main_thread_tasks.empty()) {
+                tasks_to_run.swap(main_thread_tasks);
+            }
+        }
+        for (const auto& task : tasks_to_run) {
+            task(win); 
+        }
+    }
     
     void load(gl::GLWindow *win) override {
         font.loadFont(win->util.getFilePath("data/font.ttf"), 36);
@@ -46,43 +66,95 @@ class Game : public gl::GLObject {
         win->console.setPrompt("$> ");
         win->console_visible = true;
         win->console.show();
+        shaders = { 
+            win->util.getFilePath("data/shaders/default.glsl"), 
+            win->util.getFilePath("data/shaders/cyclone.glsl"), 
+            win->util.getFilePath("data/shaders/geometric.glsl"),
+            win->util.getFilePath("data/shaders/distort.glsl"),
+            win->util.getFilePath("data/shaders/atan.glsl"),
+            win->util.getFilePath("data/shaders/huri.glsl"),
+            win->util.getFilePath("data/shaders/vhs.glsl"),
+            win->util.getFilePath("data/shaders/fractal.glsl"),
+            win->util.getFilePath("data/shaders/color-f2.glsl"),
+            win->util.getFilePath("data/shaders/color-cycle.glsl"),
+            win->util.getFilePath("data/shaders/color-swirl.glsl")
+        };   
+    
         executor.setInterrupt(&interrupt_command);
-        win->console.setInputCallback([this, win](gl::GLWindow *window, const std::string &text) -> int {
+        win->console.setInputCallback([this](gl::GLWindow *window, const std::string &text) -> int {
+            auto tokenize = [](const std::string &text) {
+                std::vector<std::string> tokens;
+                std::istringstream iss(text);
+                std::string token;
+                while (iss >> token) {
+                    tokens.push_back(token);
+                }
+                return tokens;
+            };
+
             try {
                 if(text.empty()) {
                     return 0; 
                 }
                 if(text == "random_shader") {
-                    setRandomShader(window, -1);
-                    window->console.thread_safe_print("Random shader set.\n");
+                    queueTaskForMainThread([this](gl::GLWindow* main_thread_win_param) {
+                        this->setRandomShader(main_thread_win_param, -1);
+                    });
+                    window->console.thread_safe_print("Random shader command queued.\n"); // Feedback
+                    window->console.process_message_queue();
                     return 0;
                 } else if(text == "default_shader") {
-                    setRandomShader(window, 0);
-                    window->console.thread_safe_print("Default shader set.\n");
+                    queueTaskForMainThread([this](gl::GLWindow* main_thread_win_param) {
+                        this->setRandomShader(main_thread_win_param, 0);
+                    });
+                    window->console.thread_safe_print("Default shader command queued.\n");
+                    window->console.process_message_queue();    
                     return 0;
-                } else if(text == "clear") {
+                } else if(text.compare(0, 10, "set_shader") == 0) {
+                    std::string arg = text.substr(10); 
+                    size_t start = arg.find_first_not_of(" \t\n\r\f\v");
+                    if (start == std::string::npos) {
+                        window->console.thread_safe_print("Error: No shader path provided.\n");
+                        window->console.process_message_queue();
+                        return 0;
+                    }
+                    arg = arg.substr(start);
+                    if (arg.size() >= 2 && arg.front() == '"' && arg.back() == '"') {
+                        std::string shader_path = arg.substr(1, arg.size() - 2);
+                        if (!std::filesystem::exists(shader_path)) {
+                            window->console.thread_safe_print("Error: Shader file does not exist: " + shader_path + "\n");
+                            window->console.process_message_queue();
+                            return 0;
+                        }
+                        queueTaskForMainThread([this, shader_path](gl::GLWindow* main_thread_win_param) {
+                            this->setShader(main_thread_win_param, shader_path);
+                        });
+                        window->console.thread_safe_print("Set shader command queued for: " + shader_path + "\n");
+                        window->console.process_message_queue();
+                    } else {
+                        window->console.thread_safe_print("Error: Shader path must be enclosed in quotes.\n");
+                        window->console.process_message_queue();
+                    }
+                    return 0;
+                }
+                else if(text == "clear") {
                     window->console.clearText();
                     window->console.thread_safe_print("Console cleared.\n");
+                    window->console.process_message_queue();    
                     return 0;
                 } else if(text == "@echo_on") {
                     cmd_echo = true;
                     window->console.thread_safe_print("Echoing commands on.\n");
+                    window->console.process_message_queue();
                     return 0;
                 } else if(text == "@echo_off") {
                     cmd_echo = false;
                     window->console.thread_safe_print("Echoing commands off.\n");
+                    window->console.process_message_queue();
                     return 0;
                 }  else if(!text.empty() && text[0] == '@') {
                     std::string command = text.substr(1);
-                    auto tokenize = [](const std::string &text) {
-                        std::vector<std::string> tokens;
-                        std::istringstream iss(text);
-                        std::string token;
-                        while (iss >> token) {
-                            tokens.push_back(token);
-                        }
-                        return tokens;
-                    };
+                    
                     auto tokens = tokenize(command);
                     window->console.procDefaultCommands(tokens);
                     return  0;
@@ -108,7 +180,7 @@ class Game : public gl::GLObject {
                                     window->console.process_message_queue();             
                                 }
                                 if(interrupt_command) {
-				    interrupt_command = false;
+				                    interrupt_command = false;
                                     throw cmd::Exit_Exception(100);
                                 }
                             }
@@ -164,8 +236,8 @@ class Game : public gl::GLObject {
                 
                 return 0;
             } catch(const std::exception &e) {
-                win->console.thread_safe_print("Error: " + std::string(e.what()) + "\n");
-                win->console.process_message_queue();
+                window->console.thread_safe_print("Error: " + std::string(e.what()) + "\n");
+                window->console.process_message_queue();
                 return 1;
             }
         });
@@ -174,10 +246,10 @@ class Game : public gl::GLObject {
         setRandomShader(win, start_shader);
         logo.initSize(win->w, win->h);
         logo.loadTexture(&program, win->util.getFilePath(img_index), 0.0f, 0.0f, win->w, win->h);
+        CHECK_GL_ERROR();
     }
-
-    void setRandomShader(gl::GLWindow *win, int index = -1) {
-        static const char *vSource = R"(#version 330 core
+    
+    const char *vSource = R"(#version 330 core
             layout (location = 0) in vec3 aPos;
             layout (location = 1) in vec2 aTexCoord;
             out vec2 TexCoord;
@@ -185,35 +257,29 @@ class Game : public gl::GLObject {
                 gl_Position = vec4(aPos, 1.0); 
                 TexCoord = aTexCoord;        
             }
-        )";
+    )";
 
-        static std::vector<std::string> shaders = { 
-            win->util.getFilePath("data/shaders/default.glsl"), 
-            win->util.getFilePath("data/shaders/cyclone.glsl"), 
-            win->util.getFilePath("data/shaders/geometric.glsl"),
-            win->util.getFilePath("data/shaders/distort.glsl"),
-            win->util.getFilePath("data/shaders/atan.glsl"),
-            win->util.getFilePath("data/shaders/huri.glsl"),
-            win->util.getFilePath("data/shaders/vhs.glsl"),
-            win->util.getFilePath("data/shaders/fractal.glsl"),
-            win->util.getFilePath("data/shaders/color-f2.glsl"),
-            win->util.getFilePath("data/shaders/color-cycle.glsl"),
-            win->util.getFilePath("data/shaders/color-swirl.glsl")
-        };   
-        
+    std::vector<std::string> shaders;
+
+    void setRandomShader(gl::GLWindow *win, int index = -1) {
+     
         std::fstream file;
+        std::string filename;
         if(index == -1) {
-            file.open(shaders.at(mx::generateRandomInt(0, shaders.size()-1)), std::ios::in);
+            filename = shaders.at(mx::generateRandomInt(0, shaders.size()-1));
+            file.open(filename, std::ios::in);
         } else {
             if(index < 0 || index >= static_cast<int>(shaders.size())) {
                 std::cerr << "Invalid shader index. Using random shader." << std::endl;
-                file.open(shaders.at(mx::generateRandomInt(0, shaders.size()-1)), std::ios::in);
+                filename = shaders.at(mx::generateRandomInt(0, shaders.size()-1));
+                file.open(filename, std::ios::in);
             } else {
-                file.open(shaders.at(index), std::ios::in);
+                filename = shaders.at(index);
+                file.open(filename, std::ios::in);
             }
         }
         if (!file.is_open()) {
-            std::cerr << "Failed to open shader file." << std::endl;
+            std::cerr << "Failed to open shader file: " << filename << std::endl;
             return;
         } 
         std::ostringstream shader_source;
@@ -228,8 +294,9 @@ class Game : public gl::GLObject {
             GLint windowSizeLoc = glGetUniformLocation(program.id(), "iResolution");
             glUniform2f(windowSizeLoc, static_cast<float>(win->w), static_cast<float>(win->h));
         } else {
-            std::cerr << "Failed to load shader program from file." << std::endl;
+            std::cerr << "Failed to load shader program from file: " << filename  << std::endl;
         }
+        CHECK_GL_ERROR();
     }
     
     void setShader(gl::GLWindow *win, const std::string &shader_path) {
@@ -242,7 +309,7 @@ class Game : public gl::GLObject {
         shader_source << file.rdbuf();  
         file.close();
 
-        if(program.loadProgramFromText("data/shaders/default.vert", shader_source.str())) {
+        if(program.loadProgramFromText(vSource, shader_source.str())) {
             program.silent(true);
             program.useProgram();
             program.setUniform("textTexture", 0);
@@ -260,6 +327,7 @@ class Game : public gl::GLObject {
         }
     }
     void draw(gl::GLWindow *win) override {
+        processMainThreadTasks(win);
         glDisable(GL_DEPTH_TEST);
         Uint32 currentTime = SDL_GetTicks();
         float deltaTime = (currentTime - lastUpdateTime) / 1000.0f; 
