@@ -444,7 +444,7 @@ CustomArguments proc_custom_args(int &argc, char **argv) {
 #ifdef _WIN32
                 case 'w':
                 case 'W':
-                    if(!std::filesystem::exists("/mnt/c/Windows/System32/wsl.exe")) {
+                    if(!std::filesystem::exists("C:\\Windows\\System32\\wsl.exe")) {
                         std::cerr << "mx: WSL not found, please install WSL to use this feature.\n";
                         std::cerr.flush();
                         exit(EXIT_FAILURE);
