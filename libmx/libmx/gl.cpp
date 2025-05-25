@@ -362,6 +362,8 @@ namespace gl {
         fragment_shader = fShader;
         return vfProgram;
     }
+
+    
     
     GLuint ShaderProgram::createProgramFromFile(const std::string &vert, const std::string &frag) {
         std::fstream v,f;
