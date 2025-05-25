@@ -164,7 +164,7 @@ class Game : public gl::GLObject {
                     return 1;
 #endif
                 } else if(text == "wsl_off") {
-#ifdef _WIN323
+#ifdef _WIN32
                     queueTaskForMainThread([this](gl::GLWindow* main_thread_win_param) {
                         this->useWSL(main_thread_win_param, false);
                     });
