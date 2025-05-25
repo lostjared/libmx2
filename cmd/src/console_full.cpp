@@ -49,7 +49,22 @@ class Game : public gl::GLObject {
         executor.setInterrupt(&interrupt_command);
         win->console.setInputCallback([this, win](gl::GLWindow *window, const std::string &text) -> int {
             try {
-                if(text == "@echo_on") {
+                if(text.empty()) {
+                    return 0; 
+                }
+                if(text == "random_shader") {
+                    setRandomShader(window, -1);
+                    window->console.thread_safe_print("Random shader set.\n");
+                    return 0;
+                } else if(text == "default_shader") {
+                    setRandomShader(window, 0);
+                    window->console.thread_safe_print("Default shader set.\n");
+                    return 0;
+                } else if(text == "clear") {
+                    window->console.clearText();
+                    window->console.thread_safe_print("Console cleared.\n");
+                    return 0;
+                } else if(text == "@echo_on") {
                     cmd_echo = true;
                     window->console.thread_safe_print("Echoing commands on.\n");
                     return 0;
@@ -217,7 +232,33 @@ class Game : public gl::GLObject {
         }
     }
     
+    void setShader(gl::GLWindow *win, const std::string &shader_path) {
+        std::fstream file(shader_path, std::ios::in);
+        if (!file.is_open()) {
+            std::cerr << "Failed to open shader file: " << shader_path << std::endl;
+            return;
+        }
+        std::ostringstream shader_source;
+        shader_source << file.rdbuf();  
+        file.close();
 
+        if(program.loadProgramFromText("data/shaders/default.vert", shader_source.str())) {
+            program.silent(true);
+            program.useProgram();
+            program.setUniform("textTexture", 0);
+            program.setUniform("time_f", 0.0f);
+            program.setUniform("alpha", 1.0f);
+            GLint windowSizeLoc = glGetUniformLocation(program.id(), "iResolution");
+            glUniform2f(windowSizeLoc, static_cast<float>(win->w), static_cast<float>(win->h));
+            win->console.thread_safe_print("Shader program loaded successfully from file: " + shader_path + "\n");
+            win->console.process_message_queue();
+        } else {
+            win->console.thread_safe_print("Failed to load shader program from file: " + shader_path + "\n");
+            win->console.thread_safe_print("Using default shader instead.\n");
+            setRandomShader(win, 0);
+            win->console.process_message_queue();
+        }
+    }
     void draw(gl::GLWindow *win) override {
         glDisable(GL_DEPTH_TEST);
         Uint32 currentTime = SDL_GetTicks();

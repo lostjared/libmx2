@@ -293,6 +293,8 @@ namespace gl {
             log = new char [len+1];
             glGetProgramInfoLog(p, len, &ch, log);
             mx::system_err << "Program: " << log << "\n";
+            mx::system_err.flush();
+            delete [] log;
         }
     }
     bool ShaderProgram::checkError() {
@@ -321,7 +323,7 @@ namespace gl {
         glGetShaderiv(vShader, GL_COMPILE_STATUS, &vertCompiled);
         
         if(vertCompiled != GL_TRUE) {
-            mx::system_err << "Error on Vertex compile\n";
+            mx::system_err << "Error on Vertex compile:\n";
             printShaderLog(vShader);
             glDeleteShader(vShader);
             glDeleteShader(fShader);
