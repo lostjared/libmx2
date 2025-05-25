@@ -38,7 +38,7 @@ namespace cmd {
 
     std::vector<std::string> argv;
     std::string app_name;    
-    std::string cmd_type = "cmd.exe";
+    std::string cmd_type = "cmd.exe /c ";
 
     int exitCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
         if(args.empty()) {
@@ -1450,7 +1450,7 @@ namespace cmd {
         PROCESS_INFORMATION pi;
         ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
 
-        std::string cmdLine = cmd_type + " /c  " + command_str;
+        std::string cmdLine = cmd_type + " " + command_str;
         if (!CreateProcess(NULL, const_cast<LPSTR>(cmdLine.c_str()), NULL, NULL, TRUE, 
                         CREATE_NO_WINDOW,NULL, NULL, &si, &pi)) {
             CloseHandle(hStdOutRead);
