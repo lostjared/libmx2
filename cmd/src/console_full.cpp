@@ -61,6 +61,20 @@ class Game : public gl::GLObject {
             task(win); 
         }
     }
+
+    void useWSL(gl::GLWindow *win, const bool &enable) {
+#ifdef _WIN32
+        if(enable) {
+            cmd::cmd_type = "wsl.exe ";
+            win->console.thread_safe_print("WSL enabled. Commands will be executed in WSL.\n");
+            win->console.process_message_queue();
+        } else {
+            cmd::cmd_type = "cmd.exe /c ";
+            win->console.thread_safe_print("WSL disabled. Commands will be executed in cmd.exe.\n");
+            win->console.process_message_queue();
+        }
+#endif
+    }
     
     void load(gl::GLWindow *win) override {
         font.loadFont(win->util.getFilePath("data/font.ttf"), 36);
@@ -138,6 +152,28 @@ class Game : public gl::GLObject {
                         window->console.process_message_queue();
                     }
                     return 0;
+                } else if(text == "wsl_on") {
+#ifdef _WIN32
+                    queueTaskForMainThread([this](gl::GLWindow* main_thread_win_param) {
+                        this->useWSL(main_thread_win_param, true);
+                    });
+                    return 0;
+#else
+                    window->console.thread_safe_print("WSL is not supported on this platform.\n");
+                    window->console.process_message_queue();
+                    return 1;
+#endif
+                } else if(text == "wsl_off") {
+#ifdef _WIN323
+                    queueTaskForMainThread([this](gl::GLWindow* main_thread_win_param) {
+                        this->useWSL(main_thread_win_param, false);
+                    });
+                    return 0;
+#else
+                    window->console.thread_safe_print("WSL is not supported on this platform.\n");
+                    window->console.process_message_queue();
+                    return 1;
+#endif
                 }
                 else if(text == "clear") {
                     window->console.clearText();
