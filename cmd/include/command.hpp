@@ -15,6 +15,7 @@ namespace cmd {
 
     extern std::vector<std::string> argv;
     extern std::string app_name;
+    extern std::string cmd_type;
 
     int exitCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output);
     int echoCommand(const std::vector<Argument>& args, std::istream& input, std::ostream& output); 

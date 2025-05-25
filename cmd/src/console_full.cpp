@@ -16,9 +16,8 @@
 #include<mutex>
 #include<fstream>
 #include<iostream>
-
 #include"loadpng.hpp"
-
+#include"version_info.hpp"
 #define CHECK_GL_ERROR() \
 { GLenum err = glGetError(); \
 if (err != GL_NO_ERROR) \
@@ -418,11 +417,19 @@ CustomArguments proc_custom_args(int &argc, char **argv) {
 	CustomArguments args;
 	Argz<std::string> parser(argc, argv);
     parser.addOptionSingle('h', "Display help message")
+        .addOptionDouble('H', "help", "Display help message")
+        .addOptionSingle('v', "Display version")
+        .addOptionDouble('V', "version", "Display version")     
         .addOptionSingleValue('p', "assets path")
         .addOptionDoubleValue('P', "path", "assets path")
         .addOptionSingleValue('r',"Resolution WidthxHeight")
         .addOptionDoubleValue('R',"resolution", "Resolution WidthxHeight")
-        .addOptionDoubleValue('s', "shader", "Shader index")
+        .addOptionDoubleValue('S', "shader", "Shader index")
+        .addOptionSingle('s', "shader index")
+        #ifdef _WIN32
+        .addOptionSingle('w', "Use WSL")
+        .addOptionDouble('W', "wsl", "Use WSL")
+        #endif
         .addOptionSingle('f', "fullscreen")
         .addOptionDouble('F', "fullscreen", "fullscreen");
     Argument<std::string> arg;
@@ -434,8 +441,25 @@ CustomArguments proc_custom_args(int &argc, char **argv) {
     try {
         while((value = parser.proc(arg)) != -1) {
             switch(value) {
+#ifdef _WIN32
+                case 'w':
+                case 'W':
+                    if(!std::filesystem::exists("/mnt/c/Windows/System32/wsl.exe")) {
+                        std::cerr << "mx: WSL not found, please install WSL to use this feature.\n";
+                        std::cerr.flush();
+                        exit(EXIT_FAILURE);
+                    }
+                    mx::system_out << "mx: WSL enabled\n";
+                    mx::system_out.flush();
+                    cmd::cmd_type = "wsl.exe";
+                    break;
+#endif
                 case 'h':
+                case 'H':
                 case 'v':
+                case 'V':
+                    std::cout << "mx: Console Skeleton Example\n";
+                    std::cout << "mx: Version " << version_string << "\n";
                     parser.help(std::cout);
                     exit(EXIT_SUCCESS);
                     break;
