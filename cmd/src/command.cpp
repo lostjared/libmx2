@@ -1316,7 +1316,6 @@ namespace cmd {
     }
 
     int execCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
-        std::cout << cmd_type << " exec: Executing command: ";
         std::ostringstream all_args;
         for(auto &arg : args) {
             try {
