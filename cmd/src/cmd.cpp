@@ -151,7 +151,7 @@ int main(int argc, char **argv) {
             si.dwFlags |= STARTF_USESTDHANDLES;
             PROCESS_INFORMATION pi;
             ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
-            std::string cmdLine = "cmd.exe /c " + command_str;
+            std::string cmdLine = cmd::cmd_type + " " + command_str;
             if (!CreateProcess(NULL, const_cast<LPSTR>(cmdLine.c_str()), NULL, NULL, TRUE, 
                             CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
                 CloseHandle(hStdOutRead);
@@ -246,7 +246,34 @@ int main(int argc, char **argv) {
                         add_history(line);
                         command_data = line;
                         free(line);
-                        if(command_data == "clear" || command_data == "cls") {
+
+                        if(command_data == "wsl_on") {
+
+#ifdef _WIN32
+                            if(!std::filesystem::exists("C:\\Windows\\System32\\wsl.exe")) {
+                                std::cerr << "WSL executable not found. Please ensure WSL is installed." << std::endl;
+                                continue;
+                            } else {
+                                std::cout << "WSL mode enabled. Use 'wsl_off' to disable." << std::endl;
+                                cmd::cmd_type = "wsl.exe"
+                                continue;
+                            }
+#else
+                            std::cerr << "WSL mode is not available on this platform." << std::endl;
+                            continue;
+#endif
+
+                        } else if(command_data == "wsl_off") {
+#ifdef _WIN32
+                            cmd::cmd_type = "cmd.exe /c ";
+                            std::cout << "WSL mode disabled. Using default command shell." << std::endl;
+                            continue;
+#else
+                            std::cerr << "WSL mode is not available on this platform." << std::endl;    
+                            continue;
+#endif
+
+                        } else if(command_data == "clear" || command_data == "cls") {
                             std::cout << "\033[2J\033[1;1H"; 
                             continue;
                         } else if(command_data == "exit" || command_data == "quit") {
