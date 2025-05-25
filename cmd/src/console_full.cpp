@@ -6,6 +6,7 @@
 #include"scanner.hpp"
 #include"types.hpp"
 #include"string_buffer.hpp"
+#include"command.hpp"
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 #include <GLES3/gl3.h>
