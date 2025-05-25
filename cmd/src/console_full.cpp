@@ -12,7 +12,10 @@
 #endif
 #include<atomic>
 #include<thread>
-
+#include<filesystem>
+#include<mutex>
+#include<fstream>
+#include<iostream>
 
 #include"loadpng.hpp"
 
@@ -24,7 +27,6 @@ printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
-#include<filesystem>
 
 
 class Game : public gl::GLObject {
