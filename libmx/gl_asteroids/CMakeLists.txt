@@ -14,5 +14,7 @@ if(WIN32)
     ${RESOURCE_FILE}
     PROPERTIES
       LANGUAGE RC
+  )
+  
   target_sources(gl_asteroids PRIVATE ${RESOURCE_FILE})
 endif()
