@@ -1294,7 +1294,12 @@ namespace console {
     bool GLConsole::procDefaultCommands(const std::vector<std::string> &cmd) {
         if (cmd.empty()) {
             return true;
-        } else if (cmd.size() > 0 && cmd[0] == "clear") {
+        } else if(cmd.size() == 1 && (cmd[0] == "about" || cmd[0] == "version")) {
+           print("MX2 version " + std::to_string(PROJECT_VERSION_MAJOR) + "." + std::to_string(PROJECT_VERSION_MINOR) + "\n");
+           print("writen by Jared Bruni\n");
+           print("https://lostsidedead.biz\n");
+        } 
+        else if (cmd.size() > 0 && cmd[0] == "clear") {
             console.clearText();
             return true;
         } else if (cmd.size() > 0 && cmd[0] == "exit") {
