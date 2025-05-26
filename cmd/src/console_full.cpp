@@ -177,10 +177,33 @@ class Game : public gl::GLObject {
                 }
                 else if(text == "clear") {
                     window->console.clearText();
-                    window->console.thread_safe_print("Console cleared.\n");
                     window->console.process_message_queue();    
                     return 0;
-                } else if(text == "@echo_on") {
+                } else if(text == "about") {
+                    window->console.thread_safe_print("Console Skeleton Example v1.0\n");
+                    window->console.thread_safe_print("MX2 version " + std::to_string(PROJECT_VERSION_MAJOR) + "." + std::to_string(PROJECT_VERSION_MINOR) + "\n");
+                    window->console.thread_safe_print("Written by Jared Bruni\n");
+                    window->console.thread_safe_print("https://lostsidedead.biz\n");
+                    window->console.process_message_queue();
+                    return 0;
+                } else if(text == "exit") {
+                    window->console.thread_safe_print("Exiting console...\n");
+                    window->quit();
+                    return 0;
+                } else if(text == "help") {
+                    window->console.thread_safe_print("Available Built-in Console Control commands:\n");
+                    window->console.thread_safe_print(" - random_shader: Set a random shader.\n");
+                    window->console.thread_safe_print(" - default_shader: Set the default shader.\n");
+                    window->console.thread_safe_print(" - set_shader \"path/to/shader.glsl\": Set a specific shader.\n");
+                    window->console.thread_safe_print(" - wsl_on: Enable WSL for command execution (Windows only).\n");
+                    window->console.thread_safe_print(" - wsl_off: Disable WSL for command execution (Windows only).\n");
+                    window->console.thread_safe_print(" - clear: Clear the console.\n");
+                    window->console.thread_safe_print(" - about: Show information about this application.\n");
+                    window->console.thread_safe_print(" - exit: Exit the application.\n");
+                    window->console.process_message_queue();
+                    return 0;
+                }
+                 else if(text == "@echo_on") {
                     cmd_echo = true;
                     window->console.thread_safe_print("Echoing commands on.\n");
                     window->console.process_message_queue();
@@ -192,7 +215,6 @@ class Game : public gl::GLObject {
                     return 0;
                 }  else if(!text.empty() && text[0] == '@') {
                     std::string command = text.substr(1);
-                    
                     auto tokens = tokenize(command);
                     window->console.procDefaultCommands(tokens);
                     return  0;
