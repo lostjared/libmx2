@@ -1305,7 +1305,7 @@ namespace console {
         } else if (cmd.size() > 0 && cmd[0] == "exit") {
             print("Exiting console...\n");
             exit(0);
-            return true
+            return true;
         } else if(cmd.size() == 5 && cmd[0] == "settext") {
                 int size = std::stoi(cmd[1]);
                 SDL_Color color;
