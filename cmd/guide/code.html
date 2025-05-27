@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Facebook Open Graph meta tags -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Console Skeleton - Project Overview">
+    <meta property="og:description" content="Advanced OpenGL-based interactive console application with real-time visual effects, MXCMD script execution, and cross-platform compatibility.">
+    <meta property="og:image" content="https:/lostsidedead.biz/mxcmd/console2.png">
+    <meta property="og:url" content="https://lostsidedead.biz/mxcmd/code.html">
+    <meta property="og:site_name" content="Console Skeleton Guide">
+    
+    <!-- Additional meta tags for better SEO -->
+    <meta name="description" content="Console Skeleton: OpenGL-based interactive console with customizable shaders, MXCMD integration, and cross-platform support for Windows WSL, Linux, and macOS.">
+    <meta name="keywords" content="console, opengl, shader, mxcmd, terminal, cross-platform, wsl, linux, windows">
+    <meta name="author" content="LostSideDead Software">
+    <title>Project Overview - Console Skeleton Guide</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+        h1 { color: #333; border-bottom: 3px solid #007acc; padding-bottom: 10px; }
+        h2 { color: #555; margin-top: 30px; }
+        .code-block {
+            background: #f4f4f4;
+            border-left: 4px solid #007acc;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+        }
+        .feature-list {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .command-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        .command-table th, .command-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .command-table th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+<nav>
+    <a href="index.html">Home</a>
+    <a href="code.html">Overview</a>
+    <a href="commands.html">Commands</a>
+    <a href="control_flow.html">Control Flow</a>
+    <a href="expressions.html">Expressions & Syntax</a>
+</nav>
+
+    <div class="container">
+        <h1>Console Skeleton Project Overview</h1>
+        <h2>Project Description</h2>
+        <p>
+            <img src="console2.png" alt="Console Skeleton Screenshot" style="max-width: 100%; height: auto;">
+            Console Skeleton is an advanced OpenGL-based interactive console application that combines a powerful command-line interface with real-time visual effects. Built on the MX2 framework, it provides a fully-featured terminal emulator with customizable shaders, MXCMD script execution, and cross-platform compatibility including Windows WSL support.
+        </p>
+
+        <h2>Core Components</h2>
+        <div class="feature-list">
+            <ul>
+                <li><strong>Interactive Console:</strong> Full-featured terminal with scrolling, history, and command completion</li>
+                <li><strong>MXCMD Integration:</strong> Execute MXCMD scripts with AST parsing and command execution</li>
+                <li><strong>Shader System:</strong> Real-time visual effects with customizable fragment shaders</li>
+                <li><strong>Cross-Platform:</strong> Native support for Linux/macOS with Windows WSL integration</li>
+                <li><strong>Thread-Safe Operations:</strong> Multi-threaded command execution with main thread task queuing</li>
+            </ul>
+        </div>
+
+        <h2>Architecture</h2>
+        <p>
+            The application follows a modular architecture with clear separation between the console interface (<code>GLConsole</code>), 
+            the command execution engine (<code>AstExecutor</code>), and the rendering system (<code>Game</code> class). 
+            The main components include:
+        </p>
+        <ul>
+            <li><strong>Game Class:</strong> Handles OpenGL rendering, shader management, and input processing</li>
+            <li><strong>MainWindow:</strong> SDL2/OpenGL window management with console integration</li>
+            <li><strong>Console System:</strong> Text rendering, scrolling, input handling, and command history</li>
+            <li><strong>Command Processor:</strong> MXCMD script parsing and execution with interrupt support</li>
+        </ul>
+
+        <h2>Key Features</h2>
+        <div class="feature-list">
+            <h3>Console Features</h3>
+            <ul>
+                <li>Scrollable text output with mouse wheel and page up/down support</li>
+                <li>Command history navigation (up/down arrows)</li>
+                <li>Real-time text rendering with custom font support</li>
+                <li>Thread-safe message queuing for command output</li>
+                <li>Configurable prompt and console appearance</li>
+            </ul>
+
+            <h3>Visual Effects</h3>
+            <ul>
+                <li>Dynamic shader switching with 10+ built-in effects</li>
+                <li>Real-time time-based animations</li>
+                <li>Custom GLSL fragment shader support</li>
+                <li>Keyboard shortcuts for quick shader changes</li>
+            </ul>
+
+            <h3>Command System</h3>
+            <ul>
+                <li>Built-in console commands (clear, about, help, exit)</li>
+                <li>MXCMD script execution with full language support</li>
+                <li>Windows WSL integration for cross-platform commands</li>
+                <li>Command echo control and debugging features</li>
+            </ul>
+        </div>
+
+        <h2>Built-in Commands</h2>
+        <table class="command-table">
+            <tr>
+                <th>Command</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td><code>random_shader</code></td>
+                <td>Apply a random visual shader effect</td>
+            </tr>
+            <tr>
+                <td><code>default_shader</code></td>
+                <td>Reset to the default shader</td>
+            </tr>
+            <tr>
+                <td><code>set_shader "path"</code></td>
+                <td>Load a custom shader from file path</td>
+            </tr>
+            <tr>
+                <td><code>wsl_on/wsl_off</code></td>
+                <td>Enable/disable WSL command execution (Windows only)</td>
+            </tr>
+            <tr>
+                <td><code>clear</code></td>
+                <td>Clear the console output</td>
+            </tr>
+            <tr>
+                <td><code>about</code></td>
+                <td>Display application information</td>
+            </tr>
+            <tr>
+                <td><code>help</code></td>
+                <td>Show available commands</td>
+            </tr>
+            <tr>
+                <td><code>@echo_on/@echo_off</code></td>
+                <td>Control command echoing</td>
+            </tr>
+        </table>
+
+        <h2>Keyboard Shortcuts</h2>
+        <table class="command-table">
+            <tr>
+                <th>Key Combination</th>
+                <th>Action</th>
+            </tr>
+            <tr>
+                <td><code>Ctrl+R</code></td>
+                <td>Apply random shader effect</td>
+            </tr>
+            <tr>
+                <td><code>Ctrl+C</code></td>
+                <td>Apply Command Interrupt</td>
+            </tr>
+            <tr>
+                <td><code>Page Up/Down</code></td>
+                <td>Scroll console output</td>
+            </tr>
+            <tr>
+                <td><code>Up/Down Arrows</code></td>
+                <td>Navigate command history</td>
+            </tr>
+            <tr>
+                <td><code>Escape</code></td>
+                <td>Close application</td>
+            </tr>
+        </table>
+
+        <h2>Usage Example</h2>
+        <div class="code-block">
+            <pre><code>
+# Basic console interaction
+$ random_shader                    # Apply random visual effect
+$ clear                            # Clear console
+$ @echo_on                         # Enable command echoing
+
+# MXCMD script execution
+$ cmd "script.mxcmd"              # Execute MXCMD script file
+
+# WSL integration (Windows)
+$ wsl_on                          # Enable WSL for commands
+$ exec "ls -la"                   # Execute Linux commands via WSL
+
+# Shader customization
+$ set_shader "data/shaders/custom.glsl"  # Load custom shader
+$ default_shader                         # Reset to default
+</code></pre>
+        </div>
+
+        <h2>Building and Running</h2>
+        <div class="code-block">
+            <pre><code>
+# clone the repository
+# have libmx2 and other dependencies installed
+# Build the project
+cd cmd/build
+cmake .. -DCMD=ON -DSHARED=ON -DCONSOLE=ON
+cmake --build .
+
+# Run the console
+./cmd-console
+
+# With custom parameters
+./cmd-console -p /path/to/assets -r 1920x1080
+</code></pre>
+        </div>
+
+        <h2>Technical Details</h2>
+        <ul>
+            <li><strong>Graphics:</strong> OpenGL 3.3+ with SDL2</li>
+            <li><strong>Language:</strong> C++20 with modern STL features</li>
+            <li><strong>Threading:</strong> Multi-threaded with mutex-protected console operations</li>
+            <li><strong>Platforms:</strong> Linux, macOS, Windows (with WSL support)</li>
+            <li><strong>Dependencies:</strong> SDL2, SDL2_TTF, OpenGL, libmx2 framework</li>
+        </ul>
+    </div>
+</body>
+</html>
