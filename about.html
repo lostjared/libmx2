@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>libmx2 - Advanced Multimedia Framework</title>
+
+    
+    <meta name="description" content="libmx2 is a comprehensive C++20 multimedia framework with OpenGL, WebAssembly, and interactive console support. Build cross-platform games and applications with 50+ examples.">
+    <meta name="keywords" content="libmx2, multimedia framework, OpenGL, WebAssembly, C++, SDL2, cross-platform, game development, 3D graphics, console, MXCMD">
+    <meta name="author" content="LostSideDead Software">
+    <meta name="robots" content="index, follow">
+    <meta name="language" content="English">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://lostsidedead.biz/libmx2/mx.html">
+    <meta property="og:title" content="libmx2 - Advanced Cross-Platform Multimedia Framework">
+    <meta property="og:description" content="Comprehensive C++20 multimedia framework with OpenGL, WebAssembly support, and 50+ example applications. Features 3D graphics, interactive console, and cross-platform deployment.">
+    <meta property="og:image" content="https://lostsidedead.biz/libmx2/libmx_logo.jpg">
+    <meta property="og:image:alt" content="libmx2 Framework - Games and Graphics Examples">
+    <meta property="og:site_name" content="libmx2 Multimedia Framework">
+    <meta property="og:locale" content="en_US">
+
+    <style>
+        :root {
+            --primary-blue: #2563eb;
+            --dark-blue: #1e40af;
+            --light-blue: #3b82f6;
+            --accent-blue: #60a5fa;
+            --white: #ffffff;
+            --light-gray: #f8fafc;
+            --medium-gray: #e2e8f0;
+            --dark-gray: #64748b;
+            --text-primary: #1e293b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--dark-blue) 100%);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .navbar {
+            background: var(--white);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--primary-blue);
+        }
+
+        .nav-links {
+            display: flex;
+            list-style: none;
+            gap: 2rem;
+        }
+
+        .nav-links a {
+            color: var(--text-primary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            color: var(--primary-blue);
+        }
+
+        .hero {
+            background: var(--white);
+            padding: 4rem 2rem;
+            text-align: center;
+        }
+
+        .hero-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            color: var(--primary-blue);
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            color: var(--dark-gray);
+            max-width: 800px;
+            margin: 0 auto 2rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .stat-card {
+            background: var(--light-gray);
+            padding: 2rem;
+            border-radius: 12px;
+            text-align: center;
+            border: 2px solid var(--medium-gray);
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--primary-blue);
+        }
+
+        .stat-label {
+            color: var(--dark-gray);
+            font-weight: 500;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        .section {
+            background: var(--white);
+            margin: 2rem 0;
+            padding: 3rem;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .section h2 {
+            color: var(--primary-blue);
+            font-size: 2.2rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 3px solid var(--primary-blue);
+            padding-bottom: 0.5rem;
+        }
+
+        .section h3 {
+            color: var(--dark-blue);
+            font-size: 1.5rem;
+            margin: 2rem 0 1rem;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .feature-card {
+            background: var(--light-gray);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border-left: 4px solid var(--primary-blue);
+        }
+
+        .feature-card h4 {
+            color: var(--primary-blue);
+            margin-bottom: 0.5rem;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin: 2rem 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--white);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        th {
+            background: var(--primary-blue);
+            color: var(--white);
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--medium-gray);
+        }
+
+        tr:hover {
+            background: var(--light-gray);
+        }
+
+        .code-block {
+            background: var(--text-primary);
+            color: var(--white);
+            padding: 1.5rem;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+
+        .tech-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .tech-badge {
+            background: var(--primary-blue);
+            color: var(--white);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .highlight-box {
+            background: linear-gradient(135deg, var(--light-blue), var(--primary-blue));
+            color: var(--white);
+            padding: 2rem;
+            border-radius: 12px;
+            margin: 2rem 0;
+        }
+
+        .footer {
+            background: var(--text-primary);
+            color: var(--white);
+            text-align: center;
+            padding: 3rem 2rem;
+            margin-top: 4rem;
+        }
+
+        .btn {
+            display: inline-block;
+            background: var(--primary-blue);
+            color: var(--white);
+            padding: 0.8rem 2rem;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 500;
+            transition: background 0.3s ease;
+        }
+
+        .btn:hover {
+            background: var(--dark-blue);
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+            
+            .nav-links {
+                gap: 1rem;
+            }
+            
+            .section {
+                padding: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">libmx2</div>
+            <ul class="nav-links">
+                <li><a href="#overview">Overview</a></li>
+                <li><a href="#features">Features</a></li>
+                <li><a href="#examples">Examples</a></li>
+                <li><a href="#architecture">Architecture</a></li>
+                <li><a href="#webasm">WebAssembly</a></li>
+                <li><a href="#console">Console</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <div class="hero-container">
+            <img src="libmx_logo.jpg" style="width: 150px; height: auto; margin-bottom: 1rem;" alt="libmx2 Logo">
+            <h1>libmx2</h1>
+            <p>Advanced Cross-Platform Multimedia Framework with OpenGL, WebAssembly, and Interactive Console Support</p>
+            <a href="https://github.com/lostjared/libmx2" class="btn">View on GitHub</a>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">50+</div>
+                    <div class="stat-label">Example Applications</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">100k+</div>
+                    <div class="stat-label">Lines of Code</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">6</div>
+                    <div class="stat-label">Platform Support</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">20+</div>
+                    <div class="stat-label">WebAssembly Demos</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="container">
+        <section id="overview" class="section">
+            <h2>Project Overview</h2>
+            <p>libmx2 is a comprehensive, modern multimedia framework written in C++20 that provides developers with powerful tools for creating cross-platform applications with advanced graphics, audio, and interactive capabilities. The framework encompasses everything from basic SDL2 wrappers to sophisticated OpenGL rendering engines, complete with WebAssembly deployment support and an advanced command-line console system.</p>
+            
+            <div class="highlight-box">
+                <h3>Key Highlights</h3>
+                <ul>
+                    <li><strong>Cross-Platform Excellence:</strong> Native support for Windows, Linux, macOS, Android, and WebAssembly</li>
+                    <li><strong>Modern Graphics:</strong> OpenGL 3.3+ with shader pipeline management and Vulkan support</li>
+                    <li><strong>Interactive Console:</strong> Full-featured terminal emulator with MXCMD scripting language</li>
+                    <li><strong>Rich Media Support:</strong> Audio processing, image manipulation, and 3D model loading</li>
+                    <li><strong>WebAssembly Ready:</strong> Deploy applications directly to browsers with full functionality</li>
+                </ul>
+            </div>
+
+            <div class="tech-stack">
+                <span class="tech-badge">C++20</span>
+                <span class="tech-badge">OpenGL 3.3+</span>
+                <span class="tech-badge">SDL2</span>
+                <span class="tech-badge">WebAssembly</span>
+                <span class="tech-badge">Qt6</span>
+                <span class="tech-badge">GLM</span>
+                <span class="tech-badge">Cross-Platform</span>
+            </div>
+        </section>
+
+        <section id="architecture" class="section">
+            <h2>Framework Architecture</h2>
+            <p>The libmx2 framework is built with a modular architecture that separates concerns and provides clean interfaces for different multimedia subsystems.</p>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Component</th>
+                            <th>Description</th>
+                            <th>Key Classes</th>
+                            <th>Purpose</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Core Framework (libmx/)</strong></td>
+                            <td>Base multimedia system with SDL2 abstraction</td>
+                            <td>mx::mxWindow, mx::Texture, mx::Font</td>
+                            <td>2D rendering, window management, basic multimedia</td>
+                        </tr>
+                        <tr>
+                            <td><strong>OpenGL Engine</strong></td>
+                            <td>Advanced 3D graphics with modern OpenGL</td>
+                            <td>gl::GLWindow, gl::ShaderProgram, gl::GLObject</td>
+                            <td>3D rendering, shader management, graphics pipeline</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Console System</strong></td>
+                            <td>Interactive terminal with scripting support</td>
+                            <td>console::GLConsole, console::Console</td>
+                            <td>Command execution, text rendering, user interaction</td>
+                        </tr>
+                        <tr>
+                            <td><strong>MXCMD Engine (cmd/)</strong></td>
+                            <td>Complete scripting language with AST parsing</td>
+                            <td>cmd::AstExecutor, cmd::Parser, cmd::Scanner</td>
+                            <td>Script execution, command processing, automation</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Android Platform</strong></td>
+                            <td>Mobile platform abstraction layer</td>
+                            <td>Platform-specific implementations</td>
+                            <td>Mobile deployment, touch input, mobile optimization</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Model Viewer</strong></td>
+                            <td>Qt-based 3D model viewing application</td>
+                            <td>Qt6 integration classes</td>
+                            <td>Desktop model viewing, texture management</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="features" class="section">
+            <h2>Core Features</h2>
+            
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>🎮 2D Game Development</h4>
+                    <p>Complete 2D game engine with sprite management, collision detection, and animation systems. Includes classic games like Asteroids, Breakout, Pong, and Space Shooter.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h4>🌐 3D Graphics Engine</h4>
+                    <p>Modern OpenGL 3.3+ pipeline with shader management, 3D model loading, lighting systems, and particle effects. Supports MXMOD format and standard model formats.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h4>🖥️ Interactive Console</h4>
+                    <p>Professional terminal emulator with command history, scrolling, syntax highlighting, and full MXCMD scripting language support with AST parsing.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h4>🎵 Audio Processing</h4>
+                    <p>Comprehensive audio system with mixing, sound effects, music playback, and real-time audio processing capabilities.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h4>📱 Cross-Platform</h4>
+                    <p>Native compilation for Windows, Linux, macOS, Android, and WebAssembly with platform-specific optimizations and feature sets.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h4>🔧 Development Tools</h4>
+                    <p>Model viewer, shader editor, AST visualizer, and comprehensive debugging tools for efficient development workflows.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="examples" class="section">
+            <h2>Example Applications</h2>
+            <p>The framework includes over 50 complete example applications demonstrating various aspects of multimedia development.</p>
+
+            <h3>2D Game Examples</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Application</th>
+                            <th>Description</th>
+                            <th>Features Demonstrated</th>
+                            <th>WebAssembly Demo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Asteroids</strong></td>
+                            <td>Classic asteroid shooter with modern graphics</td>
+                            <td>Sprite rotation, collision detection, particle effects</td>
+                            <td><a href="https://lostsidedead.biz/asetroids">Play Now</a></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Breakout</strong></td>
+                            <td>Ball and paddle brick breaking game</td>
+                            <td>Physics simulation, power-ups, level progression</td>
+                            <td><a href="https://lostsidedead.biz/Breakout">Play Now</a></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Space Shooter</strong></td>
+                            <td>Vertical scrolling space combat</td>
+                            <td>Enemy AI, weapon systems, background scrolling</td>
+                            <td><a href="https://lostsidedead.biz/Space">Play Now</a></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Pong</strong></td>
+                            <td>Classic paddle tennis game</td>
+                            <td>Basic game loop, input handling, score tracking</td>
+                            <td><a href="https://lostsidedead.biz/pong">Play Now</a></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Knight's Tour</strong></td>
+                            <td>Chess puzzle visualization</td>
+                            <td>Algorithm visualization, pathfinding display</td>
+                            <td><a href="https://lostsidedead.biz/KnightsTour">Play Now</a></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>3D OpenGL Examples</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Application</th>
+                            <th>Description</th>
+                            <th>Graphics Features</th>
+                            <th>WebAssembly Demo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>3D Asteroids</strong></td>
+                            <td>Three-dimensional asteroid field navigation</td>
+                            <td>3D movement, depth buffer, perspective projection</td>
+                            <td><a href="https://lostsidedead.biz/Asteroids3D">Play Now</a></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Space3D</strong></td>
+                            <td>Advanced 3D space combat simulator</td>
+                            <td>3D models, lighting, particle systems, boss battles</td>
+                            <td><a href="https://lostsidedead.biz/game/Space3D">Play Now</a></td>
+                        </tr>
+                        <tr>
+                            <td><strong>3D Breakout</strong></td>
+                            <td>Three-dimensional brick breaking</td>
+                            <td>3D physics, camera controls, dynamic lighting</td>
+                            <td><a href="https://lostsidedead.biz/game/3DBreak">Play Now</a></td>
+                        </tr>
+                        <tr>
+                            <td><strong>3D Pong</strong></td>
+                            <td>Volumetric paddle tennis game</td>
+                            <td>3D collision detection, camera movement, lighting</td>
+                            <td><a href="https://lostsidedead.biz/3DPong">Play Now</a></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Point Sprites</strong></td>
+                            <td>Advanced particle system demonstrations</td>
+                            <td>GPU particles, point sprites, blend modes</td>
+                            <td><a href="https://lostsidedead.biz/point-sprites">View Demos</a></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>Graphics Technology Demos</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Demo</th>
+                            <th>Technology</th>
+                            <th>Description</th>
+                            <th>Link</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Skybox</strong></td>
+                            <td>Cubemap Texturing</td>
+                            <td>360-degree environment mapping</td>
+                            <td><a href="https://lostsidedead.biz/Skybox">View Demo</a></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Phong Lighting</strong></td>
+                            <td>Advanced Lighting</td>
+                            <td>Realistic lighting model implementation</td>
+                            <td><a href="https://lostsidedead.biz/Phong">View Demo</a></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Shadow Mapping</strong></td>
+                            <td>Dynamic Shadows</td>
+                            <td>Real-time shadow casting and receiving</td>
+                            <td><a href="https://lostsidedead.biz/Shadow">View Demo</a></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Fire Simulation</strong></td>
+                            <td>Particle Effects</td>
+                            <td>Realistic fire and smoke particle system</td>
+                            <td><a href="https://lostsidedead.biz/Fire">View Demo</a></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Winter Scene</strong></td>
+                            <td>Environmental Effects</td>
+                            <td>Snow particles and atmospheric effects</td>
+                            <td><a href="https://lostsidedead.biz/Winter">View Demo</a></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="console" class="section">
+            <h2>Console Skeleton - Interactive Terminal</h2>
+            <p>The Console Skeleton represents the pinnacle of the libmx2 framework's capabilities, combining advanced OpenGL graphics with a fully-featured interactive terminal and scripting system.</p>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>🖥️ Advanced Terminal Emulator</h4>
+                    <p>Professional-grade console with scrolling, command history, syntax highlighting, and customizable appearance. Supports mouse wheel scrolling and keyboard navigation.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h4>🎨 Real-Time Visual Effects</h4>
+                    <p>Dynamic shader switching with 10+ built-in effects including cyclone, geometric distortion, VHS effects, and fractal patterns. Custom GLSL shader support.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h4>⚙️ MXCMD Scripting Engine</h4>
+                    <p>Complete scripting language with AST parsing, variables, functions, control flow, and module system. Supports external library loading and command execution.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h4>🌐 Cross-Platform Commands</h4>
+                    <p>Windows WSL integration for seamless Linux command execution on Windows. Native platform support with automatic command routing.</p>
+                </div>
+            </div>
+
+            <h3>MXCMD Language Features</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th><a href="/mxcmd">Guide</a></th>
+                            <th>Feature</th>
+                            <th>Syntax Example</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Variable Assignment</strong></td>
+                            <td><code>let x = 42</code></td>
+                            <td>Dynamic typing with automatic type inference</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Function Definition</strong></td>
+                            <td><code>define func(a, b) begin ... end</code></td>
+                            <td>User-defined functions with parameters</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Control Flow</strong></td>
+                            <td><code>if condition ... else ... fi</code></td>
+                            <td>Conditional execution and loop constructs</td>
+                        </tr>
+                        <tr>
+                            <td><strong>External Libraries</strong></td>
+                            <td><code>extern "module" "func" "alias"</code></td>
+                            <td>Dynamic library loading and symbol binding</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Command Execution</strong></td>
+                            <td><code>cmd "script.mxcmd"</code></td>
+                            <td>Script execution and command chaining</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="code-block">
+<pre><code>
+# Example MXCMD Script
+define init_graphics()
+begin
+    let width = 1280
+    let height = 720
+    
+    # Load external SDL module
+    extern "sdl-mod" "sdl_init" "sdl_init"
+    extern "sdl-mod" "sdl_create_window" "sdl_window"
+    
+    # Initialize graphics
+    sdl_init
+    sdl_window "My Application" width height
+    
+    printf "Graphics initialized: %dx%d\n" width height
+    return 0
+end
+
+# Execute initialization
+init_graphics
+</code></pre>
+            </div>
+        </section>
+
+        <section id="webasm" class="section">
+            <h2>WebAssembly Deployment</h2>
+            <p>One of libmx2's most powerful features is its comprehensive WebAssembly support, allowing native C++ applications to run seamlessly in web browsers with near-native performance.</p>
+
+            <div class="highlight-box">
+                <h3>WebAssembly Capabilities</h3>
+                <ul>
+                    <li><strong>Full OpenGL Support:</strong> WebGL 2.0 integration with complete shader pipeline</li>
+                    <li><strong>Audio Processing:</strong> Web Audio API integration for real-time audio</li>
+                    <li><strong>Input Handling:</strong> Mouse, keyboard, and touch input support</li>
+                    <li><strong>File System:</strong> Virtual file system with asset loading</li>
+                    <li><strong>Performance:</strong> Optimized builds with minimal overhead</li>
+                </ul>
+            </div>
+
+            <h3>Available WebAssembly Demos</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Category</th>
+                            <th>Applications</th>
+                            <th>Count</th>
+                            <th>Features</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Games</strong></td>
+                            <td>Asteroids, Breakout, Pong, Space Shooter, 3D variants</td>
+                            <td>12+</td>
+                            <td>Full gameplay, audio, graphics</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Graphics Demos</strong></td>
+                            <td>Skybox, Lighting, Shadows, Particles</td>
+                            <td>8+</td>
+                            <td>Advanced rendering techniques</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Visual Effects</strong></td>
+                            <td>Fire, Snow, Matrix Rain, Fractals</td>
+                            <td>6+</td>
+                            <td>Real-time particle systems</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Interactive Tools</strong></td>
+                            <td>Model Viewer, Shader Editor, Console</td>
+                            <td>4+</td>
+                            <td>User interaction, file loading</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="technical" class="section">
+            <h2>Technical Specifications</h2>
+            
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>🔧 Build System</h4>
+                    <p><strong>Primary:</strong> CMake with cross-platform configuration<br>
+                    <strong>WebAssembly:</strong> Emscripten toolchain with custom Makefiles<br>
+                    <strong>Dependencies:</strong> Automated dependency resolution</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h4>📊 Codebase Statistics</h4>
+                    <p><strong>Total Lines:</strong> 100,000+ lines of C++<br>
+                    <strong>Applications:</strong> 50+ complete examples<br>
+                    <strong>Platforms:</strong> 6 target platforms supported</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h4>🎯 Performance</h4>
+                    <p><strong>Rendering:</strong> 60+ FPS on modern hardware<br>
+                    <strong>WebAssembly:</strong> Near-native performance<br>
+                    <strong>Memory:</strong> Efficient memory management</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h4>🔗 Integration</h4>
+                    <p><strong>Graphics:</strong> OpenGL 3.3+, Vulkan API<br>
+                    <strong>Audio:</strong> SDL2 Audio, OpenAL support<br>
+                    <strong>UI:</strong> Qt6 integration for desktop tools</p>
+                </div>
+            </div>
+
+            <h3>Platform Support Matrix</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Platform</th>
+                            <th>Graphics</th>
+                            <th>Audio</th>
+                            <th>Input</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Linux</strong></td>
+                            <td>OpenGL 3.3+</td>
+                            <td>SDL2 Audio (SDL_Mixer 2.0)</td>
+                            <td>Keyboard, Mouse, Gamepad</td>
+                            <td>✅ Full Support</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Windows</strong></td>
+                            <td>OpenGL 3.3+</td>
+                            <td>SDL2 Audio (Mixer 2.0)</td>
+                            <td>Keyboard, Mouse, Gamepad, WSL</td>
+                            <td>✅ Full Support</td>
+                        </tr>
+                        <tr>
+                            <td><strong>macOS</strong></td>
+                            <td>OpenGL 3.3+, Metal (via MoltenVK)</td>
+                            <td>SDL2 Audio, Core Audio</td>
+                            <td>Keyboard, Mouse, Gamepad</td>
+                            <td>✅ Full Support</td>
+                        </tr>
+                        <tr>
+                            <td><strong>WebAssembly</strong></td>
+                            <td>WebGL 2.0</td>
+                            <td>Web Audio API</td>
+                            <td>Keyboard, Mouse, Touch</td>
+                            <td>✅ Full Support</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Android</strong></td>
+                            <td>OpenGL ES 3.0+</td>
+                            <td>OpenSL ES</td>
+                            <td>Touch, Sensors</td>
+                            <td>🔄 In Development</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>Getting Started</h2>
+            <p>Begin your journey with libmx2 by exploring the comprehensive example collection and following the build instructions for your target platform.</p>
+
+            <div class="code-block"><pre><code>
+# Clone the repository
+git clone https://github.com/lostjared/libmx2.git
+cd libmx2/libmx
+
+# Build for desktop (Linux/macOS/Windows)
+mkdir build && cd build
+cmake .. -DDEBUG_MODE=ON -DEXAMPLES=ON
+cmake --build .
+sudo cmake --install
+# Run examples
+./gl_pong -p ../../gl_pong/v4
+./space -p ../../space
+./cmd-console
+
+# WebAssembly build
+cd MX2_Project
+make -f Makefile.em
+</code></pre>
+            </div>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>📚 Documentation</h4>
+                    <p>Comprehensive guides, API documentation, and tutorial content available in the repository and online at lostsidedead.biz</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h4>🎮 Try Online</h4>
+                    <p>Experience the framework immediately by trying the WebAssembly demos at lostsidedead.biz without any installation</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h4>💻 Development</h4>
+                    <p>Start with basic examples and progress to advanced graphics programming with the step-by-step example progression</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h4>🌐 Community</h4>
+                    <p>Join the development community on GitHub for support, contributions, and collaboration opportunities</p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <footer class="footer">
+        <div class="container">
+            <h3>libmx2 - Advanced Multimedia Framework</h3>
+            <p>Empowering developers to create exceptional multimedia experiences across all platforms</p>
+            <p>&copy; 2024 LostSideDead Software. Licensed under MIT License.</p>
+            <div style="margin-top: 2rem;">
+                <a href="https://github.com/lostjared/libmx2" class="btn">GitHub Repository</a>
+                <a href="https://lostsidedead.biz" class="btn" style="margin-left: 1rem;">Live Demos</a>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
