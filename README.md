@@ -79,6 +79,8 @@ Current Options:
 
 # WebAssembly Demos
 
+https://lostsidedead.biz/Asteroids3D
+
 https://lostsidedead.biz/acidcam.web
 
 https://lostsidedead.biz/acidcam.webgl
@@ -86,8 +88,6 @@ https://lostsidedead.biz/acidcam.webgl
 https://lostsidedead.biz/game/3DBreak
 
 https://lostsidedead.biz/Breakout
-
-https://lostsidedead.biz/3DPong
 
 https://lostsidedead.biz/3DPong
 
