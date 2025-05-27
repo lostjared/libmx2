@@ -81,6 +81,17 @@ if(CMD)
         )
     endif()
     target_compile_options(mxcmd-cli PRIVATE -Wall -pedantic)
+
+if(WIN32)
+  set(RESOURCE_FILE "${CMAKE_CURRENT_SOURCE_DIR}/data/icon.rc")
+  set_source_files_properties(
+    ${RESOURCE_FILE}
+    PROPERTIES
+      LANGUAGE RC
+  )
+  target_sources(mxcmd-cli PRIVATE ${RESOURCE_FILE})
+endif()
+
 endif()
 
 
