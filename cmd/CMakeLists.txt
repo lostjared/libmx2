@@ -114,6 +114,17 @@ if(CONSOLE)
         ${SDL2_MIXER_LIBRARIES}    
     )
     target_compile_options(cmd-console PRIVATE -Wall -pedantic)
+
+if(WIN32)
+  set(RESOURCE_FILE "${CMAKE_CURRENT_SOURCE_DIR}/data/icon.rc")
+  set_source_files_properties(
+    ${RESOURCE_FILE}
+    PROPERTIES
+      LANGUAGE RC
+  )
+  target_sources(gl_asteroids PRIVATE ${RESOURCE_FILE})
+endif()
+
 endif()
 
 include(GNUInstallDirs)
