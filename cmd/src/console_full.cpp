@@ -93,7 +93,8 @@ class Game : public gl::GLObject {
             win->util.getFilePath("data/shaders/fractal.glsl"),
             win->util.getFilePath("data/shaders/color-f2.glsl"),
             win->util.getFilePath("data/shaders/color-cycle.glsl"),
-            win->util.getFilePath("data/shaders/color-swirl.glsl")
+            win->util.getFilePath("data/shaders/color-swirl.glsl"),
+            win->util.getFilePath("data/shaders/color-shift.glsl")
         };   
     
         executor.setInterrupt(&interrupt_command);
@@ -301,7 +302,14 @@ class Game : public gl::GLObject {
                 return 1;
             }
         });
-        std::vector<std::string> img = { "data/crystal_red.png", "data/saphire.png", "data/crystal_blue.png", "data/crystal_green.png", "data/crystal_pink.png", "data/diamond.png" };
+        std::vector<std::string> img = { 
+            "data/crystal_red.png", 
+            "data/saphire.png", 
+            "data/crystal_blue.png", 
+            "data/crystal_green.png", 
+            "data/crystal_pink.png", 
+            "data/diamond.png"
+        };
         std::string img_index = img.at(mx::generateRandomInt(0, img.size()-1));
         setRandomShader(win, start_shader);
         logo.initSize(win->w, win->h);
