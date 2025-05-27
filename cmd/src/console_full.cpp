@@ -598,6 +598,8 @@ int main(int argc, char **argv) {
     CustomArguments args = proc_custom_args(argc, argv);
     try {
         MainWindow main_window(args.shader_index, args.path, args.width, args.height);
+        if(args.fullscreen) 
+            main_window.setFullScreen(true);
         main_window.loop();
     } catch(const mx::Exception &e) {
         mx::system_err << "mx: Exception: " << e.text() << "\n";
