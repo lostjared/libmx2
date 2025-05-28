@@ -503,7 +503,7 @@
                     <div class="stat-label">Lines of Code</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-number">6</div>
+                    <div class="stat-number">5</div>
                     <div class="stat-label">Platform Support</div>
                 </div>
                 <div class="stat-card">
@@ -940,7 +940,7 @@ init_graphics
                     <h4>📊 Codebase Statistics</h4>
                     <p><strong>Total Lines:</strong> 100,000+ lines of C++<br>
                     <strong>Applications:</strong> 50+ complete examples<br>
-                    <strong>Platforms:</strong> 6 target platforms supported</p>
+                    <strong>Platforms:</strong> 5 target platforms supported</p>
                 </div>
                 
                 <div class="feature-card">
@@ -953,7 +953,7 @@ init_graphics
                 <div class="feature-card">
                     <h4>🔗 Integration</h4>
                     <p><strong>Graphics:</strong> OpenGL 3.3+, Vulkan API<br>
-                    <strong>Audio:</strong> SDL2 Audio, OpenAL support<br>
+                    <strong>Audio:</strong> SDL2 Audio, SDL2_mixer support<br>
                     <strong>UI:</strong> Qt6 integration for desktop tools</p>
                 </div>
             </div>
@@ -996,13 +996,13 @@ init_graphics
                             <td><strong>WebAssembly</strong></td>
                             <td>WebGL 2.0</td>
                             <td>Web Audio API</td>
-                            <td>Keyboard, Mouse, Touch</td>
+                            <td>Keyboard, Mouse, Touch, Gamepad</td>
                             <td>✅ Full Support</td>
                         </tr>
                         <tr>
                             <td><strong>Android</strong></td>
                             <td>OpenGL ES 3.0+</td>
-                            <td>OpenSL ES</td>
+                            <td>SDL2_Mixer</td>
                             <td>Touch, Sensors</td>
                             <td>🔄 In Development</td>
                         </tr>
@@ -1025,10 +1025,15 @@ mkdir build && cd build
 cmake .. -DDEBUG_MODE=ON -DEXAMPLES=ON
 cmake --build .
 sudo cmake --install
-# Run examples
+# Run examples from build directories
 ./gl_pong -p ../../gl_pong/v4
 ./space -p ../../space
 ./cmd-console
+
+# compile libmx2 for WebAssembly
+cd libmx2/libmx
+make -f Makefile.em -j8 install 
+make -f Makefile.em clean
 
 # WebAssembly build
 cd MX2_Project
