@@ -26,6 +26,83 @@
 #include<windows.h>
 #endif
 #include<cstdlib>
+#include"cmd_argz.hpp"
+
+
+struct Args {
+    bool debug_output = false;
+    bool debug_syntax_highlight = false;
+    bool command_proc = false;
+    bool stdin_input = false;
+    bool debug_tokens = false;
+    std::string command_text;
+    std::string filename;
+};
+
+Args proc_custom_args(int &argc, char **argv) {
+	Args args;
+	Argz<std::string> parser(argc, argv);
+    parser.addOptionSingle('h', "Display help message")
+        .addOptionDouble('H', "help", "Display help message")
+        .addOptionSingle('v', "Display version")
+        .addOptionDouble('V', "version", "Display version")     
+        .addOptionSingle('i', "stdin input")
+        .addOptionDouble('I', "stdin", "stdin input")
+        .addOptionSingle('d', "debug output")
+        .addOptionDouble('D', "debug", "debug output")  
+        .addOptionSingle('s', "debug syntax highlight")
+        .addOptionDouble('S', "syntax", "debug syntax highlight")
+        .addOptionSingle('t', "debug tokens")
+        .addOptionDouble('T', "tokens", "debug tokens")
+        .addOptionSingleValue('c', "command")
+        .addOptionDoubleValue('C', "command", "command")
+        ;
+    Argument<std::string> arg;
+    int value = 0;
+    try {
+        while((value = parser.proc(arg)) != -1) {
+            switch(value) {
+                case 'h':
+                case 'H':
+                case 'v':
+                case 'V':
+                    std::cout << "MXCMD " << version_string << "\n(C) 1999-2025 LostSideDead Software\n\n";
+                    parser.help(std::cout);
+                    exit(EXIT_SUCCESS);
+                    break;
+                case 'i':
+                case 'I':
+                    args.stdin_input = true;;
+                    break;
+                case 'd':
+                case 'D':
+                    args.debug_output = true;
+                    break;
+                case 's':
+                case 'S':
+                    args.debug_syntax_highlight = true;
+                    break;
+                case 'c':
+                case 'C':
+                    args.command_proc = true;
+                    args.command_text = arg.arg_value;
+                    break;
+                case 't':
+                case 'T':
+                    args.debug_tokens = true;
+                    break;
+                case '-':
+                    args.filename = arg.arg_value;
+                    break;
+
+                }
+        }
+    } catch (const ArgException<std::string>& e) {
+        std::cerr << "mx: Argument Exception" << e.text() << std::endl;
+		return args;
+    }
+    return args;
+}
 
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
 void sigint_handler(int sig) {
@@ -101,9 +178,16 @@ int main(int argc, char **argv) {
     sa.sa_flags = 0;
     sigaction(SIGINT, &sa, nullptr);
 #endif
-    if(argc == 3 && std::string(argv[1]) == "-c") {
-        execute_command(argv[2]);
-        exit(0);
+
+    Args args = proc_custom_args(argc, argv);
+
+    if(args.command_proc) {
+        if(args.command_text.empty()) {
+            std::cerr << "mx: No command provided.\n";
+            exit(EXIT_FAILURE);
+        }
+        execute_command(args.command_text);
+        exit(EXIT_SUCCESS);
     }
     std::cout << "MXCMD " << version_string << "\n(C) 1999-2025 LostSideDead Software\n\n";
     cmd::app_name = argv[0];
@@ -331,28 +415,27 @@ int main(int argc, char **argv) {
             std::cerr << "Unknown error occurred." << std::endl;
         }
 
-    } else if(argc >= 2 && (std::string(argv[1]) != "--stdin" && std::string(argv[1]) != "-i")) {
+    } else if(argc >= 2  && args.stdin_input == false) {
+
         cmd::AstExecutor &executor = cmd::AstExecutor::getExecutor();
         bool debug_cmd = false;
         bool debug_html = false;
         bool debug_tokens = false;
             std::ostringstream stream;
             std::fstream file;
-            if(argc == 3) {
-                if(std::string(argv[2]) == "-d") {
-                    debug_cmd = true;
-                }
-                else if(std::string(argv[2]) == "-f") {
-                    debug_html = true;
-                }
-                else if(std::string(argv[2]) == "-t") {
-                    debug_tokens = true;
-                }
+            if(args.debug_output) {
+                debug_cmd = true;
             }
-            cmd::app_name = argv[1];
-            file.open(argv[1], std::ios::in);
+            if(args.debug_syntax_highlight) {
+                debug_html = true;
+            }
+            if(args.debug_tokens) {
+                debug_tokens = true;
+            }
+            cmd::app_name = args.filename;
+            file.open(args.filename, std::ios::in);
             if(!file.is_open()) {
-                std::cerr << "Error loading file: " << argv[1] << "\n";;
+                std::cerr << "Error loading file: " << args.filename << "\n";;
                 return EXIT_FAILURE;
             }
             stream << file.rdbuf();
@@ -381,32 +464,32 @@ int main(int argc, char **argv) {
                 auto ast = parser.parse();
 
                 if(debug_tokens) {
-                    dumpTokens(scanner, std::cout);
-                    return 0;
+                    std::ofstream out_file("debug.tokens.txt");
+                    std::cout << "Debug Tokens Information written to: debug.tokens.txt\n\n";
+                    dumpTokens(scanner, out_file);
                 }
 
     #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
                 program_running = 1;
     #endif
-                executor.setPath(std::filesystem::path(argv[1]).parent_path().string());
+                executor.setPath(std::filesystem::path(args.filename).parent_path().string());
                 executor.execute(std::cin, std::cout, ast);
 
                 std::cout.flush();
                 std::cout << std::flush;
-                if(debug_cmd || debug_html) {
-                    std::cout << "Debug Information written to: debug.html\n\n";
+                if(debug_cmd)  {
                     std::ofstream html_file("debug.html");
-                    if(html_file.is_open()) {
-                        if(debug_cmd) 
-                            html::gen_html(html_file, ast);
-                        else if(debug_html)
-                            html::gen_html_color(html_file, ast);
-                        html_file.close();
-                    }
+                    html::gen_html(html_file, ast);
+                    std::cout << "Debug Information written to: debug.html\n\n";
                 }
+                if(debug_html) {
+                    std::ofstream html_file("debug.syntax.html");
+                    html::gen_html_color(html_file, ast);
+                    std::cout << "Debug Syntax Information written to: debug.syntax.html\n\n";
+                }
+                
             } catch(const scan::ScanExcept &e) {
                 std::cerr << "Scan Error: " << e.why() << std::endl;
-            
                 return EXIT_FAILURE;
             } catch(const std::exception &e) {
                 std::cerr << "Exception: " << e.what() << std::endl;
@@ -425,7 +508,7 @@ int main(int argc, char **argv) {
                 throw;
                 return EXIT_FAILURE;
             }
-        } else if(argc == 2 && (std::string(argv[1]) == "--stdin" || std::string(argv[1]) == "-i")) {
+        } else if(argc == 2 && args.stdin_input) {
             try {
             cmd::AstExecutor &executor = cmd::AstExecutor::getExecutor();
             std::ostringstream stream;
