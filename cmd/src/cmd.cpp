@@ -359,7 +359,7 @@ int main(int argc, char **argv) {
                         } else if(command_data == "clear" || command_data == "cls") {
                             std::cout << "\033[2J\033[1;1H"; 
                             continue;
-                        } else if(command_data == "exit" || command_data == "quit") {
+                        } else if(command_data == "exit" || command_data == "quit" || command_data == "q") {
                             active = false;
                             continue;
                         } else if(command_data == "@debug_on") {
