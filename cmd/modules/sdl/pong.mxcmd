@@ -1,0 +1,166 @@
+#!/usr/bin/env mxcmd-cli
+
+cmd "sdl-script.mxcmd"
+
+let paddle1_x = 50
+let paddle1_y = 250
+let paddle2_x = 700
+let paddle2_y = 250
+let ball_x = 400
+let ball_y = 300
+let ball_speed_x = 5  
+let ball_speed_y = 5
+let paddle_speed = 10
+let paddle_height = 100   
+let player1_score = 0
+let player2_score = 0
+let ai_speed = 8
+
+
+define draw_paddle(x, y)
+begin
+    sdl_set_color 255 255 255 255
+    sdl_rect x y 20 paddle_height
+    return 0
+end
+
+define draw_ball(x, y)
+begin
+    sdl_set_color 255 255 255 255
+    sdl_circle x y 10
+    return 0
+end
+
+define update_ball()
+begin
+    let ball_x = ball_x + ball_speed_x
+    let ball_y = ball_y + ball_speed_y
+    
+    if test ball_y --le 10; then
+        ball_speed_y = 0 - ball_speed_y
+    fi
+    if test ball_y --ge 590; then
+        ball_speed_y = 0 - ball_speed_y
+    fi
+    
+    
+    if test ball_x --le 70 && test ball_y --ge paddle1_y && test ball_y --le $(expr $(printf "%d+%d" paddle1_y paddle_height))
+    then
+        ball_speed_x = 0 - ball_speed_x
+    fi
+    if test ball_x --ge 680 && test ball_y --ge paddle2_y && test ball_y --le $(expr $(printf "%d+%d" paddle2_y  paddle_height))
+    then
+        ball_speed_x = 0 - ball_speed_x
+    fi
+        
+    if test ball_x --le 0; then
+        let ball_x = 400
+        let ball_y = 300
+        player2_score = player2_score + 1        
+   fi
+    if test ball_x --ge 800; then
+        let ball_x = 400
+        let ball_y = 300
+        player1_score = player1_score + 1
+    fi
+    return 0
+end
+
+
+define update_ai_paddle()
+begin
+    let paddle_center = $(expr $(printf "%d+%d/2" paddle2_y paddle_height))
+    if test ball_speed_x --gt 0; then
+        if test ball_y --lt paddle_center; then
+            let paddle2_y = paddle2_y - ai_speed
+        fi
+        if test ball_y --gt paddle_center; then
+            let paddle2_y = paddle2_y + ai_speed
+        fi
+    fi
+    if test paddle2_y --le 0; then
+        paddle2_y = 0
+    fi
+    if test paddle2_y --ge $(expr $(printf "%d-%d" 600 paddle_height))
+    then
+        let paddle2_y = 600 - paddle_height
+    fi 
+    return 0
+end
+
+define update_paddles()
+begin
+    update_ai_paddle
+    if test $(sdl_key "Up") --eq 1; then
+        let paddle1_y = paddle1_y - paddle_speed
+    fi
+    if test $(sdl_key "Down") --eq 1; then
+        let paddle1_y = paddle1_y + paddle_speed
+    fi
+    
+    
+    if test paddle1_y --le 0; then
+        paddle1_y = 0
+    fi
+    if test paddle1_y --ge $(expr $(printf "%d-%d" 600 paddle_height))
+    then
+        paddle1_y = 600 - paddle_height
+    fi
+    if test paddle2_y --le 0; then
+         paddle2_y = 0
+    fi
+    if test paddle2_y --ge $(expr $(printf "%d-%d" 600 paddle_height))
+    then
+        let paddle2_y = 600 - paddle_height
+    fi
+    
+    return 0
+end
+
+define draw_game()
+begin
+    draw_paddle paddle1_x paddle1_y
+    draw_paddle paddle2_x paddle2_y
+    draw_ball ball_x ball_y
+    return 0
+end
+
+define init_sdl() 
+begin
+    sdl_init
+    sdl_window "Hello World" 800 600
+    sdl_renderer -1 "software"
+    return 0
+end
+
+define clean_sdl() 
+begin
+    sdl_quit
+    return 0
+end
+
+
+define main() 
+begin
+    init_sdl
+    while test $(sdl_events) --ne 0 
+    do
+        sdl_set_color 0 0 0 255
+        sdl_clear
+        draw_game
+        sdl_draw_text "Pong" 25 25 "./res/font.ttf" 18 255 255 255 255
+        sdl_draw_text $(printf "P1 Score: %d" player1_score) 25 50 "./res/font.ttf" 18 255 255 255 255
+        sdl_draw_text $(printf "P2 Score: %d" player2_score) 25 75 "./res/font.ttf" 18 255 255 255 255
+        sdl_present
+        sdl_delay 16
+        update_ball
+        update_paddles
+        if test $(sdl_key "Q") --eq 1; then
+            break
+        fi
+    done
+    clean_sdl
+    return 0
+end
+
+main
