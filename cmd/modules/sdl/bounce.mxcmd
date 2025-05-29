@@ -1,0 +1,126 @@
+#!/usr/bin/env mxcmd-cli
+
+cmd "sdl-script.mxcmd"
+
+let circles = "#circles"
+list_new circles
+
+
+
+define add_circle(x, y, radius, dir) 
+begin
+    list_add circles $(printf "%d,%d,%d,%d" x y radius dir)
+    return 0
+end
+
+define random_circles()
+begin
+    let counter = 0
+    while test counter --lt 100
+    do
+        list_set circles counter $(printf "%d,%d,%d,%d" $(rand 0 750) $(rand 0 550) $(rand 10 50) $(rand 0 3))
+        counter++
+    done
+    return 0
+end
+
+define draw_circles()
+begin
+    sdl_set_color 255 255 255 255
+    let index = 0
+    for circle in $(list_tokens circles)
+    do
+        let values = $(regex_split "," circle)
+        let x = $(at values 0)
+        let y = $(at values 1)
+        let radius = $(at values 2)   
+        let dir = $(at values 3)
+        sdl_circle x y radius
+        
+        if test dir --eq 0; then
+            let new_x = x + 2
+            let new_y = y + 2
+        elif test dir --eq 1; then
+            let new_x = x - 2
+            let new_y = y + 2
+        elif test dir --eq 2; then
+            let new_x = x + 2
+            let new_y = y - 2
+        else
+            let new_x = x - 2
+            let new_y = y - 2
+        fi
+        if test new_x --le 0 || test new_x --ge 800; then
+            if test dir --eq 0; then
+            dir = 1
+            elif test dir --eq 1; then
+            dir = 0
+            elif test dir --eq 2; then
+            dir = 3
+            else
+            dir = 2
+            fi
+        fi
+        
+        if test new_y --le 0 || test new_y --ge 600; then
+            if test dir --eq 0; then
+            dir = 2
+            elif test dir --eq 1; then
+            dir = 3
+            elif test dir --eq 2; then
+            dir = 0
+            else
+            dir = 1
+            fi
+        fi
+        
+        list_set circles index $(printf "%d,%d,%d,%d" new_x new_y radius dir)
+        index++
+    done
+    return 0
+end
+
+define init_sdl() 
+begin
+    sdl_init
+    sdl_window "Bounce" 800 600
+    sdl_renderer -1 "software"
+    return 0
+end
+
+define clean_sdl() 
+begin
+    sdl_quit
+    return 0
+end
+
+
+define main() 
+begin
+    init_sdl
+    let counter = 0
+    while test counter --lt 100
+    do
+        add_circle $(rand 0 750) $(rand 0 550) $(rand 10 50) $(rand 0 3)
+        counter++
+    done
+    while test $(sdl_events) --ne 0 
+    do
+        sdl_set_color 0 0 0 255
+        sdl_clear
+        draw_circles
+        sdl_draw_text "Bounce" 25 25 "./res/font.ttf" 18 255 255 255 255
+        sdl_present
+        sdl_delay 16
+        if test $(sdl_key "Q") --eq 1; then
+            break
+        fi
+        if test $(sdl_key "R") --eq 1; then
+            random_circles
+        fi
+    done
+    clean_sdl
+    return 0
+end
+
+main
