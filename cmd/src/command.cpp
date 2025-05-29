@@ -851,6 +851,8 @@ namespace cmd {
             pos = specPos + 1;
         }
 
+        output.flush();
+        fflush(stdout);
         return 0;
     }
 
