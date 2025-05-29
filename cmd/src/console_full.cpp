@@ -94,7 +94,8 @@ class Game : public gl::GLObject {
             win->util.getFilePath("data/shaders/color-f2.glsl"),
             win->util.getFilePath("data/shaders/color-cycle.glsl"),
             win->util.getFilePath("data/shaders/color-swirl.glsl"),
-            win->util.getFilePath("data/shaders/color-shift.glsl")
+            win->util.getFilePath("data/shaders/color-shift.glsl"),
+            win->util.getFilePath("data/shaders/ripple.glsl")
         };   
     
         executor.setInterrupt(&interrupt_command);
