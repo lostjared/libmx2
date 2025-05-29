@@ -1,0 +1,36 @@
+#!/usr/bin/env mxcmd-cli
+
+cmd "sdl-script.mxcmd"
+
+define init_sdl() 
+begin
+    sdl_init
+    sdl_window "Hello World" 800 600
+    sdl_renderer -1 "software"
+    return 0
+end
+
+define clean_sdl() 
+begin
+    sdl_quit
+    return 0
+end
+
+define main() 
+begin
+    init_sdl
+    while test $(sdl_events) --ne 0 
+    do
+        sdl_set_color 0 0 0 255
+        sdl_clear
+        sdl_present
+        sdl_delay 16
+        if test $(sdl_key "Q") --eq 1; then
+            break
+        fi
+    done
+    clean_sdl
+    return 0
+end
+
+main
