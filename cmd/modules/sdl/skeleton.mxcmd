@@ -23,6 +23,7 @@ begin
     do
         sdl_set_color 0 0 0 255
         sdl_clear
+        sdl_draw_text "Hello, World" 25 25 "./res/font.ttf" 18 255 255 255 255
         sdl_present
         sdl_delay 16
         if test $(sdl_key "Q") --eq 1; then
