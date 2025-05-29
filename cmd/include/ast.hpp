@@ -186,6 +186,7 @@ namespace cmd {
 
     std::string getVar(const Argument &arg);
     std::string parseEscapeSequences(const std::string& input);
+    std::string getArgTypeString(const Argument &arg);
     
     class Command : public Node {
     public:
@@ -821,7 +822,7 @@ namespace cmd {
                 path = newPath;
                 std::filesystem::current_path(path);
             } else {
-                throw std::runtime_error("Path does not exist: " + newPath);
+                throw std::runtime_error("Path does not exist: " + newPath + " if in local directory use ./ before file name");
             }
         }
         

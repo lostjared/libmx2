@@ -28,7 +28,6 @@
 #include<cstdlib>
 #include"cmd_argz.hpp"
 
-
 struct Args {
     bool debug_output = false;
     bool debug_syntax_highlight = false;

@@ -241,6 +241,17 @@ namespace cmd {
         }
         return result;
     }
+    
+    std::string getArgTypeString(const Argument &arg) {
+        switch(arg.type) {
+            case ArgType::ARG_VARIABLE: return "Variable";
+            case ArgType::ARG_STRING_LITERAL: return "String";
+            case ArgType::ARG_LITERAL: return "Literal";      
+            case ArgType::ARG_COMMAND_SUBST: return "Command Substitution";
+            default: return "Unknown";
+        }
+        return "Unknown";
+    }
 
     std::string getVar(const Argument &arg) {
         std::string a = arg.value;
@@ -252,7 +263,7 @@ namespace cmd {
                     a = parseEscapeSequences(a);
                 
             } catch(const state::StateException &) {
-                throw std::runtime_error("Variable name: " + arg.value + " not found its type: " +  std::to_string(static_cast<int>(arg.type)));
+                throw std::runtime_error("Variable name: " + arg.value + " not found its type: " +  getArgTypeString(arg));
             }
         } else if (arg.type == ARG_COMMAND_SUBST && arg.cmdNode) {
             AstExecutor &executor  = AstExecutor::getExecutor();
