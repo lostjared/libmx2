@@ -47,6 +47,21 @@ cmake --build .
 sudo  cmake --install .
 ```
 
+# Command Line Arguments for mxcmd-cli
+
+The following table describes the available command line arguments:
+
+| Option                               | Description               |
+|--------------------------------------|---------------------------|
+| `-h`, `--help`                       | Display help message      |
+| `-v`, `--version`                    | Display version           |
+| `-i`, `--stdin`                      | stdin input               |
+| `-d`, `--debug`                      | debug output              |
+| `-s`, `--syntax`                     | debug syntax highlight    |
+| `-t`, `--tokens`                     | debug tokens              |
+| `-c <value>`, `--command <value>`    | command                   |
+
+
 ## Table of Contents
 
 - [Supported Commands](#supported-commands)
