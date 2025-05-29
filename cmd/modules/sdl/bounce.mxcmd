@@ -6,7 +6,6 @@ let circles = "#circles"
 list_new circles
 
 
-
 define add_circle(x, y, radius, dir) 
 begin
     list_add circles $(printf "%d,%d,%d,%d" x y radius dir)
@@ -99,6 +98,7 @@ define main()
 begin
     init_sdl
     let counter = 0
+    let random_circles = 0
     while test counter --lt 100
     do
         add_circle $(rand 0 750) $(rand 0 550) $(rand 10 50) $(rand 0 3)
@@ -109,14 +109,21 @@ begin
         sdl_set_color 0 0 0 255
         sdl_clear
         draw_circles
-        sdl_draw_text "Bounce" 25 25 "./res/font.ttf" 18 255 255 255 255
+        if test random_circles --eq 0; then
+            sdl_draw_text "Bounce" 25 25 "./res/font.ttf" 18 255 255 255 255
+        else
+            sdl_draw_text "R Pressed Random" 25 25 "./res/font.ttf" 18 255 0 0 255
+        fi
         sdl_present
         sdl_delay 16
         if test $(sdl_key "Q") --eq 1; then
             break
         fi
         if test $(sdl_key "R") --eq 1; then
+            random_circles = 1
             random_circles
+        else
+            random_circles = 0
         fi
     done
     clean_sdl
