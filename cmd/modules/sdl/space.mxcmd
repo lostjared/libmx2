@@ -1,0 +1,233 @@
+#!/usr/bin/env mxcmd-cli
+
+cmd "sdl-script.mxcmd"
+let last_tick = $(sdl_ticks)
+let ship_x = 400
+let ship_y = 500
+let ship_speed = 5
+let ship_image = ""
+let ship_particle = ""
+let particle_speed = 5
+let particles = "#particles"
+list_new particles
+let enemies = "#enemies"
+list_new enemies
+let enemy_image = ""
+let enemy_speed = 5
+let star_field = "#starfield"
+list_new star_field
+let score = 0
+
+define load_gfx()
+begin
+    ship_image = $(sdl_loadsurface "./res/ship.bmp" 0 0 0)
+    ship_particle = $(sdl_loadsurface "./res/particle.bmp" 0 0 0)
+    enemy_image = $(sdl_loadsurface "./res/saucer.bmp" 0 0 0)
+    return 0
+end
+
+define draw_ship()
+begin
+    sdl_copysurface ship_image ship_x ship_y 64 64
+    let index = $(list_len particles)
+    index = index - 1
+    while test index --ge 0
+    do
+        let particle = $(list_get particles index)
+        let values = $(regex_split "," particle)
+        let x = $(at values 0)
+        let y = $(at values 1)
+        sdl_copysurface ship_particle x y 16 16
+        y = y - particle_speed
+        if test y --lt 0; then
+            list_remove particles index
+        else
+            list_set particles index $(printf "%d,%d" x y)
+            
+            # Check collision with enemies for this particle
+            let enemy_index = $(list_len enemies)
+            enemy_index = enemy_index - 1
+            while test enemy_index --ge 0
+            do
+                let enemy = $(list_get enemies enemy_index)
+                let enemy_values = $(regex_split "," enemy)
+                let enemy_x = $(at enemy_values 0)
+                let enemy_y = $(at enemy_values 1)
+                if test x --ge enemy_x && test x --le $(expr $(printf "%d+%d" enemy_x 128)) && test y --ge enemy_y && test y --le $(expr $(printf "%d+%d" enemy_y 128))
+                then
+                    if test $(expr $(printf "%d+%d" x 16)) --ge enemy_x && test $(expr $(printf "%d+%d" y 16)) --ge enemy_y
+                    then
+                        list_remove enemies enemy_index
+                        list_remove particles index
+                        score = score + 10
+                        break
+                    fi
+                fi
+                enemy_index--
+            done
+        fi
+        index--
+    done
+    return 0
+end
+
+define draw_enemies()
+begin
+    let index = $(list_len enemies)
+    index = index - 1
+    while test index --gt 0
+    do
+        let enemy = $(list_get enemies index)
+        let values = $(regex_split "," enemy)
+        let x = $(at values 0)
+        let y = $(at values 1)
+        sdl_copysurface enemy_image x y 128 128
+        y = y + enemy_speed
+        if test y --gt 564; then
+            list_remove enemies index
+        else
+            list_set enemies index $(printf "%d,%d" x y)
+        fi      
+        index--
+    done
+    return 0
+end
+
+define release_particle(x, y)
+begin
+    list_add particles $(printf "%d,%d" x y)
+    return 0
+end
+
+define release_enemy(x, y)
+begin
+    list_add enemies $(printf "%d,%d" x y)
+    return 0
+end
+
+define move_ship()      
+begin
+    if test $(sdl_key "LEFT") --eq 1; then
+        ship_x = ship_x - ship_speed
+        if test ship_x --lt 0; then
+            ship_x = 0
+        fi
+    fi
+    if test $(sdl_key "RIGHT") --eq 1; then
+        ship_x = ship_x + ship_speed
+        if test ship_x --gt 736; then 
+            ship_x = 736
+        fi
+    fi 
+
+    if  test $(sdl_key "UP") --eq 1; then
+        ship_y = ship_y - ship_speed
+        if test ship_y --lt 0; then
+            ship_y = 0
+        fi
+    fi
+    if test $(sdl_key "DOWN") --eq 1; then
+        ship_y = ship_y + ship_speed
+        if test ship_y --gt 536; then 
+            ship_y = 536
+        fi
+    fi
+
+    let ticks = $(sdl_ticks)
+    let diff = ticks - last_tick
+    if test $(sdl_key "SPACE") --eq 1 && test diff --gt 150; then
+        release_particle $(expr $(printf "%d+%d" ship_x 24)) ship_y
+        last_tick = ticks;
+    fi
+    return 0
+end
+
+define proc_enemies()
+begin
+    let ticks = $(sdl_ticks)
+    if test $(expr $(printf "%d %% 100" ticks)) --eq 1; then
+        let x = $(rand 0 736)
+        release_enemy x 0
+    fi
+    return 0
+end
+
+define init_sdl() 
+begin
+    sdl_init
+    sdl_window "Space" 800 600
+    sdl_renderer -1 "software"
+    load_gfx
+    return 0
+end
+
+define clean_sdl() 
+begin
+    sdl_quit
+    return 0
+end
+
+
+define init_stars()
+begin
+    let count = 0
+    while test count --lt 100
+    do
+        let x = $(rand 0 800)
+        let y = $(rand 0 600)
+        list_add star_field $(printf "%d,%d" x y)
+        count++
+    done
+    return 0
+end
+
+
+define draw_stars()
+begin
+    let index = 0
+    while test index --lt $(list_len star_field)
+    do
+        let star = $(list_get star_field index)
+        let values = $(regex_split "," star)
+        let x = $(at values 0)
+        let y = $(at values 1)
+        sdl_set_color 255 255 255 255
+        sdl_rect x y 1 1
+        y =  y + 1
+        if test y --gt 600; then
+            y = 0
+            x = $(rand 0 800)
+        fi
+        list_set star_field index $(printf "%d,%d" x y) 
+        index++
+    done
+    return 0
+end
+
+define main() 
+begin
+    init_sdl
+    release_enemy $(rand 0 748) 0
+    release_enemy $(rand 0 748) 0
+    init_stars
+    while test $(sdl_events) --ne 0 
+    do
+        sdl_set_color 0 0 0 255
+        sdl_clear
+        draw_stars
+        draw_enemies
+        draw_ship
+        sdl_draw_text $(printf "Space - Score: %d" score) 25 25 "./res/font.ttf" 18 255 255 255 255
+        sdl_present
+        sdl_delay 16
+        if test $(sdl_key "Q") --eq 1; then
+            break
+        fi
+        move_ship
+        proc_enemies
+    done
+    clean_sdl
+    return 0
+end
+
+main
