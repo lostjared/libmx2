@@ -197,8 +197,9 @@ namespace state {
         void clearList(const std::string& name) {
             auto it = lists.find(name);
             if (it != lists.end()) {
-                it->second.clear();
-                lists.erase(it);
+                if(!it->second.empty()) {
+                    it->second.clear();
+                }
             } else {
                 throw StateException("List not found: " + name);
             }
