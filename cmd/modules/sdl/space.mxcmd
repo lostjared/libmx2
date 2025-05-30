@@ -1,5 +1,13 @@
 #!/usr/bin/env mxcmd-cli
 
+# requires mxcmd-cli v1.11 or greater
+# This is a simple space shooter game using mxcmd-cli and SDL.
+# It features a ship that can move around the screen, shoot particles,
+# and avoid enemies that fall from the top of the screen.
+# The game keeps track of the score and lives, and displays a game over screen when the player runs out of lives.
+# The game is controlled using the arrow keys for movement, space to shoot, and 'Q' to quit.
+# This script requires the SDL module to be installed and available in the mxcmd-cli environment.
+
 cmd "sdl-script.mxcmd"
 let last_tick = $(sdl_ticks)
 let ship_x = 400
