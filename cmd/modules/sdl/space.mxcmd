@@ -42,9 +42,7 @@ begin
         if test y --lt 0; then
             list_remove particles index
         else
-            list_set particles index $(printf "%d,%d" x y)
-            
-            # Check collision with enemies for this particle
+            list_set particles index $(printf "%d,%d" x y)   
             let enemy_index = $(list_len enemies)
             enemy_index = enemy_index - 1
             while test enemy_index --ge 0
