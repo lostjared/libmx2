@@ -47,6 +47,7 @@ begin
             list_set particles index $(printf "%d,%d" x y)   
             let enemy_index = $(list_len enemies)
             enemy_index = enemy_index - 1
+            out = 0
             while test enemy_index --ge 0
             do
                 let enemy = $(list_get enemies enemy_index)
@@ -61,6 +62,10 @@ begin
                         list_remove enemies enemy_index
                         list_remove particles index
                         score = score + 10
+                        let explosion_x = enemy_x + 64
+                        let explosion_y = enemy_y + 64
+                        draw_explosion explosion_x explosion_y 10
+                        out = 1
                         break
                     fi
                 fi
@@ -68,26 +73,84 @@ begin
             done
         fi
         index--
-    done
-    enemy_index = $(list_len enemies)
-    enemy_index = enemy_index - 1
-    while test enemy_index --ge 0
-    do
-        let enemy = $(list_get enemies enemy_index)
-        let enemy_values = $(regex_split "," enemy)
-        let enemy_x = $(at enemy_values 0)
-        let enemy_y = $(at enemy_values 1)
-        if test ship_x --ge enemy_x && test ship_x --le $(expr $(printf "%d+%d" enemy_x 128)) && test ship_y --ge enemy_y && test ship_y --le $(expr $(printf "%d+%d" enemy_y 128))
-        then
-            lives = lives - 1
-            list_remove enemies enemy_index
-            if test lives --le 0; then
-                screen = 1
-            fi
+        if test out --eq 1; then
             break
         fi
-        enemy_index--
     done
+    return 0
+end
+
+define draw_explosion(ex, ey,  wait)
+begin
+    let frame = 0
+    let max_frames = 15
+    let explosion_size = 5
+    
+    while test frame --lt max_frames
+    do
+        sdl_set_color 0 0 0 255
+        sdl_clear
+        draw_stars
+        sdl_copysurface ship_image ship_x ship_y 64 64
+        draw_enemies
+        sdl_draw_text $(printf "Space - Score: %d  Lives: %d" score lives) 25 25 "./res/font.ttf" 18 255 255 255 255
+        let current_size = explosion_size + frame * 3
+        let alpha = 255 - frame * 15
+        if test alpha --lt 50; then
+            alpha = 50
+        fi
+        sdl_set_color 255 255 0 255
+        sdl_circle ex ey current_size
+        
+        let inner_size = current_size / 2
+        sdl_set_color 255 100 0 255
+        sdl_circle ex ey inner_size
+        
+        let core_size = current_size / 4
+        sdl_set_color 255 255 255 255
+        sdl_circle ex ey core_size
+        
+        let ray_length = current_size + 10
+        let angle = 0
+        while test angle --lt 8
+        do
+            if test angle --eq 0; then
+                sdl_set_color 255 200 0 255
+                let end_x = ex + ray_length
+                sdl_line ex ey end_x ey
+            elif test angle --eq 2; then
+                sdl_set_color 255 150 0 255
+                let end_y = ey + ray_length
+                sdl_line ex ey ex end_y
+            elif test angle --eq 4; then
+                sdl_set_color 255 200 0 255
+                let end_x = ex - ray_length
+                sdl_line ex ey end_x ey
+            elif test angle --eq 6; then
+                sdl_set_color 255 150 0 255
+                let end_y = ey - ray_length
+                sdl_line ex ey ex end_y
+            fi
+            angle++
+        done
+        
+        let spark = 0
+        while test spark --lt 12
+        do
+            let rand_offset_x = $(rand 0 current_size)
+            let rand_offset_y = $(rand 0 current_size)
+            let spark_x = ex + rand_offset_x - current_size
+            let spark_y = ey + rand_offset_y - current_size
+            sdl_set_color $(rand 200 255) $(rand 100 200) 0 255
+            sdl_rect spark_x spark_y 2 2
+            spark++
+        done
+        
+        sdl_present
+        sdl_delay wait
+        frame++
+    done
+    
     return 0
 end
 
@@ -102,8 +165,7 @@ begin
         let x = $(at values 0)
         let y = $(at values 1)
         sdl_copysurface enemy_image x y 128 128
-        
-        # CHECK SHIP COLLISION HERE - where it belongs!
+
         let ship_right = ship_x + 64
         let ship_bottom = ship_y + 64
         let enemy_right = x + 128
@@ -116,6 +178,10 @@ begin
             if test lives --le 0; then
                 screen = 1
             fi
+            list_erase enemies
+            list_erase particles
+            draw_explosion $(expr $(printf "%d+%d" ship_x 32)) $(expr $(printf "%d+%d" ship_y 32)) 25
+            break
         else
             y = y + enemy_speed
             if test y --gt 564; then
