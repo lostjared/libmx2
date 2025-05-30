@@ -1,0 +1,99 @@
+#!/usr/bin/env mxcmd-cli
+
+cmd "sdl-script.mxcmd"
+
+let snowflakes = "#snowflakes"
+list_new snowflakes
+let snowflake = ""
+let background_image = ""
+let width = 1280
+let height = 720
+
+define init_snowflakes(max)
+begin
+    let count = 0
+    while test count --lt max
+    do
+        let x = $(rand 0 width)
+        let y = $(rand 0 height)
+        let radius = $(rand 3 8)
+        let dir = $(rand 1 8)
+        add_snowflake x y radius dir
+        count++
+    done
+    return 0
+end
+
+define add_snowflake(x, y, radius, dir)
+begin
+    list_add snowflakes $(printf "%d,%d,%d,%d" x y radius dir)
+    return 0
+end     
+
+
+define proc_snowflakes()
+begin
+    let counter = 0
+    for snow in $(list_tokens snowflakes)
+    do
+        let values = $(regex_split "," snow)
+        let x = $(at values 0)
+        let y = $(at values 1)
+        let radius = $(at values 2)
+        let dir = $(at values 3)
+        sdl_set_color 255 255 255 255
+        let size = radius * 5
+        sdl_copysurface snowflake x y size size
+        y = y + dir
+        if test y --gt height; then
+            y = 0
+            x = $(rand 0 width)
+            dir = $(rand 1 8)
+        fi
+        
+        list_set snowflakes counter $(printf "%d,%d,%d,%d" x y radius dir)
+        counter ++
+    done
+
+    return 0
+end
+
+
+define init_sdl() 
+begin
+    init_snowflakes 150
+    sdl_init
+    sdl_window "Snowing" width height
+    sdl_renderer -1 "software"
+    snowflake = $(sdl_loadsurface "./res/snowflake.bmp" 0 0 0)
+    background = $(sdl_loadsurface "./res/house.bmp")
+    return 0
+end
+
+define clean_sdl() 
+begin
+    sdl_quit
+    return 0
+end
+
+define main() 
+begin
+    init_sdl
+    while test $(sdl_events) --ne 0 
+    do
+        sdl_set_color 0 0 0 255
+        sdl_clear
+        sdl_copysurface background 0 0 width height
+        proc_snowflakes
+        sdl_draw_text "Hello, World! in MXCMD " 25 25 "./res/font.ttf" 18 255 255 255 255
+        sdl_present
+        sdl_delay 16
+        if test $(sdl_key "Q") --eq 1; then
+            break
+        fi
+    done
+    clean_sdl
+    return 0
+end
+
+main
