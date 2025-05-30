@@ -164,6 +164,13 @@ extern "C" {
             output << "SDL_LoadBMP Error: " << SDL_GetError() << std::endl;
             return 1;
         }
+        if (args.size() >= 4) {
+            int r = std::stoi(cmd::getVar(args[1]));
+            int g = std::stoi(cmd::getVar(args[2]));
+            int b = std::stoi(cmd::getVar(args[3]));    
+            Uint32 colorkey = SDL_MapRGB(surface->format, r, g, b);
+            SDL_SetColorKey(surface, SDL_TRUE, colorkey);
+        }
         
         std::string id = createResourceId("surface");
         surfaces[id] = surface;
@@ -594,13 +601,6 @@ extern "C" {
         if(args.size() >= 5) {
             w = std::stoi(cmd::getVar(args[3]));
             h = std::stoi(cmd::getVar(args[4]));
-        }
-
-        if(args.size() >= 8) {
-            int r = std::stoi(cmd::getVar(args[5]));
-            int g = std::stoi(cmd::getVar(args[6]));
-            int b = std::stoi(cmd::getVar(args[7]));
-            SDL_SetColorKey(surface, SDL_TRUE, SDL_MapRGB(surface->format, r, g, b));
         }
 
         SDL_Texture* texture = SDL_CreateTextureFromSurface(g_renderer, surface);
