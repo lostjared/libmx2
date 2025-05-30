@@ -276,6 +276,8 @@ begin
     ship_y = 500
     score = 0
     lives = 5
+    list_erase enemies
+    list_erase particles
     return 0
 end
 
