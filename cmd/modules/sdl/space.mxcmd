@@ -4,10 +4,10 @@ cmd "sdl-script.mxcmd"
 let last_tick = $(sdl_ticks)
 let ship_x = 400
 let ship_y = 500
-let ship_speed = 5
+let ship_speed = 10
 let ship_image = ""
 let ship_particle = ""
-let particle_speed = 5
+let particle_speed = 10
 let particles = "#particles"
 list_new particles
 let enemies = "#enemies"
@@ -17,6 +17,8 @@ let enemy_speed = 5
 let star_field = "#starfield"
 list_new star_field
 let score = 0
+let lives = 5
+let screen = 0
 
 define load_gfx()
 begin
@@ -51,6 +53,7 @@ begin
                 let enemy_values = $(regex_split "," enemy)
                 let enemy_x = $(at enemy_values 0)
                 let enemy_y = $(at enemy_values 1)
+                
                 if test x --ge enemy_x && test x --le $(expr $(printf "%d+%d" enemy_x 128)) && test y --ge enemy_y && test y --le $(expr $(printf "%d+%d" enemy_y 128))
                 then
                     if test $(expr $(printf "%d+%d" x 16)) --ge enemy_x && test $(expr $(printf "%d+%d" y 16)) --ge enemy_y
@@ -66,6 +69,25 @@ begin
         fi
         index--
     done
+    enemy_index = $(list_len enemies)
+    enemy_index = enemy_index - 1
+    while test enemy_index --ge 0
+    do
+        let enemy = $(list_get enemies enemy_index)
+        let enemy_values = $(regex_split "," enemy)
+        let enemy_x = $(at enemy_values 0)
+        let enemy_y = $(at enemy_values 1)
+        if test ship_x --ge enemy_x && test ship_x --le $(expr $(printf "%d+%d" enemy_x 128)) && test ship_y --ge enemy_y && test ship_y --le $(expr $(printf "%d+%d" enemy_y 128))
+        then
+            lives = lives - 1
+            list_remove enemies enemy_index
+            if test lives --le 0; then
+                screen = 1
+            fi
+            break
+        fi
+        enemy_index--
+    done
     return 0
 end
 
@@ -73,19 +95,39 @@ define draw_enemies()
 begin
     let index = $(list_len enemies)
     index = index - 1
-    while test index --gt 0
+    while test index --ge 0
     do
         let enemy = $(list_get enemies index)
         let values = $(regex_split "," enemy)
         let x = $(at values 0)
         let y = $(at values 1)
         sdl_copysurface enemy_image x y 128 128
-        y = y + enemy_speed
-        if test y --gt 564; then
+        
+        # CHECK SHIP COLLISION HERE - where it belongs!
+        let ship_right = ship_x + 64
+        let ship_bottom = ship_y + 64
+        let enemy_right = x + 128
+        let enemy_bottom = y + 128
+        
+        if test x --lt ship_right && test enemy_right --gt ship_x && test y --lt ship_bottom && test enemy_bottom --gt ship_y
+        then
+            lives = lives - 1
             list_remove enemies index
+            if test lives --le 0; then
+                screen = 1
+            fi
         else
-            list_set enemies index $(printf "%d,%d" x y)
-        fi      
+            y = y + enemy_speed
+            if test y --gt 564; then
+                lives = lives - 1
+                if test lives --le 0; then
+                    screen = 1
+                fi
+                list_remove enemies index
+            else
+                list_set enemies index $(printf "%d,%d" x y)
+            fi
+        fi
         index--
     done
     return 0
@@ -150,12 +192,23 @@ begin
     return 0
 end
 
+
+define new_game()
+begin
+    ship_x = 400
+    ship_y = 500
+    score = 0
+    lives = 5
+    return 0
+end
+
 define init_sdl() 
 begin
     sdl_init
     sdl_window "Space" 800 600
     sdl_renderer -1 "software"
     load_gfx
+    new_game
     return 0
 end
 
@@ -202,6 +255,15 @@ begin
     return 0
 end
 
+define draw_game()
+begin
+    draw_stars
+    draw_enemies
+    draw_ship
+    sdl_draw_text $(printf "Space - Score: %d  Lives: %d" score lives) 25 25 "./res/font.ttf" 18 255 255 255 255
+    return 0
+end
+
 define main() 
 begin
     init_sdl
@@ -212,10 +274,17 @@ begin
     do
         sdl_set_color 0 0 0 255
         sdl_clear
-        draw_stars
-        draw_enemies
-        draw_ship
-        sdl_draw_text $(printf "Space - Score: %d" score) 25 25 "./res/font.ttf" 18 255 255 255 255
+        if test screen --eq 0; then
+            draw_game
+        elif test screen --eq 1; then
+            draw_stars
+            sdl_draw_text "Game Over" 300 250 "./res/font.ttf" 48 255 0 0 255
+            sdl_draw_text "Press R to restart" 250 350 "./res/font.ttf" 24 255 255 255 255
+            if test $(sdl_key "R") --eq 1; then
+                new_game
+                screen = 0
+            fi
+        fi  
         sdl_present
         sdl_delay 16
         if test $(sdl_key "Q") --eq 1; then
