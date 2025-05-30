@@ -258,6 +258,9 @@ end
 
 define proc_enemies()
 begin
+    if test screen --eq 1; then
+        return 0
+    fi
     let ticks = $(sdl_ticks)
     if test $(expr $(printf "%d %% 100" ticks)) --eq 1; then
         let x = $(rand 0 736)
