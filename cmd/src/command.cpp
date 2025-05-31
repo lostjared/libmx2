@@ -18,6 +18,8 @@
 #include<signal.h>
 #include<fcntl.h>
 #include<sys/select.h>
+#include<pty.h>
+#include<sys/stat.h>
 #endif
 #if !defined(__EMSCRIPTEN__) && defined(_WIN32)
 #include <windows.h>
@@ -1327,45 +1329,48 @@ namespace cmd {
             }
         }
         std::string command_str = all_args.str();
-#if !defined(__EMSCRIPTEN__)  && !defined(_WIN32)
-        int in_pipe[2];
-        int out_pipe[2];
+#if !defined(__EMSCRIPTEN__) && !defined(_WIN32) && defined(__linux__)
+        int master_fd, slave_fd;
+        pid_t pid;
         
-        if (pipe(in_pipe) < 0 || pipe(out_pipe) < 0) {
-            output << "exec: failed to create pipes" << std::endl;
+        if (openpty(&master_fd, &slave_fd, NULL, NULL, NULL) == -1) {
+            output << "exec: failed to create pseudo-terminal" << std::endl;
             return 1;
         }
         
-        pid_t pid = fork();
+        pid = fork();
         if (pid < 0) {
             output << "exec: failed to fork process" << std::endl;
+            close(master_fd);
+            close(slave_fd);
             return 1;
         }
         
         if (pid == 0) {
-            setpgid(0, 0);
-            close(in_pipe[1]);  
-            dup2(in_pipe[0], STDIN_FILENO);
-            close(in_pipe[0]);
-            close(out_pipe[0]);  
-            dup2(out_pipe[1], STDOUT_FILENO);
-            dup2(out_pipe[1], STDERR_FILENO); 
-            close(out_pipe[1]);
+            // Child process
+            close(master_fd);
+            setsid();
+            ioctl(slave_fd, TIOCSCTTY, 0);
+            
+            dup2(slave_fd, STDIN_FILENO);
+            dup2(slave_fd, STDOUT_FILENO);
+            dup2(slave_fd, STDERR_FILENO);
+            close(slave_fd);
             
             execl("/bin/sh", "sh", "-c", command_str.c_str(), NULL);
-            exit(127);  
+            exit(127);
         } else {
+            // Parent process
+            close(slave_fd);
             
-            close(in_pipe[0]);  
-            close(out_pipe[1]); 
-            close(in_pipe[1]);
-            int flags = fcntl(out_pipe[0], F_GETFL, 0);
-            fcntl(out_pipe[0], F_SETFL, flags | O_NONBLOCK);
+            int flags = fcntl(master_fd, F_GETFL, 0);
+            fcntl(master_fd, F_SETFL, flags | O_NONBLOCK);
             
-            char buffer[4096];
-            ssize_t bytes_read;
+            output << std::unitbuf;
             
             bool still_running = true;
+            std::string line_buffer;
+            
             while (still_running) {
                 if (cmd::AstExecutor::getExecutor().checkInterrupt()) {
                     std::cout << "exec: interrupting process" << std::endl;
@@ -1376,50 +1381,95 @@ namespace cmd {
                     if (waitpid(pid, NULL, WNOHANG) == 0) {
                         killpg(pid, SIGKILL);
                     }
-                    
-                    close(out_pipe[0]); 
+                    close(master_fd);
                     still_running = false;
-		            AstExecutor::getExecutor().setInterruptValue(false);
+                    AstExecutor::getExecutor().setInterruptValue(false);
                     break;
                 }
+                
                 fd_set read_fds;
                 FD_ZERO(&read_fds);
-                FD_SET(out_pipe[0], &read_fds);
+                FD_SET(master_fd, &read_fds);
                 
                 struct timeval tv;
                 tv.tv_sec = 0;
-                tv.tv_usec = 100000; 
+                tv.tv_usec = 10000;
                 
-                int ret = select(out_pipe[0] + 1, &read_fds, NULL, NULL, &tv);
+                int ret = select(master_fd + 1, &read_fds, NULL, NULL, &tv);
                 
                 if (ret > 0) {
-                    while ((bytes_read = read(out_pipe[0], buffer, sizeof(buffer) - 1)) > 0) {
-                        buffer[bytes_read] = '\0';
-                        output << buffer;
-                        output.flush();
-                    }
+                    char buffer[4096];
+                    ssize_t bytes_read;
                     
+                    while ((bytes_read = read(master_fd, buffer, sizeof(buffer) - 1)) > 0) {
+                        buffer[bytes_read] = '\0';
+                        line_buffer += buffer;
+                        
+                        size_t pos = 0;
+                        while ((pos = line_buffer.find('\n')) != std::string::npos) {
+                            std::string line = line_buffer.substr(0, pos + 1);
+                            if(&output == &std::cout) {
+                                output << line;
+                                output.flush();
+                            } else {
+                                AstExecutor::getExecutor().execUpdateCallback(line);
+                            }
+                            line_buffer.erase(0, pos + 1);
+                        } 
+                        if (line_buffer.length() > 40) {
+                            if(&output == &std::cout) {
+                                output << line_buffer;
+                                output.flush();
+                            } else {
+                                AstExecutor::getExecutor().execUpdateCallback(line_buffer);
+                            }
+                            line_buffer.clear();
+                        }
+                    }   
                     if (bytes_read == 0) {
+                        if (!line_buffer.empty()) {
+                            if(&output == &std::cout) {
+                                output << line_buffer;
+                                output.flush();
+                            } else {
+                                AstExecutor::getExecutor().execUpdateCallback(line_buffer);
+                            }
+                        }
                         still_running = false;
                     }
+                    
+                    if (bytes_read < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
+                        still_running = false;
+                    }
+                    
                 } else if (ret == 0) {
                     int status;
                     pid_t result = waitpid(pid, &status, WNOHANG);
                     if (result != 0) {
+                        if (!line_buffer.empty()) {
+                            if(&output == &std::cout) {
+                                output << line_buffer;
+                                output.flush();
+                            } else {
+                                AstExecutor::getExecutor().execUpdateCallback(line_buffer);
+                            }
+                        }
                         still_running = false;
                     }
                 } else {
-                    break;
+    
+                    if (errno != EINTR) {
+                        break;
+                    }
                 }
             }
-            int status;
-            waitpid(pid, &status, 0);
-            return WEXITSTATUS(status);
         }
+        int status;
+        waitpid(pid, &status, 0);
+        close(master_fd);    
+        output << std::nounitbuf;
+        return WEXITSTATUS(status);
 #elif !defined(__EMSCRIPTEN__) && defined(_WIN32)
-
-
-
         SECURITY_ATTRIBUTES sa;
         sa.nLength = sizeof(SECURITY_ATTRIBUTES);
         sa.bInheritHandle = TRUE;
@@ -1572,8 +1622,8 @@ namespace cmd {
         CloseHandle(pi.hProcess);
         
         std::cout << "exec: execCommand finished. Returning child's exit code: " << static_cast<int>(final_child_exit_code) << std::endl;
+        return static_cast<int>(final_child_exit_code);
 #endif
-        return 0;
     }
 
     int commandListCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
