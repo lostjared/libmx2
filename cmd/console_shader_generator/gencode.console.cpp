@@ -92,6 +92,7 @@ void generateCode(const std::string &filename, const std::string &host, const st
         if (std::regex_search(line, m, re)) {		
             std::cout << unescape(m[1].str());
             shader_stream << unescape(m[1].str());
+	    fflush(stdout);
         }
     }	 
     pclose(fptr);
@@ -140,6 +141,7 @@ int main(int argc, char **argv) {
 
 	std::cout << "ACMX2 Ai Shader Generator..\n";
 	std::cout << "(C) 2025 LostSideDead Software\n";
+	fflush(stdout);
 	//std::string line;
 	//std::cout << "Enter what you want the ACMX2 shader to do: ";
 	std::ifstream fin("input.txt");

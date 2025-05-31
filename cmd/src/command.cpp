@@ -1,4 +1,3 @@
-
 #include"command.hpp"
 #include<fstream>
 #include<filesystem>
@@ -1469,7 +1468,7 @@ namespace cmd {
         close(master_fd);    
         output << std::nounitbuf;
         return WEXITSTATUS(status);
-#elif !defined(__EMSCRIPTEN__) && defined(_WIN32)
+#elif defined(_WIN32) && !defined(__EMSCRIPTEN__)
         SECURITY_ATTRIBUTES sa;
         sa.nLength = sizeof(SECURITY_ATTRIBUTES);
         sa.bInheritHandle = TRUE;
@@ -1502,9 +1501,19 @@ namespace cmd {
         PROCESS_INFORMATION pi;
         ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
 
-        std::string cmdLine = cmd_type + " " + command_str;
+        std::string cmdLine;
+        std::string bashPath = "C:\\msys64\\usr\\bin\\bash.exe";
+        
+        // Check if MSYS2 bash exists
+        if (std::filesystem::exists(bashPath)) {
+            cmdLine = bashPath + " -c \"stdbuf -o0 -e0 " + command_str + "\"";
+        } else {
+            std::cerr << "Install MSYS2 \n";
+            exit(EXIT_FAILURE);
+        }
+
         if (!CreateProcess(NULL, const_cast<LPSTR>(cmdLine.c_str()), NULL, NULL, TRUE, 
-                        CREATE_NO_WINDOW,NULL, NULL, &si, &pi)) {
+                        CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
             CloseHandle(hStdOutRead);
             CloseHandle(hStdOutWrite);
             CloseHandle(hStdInRead);
@@ -1512,8 +1521,11 @@ namespace cmd {
             output << "exec: failed to create process" << std::endl;
             return 1;
         }
+        
         CloseHandle(hStdOutWrite);
         CloseHandle(hStdInRead);
+        
+        
         if (input.peek() != EOF) {
             std::string input_str{std::istreambuf_iterator<char>(input), 
                         std::istreambuf_iterator<char>()};
@@ -1523,9 +1535,12 @@ namespace cmd {
             }
         }
         CloseHandle(hStdInWrite); 
-        char buffer[4096];
-        DWORD bytesRead;
+        
+        output << std::unitbuf;
+        std::cout << std::unitbuf;
+        std::string line_buffer;
         bool still_running = true;
+        
         while (still_running) {
             if (cmd::AstExecutor::getExecutor().checkInterrupt()) {
                 std::cout << "exec: interrupting child process (Windows)" << std::endl;
@@ -1541,32 +1556,24 @@ namespace cmd {
                     WaitForSingleObject(pi_kill.hProcess, 1000);
                     CloseHandle(pi_kill.hProcess);
                     CloseHandle(pi_kill.hThread);
-                    std::cout << "exec: taskkill command completed" << std::endl;
                 } else {
-                    std::cout << "exec: Failed to launch taskkill, error: " << GetLastError() << std::endl;
-                    std::cout << "exec: Falling back to TerminateProcess" << std::endl;
                     if (!TerminateProcess(pi.hProcess, 1)) {
                         std::cout << "exec: TerminateProcess failed, error: " << GetLastError() << std::endl;
                     } else {
-                        std::cout << "exec: TerminateProcess succeeded" << std::endl;
                         WaitForSingleObject(pi.hProcess, 200);
                     }
                 }
                 CloseHandle(hStdOutRead);
                 CloseHandle(pi.hThread);
                 CloseHandle(pi.hProcess);
-                std::cout << "exec: Child process interrupt handling complete. Returning 0" << std::endl;
                 AstExecutor::getExecutor().setInterruptValue(false);
                 return 0;
             }
             
             DWORD bytesAvailable = 0;
-            
             if (!PeekNamedPipe(hStdOutRead, NULL, 0, NULL, &bytesAvailable, NULL)) {
-                
                 DWORD peek_error = GetLastError();
                 if (peek_error == ERROR_BROKEN_PIPE) {
-                    std::cout << "exec: Output pipe broken (child likely terminated)." << std::endl;
                 } else {
                     std::cout << "exec: PeekNamedPipe failed, error: " << peek_error << std::endl;
                 }
@@ -1575,24 +1582,97 @@ namespace cmd {
             }
             
             if (bytesAvailable > 0) {
+                char buffer[256];  
+                DWORD bytesRead = 0;
+                
                 if (ReadFile(hStdOutRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0) {
                     buffer[bytesRead] = '\0';
-                    output << buffer;
-                    output.flush();
+                    line_buffer += buffer;
+                    
+                    
+                    size_t pos = 0;
+                    while ((pos = line_buffer.find('\n')) != std::string::npos) {
+                        std::string line = line_buffer.substr(0, pos + 1);
+                        
+                        if (&output == &std::cout) {
+                            output << line;
+                            output.flush();
+                            fflush(stdout);
+                        } else {
+                            try {
+                                AstExecutor::getExecutor().execUpdateCallback(line);
+                            } catch (...) {
+                                
+                            }
+                        }
+                        
+                        line_buffer.erase(0, pos + 1);
+                    }
+                    
+                    
+                    pos = 0;
+                    while ((pos = line_buffer.find('\r')) != std::string::npos) {
+                        std::string line = line_buffer.substr(0, pos + 1);
+                        
+                        if (&output == &std::cout) {
+                            output << line;
+                            output.flush();
+                            fflush(stdout);
+                        } else {
+                            try {
+                                AstExecutor::getExecutor().execUpdateCallback(line);
+                            } catch (...) {
+                    
+                            }
+                        }
+                        
+                        line_buffer.erase(0, pos + 1);
+                    }
+                    
+                    
+                    if (line_buffer.length() > 80) {
+                        if (&output == &std::cout) {
+                            output << line_buffer;
+                            output.flush();
+                            fflush(stdout);
+                        } else {
+                            try {
+                                AstExecutor::getExecutor().execUpdateCallback(line_buffer);
+                            } catch (...) {
+                    
+                            }
+                        }
+                        line_buffer.clear();
+                    }
                 } else {
                     DWORD read_error = GetLastError();
-                    if (read_error != ERROR_BROKEN_PIPE && bytesRead == 0) { 
-                         std::cout << "exec: ReadFile returned 0 bytes (EOF on pipe)." << std::endl;
-                    } else if (read_error != 0 && read_error != ERROR_BROKEN_PIPE) {
+                    if (read_error == ERROR_BROKEN_PIPE || bytesRead == 0) {
+                    
+                    } else {
                         std::cout << "exec: ReadFile failed, error: " << read_error << std::endl;
                     }
                     still_running = false;
                     break;
                 }
             } else {
+                
                 DWORD currentChildExitCode;
                 if (GetExitCodeProcess(pi.hProcess, &currentChildExitCode)) {
                     if (currentChildExitCode != STILL_ACTIVE) {
+                
+                        if (!line_buffer.empty()) {
+                            if (&output == &std::cout) {
+                                output << line_buffer;
+                                output.flush();
+                                fflush(stdout);
+                            } else {
+                                try {
+                                    AstExecutor::getExecutor().execUpdateCallback(line_buffer);
+                                } catch (...) {
+                
+                                }
+                            }
+                        }
                         still_running = false;
                     }
                 } else {
@@ -1600,28 +1680,24 @@ namespace cmd {
                     still_running = false;
                     break;
                 }
+                
                 if (still_running) {
-                    Sleep(50); 
+                    Sleep(10); 
                 }
             }
         }
-        
-        
         DWORD final_child_exit_code = 0;
-        std::cout << "exec: Waiting for child process (PID: " << GetProcessId(pi.hProcess) << ") to fully terminate." << std::endl;
         WaitForSingleObject(pi.hProcess, INFINITE); 
-
         if (GetExitCodeProcess(pi.hProcess, &final_child_exit_code)) {
-            std::cout << "exec: Child process (PID: " << GetProcessId(pi.hProcess) << ") finally exited with code: " << final_child_exit_code << std::endl;
+            std::cout << "exec: Child process finally exited with code: " << final_child_exit_code << std::endl;
         } else {
-            std::cout << "exec: Failed to get final exit code for child (PID: " << GetProcessId(pi.hProcess) << "), error: " << GetLastError() << std::endl;
+            std::cout << "exec: Failed to get final exit code, error: " << GetLastError() << std::endl;
         }
-        
         CloseHandle(hStdOutRead);
         CloseHandle(pi.hThread);
         CloseHandle(pi.hProcess);
-        
-        std::cout << "exec: execCommand finished. Returning child's exit code: " << static_cast<int>(final_child_exit_code) << std::endl;
+        output << std::nounitbuf;
+        std::cout << std::nounitbuf;
         return static_cast<int>(final_child_exit_code);
 #endif
     }
