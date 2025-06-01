@@ -65,7 +65,7 @@ class Game : public gl::GLObject {
     void useWSL(gl::GLWindow *win, const bool &enable) {
 #ifdef _WIN32
         if(enable) {
-            cmd::cmd_type = "wsl.exe ";
+            cmd::cmd_type = "wsl.exe";
             win->console.thread_safe_print("WSL enabled. Commands will be executed in WSL.\n");
             win->console.process_message_queue();
         } else {

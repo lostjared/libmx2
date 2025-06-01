@@ -1504,7 +1504,7 @@ namespace cmd {
 
         if(cmd::cmd_type == "wsl.exe") {
             cmdLine = "wsl.exe -e bash -c \"" + command_str + "\"";
-            std::cout << "Using WSL bash: " << cmdLine << std::endl;
+            std::cout << "Using WSL: " << cmdLine << std::endl;
         } 
         else {
             if (opt != nullptr && std::filesystem::exists(opt)) {
@@ -1523,7 +1523,7 @@ namespace cmd {
             
             if (!bashPath.empty() && std::filesystem::exists(bashPath)) {
                 cmdLine = "\"" + bashPath + "\" -c \"stdbuf -o0 -e0 " + command_str + "\"";
-                std::cout << "Using bash: " << cmdLine << std::endl;
+                std::cout << "Using MSYS2 bash: " << cmdLine << std::endl;
             } else {
                 std::cerr << "Install MSYS2 or set MSYS2_BASH_PATH environment variable\n";
                 AstExecutor::getExecutor().execUpdateCallback("exec: MSYS2 bash not found, please install MSYS2 or set MSYS2_BASH_PATH environment variable.\n");
