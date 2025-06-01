@@ -61,7 +61,7 @@ void generateCode(const std::string &filename, const std::string &host, const st
            << "' and apply these changes to the texture: " 
            << code 
            << "\n"
-           << "Use only the variables possible in the shader and do not use any other uniform variables.\n";
+           << "Use only the variables in the provided shader and do not add any other uniform variables.\n";
     payload << stream.str();
     payload << "\"}";
 
