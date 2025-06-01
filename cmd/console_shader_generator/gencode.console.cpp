@@ -93,10 +93,16 @@ void generateCode(const std::string &filename, const std::string &host, const st
         if (std::regex_search(line, m, re)) {		
             std::cout << unescape(m[1].str());
             shader_stream << unescape(m[1].str());
-	    fflush(stdout);
+	        fflush(stdout);
         }
     }	 
-    pclose(fptr);
+    int exitCode = pclose(fptr);
+
+    if(exitCode != 0) {
+        std::cerr << "Error executing command. Exit code: " << exitCode << "\n";
+        return;
+    }
+
     std::string value = shader_stream.str();
     size_t start_pos = 0;
     std::string code_text;
@@ -143,14 +149,14 @@ int main(int argc, char **argv) {
 	std::cout << "ACMX2 Ai Shader Generator..\n";
 	std::cout << "(C) 2025 LostSideDead Software\n";
 	fflush(stdout);
-	//std::string line;
-	//std::cout << "Enter what you want the ACMX2 shader to do: ";
 	std::ifstream fin("input.txt");
 	std::ostringstream total;
 	if(!fin.is_open()) {
 	 	std::cerr << "Could  not open input file\n";	
+        return EXIT_FAILURE;
 	}
 	total << fin.rdbuf() << std::endl;
+    fin.close();
 	generateCode(filename, host, model, total.str());
 	return 0;
 }
