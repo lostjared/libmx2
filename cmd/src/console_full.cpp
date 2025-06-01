@@ -65,6 +65,11 @@ class Game : public gl::GLObject {
     void useWSL(gl::GLWindow *win, const bool &enable) {
 #ifdef _WIN32
         if(enable) {
+            if(!std::filesystem::exists("C:\\Windows\\System32\\wsl.exe")) {
+                win->console.thread_safe_print("WSL executable not found. Please ensure WSL is installed.\n");
+                win->console.process_message_queue();
+                return;
+            }
             cmd::cmd_type = "wsl.exe";
             win->console.thread_safe_print("WSL enabled. Commands will be executed in WSL.\n");
             win->console.process_message_queue();

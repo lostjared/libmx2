@@ -1489,6 +1489,7 @@ namespace cmd {
             return 1;
         }
         SetHandleInformation(hStdInWrite, HANDLE_FLAG_INHERIT, 0); 
+
         STARTUPINFO si;
         ZeroMemory(&si, sizeof(STARTUPINFO));
         si.cb = sizeof(STARTUPINFO);
@@ -1496,13 +1497,14 @@ namespace cmd {
         si.hStdOutput = hStdOutWrite;
         si.hStdError = hStdOutWrite;
         si.dwFlags |= STARTF_USESTDHANDLES;
+
         PROCESS_INFORMATION pi;
         ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
+
         std::string cmdLine;
         std::string bashPath;
         char *opt = getenv("MSYS2_BASH_PATH");
-
-        if(cmd::cmd_type == "wsl.exe") {
+        if(cmd::cmd_type.find("wsl.exe") != std::string::npos) {
             cmdLine = "wsl.exe -e bash -c \"" + command_str + "\"";
             std::cout << "Using WSL: " << cmdLine << std::endl;
         } 
@@ -1523,10 +1525,10 @@ namespace cmd {
             
             if (!bashPath.empty() && std::filesystem::exists(bashPath)) {
                 cmdLine = "\"" + bashPath + "\" -c \"stdbuf -o0 -e0 " + command_str + "\"";
-                std::cout << "Using MSYS2 bash: " << cmdLine << std::endl;
+                std::cout << "Using bash: " << cmdLine << std::endl;
             } else {
                 std::cerr << "Install MSYS2 or set MSYS2_BASH_PATH environment variable\n";
-                AstExecutor::getExecutor().execUpdateCallback("exec: MSYS2 bash not found, please install MSYS2 or set MSYS2_BASH_PATH environment variable.\n");
+                AstExecutor::getExecutor().execUpdateCallback("exec: bash not found, please install MSYS2 or set MSYS2_BASH_PATH environment variable.\n");
                 CloseHandle(hStdOutRead);
                 CloseHandle(hStdOutWrite);
                 CloseHandle(hStdInRead);
@@ -1536,7 +1538,7 @@ namespace cmd {
         }
 
         if (!CreateProcess(NULL, const_cast<LPSTR>(cmdLine.c_str()), NULL, NULL, TRUE, 
-                        CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
+                        CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP, NULL, NULL, &si, &pi)) {
             CloseHandle(hStdOutRead);
             CloseHandle(hStdOutWrite);
             CloseHandle(hStdInRead);
@@ -1548,7 +1550,7 @@ namespace cmd {
         CloseHandle(hStdOutWrite);
         CloseHandle(hStdInRead);
         
-        
+        // Handle input if available
         if (input.peek() != EOF) {
             std::string input_str{std::istreambuf_iterator<char>(input), 
                         std::istreambuf_iterator<char>()};
@@ -1564,28 +1566,36 @@ namespace cmd {
         std::string line_buffer;
         bool still_running = true;
         
+        DWORD mainProcessId = GetProcessId(pi.hProcess);
+        
         while (still_running) {
             if (cmd::AstExecutor::getExecutor().checkInterrupt()) {
                 std::cout << "exec: interrupting child process (Windows)" << std::endl;
-                DWORD child_process_id = GetProcessId(pi.hProcess);
-                std::string kill_cmd = "taskkill /F /T /PID " + std::to_string(child_process_id);               
+                
+                std::string kill_tree_cmd = "taskkill /F /T /PID " + std::to_string(mainProcessId);
                 STARTUPINFO si_kill;
                 PROCESS_INFORMATION pi_kill;
                 ZeroMemory(&si_kill, sizeof(STARTUPINFO));
                 ZeroMemory(&pi_kill, sizeof(PROCESS_INFORMATION));
                 si_kill.cb = sizeof(STARTUPINFO);
-                if (CreateProcess(NULL, const_cast<LPSTR>(kill_cmd.c_str()), NULL, NULL, FALSE, 
+                
+                if (CreateProcess(NULL, const_cast<LPSTR>(kill_tree_cmd.c_str()), NULL, NULL, FALSE, 
                                  CREATE_NO_WINDOW, NULL, NULL, &si_kill, &pi_kill)) {
-                    WaitForSingleObject(pi_kill.hProcess, 1000);
+                    WaitForSingleObject(pi_kill.hProcess, 2000); 
                     CloseHandle(pi_kill.hProcess);
                     CloseHandle(pi_kill.hThread);
+                    std::cout << "exec: Process tree terminated with taskkill" << std::endl;
                 } else {
-                    if (!TerminateProcess(pi.hProcess, 1)) {
-                        std::cout << "exec: TerminateProcess failed, error: " << GetLastError() << std::endl;
-                    } else {
-                        WaitForSingleObject(pi.hProcess, 200);
+                    
+                    if (!GenerateConsoleCtrlEvent(CTRL_C_EVENT, mainProcessId)) {
+                        std::cout << "exec: Failed to send CTRL+C, trying TerminateProcess" << std::endl;
+                        if (!TerminateProcess(pi.hProcess, 1)) {
+                            std::cout << "exec: TerminateProcess failed, error: " << GetLastError() << std::endl;
+                        }
                     }
+                    WaitForSingleObject(pi.hProcess, 1000);
                 }
+                
                 CloseHandle(hStdOutRead);
                 CloseHandle(pi.hThread);
                 CloseHandle(pi.hProcess);
@@ -1597,6 +1607,7 @@ namespace cmd {
             if (!PeekNamedPipe(hStdOutRead, NULL, 0, NULL, &bytesAvailable, NULL)) {
                 DWORD peek_error = GetLastError();
                 if (peek_error == ERROR_BROKEN_PIPE) {
+                    
                 } else {
                     std::cout << "exec: PeekNamedPipe failed, error: " << peek_error << std::endl;
                 }
@@ -1612,7 +1623,6 @@ namespace cmd {
                     buffer[bytesRead] = '\0';
                     line_buffer += buffer;
                     
-                    
                     size_t pos = 0;
                     while ((pos = line_buffer.find('\n')) != std::string::npos) {
                         std::string line = line_buffer.substr(0, pos + 1);
@@ -1625,13 +1635,12 @@ namespace cmd {
                             try {
                                 AstExecutor::getExecutor().execUpdateCallback(line);
                             } catch (...) {
-                                
+                    
                             }
                         }
                         
                         line_buffer.erase(0, pos + 1);
                     }
-                    
                     
                     pos = 0;
                     while ((pos = line_buffer.find('\r')) != std::string::npos) {
@@ -1645,14 +1654,14 @@ namespace cmd {
                             try {
                                 AstExecutor::getExecutor().execUpdateCallback(line);
                             } catch (...) {
-                    
+        
                             }
                         }
                         
                         line_buffer.erase(0, pos + 1);
                     }
                     
-                    
+        
                     if (line_buffer.length() > 80) {
                         if (&output == &std::cout) {
                             output << line_buffer;
@@ -1662,7 +1671,7 @@ namespace cmd {
                             try {
                                 AstExecutor::getExecutor().execUpdateCallback(line_buffer);
                             } catch (...) {
-                    
+        
                             }
                         }
                         line_buffer.clear();
@@ -1670,7 +1679,7 @@ namespace cmd {
                 } else {
                     DWORD read_error = GetLastError();
                     if (read_error == ERROR_BROKEN_PIPE || bytesRead == 0) {
-                    
+        
                     } else {
                         std::cout << "exec: ReadFile failed, error: " << read_error << std::endl;
                     }
@@ -1678,11 +1687,10 @@ namespace cmd {
                     break;
                 }
             } else {
-                
                 DWORD currentChildExitCode;
                 if (GetExitCodeProcess(pi.hProcess, &currentChildExitCode)) {
                     if (currentChildExitCode != STILL_ACTIVE) {
-                
+        
                         if (!line_buffer.empty()) {
                             if (&output == &std::cout) {
                                 output << line_buffer;
@@ -1692,7 +1700,7 @@ namespace cmd {
                                 try {
                                     AstExecutor::getExecutor().execUpdateCallback(line_buffer);
                                 } catch (...) {
-                
+        
                                 }
                             }
                         }
@@ -1705,22 +1713,42 @@ namespace cmd {
                 }
                 
                 if (still_running) {
-                    Sleep(10); 
+                    Sleep(10);
                 }
             }
         }
+        
         DWORD final_child_exit_code = 0;
         WaitForSingleObject(pi.hProcess, INFINITE); 
+
         if (GetExitCodeProcess(pi.hProcess, &final_child_exit_code)) {
             std::cout << "exec: Child process finally exited with code: " << final_child_exit_code << std::endl;
         } else {
             std::cout << "exec: Failed to get final exit code, error: " << GetLastError() << std::endl;
         }
+        
+        
+        std::string final_cleanup = "taskkill /F /T /PID " + std::to_string(mainProcessId) + " 2>nul";
+        STARTUPINFO si_cleanup;
+        PROCESS_INFORMATION pi_cleanup;
+        ZeroMemory(&si_cleanup, sizeof(STARTUPINFO));
+        ZeroMemory(&pi_cleanup, sizeof(PROCESS_INFORMATION));
+        si_cleanup.cb = sizeof(STARTUPINFO);
+        
+        if (CreateProcess(NULL, const_cast<LPSTR>(final_cleanup.c_str()), NULL, NULL, FALSE, 
+                         CREATE_NO_WINDOW, NULL, NULL, &si_cleanup, &pi_cleanup)) {
+            WaitForSingleObject(pi_cleanup.hProcess, 500); 
+            CloseHandle(pi_cleanup.hProcess);
+            CloseHandle(pi_cleanup.hThread);
+        }
+        
         CloseHandle(hStdOutRead);
         CloseHandle(pi.hThread);
         CloseHandle(pi.hProcess);
+        
         output << std::nounitbuf;
         std::cout << std::nounitbuf;
+        
         return static_cast<int>(final_child_exit_code);
 #endif
     }
