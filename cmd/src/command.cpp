@@ -1501,30 +1501,40 @@ namespace cmd {
         std::string cmdLine;
         std::string bashPath;
         char *opt = getenv("MSYS2_BASH_PATH");
-        if (opt != nullptr && std::filesystem::exists(opt)) {
-            std::cout << "Using MSYS2_BASH_PATH: " << opt << std::endl;
-            bashPath = opt;
+
+        if(cmd::cmd_type == "wsl.exe") {
+            cmdLine = "wsl.exe -e bash -c \"" + command_str + "\"";
+            std::cout << "Using WSL bash: " << cmdLine << std::endl;
         } 
-        else if (std::filesystem::exists("C:\\msys64\\usr\\bin\\bash.exe")) {
-            bashPath = "C:\\msys64\\usr\\bin\\bash.exe";
-        } 
-        else if (std::filesystem::exists("C:\\msys64\\mingw64\\bin\\bash.exe")) {
-            bashPath = "C:\\msys64\\mingw64\\bin\\bash.exe";
+        else {
+            if (opt != nullptr && std::filesystem::exists(opt)) {
+                std::cout << "Using MSYS2_BASH_PATH: " << opt << std::endl;
+                bashPath = opt;
+            } 
+            else if (std::filesystem::exists("C:\\msys64\\usr\\bin\\bash.exe")) {
+                bashPath = "C:\\msys64\\usr\\bin\\bash.exe";
+            } 
+            else if (std::filesystem::exists("C:\\msys64\\mingw64\\bin\\bash.exe")) {
+                bashPath = "C:\\msys64\\mingw64\\bin\\bash.exe";
+            }
+            else if (std::filesystem::exists("C:\\Program Files\\Git\\bin\\bash.exe")) {
+                bashPath = "C:\\Program Files\\Git\\bin\\bash.exe";
+            }
+            
+            if (!bashPath.empty() && std::filesystem::exists(bashPath)) {
+                cmdLine = "\"" + bashPath + "\" -c \"stdbuf -o0 -e0 " + command_str + "\"";
+                std::cout << "Using bash: " << cmdLine << std::endl;
+            } else {
+                std::cerr << "Install MSYS2 or set MSYS2_BASH_PATH environment variable\n";
+                AstExecutor::getExecutor().execUpdateCallback("exec: MSYS2 bash not found, please install MSYS2 or set MSYS2_BASH_PATH environment variable.\n");
+                CloseHandle(hStdOutRead);
+                CloseHandle(hStdOutWrite);
+                CloseHandle(hStdInRead);
+                CloseHandle(hStdInWrite);  
+                return 1;   
+            }
         }
-        else if (std::filesystem::exists("C:\\Program Files\\Git\\bin\\bash.exe")) {
-            bashPath = "C:\\Program Files\\Git\\bin\\bash.exe";
-        }
-        if (!bashPath.empty() && std::filesystem::exists(bashPath)) {
-            cmdLine = "\"" + bashPath + "\" -c \"stdbuf -o0 -e0 " + command_str + "\"";
-        } else {
-            std::cerr << "Install MSYS2 or set MSYS2_BASH_PATH environment variable\n";
-            AstExecutor::getExecutor().execUpdateCallback("exec: MSYS2 bash not found, please install MSYS2 or set MSYS2_BASH_PATH environment variable.\n");
-            CloseHandle(hStdOutRead);
-            CloseHandle(hStdOutWrite);
-            CloseHandle(hStdInRead);
-            CloseHandle(hStdInWrite);           
-            return 1;
-        }
+
         if (!CreateProcess(NULL, const_cast<LPSTR>(cmdLine.c_str()), NULL, NULL, TRUE, 
                         CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
             CloseHandle(hStdOutRead);
