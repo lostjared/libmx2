@@ -103,8 +103,8 @@ Args proc_custom_args(int &argc, char **argv) {
 		return args;
     }
     cmd::argv.clear();
-    for(auto &i : args.arguments) {
-        cmd::argv.push_back(i);
+    for(size_t i = 1; i < args.arguments.size(); ++i) {
+        cmd::argv.push_back(args.arguments.at(i));
     }
     return args;
 }
