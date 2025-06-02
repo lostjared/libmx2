@@ -1,14 +1,11 @@
 #include <iostream>
 #include <string>
 #include <sstream>
-#include <cstdio>
-#include <cstdlib>
 #include <regex>
 #include <fstream>
+#include <curl/curl.h>
 
-void generateCode(const std::string &filename, const std::string &host, const std::string &model, const std::string &code);
 std::string unescape(const std::string &input);
-
 
 std::string unescape(const std::string &input) {
     std::string s = input;  
@@ -37,6 +34,35 @@ std::string unescape(const std::string &input) {
     return s;
 }
 
+struct ResponseData {
+    std::string response;
+    std::ostringstream shader_stream;
+};
+
+size_t WriteCallback(void* contents, size_t size, size_t nmemb, ResponseData* data) {
+    size_t total_size = size * nmemb;
+    std::string chunk(static_cast<char*>(contents), total_size);
+    
+    std::istringstream stream(chunk);
+    std::string line;
+    
+    while (std::getline(stream, line)) {
+        std::string r = R"REGEX("response"\s*:\s*"([^"]*)")REGEX";
+        std::regex re(r);
+        std::smatch m;
+        
+        if (std::regex_search(line, m, re)) {
+            std::string unescaped = unescape(m[1].str());
+            std::cout << unescaped;
+            data->shader_stream << unescaped;
+            std::cout.flush();
+        }
+    }
+    
+    data->response += chunk;
+    return total_size;
+}
+
 void generateCode(const std::string &filename, const std::string &host, const std::string &model, const std::string &code) {
     const char *shader = R"(#version 330 core
     in vec2 TexCoord;
@@ -55,67 +81,101 @@ void generateCode(const std::string &filename, const std::string &host, const st
     payload << "{"
             << "\"model\":\"" << model << "\","
             << "\"prompt\":\"";
+    
     std::ostringstream stream;
     stream << "you are a master GLSL graphics programmer can you take this shader '" 
            << shader 
            << "' and apply these changes to the texture: " 
            << code 
            << "\n"
-           << "Do not add any other uniform variables. You can create new local varaibles, but do not create variables and then not define them. Be creative and make it awesome.\n";
-    payload << stream.str();
+           << "Do not add any other uniform variables. You can create new local variables, but do not create variables and then not define them. Be creative and make it awesome.\n";
+    
+    std::string prompt = stream.str();
+    std::string escaped_prompt;
+    for (char c : prompt) {
+        if (c == '"') {
+            escaped_prompt += "\\\"";
+        } else if (c == '\\') {
+            escaped_prompt += "\\\\";
+        } else if (c == '\n') {
+            escaped_prompt += "\\n";
+        } else if (c == '\r') {
+            escaped_prompt += "\\r";
+        } else if (c == '\t') {
+            escaped_prompt += "\\t";
+        } else {
+            escaped_prompt += c;
+        }
+    }
+    
+    payload << escaped_prompt;
     payload << "\"}";
 
-    std::ofstream fout("payload.json");
-    if(!fout.is_open()) {
-	    std::cerr << "Error writing JSON file.\n";
-	    return;
-    }
-    fout << payload.str();
-    fout.close();
-
-    std::ostringstream cmd;
-    cmd << "curl -s --no-buffer -X POST http://" << host << ":11434/api/generate "
-        << "-H \"Content-Type: application/json\" "
-        << "-d @" << "payload.json";
-       
-    FILE *fptr = popen(cmd.str().c_str(), "r");
-    if (!fptr) {
-        std::cerr << "Error..\n";
+    CURL *curl;
+    CURLcode res;
+    ResponseData response_data;
+    
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+    curl = curl_easy_init();
+    
+    if (!curl) {
+        std::cerr << "Failed to initialize curl\n";
+        curl_global_cleanup();
         return;
     }
-    char buffer[1024];
-    std::ostringstream shader_stream;
-    while (fgets(buffer, sizeof(buffer), fptr)) {
-        std::string r = R"REGEX("response"\s*:\s*"([^"]*)")REGEX";
-        std::regex re(r);
-        std::smatch m;
-        std::string line(buffer);
-        if (std::regex_search(line, m, re)) {		
-            std::cout << unescape(m[1].str());
-            shader_stream << unescape(m[1].str());
-	        fflush(stdout);
+
+    std::string url = "http://" + host + ":11434/api/generate";
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    
+    std::string json_data = payload.str();
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json_data.c_str());
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, json_data.length());
+    
+    struct curl_slist *headers = NULL;
+    headers = curl_slist_append(headers, "Content-Type: application/json");
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_data);
+    curl_easy_setopt(curl, CURLOPT_BUFFERSIZE, 1024L);
+    curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L);
+    curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+    
+    res = curl_easy_perform(curl);
+    
+    if (res != CURLE_OK) {
+        std::cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << std::endl;
+    } else {
+        long response_code;
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+        
+        if (response_code != 200) {
+            std::cerr << "HTTP error: " << response_code << std::endl;
+            std::cerr << "Response: " << response_data.response << std::endl;
         }
-    }	 
-    int exitCode = pclose(fptr);
-
-    if(exitCode != 0) {
-        std::cerr << "Error executing command. Exit code: " << exitCode << "\n";
-        return;
     }
+    
+    curl_slist_free_all(headers);
+    curl_easy_cleanup(curl);
+    curl_global_cleanup();
 
-    std::string value = shader_stream.str();
+    std::string value = response_data.shader_stream.str();
     size_t start_pos = 0;
     std::string code_text;
     bool found_code = false;
+    
     while ((start_pos = value.find("```", start_pos)) != std::string::npos) {
         size_t after_backticks = start_pos + 3;
         size_t line_end = value.find('\n', after_backticks);   
+        
         if (line_end != std::string::npos) {
             std::string lang_line = value.substr(after_backticks, line_end - after_backticks);
             if (lang_line.find("glsl") != std::string::npos || lang_line.empty() || 
                 std::all_of(lang_line.begin(), lang_line.end(), ::isspace)) {
+                
                 size_t code_start = line_end + 1;
                 size_t code_end = value.find("```", code_start);            
+                
                 if (code_end != std::string::npos) {
                     code_text = value.substr(code_start, code_end - code_start);
                     found_code = true;
@@ -125,6 +185,7 @@ void generateCode(const std::string &filename, const std::string &host, const st
         }
         start_pos += 3;
     }
+    
     if (found_code && !code_text.empty()) {
         std::ofstream output(filename);
         output << code_text;
@@ -137,27 +198,29 @@ void generateCode(const std::string &filename, const std::string &host, const st
 
 int main(int argc, char **argv) {
     std::string filename = "shader.glsl";
-	std::string host = "localhost";
-	std::string model = "codellama:7b";
-	if(argc >= 2)
-		host = argv[1];
-	if(argc >= 3)
-		model = argv[2];
-	if(argc >= 4)
-        	filename = argv[3];
+    std::string host = "localhost";
+    std::string model = "codellama:7b";
+    
+    if(argc >= 2)
+        host = argv[1];
+    if(argc >= 3)
+        model = argv[2];
+    if(argc >= 4)
+        filename = argv[3];
 
-	std::cout << "ACMX2 Ai Shader Generator..\n";
-	std::cout << "(C) 2025 LostSideDead Software\n";
-	fflush(stdout);
-	std::ifstream fin("input.txt");
-	std::ostringstream total;
-	if(!fin.is_open()) {
-	 	std::cerr << "Could  not open input file\n";	
+    std::cout << "ACMX2 Ai Shader Generator..\n";
+    std::cout << "(C) 2025 LostSideDead Software\n";
+    std::cout.flush();
+    
+    std::ifstream fin("input.txt");
+    std::ostringstream total;
+    if(!fin.is_open()) {
+        std::cerr << "Could not open input file\n";    
         return EXIT_FAILURE;
-	}
-	total << fin.rdbuf() << std::endl;
+    }
+    total << fin.rdbuf() << std::endl;
     fin.close();
-	generateCode(filename, host, model, total.str());
-	return 0;
+    
+    generateCode(filename, host, model, total.str());
+    return 0;
 }
-
