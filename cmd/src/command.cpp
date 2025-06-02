@@ -1526,6 +1526,7 @@ namespace cmd {
             if (!bashPath.empty() && std::filesystem::exists(bashPath)) {
                 cmdLine = "\"" + bashPath + "\" --login -c \"stdbuf -o0 -e0 " + command_str + "\"";
                 std::cout << "Using bash: " << cmdLine << std::endl;
+                fflush(stdout);
             } else {
                 std::cerr << "Install MSYS2 or set MSYS2_BASH_PATH environment variable\n";
                 AstExecutor::getExecutor().execUpdateCallback("exec: bash not found, please install MSYS2 or set MSYS2_BASH_PATH environment variable.\n");
