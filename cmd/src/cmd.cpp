@@ -183,9 +183,7 @@ int main(int argc, char **argv) {
     sa.sa_flags = 0;
     sigaction(SIGINT, &sa, nullptr);
 #endif
-
     Args args = proc_custom_args(argc, argv);
-
     if(args.command_proc) {
         if(args.command_text.empty()) {
             std::cerr << "mx: No command provided.\n";
@@ -196,11 +194,7 @@ int main(int argc, char **argv) {
     }
     std::cout << "MXCMD " << version_string << "\n(C) 1999-2025 LostSideDead Software\n\n";
     cmd::app_name = argv[0];
-    if(argc > 2) {
-        for(int i = 2; i < argc; ++i) {
-            cmd::argv.push_back(argv[i]);
-        }
-    }
+
 #ifdef _WIN32
     cmd::AstExecutor::getExecutor().getRegistry().registerTypedCommand("exec", 
         [](const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
