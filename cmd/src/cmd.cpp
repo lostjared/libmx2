@@ -36,6 +36,7 @@ struct Args {
     bool debug_tokens = false;
     std::string command_text;
     std::string filename;
+    std::vector<std::string> arguments;
 };
 
 Args proc_custom_args(int &argc, char **argv) {
@@ -91,14 +92,19 @@ Args proc_custom_args(int &argc, char **argv) {
                     args.debug_tokens = true;
                     break;
                 case '-':
-                    args.filename = arg.arg_value;
+                default:
+                    args.arguments.push_back(arg.arg_value);
                     break;
 
                 }
         }
     } catch (const ArgException<std::string>& e) {
-        std::cerr << "mx: Argument Exception" << e.text() << std::endl;
+        std::cerr << "mxcmd: Argument Exception" << e.text() << std::endl;
 		return args;
+    }
+    cmd::argv.clear();
+    for(auto &i : args.arguments) {
+        cmd::argv.push_back(i);
     }
     return args;
 }
@@ -431,10 +437,14 @@ int main(int argc, char **argv) {
             if(args.debug_tokens) {
                 debug_tokens = true;
             }
-            cmd::app_name = args.filename;
-            file.open(args.filename, std::ios::in);
+            if(args.arguments.size() == 0) {
+                std::cerr << "mx: No script file name provided.\n";
+                return EXIT_FAILURE;
+            }
+            std::string app_name = args.arguments[0];
+            file.open(app_name, std::ios::in);
             if(!file.is_open()) {
-                std::cerr << "Error loading file: " << args.filename << "\n";;
+                std::cerr << "Error loading file: " << app_name << "\n";;
                 return EXIT_FAILURE;
             }
             stream << file.rdbuf();
@@ -471,7 +481,7 @@ int main(int argc, char **argv) {
     #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
                 program_running = 1;
     #endif
-                executor.setPath(std::filesystem::path(args.filename).parent_path().string());
+                executor.setPath(std::filesystem::path(app_name).parent_path().string());
                 executor.execute(std::cin, std::cout, ast);
 
                 std::cout.flush();
