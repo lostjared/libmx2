@@ -1524,7 +1524,7 @@ namespace cmd {
             }
             
             if (!bashPath.empty() && std::filesystem::exists(bashPath)) {
-                cmdLine = "\"" + bashPath + "\" -c \"stdbuf -o0 -e0 " + command_str + "\"";
+                cmdLine = "\"" + bashPath + "\" --login -c \"stdbuf -o0 -e0 " + command_str + "\"";
                 std::cout << "Using bash: " << cmdLine << std::endl;
             } else {
                 std::cerr << "Install MSYS2 or set MSYS2_BASH_PATH environment variable\n";
