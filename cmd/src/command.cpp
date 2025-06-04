@@ -66,6 +66,8 @@ namespace cmd {
             }
         }
         output << std::endl;
+        fflush(stdout);
+        output.flush();
         return 0;
     }
 
