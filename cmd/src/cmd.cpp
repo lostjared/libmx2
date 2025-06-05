@@ -170,11 +170,13 @@ void execute_command(const std::string &text) {
 
 int main(int argc, char **argv) {
     
+#ifndef _WIN32
     cmd::AstExecutor::getExecutor().setUpdateCallback(
         [](const std::string &chunk) {
             std::cout << chunk;
         }
     );
+#endif
     
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
     struct sigaction sa;
