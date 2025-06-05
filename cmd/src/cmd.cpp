@@ -244,17 +244,16 @@ cmd::AstExecutor::getExecutor().getRegistry().registerTypedCommand("exec",
         PROCESS_INFORMATION pi;
         ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
         
-        // Create environment block with unbuffering variables
         std::vector<std::string> envVars;
         
-        // Copy existing environment
+        
         LPCH env = GetEnvironmentStrings();
         if (env) {
             LPCH current = env;
             while (*current) {
                 std::string envVar(current);
                 
-                // Skip variables we want to override
+        
                 if (envVar.substr(0, 18) != "PYTHONUNBUFFERED=" &&
                     envVar.substr(0, 5) != "TERM=" &&
                     envVar.substr(0, 8) != "COLUMNS=" &&
@@ -268,7 +267,7 @@ cmd::AstExecutor::getExecutor().getRegistry().registerTypedCommand("exec",
             FreeEnvironmentStrings(env);
         }
         
-        // Add unbuffering environment variables
+        
         envVars.push_back("PYTHONUNBUFFERED=1");
         envVars.push_back("TERM=dumb");           // Force dumb terminal
         envVars.push_back("COLUMNS=80");          // Set terminal width
@@ -278,14 +277,14 @@ cmd::AstExecutor::getExecutor().getRegistry().registerTypedCommand("exec",
         envVars.push_back("MSYS=enable_pcon");    // Enable pseudo console in MSYS2
         envVars.push_back("CYGWIN=disable_pcon"); // Disable pseudo console buffering in Cygwin
         
-        // Build environment block
+        
         std::string envBlock;
         for (const auto& var : envVars) {
             envBlock += var + '\0';
         }
         envBlock += '\0';
         
-        // Determine bash path and command
+        
         std::string cmdLine;
         std::string bashPath;
         char *opt = getenv("MSYS2_BASH_PATH");
