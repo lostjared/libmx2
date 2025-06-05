@@ -211,8 +211,6 @@ namespace cmd {
         else {
             throw std::runtime_error("Unknown node type");
         }
-        output.flush();
-        fflush(stdout);
     }
         
 

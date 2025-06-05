@@ -53,7 +53,8 @@ namespace cmd {
         return 0;     
     }
     
-    int echoCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
+    int echoCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& stream) {
+        std::ostringstream output;;
         for (size_t i = 0; i < args.size(); i++) {
             try {
                 output << getVar(args[i]);
@@ -66,8 +67,13 @@ namespace cmd {
             }
         }
         output << std::endl;
-        fflush(stdout);
-        output.flush();
+        
+        if(&stream != &std::cout) {
+            stream << output.str();
+        } else  {
+            printf("%s", output.str().c_str());
+            fflush(stdout);
+        }
         return 0;
     }
 
@@ -93,6 +99,7 @@ namespace cmd {
                     output << line << std::endl;
                 }
             }
+    
             fflush(stdout);
             output.flush();
             return success ? 0 : 1; 
@@ -726,8 +733,8 @@ namespace cmd {
         return 0;
     }
 
-    int printfCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
-
+    int printfCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& stream_output) {
+        std::ostringstream output;
         if (args.empty()) {
             output << "Usage: printf FORMAT [ARGUMENTS...]" << std::endl;
             output << "Print ARGUMENTS according to FORMAT" << std::endl;
@@ -856,8 +863,13 @@ namespace cmd {
             pos = specPos + 1;
         }
 
-        output.flush();
-        fflush(stdout);
+        if(&stream_output != &std::cout) {
+            stream_output << output.str();
+            stream_output.flush();
+        } else {
+            printf("%s", output.str().c_str());
+            fflush(stdout);
+        }
         return 0;
     }
 

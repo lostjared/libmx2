@@ -79,6 +79,9 @@ if(CMD)
             mxcmd
             ${Readline_LIBRARIES}
         )
+        if(WIN32)
+        target_compile_definitions(mxcmd-cli PRIVATE WINDOWS_MODE)
+        endif()
     endif()
     target_compile_options(mxcmd-cli PRIVATE -Wall -pedantic)
 

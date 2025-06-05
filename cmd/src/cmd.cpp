@@ -177,7 +177,7 @@ int main(int argc, char **argv) {
         }
     );
 #endif
-    
+
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
     struct sigaction sa;
     sa.sa_handler = sigint_handler;
@@ -198,75 +198,182 @@ int main(int argc, char **argv) {
     cmd::app_name = argv[0];
 
 #ifdef _WIN32
-    cmd::AstExecutor::getExecutor().getRegistry().registerTypedCommand("exec", 
-        [](const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
-           std::ostringstream all_args;
-           for(auto &arg : args) {
-                try {
-                    all_args << getVar(arg) << " ";
-                } catch(const std::runtime_error &) {
-                    all_args << arg.value << " ";
+cmd::AstExecutor::getExecutor().getRegistry().registerTypedCommand("exec", 
+    [](const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
+        std::ostringstream all_args;
+        for(auto &arg : args) {
+            try {
+                all_args << getVar(arg) << " ";
+            } catch(const std::runtime_error &) {
+                all_args << arg.value << " ";
+            }
+        }
+        std::string command_str = all_args.str();
+        
+        SECURITY_ATTRIBUTES sa;
+        sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+        sa.bInheritHandle = TRUE;
+        sa.lpSecurityDescriptor = NULL;
+        
+        HANDLE hStdOutRead, hStdOutWrite;
+        if (!CreatePipe(&hStdOutRead, &hStdOutWrite, &sa, 0)) {
+            output << "exec: failed to create output pipe" << std::endl;
+            return 1;
+        }
+        SetHandleInformation(hStdOutRead, HANDLE_FLAG_INHERIT, 0); 
+        
+        HANDLE hStdInRead, hStdInWrite;
+        if (!CreatePipe(&hStdInRead, &hStdInWrite, &sa, 0)) {
+            CloseHandle(hStdOutRead);
+            CloseHandle(hStdOutWrite);
+            output << "exec: failed to create input pipe" << std::endl;
+            return 1;
+        }
+        SetHandleInformation(hStdInWrite, HANDLE_FLAG_INHERIT, 0); 
+        
+        STARTUPINFO si;
+        ZeroMemory(&si, sizeof(STARTUPINFO));
+        si.cb = sizeof(STARTUPINFO);
+        si.hStdInput = hStdInRead;
+        si.hStdOutput = hStdOutWrite;
+        si.hStdError = hStdOutWrite;
+        si.dwFlags |= STARTF_USESTDHANDLES;
+        
+        PROCESS_INFORMATION pi;
+        ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
+        
+        // Create environment block with unbuffering variables
+        std::vector<std::string> envVars;
+        
+        // Copy existing environment
+        LPCH env = GetEnvironmentStrings();
+        if (env) {
+            LPCH current = env;
+            while (*current) {
+                std::string envVar(current);
+                
+                // Skip variables we want to override
+                if (envVar.substr(0, 18) != "PYTHONUNBUFFERED=" &&
+                    envVar.substr(0, 5) != "TERM=" &&
+                    envVar.substr(0, 8) != "COLUMNS=" &&
+                    envVar.substr(0, 6) != "LINES=" &&
+                    envVar.substr(0, 10) != "_STDBUF_O=" &&
+                    envVar.substr(0, 10) != "_STDBUF_E=") {
+                    envVars.push_back(envVar);
                 }
+                current += envVar.length() + 1;
             }
-            std::string command_str = all_args.str();
-            SECURITY_ATTRIBUTES sa;
-            sa.nLength = sizeof(SECURITY_ATTRIBUTES);
-            sa.bInheritHandle = TRUE;
-            sa.lpSecurityDescriptor = NULL;
-            HANDLE hStdOutRead, hStdOutWrite;
-            if (!CreatePipe(&hStdOutRead, &hStdOutWrite, &sa, 0)) {
-                output << "exec: failed to create output pipe" << std::endl;
-                return 1;
+            FreeEnvironmentStrings(env);
+        }
+        
+        // Add unbuffering environment variables
+        envVars.push_back("PYTHONUNBUFFERED=1");
+        envVars.push_back("TERM=dumb");           // Force dumb terminal
+        envVars.push_back("COLUMNS=80");          // Set terminal width
+        envVars.push_back("LINES=24");            // Set terminal height
+        envVars.push_back("_STDBUF_O=L");         // Force line buffering for stdout
+        envVars.push_back("_STDBUF_E=L");         // Force line buffering for stderr
+        envVars.push_back("MSYS=enable_pcon");    // Enable pseudo console in MSYS2
+        envVars.push_back("CYGWIN=disable_pcon"); // Disable pseudo console buffering in Cygwin
+        
+        // Build environment block
+        std::string envBlock;
+        for (const auto& var : envVars) {
+            envBlock += var + '\0';
+        }
+        envBlock += '\0';
+        
+        // Determine bash path and command
+        std::string cmdLine;
+        std::string bashPath;
+        char *opt = getenv("MSYS2_BASH_PATH");
+        
+        if(cmd::cmd_type.find("wsl.exe") != std::string::npos) {
+            cmdLine = "wsl.exe -e bash -c \"" + command_str + "\"";
+        } else {
+            if (opt != nullptr && std::filesystem::exists(opt)) {
+                bashPath = opt;
+            } else if (std::filesystem::exists("C:\\msys64\\usr\\bin\\bash.exe")) {
+                bashPath = "C:\\msys64\\usr\\bin\\bash.exe";
+            } else if (std::filesystem::exists("C:\\msys64\\mingw64\\bin\\bash.exe")) {
+                bashPath = "C:\\msys64\\mingw64\\bin\\bash.exe";
+            } else if (std::filesystem::exists("C:\\Program Files\\Git\\bin\\bash.exe")) {
+                bashPath = "C:\\Program Files\\Git\\bin\\bash.exe";
             }
-            SetHandleInformation(hStdOutRead, HANDLE_FLAG_INHERIT, 0); 
-            HANDLE hStdInRead, hStdInWrite;
-            if (!CreatePipe(&hStdInRead, &hStdInWrite, &sa, 0)) {
-                CloseHandle(hStdOutRead);
-                CloseHandle(hStdOutWrite);
-                output << "exec: failed to create input pipe" << std::endl;
-                return 1;
-            }
-            SetHandleInformation(hStdInWrite, HANDLE_FLAG_INHERIT, 0); 
-            STARTUPINFO si;
-            ZeroMemory(&si, sizeof(STARTUPINFO));
-            si.cb = sizeof(STARTUPINFO);
-            si.hStdInput = hStdInRead;
-            si.hStdOutput = hStdOutWrite;
-            si.hStdError = hStdOutWrite;
-            si.dwFlags |= STARTF_USESTDHANDLES;
-            PROCESS_INFORMATION pi;
-            ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
-            std::string cmdLine = cmd::cmd_type + " " + command_str;
-            if (!CreateProcess(NULL, const_cast<LPSTR>(cmdLine.c_str()), NULL, NULL, TRUE, 
-                            CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
+            
+            if (!bashPath.empty() && std::filesystem::exists(bashPath)) {
+                // Use stdbuf with environment variables for maximum unbuffering
+                if (bashPath.find("msys64") != std::string::npos) {
+                    cmdLine = "\"" + bashPath + "\" -c \"stdbuf -oL -eL " + command_str + "\"";
+                } else {
+                    cmdLine = "\"" + bashPath + "\" -c \"" + command_str + "\"";
+                }
+            } else {
                 CloseHandle(hStdOutRead);
                 CloseHandle(hStdOutWrite);
                 CloseHandle(hStdInRead);
                 CloseHandle(hStdInWrite);
-                output << "exec: failed to create process" << std::endl;
+                output << "exec: bash not found" << std::endl;
                 return 1;
             }
+        }
+        
+        if (!CreateProcess(NULL, const_cast<LPSTR>(cmdLine.c_str()), NULL, NULL, TRUE, 
+                        CREATE_NO_WINDOW, 
+                        const_cast<LPSTR>(envBlock.c_str()), // Use custom environment
+                        NULL, &si, &pi)) {
+            CloseHandle(hStdOutRead);
             CloseHandle(hStdOutWrite);
             CloseHandle(hStdInRead);
             CloseHandle(hStdInWrite);
-            DWORD bytesRead;
-            char buffer[4096];
-            BOOL success;
-            while (true) {
-                success = ReadFile(hStdOutRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL);
-                if (!success || bytesRead == 0) break;
-                buffer[bytesRead] = '\0';
-                output << buffer;
-                output.flush();
+            output << "exec: failed to create process" << std::endl;
+            return 1;
+        }
+        
+        CloseHandle(hStdOutWrite);
+        CloseHandle(hStdInRead);
+        CloseHandle(hStdInWrite);
+        
+        
+        DWORD bytesRead;
+        char buffer[64]; 
+        DWORD bytesAvailable;
+        
+        while (true) {
+            DWORD exitCode;
+            if (GetExitCodeProcess(pi.hProcess, &exitCode) && exitCode != STILL_ACTIVE) {
+                while (PeekNamedPipe(hStdOutRead, NULL, 0, NULL, &bytesAvailable, NULL) && bytesAvailable > 0) {
+                    DWORD toRead = std::min(bytesAvailable, static_cast<DWORD>(sizeof(buffer) - 1));
+                    if (ReadFile(hStdOutRead, buffer, toRead, &bytesRead, NULL) && bytesRead > 0) {
+                        buffer[bytesRead] = '\0';
+                        printf("%s", buffer);
+                        fflush(stdout);
+                    }
+                }
+                break;
             }
-            WaitForSingleObject(pi.hProcess, INFINITE);
-            DWORD exitCode = 0;
-            GetExitCodeProcess(pi.hProcess, &exitCode);
-            CloseHandle(hStdOutRead);
-            CloseHandle(pi.hProcess);
-            CloseHandle(pi.hThread);
-            return static_cast<int>(exitCode);
-        });
+            
+            if (PeekNamedPipe(hStdOutRead, NULL, 0, NULL, &bytesAvailable, NULL) && bytesAvailable > 0) {
+                DWORD toRead = std::min(bytesAvailable, static_cast<DWORD>(sizeof(buffer) - 1));
+                if (ReadFile(hStdOutRead, buffer, toRead, &bytesRead, NULL) && bytesRead > 0) {
+                    buffer[bytesRead] = '\0';
+                    printf("%s", buffer);
+                    fflush(stdout);
+                }
+            } else {
+                Sleep(1); 
+            }
+        }
+        
+        DWORD finalExitCode = 0;
+        GetExitCodeProcess(pi.hProcess, &finalExitCode);
+        CloseHandle(hStdOutRead);
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+        fflush(stdout);
+        
+        return static_cast<int>(finalExitCode);
+    });
 #endif
     if(argc == 1) {
         bool active = true;
