@@ -93,6 +93,8 @@ namespace cmd {
                     output << line << std::endl;
                 }
             }
+            fflush(stdout);
+            output.flush();
             return success ? 0 : 1; 
         }
     }

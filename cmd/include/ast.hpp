@@ -859,17 +859,14 @@ namespace cmd {
                 }
 #endif
                 executeNode(node, defaultInput, defaultOutput);   
-            
-                if(updateCallback && &defaultOutputStream == &std::cout) {
+                defaultOutputStream << defaultOutput.str();
+                if(updateCallback) {
                     updateCallback(defaultOutput.str());
-                } else {
-                    defaultOutputStream << defaultOutput.str();
-                }   
+                }
             } catch (const std::exception& e) {
                 defaultOutput << "Exception: " << e.what() << std::endl;
                 execUpdateCallback(defaultOutput.str());
             }
-
         }
 
         void setVariable(const std::string& name, const std::string& value) {
@@ -1069,6 +1066,27 @@ namespace cmd {
         }
         
         void executePipeline(const std::shared_ptr<cmd::Pipeline>& pipe, std::istream& input, std::ostream& output) {
+           
+            if (pipe->commands.size() >= 1 && pipe->commands[0]->name == "exec") {
+                std::ostringstream pipelineCmd;
+                for (const auto& arg : pipe->commands[0]->args) {
+                    pipelineCmd << getVar(arg) << " ";
+                }
+                for (size_t i = 1; i < pipe->commands.size(); i++) {
+                    pipelineCmd << " | " << pipe->commands[i]->name;
+                    for (const auto& arg : pipe->commands[i]->args) {
+                        pipelineCmd << " " << getVar(arg);
+                    }
+                }
+                std::vector<Argument> newArgs;
+                Argument arg;
+                arg.value = pipelineCmd.str();
+                arg.type = ARG_LITERAL;
+                newArgs.push_back(arg);
+                lastExitStatus = registry.executeCommand("exec", newArgs, input, output);
+                return;
+            }
+    
             std::stringstream buffer;
             for (size_t i = 0; i < pipe->commands.size() - 1; i++) {
                 std::stringstream nextBuffer;

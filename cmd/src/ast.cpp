@@ -104,6 +104,7 @@ namespace cmd {
 
     std::string VariableReference::evaluate(const AstExecutor& executor) const {
         auto value = executor.getVariable(name);
+        fflush(stdout);
         return value.value_or("");
     }
 
@@ -209,8 +210,9 @@ namespace cmd {
         }
         else {
             throw std::runtime_error("Unknown node type");
-        
         }
+        output.flush();
+        fflush(stdout);
     }
         
 
