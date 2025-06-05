@@ -67,7 +67,6 @@ begin
                     list_set grid pos "0"
                     list_set grid pos2 "0"
                     list_set grid pos3 "0"
-                    printf "%d" found_match
                     return 0
                 fi
             fi
@@ -99,7 +98,6 @@ begin
                     list_set grid pos "0"
                     list_set grid pos2 "0"
                     list_set grid pos3 "0"
-                    printf "%d" found_match
                     return 0
                 fi
             fi
@@ -131,8 +129,7 @@ begin
                     # Directly set matched cells to 0
                     list_set grid pos "0"
                     list_set grid pos2 "0"
-                    list_set grid pos3 "0"
-                    printf "%d" found_match
+                    list_set grid pos3 "0" 
                     return 0
                 fi
             fi
@@ -322,7 +319,6 @@ begin
         let moved = $(proc_blocks)
         if test moved --eq 1
         then
-           printf "Blocks moved down: %d\n" score
         fi
     fi      
     return  0
