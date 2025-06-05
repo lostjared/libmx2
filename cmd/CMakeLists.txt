@@ -92,7 +92,7 @@ if(WIN32)
   )
   target_sources(mxcmd-cli PRIVATE ${RESOURCE_FILE})
   target_compile_definitions(mxcmd-cli PRIVATE WINDOWS_MODE)
-  
+
 endif()
 
 endif()

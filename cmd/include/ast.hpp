@@ -51,6 +51,7 @@ namespace cmd {
     class Break;
     class Continue;
 
+    extern bool windows_mode;
   
     class AstFailure {
     public:
@@ -859,16 +860,18 @@ namespace cmd {
                 }
 #endif
                 executeNode(node, defaultInput, defaultOutput);   
-#ifdef WINDOWS_MODE
-                printf("%s", defaultOutput.str().c_str());
-                fflush(stdout);
-#else
-                defaultOutputStream << defaultOutput.str();
-                defaultOutputStream.flush();
-                if(updateCallback) {
-                    updateCallback(defaultOutput.str());
+
+                if(windows_mode) {
+                    printf("%s", defaultOutput.str().c_str());
+                    fflush(stdout);
                 }
-#endif
+                else {
+                    defaultOutputStream << defaultOutput.str();
+                    defaultOutputStream.flush();
+                    if(updateCallback) {
+                        updateCallback(defaultOutput.str());
+                    }
+                }
             } catch (const std::exception& e) {
                 defaultOutput << "Exception: " << e.what() << std::endl;
                 execUpdateCallback(defaultOutput.str());

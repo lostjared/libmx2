@@ -169,7 +169,9 @@ void execute_command(const std::string &text) {
 }
 
 int main(int argc, char **argv) {
-    
+#ifdef WINDOWS_MODE
+    cmd::windows_mode = true;
+#endif
 #ifndef _WIN32
     cmd::AstExecutor::getExecutor().setUpdateCallback(
         [](const std::string &chunk) {
