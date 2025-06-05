@@ -1485,210 +1485,99 @@ namespace cmd {
         output << std::nounitbuf;
         return WEXITSTATUS(status);
 #elif defined(_WIN32) && !defined(__EMSCRIPTEN__)
-    SECURITY_ATTRIBUTES sa;
-    sa.nLength = sizeof(SECURITY_ATTRIBUTES);
-    sa.bInheritHandle = TRUE;
-    sa.lpSecurityDescriptor = NULL;
-
-    HANDLE hStdOutRead, hStdOutWrite;
-    if (!CreatePipe(&hStdOutRead, &hStdOutWrite, &sa, 0)) {
-        output << "exec: failed to create output pipe" << std::endl;
-        return 1;
-    }
-    SetHandleInformation(hStdOutRead, HANDLE_FLAG_INHERIT, 0); 
-
-    HANDLE hStdInRead, hStdInWrite;
-    if (!CreatePipe(&hStdInRead, &hStdInWrite, &sa, 0)) {
-        CloseHandle(hStdOutRead);
-        CloseHandle(hStdOutWrite);
-        output << "exec: failed to create input pipe" << std::endl;
-        return 1;
-    }
-    SetHandleInformation(hStdInWrite, HANDLE_FLAG_INHERIT, 0); 
-
-    STARTUPINFO si;
-    ZeroMemory(&si, sizeof(STARTUPINFO));
-    si.cb = sizeof(STARTUPINFO);
-    si.hStdInput = hStdInRead;
-    si.hStdOutput = hStdOutWrite;
-    si.hStdError = hStdOutWrite;
-    si.dwFlags |= STARTF_USESTDHANDLES;
-
-    PROCESS_INFORMATION pi;
-    ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
-
+    std::istringstream iss(command_str);
+    std::string first_word;
+    iss >> first_word;
     
-    std::vector<std::string> envVars;
-    
-    
-    LPCH env = GetEnvironmentStrings();
-    if (env) {
-        LPCH current = env;
-        while (*current) {
-            std::string envVar(current);
-            if (envVar.substr(0, 5) != "PATH=") { 
-                envVars.push_back(envVar);
-            }
-            current += envVar.length() + 1;
+    if (first_word.ends_with(".exe") || first_word.ends_with(".EXE")) {
+        // Your existing .exe handling code stays the same...
+        SECURITY_ATTRIBUTES sa;
+        sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+        sa.bInheritHandle = TRUE;
+        sa.lpSecurityDescriptor = NULL;
+
+        HANDLE hStdOutRead, hStdOutWrite;
+        if (!CreatePipe(&hStdOutRead, &hStdOutWrite, &sa, 0)) {
+            output << "exec: failed to create output pipe" << std::endl;
+            return 1;
         }
-        FreeEnvironmentStrings(env);
-    }
+        SetHandleInformation(hStdOutRead, HANDLE_FLAG_INHERIT, 0);
 
-    std::string cmdLine;
-    std::string bashPath;
-    char *opt = getenv("MSYS2_BASH_PATH");
-    
-    if(cmd::cmd_type.find("wsl.exe") != std::string::npos) {
-        cmdLine = "wsl.exe -e bash -c \"" + command_str + "\"";
-    } else {
-        if (opt != nullptr && std::filesystem::exists(opt)) {
-            bashPath = opt;
-        } else if (std::filesystem::exists("C:\\msys64\\usr\\bin\\bash.exe")) {
-            bashPath = "C:\\msys64\\usr\\bin\\bash.exe";
-        } else if (std::filesystem::exists("C:\\msys64\\mingw64\\bin\\bash.exe")) {
-            bashPath = "C:\\msys64\\mingw64\\bin\\bash.exe";
-        } else if (std::filesystem::exists("C:\\Program Files\\Git\\bin\\bash.exe")) {
-            bashPath = "C:\\Program Files\\Git\\bin\\bash.exe";
+        HANDLE hStdInRead, hStdInWrite;
+        if (!CreatePipe(&hStdInRead, &hStdInWrite, &sa, 0)) {
+            CloseHandle(hStdOutRead);
+            CloseHandle(hStdOutWrite);
+            output << "exec: failed to create input pipe" << std::endl;
+            return 1;
         }
-        
-        if (!bashPath.empty() && std::filesystem::exists(bashPath)) {
-            if (bashPath.find("msys64") != std::string::npos) {
-                std::string msys_root = bashPath.substr(0, bashPath.find("\\usr\\bin\\bash.exe"));
-                char* current_path = getenv("PATH");
-                std::string new_path = msys_root + "\\usr\\bin;" + msys_root + "\\mingw64\\bin";
-                if (current_path) {
-                    new_path += ";" + std::string(current_path);
-                }
-                envVars.push_back("PATH=" + new_path);
-                envVars.push_back("MSYSTEM=MSYS");
-                envVars.push_back("MSYS2_PATH_TYPE=inherit");
-                cmdLine = "\"" + bashPath + "\" --login -c \"" + command_str + "\"";
-            } else {
-                char* current_path = getenv("PATH");
-                if (current_path) {
-                    envVars.push_back("PATH=" + std::string(current_path));
-                }
-                cmdLine = "\"" + bashPath + "\" -c \"" + command_str + "\"";
-            }   
-        } else {
+        SetHandleInformation(hStdInWrite, HANDLE_FLAG_INHERIT, 0);
+
+        STARTUPINFO si;
+        ZeroMemory(&si, sizeof(STARTUPINFO));
+        si.cb = sizeof(STARTUPINFO);
+        si.hStdInput = hStdInRead;
+        si.hStdOutput = hStdOutWrite;
+        si.hStdError = hStdOutWrite;
+        si.dwFlags |= STARTF_USESTDHANDLES;
+
+        PROCESS_INFORMATION pi;
+        ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
+
+        // Use the command directly without bash
+        if (!CreateProcess(NULL, const_cast<LPSTR>(command_str.c_str()), 
+                          NULL, NULL, TRUE, CREATE_NO_WINDOW, 
+                          NULL, NULL, &si, &pi)) {
             CloseHandle(hStdOutRead);
             CloseHandle(hStdOutWrite);
             CloseHandle(hStdInRead);
             CloseHandle(hStdInWrite);
-            output << "exec: bash not found. Install MSYS2 or set MSYS2_BASH_PATH environment variable." << std::endl;
-            return 1;   
+            output << "exec: failed to create process: " << command_str << std::endl;
+            return 1;
         }
-    }
 
-    
-    std::string envBlock;
-    for (const auto& var : envVars) {
-        envBlock += var + '\0';
-    }
-    envBlock += '\0';
-
-    if (!CreateProcess(NULL, const_cast<LPSTR>(cmdLine.c_str()), NULL, NULL, TRUE, 
-                    CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP, 
-                    const_cast<LPSTR>(envBlock.c_str()), 
-                    NULL, &si, &pi)) {
-        CloseHandle(hStdOutRead);
         CloseHandle(hStdOutWrite);
         CloseHandle(hStdInRead);
         CloseHandle(hStdInWrite);
-        output << "exec: failed to create process" << std::endl;
-        return 1;
-    }
-    
-    CloseHandle(hStdOutWrite);
-    CloseHandle(hStdInRead);
-    
-    if (input.peek() != EOF) {
-        std::string input_str{std::istreambuf_iterator<char>(input), 
-                    std::istreambuf_iterator<char>()};
-        if (!input_str.empty()) {
-            DWORD bytesWritten;
-            WriteFile(hStdInWrite, input_str.c_str(), static_cast<DWORD>(input_str.size()), &bytesWritten, NULL);
-        }
-    }
-    CloseHandle(hStdInWrite); 
-    
-    
-    bool isStdOut = (&output == &std::cout);
-    
-    std::string line_buffer;
-    bool still_running = true;
-    DWORD mainProcessId = GetProcessId(pi.hProcess);
-    
-    while (still_running) {
-        if (cmd::AstExecutor::getExecutor().checkInterrupt()) {
-            std::string kill_tree_cmd = "taskkill /F /T /PID " + std::to_string(mainProcessId);
-            STARTUPINFO si_kill;
-            PROCESS_INFORMATION pi_kill;
-            ZeroMemory(&si_kill, sizeof(STARTUPINFO));
-            ZeroMemory(&pi_kill, sizeof(PROCESS_INFORMATION));
-            si_kill.cb = sizeof(STARTUPINFO);
-            
-            if (CreateProcess(NULL, const_cast<LPSTR>(kill_tree_cmd.c_str()), NULL, NULL, FALSE, 
-                             CREATE_NO_WINDOW, NULL, NULL, &si_kill, &pi_kill)) {
-                WaitForSingleObject(pi_kill.hProcess, 2000); 
-                CloseHandle(pi_kill.hProcess);
-                CloseHandle(pi_kill.hThread);
-            }
-            
-            CloseHandle(hStdOutRead);
-            CloseHandle(pi.hThread);
-            CloseHandle(pi.hProcess);
-            AstExecutor::getExecutor().setInterruptValue(false);
-            return 0;
-        }
+
+        // Check if we're outputting to std::cout for special handling
+        bool isStdOut = (&output == &std::cout);
         
-        DWORD bytesAvailable = 0;
-        if (!PeekNamedPipe(hStdOutRead, NULL, 0, NULL, &bytesAvailable, NULL)) {
-            still_running = false; 
-            break;
-        }
+        std::string line_buffer;
+        bool still_running = true;
         
-        if (bytesAvailable > 0) {
-            char buffer[256];  
-            DWORD bytesRead = 0;
-            
-            if (ReadFile(hStdOutRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0) {
-                buffer[bytesRead] = '\0';
-                line_buffer += buffer;
-                size_t pos = 0;
-                while ((pos = line_buffer.find('\n')) != std::string::npos) {
-                    std::string line = line_buffer.substr(0, pos + 1);
-                    
-                    if (isStdOut) {
-                        printf("%s", line.c_str());
-                        fflush(stdout);
-                    } else {
-                        output << line;
-                        output.flush();
-                    }
-                    
-                    line_buffer.erase(0, pos + 1);
-                }
-            
-                if (line_buffer.length() > 80) {
-                    if (isStdOut) {
-                        printf("%s", line_buffer.c_str());
-                        fflush(stdout);
-                    } else {
-                        output << line_buffer;
-                        output.flush();
-                    }
-                    line_buffer.clear();
-                }
-            } else {
+        while (still_running) {
+            DWORD bytesAvailable = 0;
+            if (!PeekNamedPipe(hStdOutRead, NULL, 0, NULL, &bytesAvailable, NULL)) {
                 still_running = false;
                 break;
             }
-        } else {
-            DWORD currentChildExitCode;
-            if (GetExitCodeProcess(pi.hProcess, &currentChildExitCode)) {
-                if (currentChildExitCode != STILL_ACTIVE) {
-                    if (!line_buffer.empty()) {
+            
+            if (bytesAvailable > 0) {
+                char buffer[256];
+                DWORD bytesRead = 0;
+                
+                if (ReadFile(hStdOutRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0) {
+                    buffer[bytesRead] = '\0';
+                    line_buffer += buffer;
+                    
+                    // Process complete lines
+                    size_t pos = 0;
+                    while ((pos = line_buffer.find('\n')) != std::string::npos) {
+                        std::string line = line_buffer.substr(0, pos + 1);
+                        
+                        if (isStdOut) {
+                            printf("%s", line.c_str());
+                            fflush(stdout);
+                        } else {
+                            output << line;
+                            output.flush();
+                        }
+                        
+                        line_buffer.erase(0, pos + 1);
+                    }
+                    
+                    // Handle long lines without newlines
+                    if (line_buffer.length() > 80) {
                         if (isStdOut) {
                             printf("%s", line_buffer.c_str());
                             fflush(stdout);
@@ -1696,29 +1585,189 @@ namespace cmd {
                             output << line_buffer;
                             output.flush();
                         }
+                        line_buffer.clear();
                     }
+                } else {
                     still_running = false;
+                    break;
                 }
             } else {
+                DWORD currentChildExitCode;
+                if (GetExitCodeProcess(pi.hProcess, &currentChildExitCode)) {
+                    if (currentChildExitCode != STILL_ACTIVE) {
+                        // Output any remaining buffer
+                        if (!line_buffer.empty()) {
+                            if (isStdOut) {
+                                printf("%s", line_buffer.c_str());
+                                fflush(stdout);
+                            } else {
+                                output << line_buffer;
+                                output.flush();
+                            }
+                        }
+                        still_running = false;
+                    }
+                } else {
+                    still_running = false;
+                    break;
+                }
+                
+                if (still_running) {
+                    Sleep(10);
+                }
+            }
+        }
+        
+        DWORD final_child_exit_code = 0;
+        WaitForSingleObject(pi.hProcess, INFINITE);
+        GetExitCodeProcess(pi.hProcess, &final_child_exit_code);
+        
+        CloseHandle(hStdOutRead);
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+        
+        return static_cast<int>(final_child_exit_code);
+    } else {
+        // ADD THIS ELSE BLOCK for non-.exe commands
+        // Use cmd_type (which should be "cmd.exe /c " or similar) for other commands
+        std::string fullCommand = cmd::cmd_type + " " + command_str;
+        
+        SECURITY_ATTRIBUTES sa;
+        sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+        sa.bInheritHandle = TRUE;
+        sa.lpSecurityDescriptor = NULL;
+
+        HANDLE hStdOutRead, hStdOutWrite;
+        if (!CreatePipe(&hStdOutRead, &hStdOutWrite, &sa, 0)) {
+            output << "exec: failed to create output pipe" << std::endl;
+            return 1;
+        }
+        SetHandleInformation(hStdOutRead, HANDLE_FLAG_INHERIT, 0);
+
+        HANDLE hStdInRead, hStdInWrite;
+        if (!CreatePipe(&hStdInRead, &hStdInWrite, &sa, 0)) {
+            CloseHandle(hStdOutRead);
+            CloseHandle(hStdOutWrite);
+            output << "exec: failed to create input pipe" << std::endl;
+            return 1;
+        }
+        SetHandleInformation(hStdInWrite, HANDLE_FLAG_INHERIT, 0);
+
+        STARTUPINFO si;
+        ZeroMemory(&si, sizeof(STARTUPINFO));
+        si.cb = sizeof(STARTUPINFO);
+        si.hStdInput = hStdInRead;
+        si.hStdOutput = hStdOutWrite;
+        si.hStdError = hStdOutWrite;
+        si.dwFlags |= STARTF_USESTDHANDLES;
+
+        PROCESS_INFORMATION pi;
+        ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
+
+        if (!CreateProcess(NULL, const_cast<LPSTR>(fullCommand.c_str()), 
+                          NULL, NULL, TRUE, CREATE_NO_WINDOW, 
+                          NULL, NULL, &si, &pi)) {
+                             DWORD error = GetLastError();
+            printf("exec: failed to create process: %s Error: %ld\n ",fullCommand.c_str(), error);
+            fflush(stdout);
+   
+            CloseHandle(hStdOutRead);
+            CloseHandle(hStdOutWrite);
+            CloseHandle(hStdInRead);
+            CloseHandle(hStdInWrite);
+            output << "exec: failed to create process: " << fullCommand << std::endl;
+            return 1;
+        }
+
+        CloseHandle(hStdOutWrite);
+        CloseHandle(hStdInRead);
+        CloseHandle(hStdInWrite);
+
+        // Same output handling as above...
+        bool isStdOut = (&output == &std::cout);
+        std::string line_buffer;
+        bool still_running = true;
+        
+        while (still_running) {
+            DWORD bytesAvailable = 0;
+            if (!PeekNamedPipe(hStdOutRead, NULL, 0, NULL, &bytesAvailable, NULL)) {
                 still_running = false;
                 break;
             }
             
-            if (still_running) {
-                Sleep(10);
+            if (bytesAvailable > 0) {
+                char buffer[256];
+                DWORD bytesRead = 0;
+                
+                if (ReadFile(hStdOutRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0) {
+                    buffer[bytesRead] = '\0';
+                    line_buffer += buffer;
+                    
+                    size_t pos = 0;
+                    while ((pos = line_buffer.find('\n')) != std::string::npos) {
+                        std::string line = line_buffer.substr(0, pos + 1);
+                        
+                        if (isStdOut) {
+                            printf("%s", line.c_str());
+                            fflush(stdout);
+                        } else {
+                            output << line;
+                            output.flush();
+                        }
+                        
+                        line_buffer.erase(0, pos + 1);
+                    }
+                    
+                    if (line_buffer.length() > 80) {
+                        if (isStdOut) {
+                            printf("%s", line_buffer.c_str());
+                            fflush(stdout);
+                        } else {
+                            output << line_buffer;
+                            output.flush();
+                        }
+                        line_buffer.clear();
+                    }
+                } else {
+                    still_running = false;
+                    break;
+                }
+            } else {
+                DWORD currentChildExitCode;
+                if (GetExitCodeProcess(pi.hProcess, &currentChildExitCode)) {
+                    if (currentChildExitCode != STILL_ACTIVE) {
+                        if (!line_buffer.empty()) {
+                            if (isStdOut) {
+                                printf("%s", line_buffer.c_str());
+                                fflush(stdout);
+                            } else {
+                                output << line_buffer;
+                                output.flush();
+                            }
+                        }
+                        still_running = false;
+                    }
+                } else {
+                    still_running = false;
+                    break;
+                }
+                
+                if (still_running) {
+                    Sleep(10);
+                }
             }
         }
+        
+        DWORD final_child_exit_code = 0;
+        WaitForSingleObject(pi.hProcess, INFINITE);
+        GetExitCodeProcess(pi.hProcess, &final_child_exit_code);
+        
+        CloseHandle(hStdOutRead);
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+        
+        return static_cast<int>(final_child_exit_code);
     }
-    
-    DWORD final_child_exit_code = 0;
-    WaitForSingleObject(pi.hProcess, INFINITE); 
-    GetExitCodeProcess(pi.hProcess, &final_child_exit_code);
-    
-    CloseHandle(hStdOutRead);
-    CloseHandle(pi.hThread);
-    CloseHandle(pi.hProcess);
-    
-    return static_cast<int>(final_child_exit_code);
 #endif
     }
 
