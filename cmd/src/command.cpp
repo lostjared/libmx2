@@ -1552,10 +1552,8 @@ namespace cmd {
         }
         
         if (!bashPath.empty() && std::filesystem::exists(bashPath)) {
-            
             if (bashPath.find("msys64") != std::string::npos) {
                 std::string msys_root = bashPath.substr(0, bashPath.find("\\usr\\bin\\bash.exe"));
-                
                 char* current_path = getenv("PATH");
                 std::string new_path = msys_root + "\\usr\\bin;" + msys_root + "\\mingw64\\bin";
                 if (current_path) {
@@ -1564,16 +1562,14 @@ namespace cmd {
                 envVars.push_back("PATH=" + new_path);
                 envVars.push_back("MSYSTEM=MSYS");
                 envVars.push_back("MSYS2_PATH_TYPE=inherit");
-                
                 cmdLine = "\"" + bashPath + "\" --login -c \"" + command_str + "\"";
             } else {
-            
                 char* current_path = getenv("PATH");
                 if (current_path) {
                     envVars.push_back("PATH=" + std::string(current_path));
                 }
                 cmdLine = "\"" + bashPath + "\" -c \"" + command_str + "\"";
-            }
+            }   
         } else {
             CloseHandle(hStdOutRead);
             CloseHandle(hStdOutWrite);
