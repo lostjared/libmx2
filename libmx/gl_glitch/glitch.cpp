@@ -666,30 +666,41 @@ void main() {
         glBindVertexArray(0);
     }
 
-    void update(float deltaTime) {
-
+   void update(float deltaTime) {
         static float time_f = 0.0f;
         time_f += deltaTime;
-
         shader.useProgram();
         shader.setUniform("time_f", time_f);
-
         int newActiveCount = 0;
+        const float GRAVITATIONAL_CONSTANT = 0.1f;  
+        const float MIN_DISTANCE = 0.5f;            
+        const float PARTICLE_MASS = 1.0f;           
+        
         for (auto& p : particles) {
             if (!p.active) continue;
+            glm::vec3 totalForce(0.0f, 0.0f, 0.0f);
+            glm::vec3 centerPos(0.0f, 0.0f, 0.0f);  
+            glm::vec3 toCenter = centerPos - glm::vec3(p.x, p.y, p.z);
+            float distanceToCenter = glm::length(toCenter);
             
+            if (distanceToCenter > MIN_DISTANCE) {
+                glm::vec3 centerDirection = glm::normalize(toCenter);
+                float centralForce = GRAVITATIONAL_CONSTANT * PARTICLE_MASS / (distanceToCenter * distanceToCenter);
+                totalForce += centerDirection * centralForce * 0.2f; 
+            }
+            
+            p.vx += totalForce.x * deltaTime;
+            p.vy += totalForce.y * deltaTime;
+            p.vz += totalForce.z * deltaTime;
+
             p.x += p.vx * deltaTime;
             p.y += p.vy * deltaTime;
             p.z += p.vz * deltaTime;
-            
-            p.vy -= 0.5f * deltaTime;
-            p.vx *= 0.99f;  
-            p.vz *= 0.99f;  
-            
             p.life -= deltaTime;
             
             float lifeRatio = p.life / p.maxLife;
-            p.size = p.size * 0.99f;
+            p.size = p.size * 0.995f; 
+            
             if (lifeRatio < 0.7f) {
                 p.intensity = lifeRatio / 0.7f;
             }
@@ -700,6 +711,7 @@ void main() {
                 newActiveCount++; 
             }
         }
+        
         activeParticles = newActiveCount; 
         if(activeParticles < 100)
             reset();
