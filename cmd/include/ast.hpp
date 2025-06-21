@@ -783,6 +783,9 @@ namespace cmd {
         AstExecutor(); 
         std::atomic<bool> *exec_interrupt = nullptr;
     public:
+    
+        bool windows_mode = false;
+        
         static AstExecutor  &getExecutor();    
 
         void setInterrupt(std::atomic<bool> *interrupt) {

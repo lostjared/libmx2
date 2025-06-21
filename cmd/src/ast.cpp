@@ -8,10 +8,7 @@ namespace cmd {
     
     AstExecutor& AstExecutor::getExecutor() {
         return instance;
-    }
-
-    bool windows_mode = false;
-
+    } 
     AstExecutor::AstExecutor() {
         if(registry.empty()) {
             registry.registerTypedCommand("echo", cmd::echoCommand);
