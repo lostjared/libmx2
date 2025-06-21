@@ -143,7 +143,7 @@ int generateRandomInt(int min, int max) {
 
 class ExplodeEmiter {
 public:
-    static constexpr int MAX_PARTICLES = 40000;
+    static constexpr int MAX_PARTICLES = 20000;
 
     ExplodeEmiter() = default;
     ~ExplodeEmiter() {
@@ -338,43 +338,64 @@ public:
         
         int newActiveCount = 0;
         
+        const float GRAVITATIONAL_CONSTANT = 0.5f;      
+        const float MIN_DISTANCE = 0.8f;                
+        const float PARTICLE_MASS = 1.0f;               
+        const float DEBRIS_DRAG = 0.995f;               
+        
         for (auto& p : particles) {
             if (!p.active) continue;
             
+            glm::vec3 totalForce(0.0f);
+            glm::vec3 currentPos(p.x, p.y, p.z);
+            glm::vec3 toCenter = position - currentPos;
+            float distanceToCenter = glm::length(toCenter);
+            
+            if (distanceToCenter > MIN_DISTANCE) {
+                glm::vec3 centerDirection = glm::normalize(toCenter);
+                float centralForce = GRAVITATIONAL_CONSTANT * PARTICLE_MASS / (distanceToCenter * distanceToCenter);
+                totalForce += centerDirection * centralForce * 0.1f; 
+            }
+            glm::vec3 radiusVector = currentPos - position;
+            if (glm::length(radiusVector) > 0.1f) {
+                glm::vec3 tangentialDirection = glm::normalize(glm::cross(radiusVector, glm::vec3(0.0f, 1.0f, 0.0f)));
+                float angularVelocity = 0.5f / glm::length(radiusVector); 
+                totalForce += tangentialDirection * angularVelocity * deltaTime * 0.1f; 
+            }
+            
+            p.vx += totalForce.x * deltaTime;
+            p.vy += totalForce.y * deltaTime;
+            p.vz += totalForce.z * deltaTime;
+            p.vx *= DEBRIS_DRAG;
+            p.vy *= DEBRIS_DRAG;
+            p.vz *= DEBRIS_DRAG;
             p.x += p.vx * deltaTime;
             p.y += p.vy * deltaTime;
             p.z += p.vz * deltaTime;
-            
-            p.vx *= 0.98f;
-            p.vy *= 0.98f;
-            p.vz *= 0.98f;
-            
-            p.vy -= 0.5f * deltaTime;
-            
             p.life += deltaTime;
             float lifeRatio = p.life / p.maxLife;
-            
+            if (lifeRatio < 0.1f) {
+                p.alpha = lifeRatio / 0.1f;
+            } else if (lifeRatio > 0.9f) {
+                p.alpha = (1.0f - lifeRatio) / 0.1f;
+            } else {
+                p.alpha = 1.0f - (lifeRatio - 0.1f) * 0.3f;
+            }
             if (lifeRatio < 0.2f) {
-                p.alpha = lifeRatio / 0.2f;
-            } else if (lifeRatio > 0.8f) {
-                p.alpha = (1.0f - lifeRatio) / 0.2f;
+                p.size *= 1.002f; 
+            } else if (lifeRatio < 0.6f) {
+                p.size *= 0.9995f; 
             } else {
-                p.alpha = 1.0f;
+                p.size *= 0.998f;
+            }
+            if (lifeRatio > 0.3f) {
+                float fadeFactor = (lifeRatio - 0.3f) / 0.7f; 
+                p.r *= (1.0f - fadeFactor * 0.8f);  
+                p.g *= (1.0f - fadeFactor * 0.8f);  
+                p.b *= (1.0f - fadeFactor * 0.8f);  
             }
             
-            if (lifeRatio < 0.3f) {
-                p.size *= 1.01f;
-            } else {
-                p.size *= 0.99f;
-            }
-            
-            if (lifeRatio > 0.6f) {
-                p.r = 1.0f - (lifeRatio - 0.6f) * 2.0f; 
-                p.g = 0.6f * (1.0f - (lifeRatio - 0.6f) * 2.5f);
-                p.b = 0.0f;
-            }
-        
-            if (p.life >= p.maxLife || p.alpha < 0.01f) {
+            if (p.life >= p.maxLife || p.alpha < 0.01f || p.size < 0.1f) {
                 p.active = false;
             } else {
                 newActiveCount++;
@@ -418,7 +439,7 @@ public:
         shader.setUniform("projection", projectionMatrix);
         shader.setUniform("view", viewMatrix);
         shader.setUniform("particleTexture", 0);
-        shader.setUniform("r_color", glm::vec4(generateRandomFloat(0.0f, 1.0f), generateRandomFloat(0.0f, 1.0f), generateRandomFloat(0.0f, 1.0f), 1.0f));
+         shader.setUniform("r_color", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
         
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, textureID);
@@ -485,11 +506,11 @@ public:
                 p.vx += generateRandomFloat(-5.0f, 5.0f);
                 p.vy += generateRandomFloat(-5.0f, 5.0f);
                 p.vz += generateRandomFloat(-5.0f, 5.0f);
-                const auto& baseColor = waves[wave].baseColor;
-                p.r = baseColor.r * generateRandomFloat(0.9f, 1.1f);
-                p.g = baseColor.g * generateRandomFloat(0.9f, 1.1f);
-                p.b = baseColor.b * generateRandomFloat(0.9f, 1.1f);
-                p.alpha = 0.1f; 
+                //const auto& baseColor = waves[wave].baseColor;
+                p.r = generateRandomFloat(0.5f, 1.0f);  
+                p.g = generateRandomFloat(0.5f, 1.0f);  
+                p.b = generateRandomFloat(0.5f, 1.0f);  
+                 p.alpha = 0.1f; 
                 p.size = generateRandomFloat(waves[wave].minSize, waves[wave].maxSize);
                 p.maxLife = generateRandomFloat(waves[wave].minLife, waves[wave].maxLife);
                 p.life = 0.0f; 
