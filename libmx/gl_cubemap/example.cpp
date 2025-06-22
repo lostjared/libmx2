@@ -115,6 +115,7 @@ public:
         shaderProgram.setUniform("model", model);
         shaderProgram.setUniform("view", view);
         shaderProgram.setUniform("projection", projection);
+        shaderProgram.setUniform("alpha", 0.7f);
         glGenTextures(1, &texture);
         glBindTexture(GL_TEXTURE_CUBE_MAP, texture);
         std::vector<std::string> faces = {
@@ -151,12 +152,21 @@ public:
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
         CHECK_GL_ERROR();
+
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     }
 
     virtual void draw(gl::GLWindow *win) override {
         
         glEnable(GL_DEPTH_TEST);
+        glDepthMask(GL_FALSE);
+
         
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+ 
+
         shaderProgram.useProgram();
         glm::mat4 view = glm::lookAt(
             glm::vec3(0.0f, 0.0f, 5.0f),  
@@ -181,23 +191,22 @@ public:
         shaderProgram.setUniform("view", view);
         shaderProgram.setUniform("projection", projection);
         shaderProgram.setUniform("time_f", time_f);
+        shaderProgram.setUniform("alpha", alpha);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_CUBE_MAP, texture);
         CHECK_GL_ERROR();
-        
         glBindVertexArray(VAO);
         size_t vertexCount = cubeData.size() / 3;
         glDrawArrays(GL_TRIANGLES, 0, vertexCount);
-        CHECK_GL_ERROR();
-        
+        CHECK_GL_ERROR();        
         glBindVertexArray(0);
         glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+        glDepthMask(GL_TRUE);
     }
 
-    virtual void event(gl::GLWindow *window, SDL_Event &e) override {
-    }
+    virtual void event(gl::GLWindow *window, SDL_Event &e) override {}
 private:
-    
+    float alpha = 0.7f;
 };
 
 class MainWindow : public gl::GLWindow {
