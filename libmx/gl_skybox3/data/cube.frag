@@ -1,77 +1,45 @@
 #version 300 es
 precision highp float;
+
+in vec3 localPos;         // from your VS: direction into the cubemap
 out vec4 FragColor;
-in vec3 localPos; 
+
 uniform samplerCube cubemapTexture;
 uniform float time_f;
 
-void main(void) {
-    vec3 originalDir = normalize(localPos);
-    
-    // Ripple effect parameters
-    float speed = 5.0;
-    float amplitude = 0.03;
-    float wavelength = 10.0;
-    
-    // Calculate ripple displacement
-    float ripple = sin(originalDir.x * wavelength + time_f * speed) * amplitude;
-    ripple += sin(originalDir.y * wavelength + time_f * speed) * amplitude;
-    vec3 rippleDir = originalDir + vec3(ripple, ripple, 0.0);
-    rippleDir = normalize(rippleDir);
-    
-    // Apply spiral distortion to the rippled direction
-    float r = length(rippleDir.xy);
-    float theta = atan(rippleDir.y, rippleDir.x);
-    float spiralEffect = time_f * 0.2;
-    r -= mod(spiralEffect, 4.0);
-    theta += spiralEffect;
-    vec2 distortedXY = vec2(cos(theta), sin(theta)) * r;
-    vec3 spiralDir = normalize(vec3(distortedXY, rippleDir.z));
-    
-    // Sample original and distorted cubemap colors
-    vec4 originalColor = texture(cubemapTexture, originalDir);
-    vec4 distortedColor = texture(cubemapTexture, spiralDir);
-    
-    // Mix original and distorted colors
-    vec4 mixedColor = distortedColor; //mix(originalColor, distortedColor, 0.5);
-    
-    // Calculate sparkle effect using original direction
-    float sparkle = abs(sin(time_f * 10.0 + originalDir.x * 100.0) * cos(time_f * 15.0 + originalDir.y * 100.0));
-    vec3 magicalColor = vec3(
-        sin(time_f * 2.0) * 0.5 + 0.5,
-        cos(time_f * 3.0) * 0.5 + 0.5,
-        sin(time_f * 4.0) * 0.5 + 0.5
-    );
-    mixedColor.rgb += magicalColor * sparkle;
-    
-    FragColor = mixedColor;
+const float PI = 3.14159265359;
+
+// 2×2 rotation matrix
+mat2 rot(float a) {
+    float s = sin(a);
+    float c = cos(a);
+    return mat2(c, -s, s, c);
 }
 
-/*#version 300 es
-precision highp float;
-out vec4 FragColor;
-in vec3 localPos; 
-uniform samplerCube cubemapTexture;
-uniform float time_f;
-uniform vec2 iResolution;
+void main() {
+    // 1) start with normalized cubemap direction
+    vec3 dir = normalize(localPos);
 
-vec4 getCubemapColor(vec3 apos, samplerCube cube) {
-    float r = length(apos.xy);
-    float theta = atan(apos.y, apos.x);
-    float spiralEffect = time_f * 0.2;
-    r -= mod(spiralEffect, 4.0);
-    theta += spiralEffect;
-    vec2 distortedXY = vec2(cos(theta), sin(theta)) * r;
-    vec3 newApos = normalize(vec3(distortedXY, apos.z));
-    vec4 texColor = texture(cube, newApos);
-    return vec4(texColor.rgb, 1.0);
-}
+    // 2) project onto 2D for your swirl/kaleido effect
+    vec2 uv = dir.xy;
 
-void main(void) {
-    vec3 tc = normalize(localPos);
-    vec4 texColor = getCubemapColor(localPos, cubemapTexture);
-    float sparkle = abs(sin(time_f * 10.0 + tc.x * 100.0) * cos(time_f * 15.0 + tc.y * 100.0));
-    vec3 magicalColor = vec3(sin(time_f * 2.0) * 0.5 + 0.5, cos(time_f * 3.0) * 0.5 + 0.5, sin(time_f * 4.0) * 0.5 + 0.5);
-    FragColor = texColor + vec4(magicalColor * sparkle, 1.0);
+    // swirl amount (strongest at center)
+    float radius = length(uv);
+    float angle  = atan(uv.y, uv.x);
+    float swirl  = sin(time_f * 2.0) * (1.0 - radius);
+    angle += swirl;
+
+    // kaleidoscope segmentation
+    float sides   = 12.0;
+    float segment = PI * 2.0 / sides;
+    angle = mod(angle, segment);
+    angle = abs(angle - segment * 0.5);
+
+    // rebuild warped UV and apply a slow rotation
+    vec2 p = vec2(cos(angle), sin(angle)) * radius;
+    p = rot(time_f * 0.1) * p;
+
+    // 3) reconstruct a 3D direction and sample
+    vec3 warpedDir = normalize(vec3(p, dir.z));
+    FragColor = texture(cubemapTexture, warpedDir);
 }
-*/
