@@ -1680,17 +1680,21 @@ public:
     virtual void event(SDL_Event &e) override {
         
     }
+    const Uint32 FPS = 60;
+    const Uint32 frameDelay = 1000 / FPS;
 
-    Uint32 fstart = SDL_GetTicks();
-    
     virtual void draw() override {
+        Uint32 frameStart = SDL_GetTicks();
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glEnable(GL_DEPTH_TEST);
         glViewport(0, 0, w, h);
-        fstart = SDL_GetTicks();
         object->draw(this);
         swap();
+        Uint32 frameTime = SDL_GetTicks() - frameStart;
+        if (frameTime < frameDelay) {
+            SDL_Delay(frameDelay - frameTime);
+        }
     }  
 
 private:
