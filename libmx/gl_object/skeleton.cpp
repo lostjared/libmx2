@@ -1,6 +1,5 @@
-#include<mx2/mx.hpp>
-#include<mx2/argz.hpp>
-#include<SDL2/SDL.h>
+#include"mx.hpp"
+#include"argz.hpp"
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 #include <GLES3/gl3.h>
@@ -159,8 +158,6 @@ public:
         CHECK_GL_ERROR();
         glDisable(GL_BLEND);
         model.drawArrays();
-        win->text.setColor({255, 255, 255, 255});
-        win->text.printText_Solid(font, 25.0f, 25.0f, "Hello, World! from OpenGL: " + std::to_string(currentTime));
         update(deltaTime);
     }
     
@@ -188,7 +185,7 @@ private:
 
 class MainWindow : public gl::GLWindow {
 public:
-    MainWindow(std::string path, int tw, int th) : gl::GLWindow("Skeleton", tw, th) {
+    MainWindow(std::string path, int tw, int th) : gl::GLWindow("Diamond", tw, th) {
         setPath(path);
         setObject(new Game());
         object->load(this);
