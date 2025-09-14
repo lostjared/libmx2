@@ -19,8 +19,84 @@ printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
 #define M_PI 3.14159265358979323846
 #endif
 
-const char *vSource = R"()";
-const char *fSource = R"()";
+const char *vSource = R"(#version 300 es
+    precision highp float;
+    layout (location = 0) in vec3 aPos;
+
+    layout (location = 1) in vec3 aNormal;
+    layout (location = 2) in vec2 aTexCoords;
+    uniform mat4 model;
+    uniform mat4 view;
+    uniform mat4 projection;
+
+    uniform vec3 lightPos;
+    uniform vec3 viewPos;
+    uniform vec3 lightColor;
+    uniform vec3 objectColor;
+
+    out vec3 vertexColor;
+    out vec2 TexCoords;
+
+    void main()
+    {
+        vec4 worldPos = model * vec4(aPos, 1.0);
+        gl_Position = projection * view * worldPos;
+        vec3 norm = normalize(mat3(transpose(inverse(model))) * aNormal);
+        vec3 lightDir = normalize(lightPos - vec3(worldPos));
+        float ambientStrength = 0.8; 
+        vec3 ambient = ambientStrength * lightColor;
+        float diff = max(dot(norm, lightDir), 0.0);
+        vec3 diffuse = diff * lightColor;
+        float specularStrength = 1.0;    // Increase from 0.5 to 1.0 for more shine
+        float shininess = 64.0;          // Increase this value for a tighter, shinier highlight
+        vec3 viewDir = normalize(viewPos - vec3(worldPos));
+        vec3 reflectDir = reflect(-lightDir, norm);
+        float spec = pow(max(dot(viewDir, reflectDir), 0.0), shininess);
+        vec3 specular = specularStrength * spec * lightColor;
+        vec3 finalColor = (ambient + diffuse + specular) * objectColor;
+        vertexColor = finalColor;
+        TexCoords = aTexCoords;
+    }
+
+    )";
+    const char *fSource = R"(#version 300 es
+    precision highp float;
+    in vec3 vertexColor;
+    in vec2 TexCoords;
+    uniform sampler2D texture1;
+    uniform vec2 iResolution; // Screen resolution for aspect
+    uniform float time_f;     // Time for animation
+    out vec4 FragColor;
+
+    vec4 distort4(vec2 tc, sampler2D samp) { 
+    vec4 ctx;
+    vec2 uv = tc * 2.0 - 1.0;
+    uv *= iResolution.y / iResolution.x;
+
+    vec2 center = vec2(0.0, 0.0);
+    vec2 offset = uv - center;
+    float dist = length(offset);
+    float pulse = sin(time_f * 2.0 + dist * 10.0) * 0.15;
+    float expansion = cos(time_f * 3.0 - dist * 15.0) * 0.2;
+    float spiral = sin(atan(offset.y, offset.x) * 3.0 + time_f * 2.0) * 0.1;
+
+    vec2 morphUV = uv + normalize(offset) * (pulse + expansion);
+    morphUV += vec2(cos(atan(offset.y, offset.x)), sin(atan(offset.y, offset.x))) * spiral;
+
+    vec4 texColor = texture(samp, morphUV * 0.5 + 0.5);
+    texColor.rgb *= 1.0 + 0.3 * sin(dist * 20.0 - time_f * 5.0);
+
+    ctx = vec4(texColor.rgb, texColor.a);
+    return ctx;
+    }
+
+    void main() {
+    FragColor = vec4(vertexColor, 1.0) * texture(texture1, TexCoords);
+    vec4 ctx = distort4(TexCoords, texture1);
+    FragColor = ctx * FragColor;
+    FragColor.a = 1.0;
+    }
+    )";
 
 class Game : public gl::GLObject {
 public:
@@ -33,28 +109,75 @@ public:
         if(!shader.loadProgramFromText(vSource, fSource)) {
             throw mx::Exception("Failed to load shader program");
         }
-        if(!model.openModel(win->util.getFilePath("data/cube.mxmod.z"))) {
+        if(!model.openModel(win->util.getFilePath("data/diamond.mxmod"))) {
             throw mx::Exception("Failed to load model");
         }
 
-        model.setTextures(win, win->util.getFilePath("data/bg.tex"), win->util.getFilePath("data"));
+        model.setTextures(win, win->util.getFilePath("data/metal.tex"), win->util.getFilePath("data"));
         model.setShaderProgram(&shader, "texture1");
         shader.useProgram();
-
-        
     }
+
+    glm::mat4 modelMatrix{1.0f};
+    glm::mat4 viewMatrix{1.0f};
+    glm::mat4 projectionMatrix{1.0f};
+    glm::vec3 cameraPosition{0.0f, 2.0f, 5.0f};
+    glm::vec3 lightPos{0.0f, 5.0f, 0.0f};
+    float rot_x =  1.0f;
+    
 
     void draw(gl::GLWindow *win) override {
         glDisable(GL_DEPTH_TEST);
         Uint32 currentTime = SDL_GetTicks();
         float deltaTime = (currentTime - lastUpdateTime) / 1000.0f; 
         lastUpdateTime = currentTime;
+        static float rotationAngle = 0.0f;
+        rotationAngle += deltaTime * 50.0f; 
+        glEnable(GL_DEPTH_TEST);
+        model.setShaderProgram(&shader, "texture1");
+        shader.useProgram();
+        cameraPosition = glm::vec3(0.0f, 2.0f, 5.0f);
+        glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
+        glm::vec3 upVector = glm::vec3(0.0f, 1.0f, 0.0f);
+        modelMatrix = glm::mat4(1.0f);
+        modelMatrix = glm::scale(modelMatrix, glm::vec3(2.0f, 2.0f, 2.0f));
+        modelMatrix = glm::rotate(modelMatrix, glm::radians(rotationAngle), glm::vec3(rot_x, 1.0f, 0.0f));
+        viewMatrix = glm::lookAt(cameraPosition, cameraTarget, upVector);
+        float aspectRatio = static_cast<float>(win->w) / static_cast<float>(win->h);
+        projectionMatrix = glm::perspective(glm::radians(45.0f), aspectRatio, 0.1f, 100.0f);      
+        glUniformMatrix4fv(glGetUniformLocation(shader.id(), "model"), 1, GL_FALSE, glm::value_ptr(modelMatrix));
+        glUniformMatrix4fv(glGetUniformLocation(shader.id(), "view"), 1, GL_FALSE, glm::value_ptr(viewMatrix));
+        glUniformMatrix4fv(glGetUniformLocation(shader.id(), "projection"), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+        glUniform3f(glGetUniformLocation(shader.id(), "lightPos"), lightPos.x, lightPos.y, lightPos.z);
+        glUniform3f(glGetUniformLocation(shader.id(), "viewPos"), cameraPosition.x, cameraPosition.y, cameraPosition.z);
+        glUniform3f(glGetUniformLocation(shader.id(), "lightColor"), 2.0f, 2.0f, 2.0f);
+        glUniform3f(glGetUniformLocation(shader.id(), "objectColor"), 1.0f, 1.0f, 1.0f); 
+        glUniform2f(glGetUniformLocation(shader.id(), "iResolution"), 
+                    static_cast<float>(win->w), static_cast<float>(win->h));
+        glUniform1f(glGetUniformLocation(shader.id(), "time_f"), 
+                    static_cast<float>(currentTime) / 1000.0f);
+        CHECK_GL_ERROR();
+        glDisable(GL_BLEND);
+        model.drawArrays();
         win->text.setColor({255, 255, 255, 255});
         win->text.printText_Solid(font, 25.0f, 25.0f, "Hello, World! from OpenGL: " + std::to_string(currentTime));
         update(deltaTime);
     }
     
-    void event(gl::GLWindow *win, SDL_Event &e) override {}
+    void event(gl::GLWindow *win, SDL_Event &e) override {
+        if (e.type == SDL_KEYDOWN) {
+            switch (e.key.keysym.sym) {
+                case SDLK_LEFT:
+                    rot_x -= 0.1f;
+                    break;
+                case SDLK_RIGHT:
+                    rot_x += 0.1f;
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
     void update(float deltaTime) {}
 private:
     mx::Font font;
