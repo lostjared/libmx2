@@ -8,6 +8,7 @@
 
 #include"gl.hpp"
 #include"loadpng.hpp"
+#include"model.hpp"
 
 #define CHECK_GL_ERROR() \
 { GLenum err = glGetError(); \
@@ -18,6 +19,8 @@ printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
 #define M_PI 3.14159265358979323846
 #endif
 
+const char *vSource = R"()";
+const char *fSource = R"()";
 
 class Game : public gl::GLObject {
 public:
@@ -26,6 +29,19 @@ public:
 
     void load(gl::GLWindow *win) override {
         font.loadFont(win->util.getFilePath("data/font.ttf"), 36);
+
+        if(!shader.loadProgramFromText(vSource, fSource)) {
+            throw mx::Exception("Failed to load shader program");
+        }
+        if(!model.openModel(win->util.getFilePath("data/cube.mxmod.z"))) {
+            throw mx::Exception("Failed to load model");
+        }
+
+        model.setTextures(win, win->util.getFilePath("data/bg.tex"), win->util.getFilePath("data"));
+        model.setShaderProgram(&shader, "texture1");
+        shader.useProgram();
+
+        
     }
 
     void draw(gl::GLWindow *win) override {
@@ -43,6 +59,8 @@ public:
 private:
     mx::Font font;
     Uint32 lastUpdateTime = SDL_GetTicks();
+    gl::ShaderProgram shader;
+    mx::Model  model;
 };
 
 class MainWindow : public gl::GLWindow {
