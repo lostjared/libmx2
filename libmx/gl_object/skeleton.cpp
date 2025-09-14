@@ -126,13 +126,12 @@ public:
     
 
     void draw(gl::GLWindow *win) override {
-        glDisable(GL_DEPTH_TEST);
+        glEnable(GL_DEPTH_TEST);
         Uint32 currentTime = SDL_GetTicks();
         float deltaTime = (currentTime - lastUpdateTime) / 1000.0f; 
         lastUpdateTime = currentTime;
         static float rotationAngle = 0.0f;
         rotationAngle += deltaTime * 50.0f; 
-        glEnable(GL_DEPTH_TEST);
         model.setShaderProgram(&shader, "texture1");
         shader.useProgram();
         cameraPosition = glm::vec3(0.0f, 2.0f, 5.0f);
@@ -142,7 +141,10 @@ public:
         modelMatrix = glm::scale(modelMatrix, glm::vec3(2.0f, 2.0f, 2.0f));
         modelMatrix = glm::rotate(modelMatrix, glm::radians(rotationAngle), glm::vec3(rot_x, 1.0f, 0.0f));
         viewMatrix = glm::lookAt(cameraPosition, cameraTarget, upVector);
-        float aspectRatio = static_cast<float>(win->w) / static_cast<float>(win->h);
+        float aspectRatio = 1.0f; 
+        if (win->h > 0) {
+            aspectRatio = static_cast<float>(win->w) / static_cast<float>(win->h);
+        }
         projectionMatrix = glm::perspective(glm::radians(45.0f), aspectRatio, 0.1f, 100.0f);      
         glUniformMatrix4fv(glGetUniformLocation(shader.id(), "model"), 1, GL_FALSE, glm::value_ptr(modelMatrix));
         glUniformMatrix4fv(glGetUniformLocation(shader.id(), "view"), 1, GL_FALSE, glm::value_ptr(viewMatrix));
@@ -154,12 +156,17 @@ public:
         glUniform2f(glGetUniformLocation(shader.id(), "iResolution"), 
                     static_cast<float>(win->w), static_cast<float>(win->h));
         glUniform1f(glGetUniformLocation(shader.id(), "time_f"), 
-                    static_cast<float>(currentTime) / 1000.0f);
+                static_cast<float>(currentTime) / 1000.0f);
+
+        
+        cameraPosition = glm::vec3(0.0f, 2.0f, zoom);
         CHECK_GL_ERROR();
         glDisable(GL_BLEND);
         model.drawArrays();
         update(deltaTime);
     }
+
+    float zoom = 1.0f;
     
     void event(gl::GLWindow *win, SDL_Event &e) override {
         if (e.type == SDL_KEYDOWN) {
@@ -172,6 +179,18 @@ public:
                     break;
                 default:
                     break;
+            }
+        }
+        if (e.type == SDL_FINGERDOWN || e.type == SDL_FINGERMOTION) {
+            static float lastY = 0.0f;
+            if (e.type == SDL_FINGERDOWN) {
+                lastY = e.tfinger.y;
+            } else if (e.type == SDL_FINGERMOTION) {
+                float dy = e.tfinger.y - lastY;
+                lastY = e.tfinger.y;
+                zoom -= dy * 10.0f; 
+                if (zoom < 2.0f) zoom = 2.0f;
+                if (zoom > 20.0f) zoom = 20.0f;
             }
         }
     }
