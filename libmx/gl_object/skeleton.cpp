@@ -1,3 +1,9 @@
+/* 
+Spinning Kaleidoscope Star 
+written by Jared Bruni
+2025 
+*/
+
 #include"mx.hpp"
 #include"argz.hpp"
 #ifdef __EMSCRIPTEN__
