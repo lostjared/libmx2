@@ -59,42 +59,58 @@ const char *vSource = R"(#version 300 es
 
     )";
     const char *fSource = R"(#version 300 es
-    precision highp float;
-    in vec3 vertexColor;
-    in vec2 TexCoords;
-    uniform sampler2D texture1;
-    uniform vec2 iResolution; // Screen resolution for aspect
-    uniform float time_f;     // Time for animation
-    out vec4 FragColor;
+precision highp float;
+in vec2 TexCoords;
+out vec4 color;
 
-    vec4 distort4(vec2 tc, sampler2D samp) { 
-    vec4 ctx;
-    vec2 uv = tc * 2.0 - 1.0;
-    uv *= iResolution.y / iResolution.x;
+uniform float time_f;
+uniform sampler2D texture1;
+uniform vec2 iResolution;
 
-    vec2 center = vec2(0.0, 0.0);
-    vec2 offset = uv - center;
-    float dist = length(offset);
-    float pulse = sin(time_f * 2.0 + dist * 10.0) * 0.15;
-    float expansion = cos(time_f * 3.0 - dist * 15.0) * 0.2;
-    float spiral = sin(atan(offset.y, offset.x) * 3.0 + time_f * 2.0) * 0.1;
+float pi = 3.14159265358979323846264;
 
-    vec2 morphUV = uv + normalize(offset) * (pulse + expansion);
-    morphUV += vec2(cos(atan(offset.y, offset.x)), sin(atan(offset.y, offset.x))) * spiral;
+float mirror1(float x) {
+    return abs(fract(x * 0.5) * 2.0 - 1.0);
+}
+vec2 mirror2(vec2 uv) {
+    return vec2(mirror1(uv.x), mirror1(uv.y));
+}
 
-    vec4 texColor = texture(samp, morphUV * 0.5 + 0.5);
-    texColor.rgb *= 1.0 + 0.3 * sin(dist * 20.0 - time_f * 5.0);
+void main(void) {
+    vec2 tc = TexCoords;
+    vec2 p = tc * 2.0 - 1.0;
+    p.x *= iResolution.x / iResolution.y;
 
-    ctx = vec4(texColor.rgb, texColor.a);
-    return ctx;
-    }
+    float n = 10.0 + 6.0 * sin(time_f * 0.25);
+    float seg = 2.0 * pi / n;
 
-    void main() {
-    FragColor = vec4(vertexColor, 1.0) * texture(texture1, TexCoords);
-    vec4 ctx = distort4(TexCoords, texture1);
-    FragColor = ctx * FragColor;
-    FragColor.a = 1.0;
-    }
+    float a = atan(p.y, p.x) + time_f * 0.15;
+    a = mod(a, seg);
+    a = abs(a - seg * 0.5);
+
+    float r = length(p);
+    r += 0.08 * sin(8.0 * a + time_f) + 0.05 * sin(6.0 * r - time_f * 1.2);
+
+    vec2 q = vec2(cos(a), sin(a)) * r;
+    q.x /= iResolution.x / iResolution.y;
+
+    vec2 uvM = q * 0.5 + 0.5;
+
+    float s = 0.3 * sin(time_f * 0.6);
+    vec2 c = vec2(0.5);
+    vec2 d = uvM - c;
+    float rr = length(d);
+    float th = atan(d.y, d.x) + s * exp(-rr * 3.0);
+    vec2 swirl = c + vec2(cos(th), sin(th)) * rr;
+
+    vec2 uvMand = mirror2(swirl);
+    vec2 uvOrig = mirror2(tc);
+
+    vec4 mand = texture(texture1, uvMand);
+    vec4 orig = texture(texture1, uvOrig);
+    color = mix(orig, mand, 0.85);
+}
+
     )";
 
 class Game : public gl::GLObject {
@@ -104,19 +120,16 @@ public:
 
     void load(gl::GLWindow *win) override {
         font.loadFont(win->util.getFilePath("data/font.ttf"), 36);
-
         if(!shader.loadProgramFromText(vSource, fSource)) {
             throw mx::Exception("Failed to load shader program");
         }
-        if(!model.openModel(win->util.getFilePath("data/diamond.mxmod"))) {
+        if(!model.openModel(win->util.getFilePath("data/star.mxmod"))) {
             throw mx::Exception("Failed to load model");
         }
-
         model.setTextures(win, win->util.getFilePath("data/metal.tex"), win->util.getFilePath("data"));
         model.setShaderProgram(&shader, "texture1");
         shader.useProgram();
     }
-
     glm::mat4 modelMatrix{1.0f};
     glm::mat4 viewMatrix{1.0f};
     glm::mat4 projectionMatrix{1.0f};
@@ -131,21 +144,25 @@ public:
         float deltaTime = (currentTime - lastUpdateTime) / 1000.0f; 
         lastUpdateTime = currentTime;
         static float rotationAngle = 0.0f;
-        rotationAngle += deltaTime * 50.0f; 
+        rotationAngle += deltaTime * 720.0f;  
         model.setShaderProgram(&shader, "texture1");
         shader.useProgram();
-        cameraPosition = glm::vec3(0.0f, 2.0f, 5.0f);
+        
+        cameraPosition = glm::vec3(0.0f, 2.0f, zoom);
         glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
         glm::vec3 upVector = glm::vec3(0.0f, 1.0f, 0.0f);
+        
         modelMatrix = glm::mat4(1.0f);
         modelMatrix = glm::scale(modelMatrix, glm::vec3(2.0f, 2.0f, 2.0f));
-        modelMatrix = glm::rotate(modelMatrix, glm::radians(rotationAngle), glm::vec3(rot_x, 1.0f, 0.0f));
+        modelMatrix = glm::rotate(modelMatrix, glm::radians(rotationAngle), glm::vec3(0.0f, 0.0f, 1.0f));
         viewMatrix = glm::lookAt(cameraPosition, cameraTarget, upVector);
+        
         float aspectRatio = 1.0f; 
         if (win->h > 0) {
             aspectRatio = static_cast<float>(win->w) / static_cast<float>(win->h);
         }
         projectionMatrix = glm::perspective(glm::radians(45.0f), aspectRatio, 0.1f, 100.0f);      
+        
         glUniformMatrix4fv(glGetUniformLocation(shader.id(), "model"), 1, GL_FALSE, glm::value_ptr(modelMatrix));
         glUniformMatrix4fv(glGetUniformLocation(shader.id(), "view"), 1, GL_FALSE, glm::value_ptr(viewMatrix));
         glUniformMatrix4fv(glGetUniformLocation(shader.id(), "projection"), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
@@ -158,15 +175,14 @@ public:
         glUniform1f(glGetUniformLocation(shader.id(), "time_f"), 
                 static_cast<float>(currentTime) / 1000.0f);
 
-        
-        cameraPosition = glm::vec3(0.0f, 2.0f, zoom);
+    
         CHECK_GL_ERROR();
         glDisable(GL_BLEND);
         model.drawArrays();
         update(deltaTime);
     }
 
-    float zoom = 1.0f;
+    float zoom = 5.0f;
     
     void event(gl::GLWindow *win, SDL_Event &e) override {
         if (e.type == SDL_KEYDOWN) {
@@ -176,6 +192,14 @@ public:
                     break;
                 case SDLK_RIGHT:
                     rot_x += 0.1f;
+                    break;
+                case SDLK_UP:
+                    zoom -= 0.5f;
+                    if (zoom < 0.5f) zoom = 0.5f;
+                    break;
+                case SDLK_DOWN:
+                    zoom += 0.5f;
+                    if (zoom > 20.0f) zoom = 20.0f;
                     break;
                 default:
                     break;
@@ -189,7 +213,7 @@ public:
                 float dy = e.tfinger.y - lastY;
                 lastY = e.tfinger.y;
                 zoom -= dy * 10.0f; 
-                if (zoom < 2.0f) zoom = 2.0f;
+                if (zoom < 0.5f) zoom = 0.5f;
                 if (zoom > 20.0f) zoom = 20.0f;
             }
         }
