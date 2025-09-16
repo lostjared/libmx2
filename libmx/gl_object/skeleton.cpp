@@ -141,8 +141,7 @@ public:
     glm::mat4 projectionMatrix{1.0f};
     glm::vec3 cameraPosition{0.0f, 2.0f, 5.0f};
     glm::vec3 lightPos{0.0f, 5.0f, 0.0f};
-    float rot_x =  1.0f;
-    
+    float rot[3] = {1.0f, 0.0f, 0.f};    
 
     void draw(gl::GLWindow *win) override {
         glEnable(GL_DEPTH_TEST);
@@ -160,7 +159,7 @@ public:
         
         modelMatrix = glm::mat4(1.0f);
         modelMatrix = glm::scale(modelMatrix, glm::vec3(2.0f, 2.0f, 2.0f));
-        modelMatrix = glm::rotate(modelMatrix, glm::radians(rotationAngle), glm::vec3(0.0f, 0.0f, 1.0f));
+        modelMatrix = glm::rotate(modelMatrix, glm::radians(rotationAngle), glm::vec3(rot[0], rot[1], rot[2]));
         viewMatrix = glm::lookAt(cameraPosition, cameraTarget, upVector);
         
         float aspectRatio = 1.0f; 
@@ -194,10 +193,22 @@ public:
         if (e.type == SDL_KEYDOWN) {
             switch (e.key.keysym.sym) {
                 case SDLK_LEFT:
-                    rot_x -= 0.1f;
+                    rot[0]= 0.0f;
                     break;
                 case SDLK_RIGHT:
-                    rot_x += 0.1f;
+                    rot[0] = 1.0f;
+                    break;
+                case SDLK_a:
+                    rot[1] = 0.0f;
+                    break;
+                case SDLK_s:
+                    rot[1] = 1.0f;
+                    break;
+                case SDLK_w:
+                    rot[2] = 0.0f;
+                    break;
+                case SDLK_d:
+                    rot[2] = 1.0f;
                     break;
                 case SDLK_UP:
                     zoom -= 0.5f;
