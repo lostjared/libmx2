@@ -62,62 +62,60 @@ const char *vSource = R"(#version 300 es
         vertexColor = finalColor;
         TexCoords = aTexCoords;
     }
+)";
+const char *fSource = R"(#version 300 es
+    precision highp float;
+    in vec2 TexCoords;
+    out vec4 color;
 
-    )";
-    const char *fSource = R"(#version 300 es
-precision highp float;
-in vec2 TexCoords;
-out vec4 color;
+    uniform float time_f;
+    uniform sampler2D texture1;
+    uniform vec2 iResolution;
 
-uniform float time_f;
-uniform sampler2D texture1;
-uniform vec2 iResolution;
+    float pi = 3.14159265358979323846264;
 
-float pi = 3.14159265358979323846264;
+    float mirror1(float x) {
+        return abs(fract(x * 0.5) * 2.0 - 1.0);
+    }
+    vec2 mirror2(vec2 uv) {
+        return vec2(mirror1(uv.x), mirror1(uv.y));
+    }
 
-float mirror1(float x) {
-    return abs(fract(x * 0.5) * 2.0 - 1.0);
-}
-vec2 mirror2(vec2 uv) {
-    return vec2(mirror1(uv.x), mirror1(uv.y));
-}
+    void main(void) {
+        vec2 tc = TexCoords;
+        vec2 p = tc * 2.0 - 1.0;
+        p.x *= iResolution.x / iResolution.y;
 
-void main(void) {
-    vec2 tc = TexCoords;
-    vec2 p = tc * 2.0 - 1.0;
-    p.x *= iResolution.x / iResolution.y;
+        float n = 10.0 + 6.0 * sin(time_f * 0.25);
+        float seg = 2.0 * pi / n;
 
-    float n = 10.0 + 6.0 * sin(time_f * 0.25);
-    float seg = 2.0 * pi / n;
+        float a = atan(p.y, p.x) + time_f * 0.15;
+        a = mod(a, seg);
+        a = abs(a - seg * 0.5);
 
-    float a = atan(p.y, p.x) + time_f * 0.15;
-    a = mod(a, seg);
-    a = abs(a - seg * 0.5);
+        float r = length(p);
+        r += 0.08 * sin(8.0 * a + time_f) + 0.05 * sin(6.0 * r - time_f * 1.2);
 
-    float r = length(p);
-    r += 0.08 * sin(8.0 * a + time_f) + 0.05 * sin(6.0 * r - time_f * 1.2);
+        vec2 q = vec2(cos(a), sin(a)) * r;
+        q.x /= iResolution.x / iResolution.y;
 
-    vec2 q = vec2(cos(a), sin(a)) * r;
-    q.x /= iResolution.x / iResolution.y;
+        vec2 uvM = q * 0.5 + 0.5;
 
-    vec2 uvM = q * 0.5 + 0.5;
+        float s = 0.3 * sin(time_f * 0.6);
+        vec2 c = vec2(0.5);
+        vec2 d = uvM - c;
+        float rr = length(d);
+        float th = atan(d.y, d.x) + s * exp(-rr * 3.0);
+        vec2 swirl = c + vec2(cos(th), sin(th)) * rr;
 
-    float s = 0.3 * sin(time_f * 0.6);
-    vec2 c = vec2(0.5);
-    vec2 d = uvM - c;
-    float rr = length(d);
-    float th = atan(d.y, d.x) + s * exp(-rr * 3.0);
-    vec2 swirl = c + vec2(cos(th), sin(th)) * rr;
+        vec2 uvMand = mirror2(swirl);
+        vec2 uvOrig = mirror2(tc);
 
-    vec2 uvMand = mirror2(swirl);
-    vec2 uvOrig = mirror2(tc);
-
-    vec4 mand = texture(texture1, uvMand);
-    vec4 orig = texture(texture1, uvOrig);
-    color = mix(orig, mand, 0.85);
-}
-
-    )";
+        vec4 mand = texture(texture1, uvMand);
+        vec4 orig = texture(texture1, uvOrig);
+        color = mix(orig, mand, 0.85);
+    }
+)";
 
 class Game : public gl::GLObject {
 public:
