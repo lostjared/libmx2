@@ -191,7 +191,7 @@ public:
         if (e.type == SDL_KEYDOWN) {
             switch (e.key.keysym.sym) {
                 case SDLK_LEFT:
-                    rot[0]= 0.0f;
+                    rot[0] = 0.0f;
                     break;
                 case SDLK_RIGHT:
                     rot[0] = 1.0f;
@@ -222,14 +222,23 @@ public:
         }
         if (e.type == SDL_FINGERDOWN || e.type == SDL_FINGERMOTION) {
             static float lastY = 0.0f;
+            static float lastX = 0.0f;
+            
             if (e.type == SDL_FINGERDOWN) {
                 lastY = e.tfinger.y;
+                lastX = e.tfinger.x;
             } else if (e.type == SDL_FINGERMOTION) {
                 float dy = e.tfinger.y - lastY;
-                lastY = e.tfinger.y;
                 zoom -= dy * 10.0f; 
                 if (zoom < 0.5f) zoom = 0.5f;
                 if (zoom > 20.0f) zoom = 20.0f;
+                float dx = e.tfinger.x - lastX;
+                rot[0] += dx * 5.0f;  
+                if (rot[0] < 0.0f) rot[0] = 0.0f;
+                if (rot[0] > 1.0f) rot[0] = 1.0f;
+                
+                lastY = e.tfinger.y;
+                lastX = e.tfinger.x;
             }
         }
     }
