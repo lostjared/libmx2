@@ -183,6 +183,7 @@ public:
         glDisable(GL_BLEND);
         model.drawArrays();
         glDisable(GL_DEPTH_TEST);
+        win->text.setColor ({255, 0,0, 255});
         win->text.printText_Solid(font, 15, 15, "Example use arrow keys/swipe");
         update(deltaTime);
     }
