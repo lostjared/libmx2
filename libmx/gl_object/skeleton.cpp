@@ -147,7 +147,7 @@ public:
         float deltaTime = (currentTime - lastUpdateTime) / 1000.0f; 
         lastUpdateTime = currentTime;
         static float rotationAngle = 0.0f;
-        rotationAngle += deltaTime * 720.0f;  
+        rotationAngle += deltaTime * 800.0f;  
         model.setShaderProgram(&shader, "texture1");
         shader.useProgram();
         
