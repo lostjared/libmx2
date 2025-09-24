@@ -545,7 +545,7 @@ protected:
 class Game : public gl::GLObject {
     ExplodeEmiter emiter;
     GLuint textureID;
-    
+    bool  key_released = false;
 public:
     Game() = default;
     virtual ~Game() override {
@@ -608,10 +608,12 @@ public:
 
         update(deltaTime);
         static int frame_count = 0;
-        ++frame_count;
-        if(frame_count > 30) {
-            create_explosion();
-            frame_count = 0;
+        if(key_released) {
+            ++frame_count;
+            if(frame_count > 30) {
+                create_explosion();
+                frame_count = 0;
+            }
         }
     }
     
@@ -620,6 +622,7 @@ public:
             switch (e.key.keysym.sym) {
                 case SDLK_SPACE: {
                     create_explosion();
+                    key_released = true;
                 }
                     break;
                 case SDLK_LEFT:
@@ -633,6 +636,9 @@ public:
                     break;
                 case SDLK_DOWN:
                     cubePosition.z += 0.5f; 
+                    break;
+                case SDLK_RETURN:
+                    key_released = false;
                     break;
             }
         }
@@ -649,6 +655,7 @@ public:
         if (currentTime - lastTapTime < DOUBLE_TAP_TIME && 
             tapDistance < TAP_DISTANCE_THRESHOLD) {
             create_explosion();
+            key_released = true;
         }
         lastTapTime = currentTime;
         lastTapPos = touchStartPos;
