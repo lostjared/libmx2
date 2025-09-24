@@ -222,6 +222,7 @@ if(EXAMPLES)
     add_subdirectory(gl_console_skeleton)
     add_subdirectory(gl_console_full)
     add_subdirectory(gl_object)
+    add_subdirectory(gl_glitch_ex)
   endif()
 
 #disable for now
