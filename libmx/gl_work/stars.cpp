@@ -167,7 +167,7 @@ public:
         bool isConstellation;
     };
 
-    static constexpr int NUM_STARS = 60000;  
+    static constexpr int NUM_STARS = 25000;  
     gl::ShaderProgram program;      // For stars
     gl::ShaderProgram lineProgram;  // Add this for lines
     GLuint VAO, VBO[3];
@@ -320,7 +320,7 @@ public:
             lineProgram.useProgram();
             lineProgram.setUniform("MVP", MVP);
             glBindVertexArray(lineVAO);
-            glLineWidth(2.0f);  // Make lines thicker for visibility
+            glLineWidth(1.0f);  // Make lines thicker for visibility
             glDrawArrays(GL_LINES, 0, lineVertices.size() / 7);
         }
         
