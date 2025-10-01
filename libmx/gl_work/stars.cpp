@@ -322,6 +322,7 @@ public:
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture);
         glBindVertexArray(VAO);
+        glDrawArrays(GL_POINTS, 0, NUM_STARS);
     }
     
     void update(float deltaTime) {
