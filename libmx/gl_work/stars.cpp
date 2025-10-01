@@ -524,7 +524,7 @@ public:
                     break;
                 case SDLK_a: case SDLK_DOWN:
                     field.cameraX -= field.cameraSpeed * 0.1f;
-                    field.cameraSpeed += 0.5
+                    field.cameraSpeed += 0.5;
                     break;
                 case SDLK_d: case SDLK_UP:
                     field.cameraX += field.cameraSpeed * 0.1f;
