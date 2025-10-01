@@ -61,7 +61,6 @@ void main() {
 }
 )";
 
-// Add a separate shader program for lines
 const char* lineVertSource = R"(#version 330 core
 layout (location = 0) in vec3 inPosition; 
 layout (location = 2) in vec4 inColor;
@@ -121,7 +120,6 @@ void main() {
 }
 )";
 
-// Add a separate shader program for lines
 const char* lineVertSource = R"(#version 300 es
 precision highp float;
 layout (location = 0) in vec3 inPosition; 
@@ -168,8 +166,8 @@ public:
     };
 
     static constexpr int NUM_STARS = 40000;  
-    gl::ShaderProgram program;      // For stars
-    gl::ShaderProgram lineProgram;  // Add this for lines
+    gl::ShaderProgram program;      
+    gl::ShaderProgram lineProgram;  
     GLuint VAO, VBO[3];
     GLuint texture;
     std::vector<Star> stars;
@@ -183,9 +181,9 @@ public:
     float lightPollution = 0.1f;  
     GLuint lineVAO, lineVBO;
     std::vector<float> lineVertices;
-    float connectionDistance = 25.0f;  // Increased for better connectivity
-    float lineOpacity = 0.5f;          // Increased for visibility
-    int maxConnections = 5;            // Increased connections per star
+    float connectionDistance = 25.0f;  
+    float lineOpacity = 0.5f;          
+    int maxConnections = 5;            
     
     StarField() : stars(NUM_STARS) {}
 
@@ -198,12 +196,10 @@ public:
     }
 
     void load(gl::GLWindow *win) override {
-        // Load star shader
         if(!program.loadProgramFromText(vertSource, fragSource)) {
             throw mx::Exception("Error loading shader");
         }
         
-        // Load line shader
         if(!lineProgram.loadProgramFromText(lineVertSource, lineFragSource)) {
             throw mx::Exception("Error loading line shader");
         }
@@ -240,7 +236,6 @@ public:
             stars[i] = star;
         }
 
-        // Create VAO/VBO for stars
         glGenVertexArrays(1, &VAO);
         glGenBuffers(3, VBO);
         glBindVertexArray(VAO);
@@ -260,7 +255,6 @@ public:
         glEnableVertexAttribArray(2);
         glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, 0, (void*)0);
         
-        // Create VAO/VBO for lines
         glGenVertexArrays(1, &lineVAO);
         glGenBuffers(1, &lineVBO);
         
@@ -268,7 +262,6 @@ public:
         glBindBuffer(GL_ARRAY_BUFFER, lineVBO);
         glBufferData(GL_ARRAY_BUFFER, NUM_STARS * maxConnections * 14 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
         
-        // Position (XYZ) + Color (RGBA) = 7 floats per vertex, 2 vertices per line
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void*)0);
         glEnableVertexAttribArray(2);
@@ -315,23 +308,20 @@ public:
         glm::mat4 model = glm::mat4(1.0f);
         glm::mat4 MVP = projection * view * model;
         
-        // Draw lines first using line shader
         if (lineVertices.size() > 0) {
             lineProgram.useProgram();
             lineProgram.setUniform("MVP", MVP);
             glBindVertexArray(lineVAO);
-            glLineWidth(1.0f);  // Make lines thicker for visibility
+            glLineWidth(1.0f);  
             glDrawArrays(GL_LINES, 0, lineVertices.size() / 7);
         }
         
-        // Then draw stars using star shader
         program.useProgram();
         program.setUniform("MVP", MVP);
         program.setUniform("spriteTexture", 0);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture);
         glBindVertexArray(VAO);
-        //glDrawArrays(GL_POINTS, 0, NUM_STARS);
     }
     
     void update(float deltaTime) {
@@ -347,7 +337,6 @@ public:
 
         float time = SDL_GetTicks() * 0.001f;
 
-        // Update all stars positions and colors
         for (auto& star : stars) {
             star.x += star.vx * deltaTime;
             star.y += star.vy * deltaTime;
@@ -376,10 +365,8 @@ public:
             colors.push_back(alpha);
         }
 
-        // Generate line connections
         lineVertices.clear();
         
-        // Create a spatial grid for efficient neighbor searching
         const float gridSize = connectionDistance;
         std::unordered_map<int, std::vector<int>> grid;
         
@@ -392,7 +379,6 @@ public:
         }
         
         for (int i = 0; i < NUM_STARS; i++) {
-            // Only connect brighter stars for better visibility
             if (stars[i].magnitude > 5.0f) continue;
             
             int connections = 0;
@@ -401,7 +387,6 @@ public:
             int gridY = static_cast<int>(stars[i].y / gridSize);
             int gridZ = static_cast<int>(stars[i].z / gridSize);
             
-            // Check current cell and neighboring cells
             for (int dx = -1; dx <= 1; dx++) {
                 for (int dy = -1; dy <= 1; dy++) {
                     for (int dz = -1; dz <= 1; dz++) {
@@ -426,7 +411,6 @@ public:
                                 float distance = sqrt(distSq);
                                 float opacity = lineOpacity * (1.0f - distance / connectionDistance);
                                 
-                                // First vertex
                                 lineVertices.push_back(stars[i].x);
                                 lineVertices.push_back(stars[i].y);
                                 lineVertices.push_back(stars[i].z);
@@ -437,7 +421,6 @@ public:
                                 lineVertices.push_back(color1.b);
                                 lineVertices.push_back(opacity);
                                 
-                                // Second vertex
                                 lineVertices.push_back(neighbor.x);
                                 lineVertices.push_back(neighbor.y);
                                 lineVertices.push_back(neighbor.z);
@@ -460,13 +443,11 @@ public:
             }
         }
 
-        // Debug output
         static int frameCount = 0;
         if (frameCount++ % 60 == 0) {
             printf("Generated %d line segments connecting stars\n", (int)lineVertices.size() / 14);
         }
 
-        // Update the star buffers
         glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
         glBufferSubData(GL_ARRAY_BUFFER, 0, positions.size() * sizeof(float), positions.data());
 
@@ -476,7 +457,6 @@ public:
         glBindBuffer(GL_ARRAY_BUFFER, VBO[2]);
         glBufferSubData(GL_ARRAY_BUFFER, 0, colors.size() * sizeof(float), colors.data());
         
-        // Update the line buffer
         glBindBuffer(GL_ARRAY_BUFFER, lineVBO);
         if (lineVertices.size() > 0) {
             glBufferData(GL_ARRAY_BUFFER, lineVertices.size() * sizeof(float), lineVertices.data(), GL_DYNAMIC_DRAW);
@@ -564,7 +544,6 @@ public:
                     field.cameraSpeed -= 0.1f;
                     break;
                 
-                // Line connection distance controls
                 case SDLK_r:
                     field.connectionDistance += 1.0f;
                     if (field.connectionDistance > 30.0f) field.connectionDistance = 30.0f;
@@ -576,7 +555,6 @@ public:
                     printf("Connection distance: %.1f\n", field.connectionDistance);
                     break;
                     
-                // Line opacity controls
                 case SDLK_t:
                     field.lineOpacity += 0.05f;
                     if (field.lineOpacity > 1.0f) field.lineOpacity = 1.0f;
@@ -588,7 +566,6 @@ public:
                     printf("Line opacity: %.2f\n", field.lineOpacity);
                     break;
                     
-                // Max connections controls
                 case SDLK_y:
                     field.maxConnections += 1;
                     if (field.maxConnections > 10) field.maxConnections = 10;
