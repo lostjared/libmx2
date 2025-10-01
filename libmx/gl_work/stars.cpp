@@ -177,6 +177,11 @@ public:
     float cameraYaw = 0.0f, cameraPitch = 0.0f;
     float cameraSpeed = 10.0f;
     
+    float rotationX = 0.0f;
+    float rotationY = 0.0f;
+    float rotationZ = 0.0f;
+    float rotationSpeed = 1.0f;  
+    
     float atmosphericTwinkle = 1.0f;
     float lightPollution = 0.1f;  
     GLuint lineVAO, lineVBO;
@@ -305,7 +310,12 @@ public:
         glm::vec3 cameraTarget = cameraPos + front;
         glm::vec3 up(0.0f, 1.0f, 0.0f);
         glm::mat4 view = glm::lookAt(cameraPos, cameraTarget, up);
+        
         glm::mat4 model = glm::mat4(1.0f);
+        model = glm::rotate(model, glm::radians(rotationX), glm::vec3(1.0f, 0.0f, 0.0f)); 
+        model = glm::rotate(model, glm::radians(rotationY), glm::vec3(0.0f, 1.0f, 0.0f)); 
+        model = glm::rotate(model, glm::radians(rotationZ), glm::vec3(0.0f, 0.0f, 1.0f)); 
+        
         glm::mat4 MVP = projection * view * model;
         
         if (lineVertices.size() > 0) {
@@ -514,7 +524,7 @@ public:
                     break;
                 case SDLK_a: case SDLK_DOWN:
                     field.cameraX -= field.cameraSpeed * 0.1f;
-                    field.cameraSpeed += 0.5;
+                    field.cameraSpeed += 0.5
                     break;
                 case SDLK_d: case SDLK_UP:
                     field.cameraX += field.cameraSpeed * 0.1f;
@@ -545,41 +555,82 @@ public:
                     field.cameraSpeed -= 0.1f;
                     break;
                 
-                case SDLK_r:
-                    field.connectionDistance += 1.0f;
-                    if (field.connectionDistance > 30.0f) field.connectionDistance = 30.0f;
-                    printf("Connection distance: %.1f\n", field.connectionDistance);
+                case SDLK_i:  
+                    field.rotationX += field.rotationSpeed;
+                    printf("Rotation X: %.1f\n", field.rotationX);
                     break;
-                case SDLK_f:
-                    field.connectionDistance -= 1.0f;
-                    if (field.connectionDistance < 1.0f) field.connectionDistance = 1.0f;
-                    printf("Connection distance: %.1f\n", field.connectionDistance);
+                case SDLK_k:  
+                    field.rotationX -= field.rotationSpeed;
+                    printf("Rotation X: %.1f\n", field.rotationX);
                     break;
-                    
-                case SDLK_t:
-                    field.lineOpacity += 0.05f;
-                    if (field.lineOpacity > 1.0f) field.lineOpacity = 1.0f;
-                    printf("Line opacity: %.2f\n", field.lineOpacity);
+                case SDLK_j:  
+                    field.rotationY += field.rotationSpeed;
+                    printf("Rotation Y: %.1f\n", field.rotationY);
                     break;
-                case SDLK_g:
-                    field.lineOpacity -= 0.05f;
-                    if (field.lineOpacity < 0.0f) field.lineOpacity = 0.0f;
-                    printf("Line opacity: %.2f\n", field.lineOpacity);
+                case SDLK_l:  
+                    field.rotationY -= field.rotationSpeed;
+                    printf("Rotation Y: %.1f\n", field.rotationY);
                     break;
-                    
-                case SDLK_y:
-                    field.maxConnections += 1;
-                    if (field.maxConnections > 10) field.maxConnections = 10;
-                    printf("Max connections: %d\n", field.maxConnections);
+                case SDLK_u:  
+                    field.rotationZ += field.rotationSpeed;
+                    printf("Rotation Z: %.1f\n", field.rotationZ);
                     break;
-                case SDLK_h:
-                    field.maxConnections -= 1;
-                    if (field.maxConnections < 1) field.maxConnections = 1;
-                    printf("Max connections: %d\n", field.maxConnections);
+                case SDLK_o:  
+                    field.rotationZ -= field.rotationSpeed;
+                    printf("Rotation Z: %.1f\n", field.rotationZ);
                     break;
+                case SDLK_p:  
+                    field.rotationX = 0.0f;
+                    field.rotationY = 0.0f;
+                    field.rotationZ = 0.0f;
+                    printf("Rotations reset\n");
+                    break;
+                case SDLK_LEFTBRACKET:  
+                    field.rotationSpeed -= 0.5f;
+                    if (field.rotationSpeed < 0.5f) field.rotationSpeed = 0.5f;
+                    printf("Rotation speed: %.1f\n", field.rotationSpeed);
+                    break;
+                case SDLK_RIGHTBRACKET:  
+                    field.rotationSpeed += 0.5f;
+                    if (field.rotationSpeed > 10.0f) field.rotationSpeed = 10.0f;
+                    printf("Rotation speed: %.1f\n", field.rotationSpeed);
+                    break;
+            
+            case SDLK_r:
+                field.connectionDistance += 1.0f;
+                if (field.connectionDistance > 30.0f) field.connectionDistance = 30.0f;
+                printf("Connection distance: %.1f\n", field.connectionDistance);
+                break;
+            case SDLK_f:
+                field.connectionDistance -= 1.0f;
+                if (field.connectionDistance < 1.0f) field.connectionDistance = 1.0f;
+                printf("Connection distance: %.1f\n", field.connectionDistance);
+                break;
+                
+            case SDLK_t:
+                field.lineOpacity += 0.05f;
+                if (field.lineOpacity > 1.0f) field.lineOpacity = 1.0f;
+                printf("Line opacity: %.2f\n", field.lineOpacity);
+                break;
+            case SDLK_g:
+                field.lineOpacity -= 0.05f;
+                if (field.lineOpacity < 0.0f) field.lineOpacity = 0.0f;
+                printf("Line opacity: %.2f\n", field.lineOpacity);
+                break;
+                
+            case SDLK_y:
+                field.maxConnections += 1;
+                if (field.maxConnections > 10) field.maxConnections = 10;
+                printf("Max connections: %d\n", field.maxConnections);
+                break;
+            case SDLK_h:
+                field.maxConnections -= 1;
+                if (field.maxConnections < 1) field.maxConnections = 1;
+                printf("Max connections: %d\n", field.maxConnections);
+                break;
             }
         }
-    
+
         if (e.type == SDL_MOUSEMOTION && (e.motion.state & SDL_BUTTON_LMASK)) {
             field.cameraYaw += e.motion.xrel * mouseSensitivity;
             field.cameraPitch -= e.motion.yrel * mouseSensitivity;
