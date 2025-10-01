@@ -167,7 +167,7 @@ public:
         bool isConstellation;
     };
 
-    static constexpr int NUM_STARS = 25000;  
+    static constexpr int NUM_STARS = 40000;  
     gl::ShaderProgram program;      // For stars
     gl::ShaderProgram lineProgram;  // Add this for lines
     GLuint VAO, VBO[3];
