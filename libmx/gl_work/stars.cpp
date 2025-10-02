@@ -633,7 +633,7 @@ public:
 class MainWindow : public gl::GLWindow {
 public:
     MainWindow(std::string path, int tw, int th) 
-        : gl::GLWindow("Stars - [3D Particle Effect]", tw, th) {
+        : gl::GLWindow("Particle Effects [Universal]", tw, th) {
         setPath(path);
         setObject(new Game());
         object->load(this);
