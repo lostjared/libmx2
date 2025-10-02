@@ -175,7 +175,7 @@ public:
     
     float cameraX = 0.0f, cameraY = 0.0f, cameraZ = 0.0f;
     float cameraYaw = 0.0f, cameraPitch = 0.0f;
-    float cameraSpeed = 10.0f;
+    float cameraSpeed = 25.0f;
     
     float rotationX = 0.0f;
     float rotationY = 0.0f;
