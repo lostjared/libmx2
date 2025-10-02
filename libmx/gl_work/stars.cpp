@@ -454,11 +454,7 @@ public:
             }
         }
 
-        static int frameCount = 0;
-        if (frameCount++ % 60 == 0) {
-            mx::system_out << "Generated " << (int)lineVertices.size() / 14 << " line segments connecting stars\n" <<  "\n";
-        }
-
+        
         glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
         glBufferSubData(GL_ARRAY_BUFFER, 0, positions.size() * sizeof(float), positions.data());
 
