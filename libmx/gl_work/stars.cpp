@@ -456,7 +456,7 @@ public:
 
         static int frameCount = 0;
         if (frameCount++ % 60 == 0) {
-            mx::system_out << "Generated %d line segments connecting stars\n", (int)lineVertices.size() / 14 << "\n";
+            mx::system_out << "Generated %d line segments connecting stars\n" << (int)lineVertices.size() / 14 << "\n";
         }
 
         glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
