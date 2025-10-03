@@ -52,12 +52,19 @@ out vec4 FragColor;
 uniform sampler2D spriteTexture;
 
 void main() {
-    float dist = length(gl_PointCoord - vec2(0.5));
-    if (dist > 0.5) {
+    vec4 texColor = texture(spriteTexture, gl_PointCoord);
+    
+    // Discard fully transparent pixels to remove black background
+    if (texColor.a < 0.01) {
         discard;
     }
-    vec4 texColor = texture(spriteTexture, gl_PointCoord);
-    FragColor = texColor * fragColor;
+    
+    // Apply a smooth circular gradient for star glow
+    float dist = length(gl_PointCoord - vec2(0.5));
+    float alpha = 1.0 - smoothstep(0.0, 0.5, dist);
+    
+    // Combine texture alpha with distance-based alpha
+    FragColor = vec4(fragColor.rgb * texColor.rgb, fragColor.a * texColor.a * alpha);
 }
 )";
 
@@ -110,13 +117,19 @@ out vec4 FragColor;
 uniform sampler2D spriteTexture;
 
 void main() {
-    float dist = length(gl_PointCoord - vec2(0.5));
-    if (dist > 0.5) {
+    vec4 texColor = texture(spriteTexture, gl_PointCoord);
+    
+    // Discard fully transparent pixels to remove black background
+    if (texColor.a < 0.01) {
         discard;
     }
-
-    vec4 texColor = texture(spriteTexture, gl_PointCoord);
-    FragColor = texColor * fragColor;
+    
+    // Apply a smooth circular gradient for star glow
+    float dist = length(gl_PointCoord - vec2(0.5));
+    float alpha = 1.0 - smoothstep(0.0, 0.5, dist);
+    
+    // Combine texture alpha with distance-based alpha
+    FragColor = vec4(fragColor.rgb * texColor.rgb, fragColor.a * texColor.a * alpha);
 }
 )";
 
@@ -165,7 +178,9 @@ public:
         bool isConstellation;
         
         float origX, origY, origZ;  
-        float explodeVx, explodeVy, explodeVz;  
+        float explodeVx, explodeVy, explodeVz;
+        float explosionDelay;  
+        float brightness;      
     };
 
     static constexpr int NUM_STARS = 35000;  
@@ -195,9 +210,13 @@ public:
     
     bool isExploding = false;
     float explosionTime = 0.0f;
-    float explosionDuration = 10.0f;  
-    float explosionForce = 250.0f;
-    bool continuousExplosion = false;  
+    float explosionDuration = 15.0f;  
+    float explosionForce = 150.0f;    
+    bool continuousExplosion = false;
+    
+    float shockwaveRadius = 0.0f;
+    float coreCollapse = 0.0f;
+    bool showCore = true;
     
     StarField() : stars(NUM_STARS) {}
 
@@ -238,9 +257,19 @@ public:
             star.vz = generateRandomFloat(-0.001f, 0.001f);
             
             float len = sqrt(star.x * star.x + star.y * star.y + star.z * star.z);
-            star.explodeVx = (star.x / len) * explosionForce;
-            star.explodeVy = (star.y / len) * explosionForce;
-            star.explodeVz = (star.z / len) * explosionForce;
+            
+            float randomFactor = generateRandomFloat(0.5f, 1.5f);
+            star.explodeVx = (star.x / len) * explosionForce * randomFactor;
+            star.explodeVy = (star.y / len) * explosionForce * randomFactor;
+            star.explodeVz = (star.z / len) * explosionForce * randomFactor;
+            
+            float tangentialForce = explosionForce * 0.3f;
+            star.explodeVx += generateRandomFloat(-tangentialForce, tangentialForce);
+            star.explodeVy += generateRandomFloat(-tangentialForce, tangentialForce);
+            star.explodeVz += generateRandomFloat(-tangentialForce, tangentialForce);
+            
+            star.explosionDelay = generateRandomFloat(0.0f, 0.5f);
+            star.brightness = generateRandomFloat(0.5f, 2.0f);
             
             star.magnitude = generateRandomFloat(-1.5f, 6.5f);
             star.temperature = generateRandomFloat(2000.0f, 40000.0f);
@@ -298,7 +327,10 @@ public:
         isExploding = true;
         continuousExplosion = true;
         explosionTime = 0.0f;
-        printf("Explosion triggered! Stars will continue moving outward.\n");
+        shockwaveRadius = 0.0f;
+        coreCollapse = 0.0f;
+        showCore = true;
+        printf("SUPERNOVA! Core collapse initiated...\n");
     }
     
     void resetPositions() {
@@ -310,6 +342,8 @@ public:
         isExploding = false;
         continuousExplosion = false;
         explosionTime = 0.0f;
+        shockwaveRadius = 0.0f;
+        showCore = false;
         printf("Stars reset to original positions\n");
     }
     
@@ -378,6 +412,15 @@ public:
 
         if (isExploding || continuousExplosion) {
             explosionTime += deltaTime;
+            
+            
+            if (explosionTime < 1.0f) {
+                coreCollapse = explosionTime / 1.0f;
+            } else {
+                coreCollapse = 1.0f;
+            }
+            
+            shockwaveRadius = explosionTime * 200.0f; 
         }
 
         std::vector<float> positions;
@@ -391,9 +434,27 @@ public:
 
         for (auto& star : stars) {
             if (isExploding || continuousExplosion) {
-                star.x += star.explodeVx * deltaTime;
-                star.y += star.explodeVy * deltaTime;
-                star.z += star.explodeVz * deltaTime;
+                float starExplosionTime = explosionTime - star.explosionDelay;
+                
+                if (starExplosionTime > 0.0f) {
+                    if (starExplosionTime < 1.0f) {
+                        float collapseAmount = 0.95f; 
+                        star.x = star.origX + (star.origX * (collapseAmount - 1.0f)) * starExplosionTime;
+                        star.y = star.origY + (star.origY * (collapseAmount - 1.0f)) * starExplosionTime;
+                        star.z = star.origZ + (star.origZ * (collapseAmount - 1.0f)) * starExplosionTime;
+                    } else {
+                        float explosionPhaseTime = starExplosionTime - 1.0f;
+                        
+                        float acceleration = 1.0f;
+                        if (explosionPhaseTime < 2.0f) {
+                            acceleration = 1.0f + explosionPhaseTime * 2.0f; 
+                        }
+                        
+                        star.x += star.explodeVx * deltaTime * acceleration;
+                        star.y += star.explodeVy * deltaTime * acceleration;
+                        star.z += star.explodeVz * deltaTime * acceleration;
+                    }
+                }
             } else {
                 star.x += star.vx * deltaTime;
                 star.y += star.vy * deltaTime;
@@ -405,7 +466,7 @@ public:
             positions.push_back(star.z);
 
             float twinkleFactor = 1.0f;
-            if (atmosphericTwinkle > 0.0f) {
+            if (atmosphericTwinkle > 0.0f && !isExploding) {
                 twinkleFactor = 0.7f + 0.3f * sin(time * star.twinkle) * atmosphericTwinkle;
             }
 
@@ -417,12 +478,26 @@ public:
             float distFromOrigin = sqrt(star.x * star.x + star.y * star.y + star.z * star.z);
             
             if (isExploding || continuousExplosion) {
-                float explosionProgress = glm::clamp(explosionTime / explosionDuration, 0.0f, 1.0f);
-                size *= (1.0f + explosionProgress * 3.0f);  
+                float starExplosionTime = explosionTime - star.explosionDelay;
+                
+                if (starExplosionTime > 0.0f) {
+                    if (starExplosionTime < 1.0f) {
+                        size *= (1.0f + starExplosionTime * 3.0f) * star.brightness;
+                    } else {
+                        float explosionPhaseTime = starExplosionTime - 1.0f;
+                        
+                        if (explosionPhaseTime < 2.0f) {
+                            size *= (4.0f + explosionPhaseTime * 2.0f) * star.brightness;
+                        } else {
+                            float expansionProgress = glm::clamp(explosionPhaseTime / 10.0f, 0.0f, 1.0f);
+                            size *= (3.0f + expansionProgress * 2.0f);
+                        }
+                    }
+                }
                 
                 if (distFromOrigin > 500.0f) {
                     float fadeStart = 500.0f;
-                    float fadeEnd = 1000.0f;
+                    float fadeEnd = 2000.0f; 
                     float fadeFactor = 1.0f - glm::clamp((distFromOrigin - fadeStart) / (fadeEnd - fadeStart), 0.0f, 1.0f);
                     size *= fadeFactor;
                 }
@@ -431,15 +506,42 @@ public:
             sizes.push_back(size);
 
             glm::vec3 starColor = getStarColor(star.temperature);
+            
+            if (isExploding || continuousExplosion) {
+                float starExplosionTime = explosionTime - star.explosionDelay;
+                
+                if (starExplosionTime > 0.0f && starExplosionTime < 3.0f) {
+                    float flashIntensity = glm::clamp(1.0f - starExplosionTime / 3.0f, 0.0f, 1.0f);
+                    starColor.r = glm::mix(starColor.r, 1.0f, flashIntensity * 0.8f);
+                    starColor.g = glm::mix(starColor.g, 1.0f, flashIntensity * 0.8f);
+                    starColor.b = glm::mix(starColor.b, 1.0f, flashIntensity);
+                }
+            }
+            
             float alpha = magnitudeToAlpha(star.magnitude) * twinkleFactor;
             
             if (isExploding || continuousExplosion) {
+                float starExplosionTime = explosionTime - star.explosionDelay;
+                
+                if (starExplosionTime > 0.0f) {
+                    if (starExplosionTime < 1.0f) {
+                        alpha *= (1.0f + starExplosionTime * 5.0f) * star.brightness;
+                    } else if (starExplosionTime < 3.0f) {
+                        alpha *= 6.0f * star.brightness;
+                    } else {
+                        float fadeProgress = (starExplosionTime - 3.0f) / 12.0f;
+                        alpha *= (1.0f - fadeProgress * 0.7f);
+                    }
+                }
+                
                 if (distFromOrigin > 500.0f) {
                     float fadeStart = 500.0f;
-                    float fadeEnd = 1000.0f;
+                    float fadeEnd = 2000.0f;
                     float fadeFactor = 1.0f - glm::clamp((distFromOrigin - fadeStart) / (fadeEnd - fadeStart), 0.0f, 1.0f);
                     alpha *= fadeFactor;
                 }
+                
+                alpha = glm::clamp(alpha, 0.0f, 1.0f);
             }
             
             colors.push_back(starColor.r);
@@ -492,13 +594,19 @@ public:
                             
                             float effectiveConnectionDist = connectionDistance;
                             if (isExploding || continuousExplosion) {
-                                float explosionProgress = glm::clamp(explosionTime / explosionDuration, 0.0f, 1.0f);
-                                effectiveConnectionDist = connectionDistance * (1.0f + explosionProgress * 10.0f); 
+                                float explosionProgress = glm::clamp(explosionTime / 5.0f, 0.0f, 1.0f);
+                                effectiveConnectionDist = connectionDistance * (1.0f + explosionProgress * 20.0f);
                             }
                             
                             if (distSq < effectiveConnectionDist * effectiveConnectionDist) {
                                 float distance = sqrt(distSq);
                                 float opacity = lineOpacity * (1.0f - distance / effectiveConnectionDist);
+                                
+                                if (isExploding || continuousExplosion) {
+                                    if (explosionTime < 3.0f) {
+                                        opacity *= (1.0f + explosionTime * 0.5f); 
+                                    }
+                                }
                                 
                                 float dist1 = sqrt(stars[i].x * stars[i].x + stars[i].y * stars[i].y + stars[i].z * stars[i].z);
                                 float dist2 = sqrt(neighbor.x * neighbor.x + neighbor.y * neighbor.y + neighbor.z * neighbor.z);
@@ -506,18 +614,26 @@ public:
                                 if (isExploding || continuousExplosion) {
                                     if (dist1 > 500.0f || dist2 > 500.0f) {
                                         float fadeStart = 500.0f;
-                                        float fadeEnd = 1000.0f;
+                                        float fadeEnd = 2000.0f;
                                         float fadeFactor1 = 1.0f - glm::clamp((dist1 - fadeStart) / (fadeEnd - fadeStart), 0.0f, 1.0f);
                                         float fadeFactor2 = 1.0f - glm::clamp((dist2 - fadeStart) / (fadeEnd - fadeStart), 0.0f, 1.0f);
                                         opacity *= glm::min(fadeFactor1, fadeFactor2);
                                     }
                                 }
                                 
+                                opacity = glm::clamp(opacity, 0.0f, 1.0f);
+                                
                                 lineVertices.push_back(stars[i].x);
                                 lineVertices.push_back(stars[i].y);
                                 lineVertices.push_back(stars[i].z);
                                 
                                 glm::vec3 color1 = getStarColor(stars[i].temperature);
+                                
+                                if (isExploding && explosionTime < 3.0f) {
+                                    float flashIntensity = 1.0f - explosionTime / 3.0f;
+                                    color1 = glm::mix(color1, glm::vec3(1.0f, 1.0f, 1.0f), flashIntensity * 0.5f);
+                                }
+                                
                                 lineVertices.push_back(color1.r);
                                 lineVertices.push_back(color1.g);
                                 lineVertices.push_back(color1.b);
@@ -528,6 +644,12 @@ public:
                                 lineVertices.push_back(neighbor.z);
                                 
                                 glm::vec3 color2 = getStarColor(neighbor.temperature);
+                                
+                                if (isExploding && explosionTime < 3.0f) {
+                                    float flashIntensity = 1.0f - explosionTime / 3.0f;
+                                    color2 = glm::mix(color2, glm::vec3(1.0f, 1.0f, 1.0f), flashIntensity * 0.5f);
+                                }
+                                
                                 lineVertices.push_back(color2.r);
                                 lineVertices.push_back(color2.g);
                                 lineVertices.push_back(color2.b);
