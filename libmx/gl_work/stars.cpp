@@ -322,7 +322,7 @@ public:
             lineProgram.useProgram();
             lineProgram.setUniform("MVP", MVP);
             glBindVertexArray(lineVAO);
-            glLineWidth(1.0f);  
+            glLineWidth(2.0f);  
             glDrawArrays(GL_LINES, 0, lineVertices.size() / 7);
         }
         
