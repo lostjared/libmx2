@@ -211,7 +211,7 @@ public:
     bool isExploding = false;
     float explosionTime = 0.0f;
     float explosionDuration = 15.0f;  
-    float explosionForce = 150.0f;    
+    float explosionForce = 125.0f;    
     bool continuousExplosion = false;
     
     float shockwaveRadius = 0.0f;
