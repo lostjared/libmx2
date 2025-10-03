@@ -163,6 +163,9 @@ public:
         float size;
         int starType;        
         bool isConstellation;
+        
+        float origX, origY, origZ;  
+        float explodeVx, explodeVy, explodeVz;  
     };
 
     static constexpr int NUM_STARS = 35000;  
@@ -189,6 +192,12 @@ public:
     float connectionDistance = 25.0f;  
     float lineOpacity = 0.5f;          
     int maxConnections = 5;            
+    
+    bool isExploding = false;
+    float explosionTime = 0.0f;
+    float explosionDuration = 10.0f;  
+    float explosionForce = 250.0f;
+    bool continuousExplosion = false;  
     
     StarField() : stars(NUM_STARS) {}
 
@@ -220,9 +229,18 @@ public:
             star.y = radius * sin(phi) * sin(theta);
             star.z = radius * cos(phi);
             
+            star.origX = star.x;
+            star.origY = star.y;
+            star.origZ = star.z;
+            
             star.vx = generateRandomFloat(-0.001f, 0.001f);
             star.vy = generateRandomFloat(-0.001f, 0.001f);
             star.vz = generateRandomFloat(-0.001f, 0.001f);
+            
+            float len = sqrt(star.x * star.x + star.y * star.y + star.z * star.z);
+            star.explodeVx = (star.x / len) * explosionForce;
+            star.explodeVy = (star.y / len) * explosionForce;
+            star.explodeVz = (star.z / len) * explosionForce;
             
             star.magnitude = generateRandomFloat(-1.5f, 6.5f);
             star.temperature = generateRandomFloat(2000.0f, 40000.0f);
@@ -275,7 +293,26 @@ public:
         texture = gl::loadTexture(win->util.getFilePath("data/star.png"));
         lastUpdateTime = SDL_GetTicks();
     }
-
+    
+    void triggerExplosion() {
+        isExploding = true;
+        continuousExplosion = true;
+        explosionTime = 0.0f;
+        printf("Explosion triggered! Stars will continue moving outward.\n");
+    }
+    
+    void resetPositions() {
+        for (auto& star : stars) {
+            star.x = star.origX;
+            star.y = star.origY;
+            star.z = star.origZ;
+        }
+        isExploding = false;
+        continuousExplosion = false;
+        explosionTime = 0.0f;
+        printf("Stars reset to original positions\n");
+    }
+    
     void event(gl::GLWindow *win, SDL_Event &e) override {
 
     }
@@ -339,6 +376,10 @@ public:
         if(deltaTime > 0.1f) 
             deltaTime = 0.1f;
 
+        if (isExploding || continuousExplosion) {
+            explosionTime += deltaTime;
+        }
+
         std::vector<float> positions;
         std::vector<float> sizes;
         std::vector<float> colors;
@@ -349,9 +390,15 @@ public:
         float time = SDL_GetTicks() * 0.001f;
 
         for (auto& star : stars) {
-            star.x += star.vx * deltaTime;
-            star.y += star.vy * deltaTime;
-            star.z += star.vz * deltaTime;
+            if (isExploding || continuousExplosion) {
+                star.x += star.explodeVx * deltaTime;
+                star.y += star.explodeVy * deltaTime;
+                star.z += star.explodeVz * deltaTime;
+            } else {
+                star.x += star.vx * deltaTime;
+                star.y += star.vy * deltaTime;
+                star.z += star.vz * deltaTime;
+            }
 
             positions.push_back(star.x);
             positions.push_back(star.y);
@@ -366,10 +413,35 @@ public:
             if (star.isConstellation) {
                 size *= 1.2f; 
             }
+            
+            float distFromOrigin = sqrt(star.x * star.x + star.y * star.y + star.z * star.z);
+            
+            if (isExploding || continuousExplosion) {
+                float explosionProgress = glm::clamp(explosionTime / explosionDuration, 0.0f, 1.0f);
+                size *= (1.0f + explosionProgress * 3.0f);  
+                
+                if (distFromOrigin > 500.0f) {
+                    float fadeStart = 500.0f;
+                    float fadeEnd = 1000.0f;
+                    float fadeFactor = 1.0f - glm::clamp((distFromOrigin - fadeStart) / (fadeEnd - fadeStart), 0.0f, 1.0f);
+                    size *= fadeFactor;
+                }
+            }
+            
             sizes.push_back(size);
 
             glm::vec3 starColor = getStarColor(star.temperature);
             float alpha = magnitudeToAlpha(star.magnitude) * twinkleFactor;
+            
+            if (isExploding || continuousExplosion) {
+                if (distFromOrigin > 500.0f) {
+                    float fadeStart = 500.0f;
+                    float fadeEnd = 1000.0f;
+                    float fadeFactor = 1.0f - glm::clamp((distFromOrigin - fadeStart) / (fadeEnd - fadeStart), 0.0f, 1.0f);
+                    alpha *= fadeFactor;
+                }
+            }
+            
             colors.push_back(starColor.r);
             colors.push_back(starColor.g);
             colors.push_back(starColor.b);
@@ -418,9 +490,28 @@ public:
                             float dz = stars[i].z - neighbor.z;
                             float distSq = dx*dx + dy*dy + dz*dz;
                             
-                            if (distSq < connectionDistance * connectionDistance) {
+                            float effectiveConnectionDist = connectionDistance;
+                            if (isExploding || continuousExplosion) {
+                                float explosionProgress = glm::clamp(explosionTime / explosionDuration, 0.0f, 1.0f);
+                                effectiveConnectionDist = connectionDistance * (1.0f + explosionProgress * 10.0f); 
+                            }
+                            
+                            if (distSq < effectiveConnectionDist * effectiveConnectionDist) {
                                 float distance = sqrt(distSq);
-                                float opacity = lineOpacity * (1.0f - distance / connectionDistance);
+                                float opacity = lineOpacity * (1.0f - distance / effectiveConnectionDist);
+                                
+                                float dist1 = sqrt(stars[i].x * stars[i].x + stars[i].y * stars[i].y + stars[i].z * stars[i].z);
+                                float dist2 = sqrt(neighbor.x * neighbor.x + neighbor.y * neighbor.y + neighbor.z * neighbor.z);
+                                
+                                if (isExploding || continuousExplosion) {
+                                    if (dist1 > 500.0f || dist2 > 500.0f) {
+                                        float fadeStart = 500.0f;
+                                        float fadeEnd = 1000.0f;
+                                        float fadeFactor1 = 1.0f - glm::clamp((dist1 - fadeStart) / (fadeEnd - fadeStart), 0.0f, 1.0f);
+                                        float fadeFactor2 = 1.0f - glm::clamp((dist2 - fadeStart) / (fadeEnd - fadeStart), 0.0f, 1.0f);
+                                        opacity *= glm::min(fadeFactor1, fadeFactor2);
+                                    }
+                                }
                                 
                                 lineVertices.push_back(stars[i].x);
                                 lineVertices.push_back(stars[i].y);
@@ -454,7 +545,6 @@ public:
             }
         }
 
-        
         glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
         glBufferSubData(GL_ARRAY_BUFFER, 0, positions.size() * sizeof(float), positions.data());
 
@@ -512,6 +602,14 @@ public:
 
         if (e.type == SDL_KEYDOWN) {
             switch (e.key.keysym.sym) {
+                case SDLK_SPACE:  
+                    field.triggerExplosion();
+                    break;
+                    
+                case SDLK_BACKSPACE:  
+                    field.resetPositions();
+                    break;
+                    
                 case SDLK_w: case SDLK_LEFT:
                     field.cameraZ -= field.cameraSpeed * 0.1f;
                     break;
