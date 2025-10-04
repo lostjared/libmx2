@@ -683,11 +683,9 @@ public:
     }
 
     glm::vec3 getStarColor(float temperature) {
-        float r, g, b;
-        r = generateRandomFloat(0.1f, 1.0f);
-        g = generateRandomFloat(0.1f, 1.0f);
-        b = generateRandomFloat(0.1f, 1.0f);
-        return glm::vec3(r, g, b);
+        float col;
+        col = generateRandomFloat(0.1f, 1.0f);
+        return glm::vec3(col,col, col);
     }
 
     float magnitudeToSize(float magnitude) {
