@@ -393,7 +393,7 @@ public:
             lineProgram.useProgram();
             lineProgram.setUniform("MVP", MVP);
             glBindVertexArray(lineVAO);
-            glLineWidth(2.0f);  
+            glLineWidth(5.0f);  
             glDrawArrays(GL_LINES, 0, lineVertices.size() / 7);
         }
         
@@ -685,7 +685,7 @@ public:
     glm::vec3 getStarColor(float temperature) {
         float col;
         col = generateRandomFloat(0.1f, 1.0f);
-        return glm::vec3(col,col, col);
+        return glm::vec3(col,col,col);
     }
 
     float magnitudeToSize(float magnitude) {
