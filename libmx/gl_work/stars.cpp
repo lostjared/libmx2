@@ -54,16 +54,13 @@ uniform sampler2D spriteTexture;
 void main() {
     vec4 texColor = texture(spriteTexture, gl_PointCoord);
     
-    // Discard fully transparent pixels to remove black background
     if (texColor.a < 0.01) {
         discard;
     }
     
-    // Apply a smooth circular gradient for star glow
     float dist = length(gl_PointCoord - vec2(0.5));
     float alpha = 1.0 - smoothstep(0.0, 0.5, dist);
     
-    // Combine texture alpha with distance-based alpha
     FragColor = vec4(fragColor.rgb * texColor.rgb, fragColor.a * texColor.a * alpha);
 }
 )";
@@ -119,16 +116,13 @@ uniform sampler2D spriteTexture;
 void main() {
     vec4 texColor = texture(spriteTexture, gl_PointCoord);
     
-    // Discard fully transparent pixels to remove black background
     if (texColor.a < 0.01) {
         discard;
     }
     
-    // Apply a smooth circular gradient for star glow
     float dist = length(gl_PointCoord - vec2(0.5));
     float alpha = 1.0 - smoothstep(0.0, 0.5, dist);
     
-    // Combine texture alpha with distance-based alpha
     FragColor = vec4(fragColor.rgb * texColor.rgb, fragColor.a * texColor.a * alpha);
 }
 )";
@@ -180,7 +174,13 @@ public:
         float origX, origY, origZ;  
         float explodeVx, explodeVy, explodeVz;
         float explosionDelay;  
-        float brightness;      
+        float brightness;
+        
+        float rotationSpeed;     
+        float rotationAxisX;     
+        float rotationAxisY;     
+        float rotationAxisZ;     
+        float currentRotation;   
     };
 
     static constexpr int NUM_STARS = 35000;  
@@ -271,6 +271,26 @@ public:
             star.explosionDelay = generateRandomFloat(0.0f, 0.5f);
             star.brightness = generateRandomFloat(0.5f, 2.0f);
             
+            star.rotationSpeed = generateRandomFloat(50.0f, 500.0f);  
+            
+            star.rotationAxisX = generateRandomFloat(-1.0f, 1.0f);
+            star.rotationAxisY = generateRandomFloat(-1.0f, 1.0f);
+            star.rotationAxisZ = generateRandomFloat(-1.0f, 1.0f);
+            float axisLen = sqrt(star.rotationAxisX * star.rotationAxisX + 
+                               star.rotationAxisY * star.rotationAxisY + 
+                               star.rotationAxisZ * star.rotationAxisZ);
+            if (axisLen > 0.001f) {
+                star.rotationAxisX /= axisLen;
+                star.rotationAxisY /= axisLen;
+                star.rotationAxisZ /= axisLen;
+            } else {
+                star.rotationAxisX = 0.0f;
+                star.rotationAxisY = 1.0f;
+                star.rotationAxisZ = 0.0f;
+            }
+            
+            star.currentRotation = 0.0f;
+            
             star.magnitude = generateRandomFloat(-1.5f, 6.5f);
             star.temperature = generateRandomFloat(2000.0f, 40000.0f);
             star.size = magnitudeToSize(star.magnitude);
@@ -338,6 +358,7 @@ public:
             star.x = star.origX;
             star.y = star.origY;
             star.z = star.origZ;
+            star.currentRotation = 0.0f;  
         }
         isExploding = false;
         continuousExplosion = false;
@@ -413,7 +434,6 @@ public:
         if (isExploding || continuousExplosion) {
             explosionTime += deltaTime;
             
-            
             if (explosionTime < 1.0f) {
                 coreCollapse = explosionTime / 1.0f;
             } else {
@@ -437,6 +457,11 @@ public:
                 float starExplosionTime = explosionTime - star.explosionDelay;
                 
                 if (starExplosionTime > 0.0f) {
+                    star.currentRotation += star.rotationSpeed * deltaTime;
+                    if (star.currentRotation > 360.0f) {
+                        star.currentRotation -= 360.0f;
+                    }
+                    
                     if (starExplosionTime < 1.0f) {
                         float collapseAmount = 0.95f; 
                         star.x = star.origX + (star.origX * (collapseAmount - 1.0f)) * starExplosionTime;
@@ -454,6 +479,33 @@ public:
                         star.y += star.explodeVy * deltaTime * acceleration;
                         star.z += star.explodeVz * deltaTime * acceleration;
                     }
+                    
+                    float offsetRadius = 2.0f;  
+                    
+                    float angle = glm::radians(star.currentRotation);
+                    float cosAngle = cos(angle);
+                    float sinAngle = sin(angle);
+                    
+                    float ax = star.rotationAxisX;
+                    float ay = star.rotationAxisY;
+                    float az = star.rotationAxisZ;
+                    
+                    float vx = offsetRadius;
+                    float vy = 0.0f;
+                    float vz = 0.0f;
+                    
+                    float dotProduct = ax * vx + ay * vy + az * vz;
+                    float crossX = ay * vz - az * vy;
+                    float crossY = az * vx - ax * vz;
+                    float crossZ = ax * vy - ay * vx;
+                    
+                    float rotatedX = vx * cosAngle + crossX * sinAngle + ax * dotProduct * (1.0f - cosAngle);
+                    float rotatedY = vy * cosAngle + crossY * sinAngle + ay * dotProduct * (1.0f - cosAngle);
+                    float rotatedZ = vz * cosAngle + crossZ * sinAngle + az * dotProduct * (1.0f - cosAngle);
+                    
+                    star.x += rotatedX * 0.1f;  
+                    star.y += rotatedY * 0.1f;
+                    star.z += rotatedZ * 0.1f;
                 }
             } else {
                 star.x += star.vx * deltaTime;
@@ -493,6 +545,9 @@ public:
                             size *= (3.0f + expansionProgress * 2.0f);
                         }
                     }
+                    
+                    float rotationPulse = 1.0f + 0.2f * sin(glm::radians(star.currentRotation * 2.0f));
+                    size *= rotationPulse;
                 }
                 
                 if (distFromOrigin > 500.0f) {
@@ -515,6 +570,15 @@ public:
                     starColor.r = glm::mix(starColor.r, 1.0f, flashIntensity * 0.8f);
                     starColor.g = glm::mix(starColor.g, 1.0f, flashIntensity * 0.8f);
                     starColor.b = glm::mix(starColor.b, 1.0f, flashIntensity);
+                    
+                    float rotationHue = star.currentRotation / 360.0f;
+                    starColor.r += sin(rotationHue * M_PI * 2.0f) * 0.1f;
+                    starColor.g += sin(rotationHue * M_PI * 2.0f + M_PI * 0.66f) * 0.1f;
+                    starColor.b += sin(rotationHue * M_PI * 2.0f + M_PI * 1.33f) * 0.1f;
+                    
+                    starColor.r = glm::clamp(starColor.r, 0.0f, 1.0f);
+                    starColor.g = glm::clamp(starColor.g, 0.0f, 1.0f);
+                    starColor.b = glm::clamp(starColor.b, 0.0f, 1.0f);
                 }
             }
             
