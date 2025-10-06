@@ -460,8 +460,236 @@ public:
     }
 };
 
+class Explosion {
+public:
+    struct Particle {
+        glm::vec3 position;
+        glm::vec3 velocity;
+        glm::vec4 color;
+        float lifetime;
+        float maxLifetime;
+        float size;
+        bool active;
+    };
+
+    std::vector<Particle> particles;
+    GLuint vao, vbo;
+    gl::ShaderProgram explosionShader;
+
+    Explosion() = default;
+    ~Explosion() {
+        if (vao != 0) glDeleteVertexArrays(1, &vao);
+        if (vbo != 0) glDeleteBuffers(1, &vbo);
+    }
+
+    void load(gl::GLWindow *win) {
+#ifndef __EMSCRIPTEN__
+        const char *vertexShader = R"(
+            #version 330 core
+            layout(location = 0) in vec3 aPos;
+            layout(location = 1) in vec4 aColor;
+            layout(location = 2) in float aSize;
+            
+            out vec4 particleColor;
+            
+            uniform mat4 view;
+            uniform mat4 projection;
+            
+            void main() {
+                gl_Position = projection * view * vec4(aPos, 1.0);
+                gl_PointSize = aSize;
+                particleColor = aColor;
+            }
+        )";
+
+        const char *fragmentShader = R"(
+            #version 330 core
+            in vec4 particleColor;
+            out vec4 FragColor;
+            
+            void main() {
+                vec2 coord = gl_PointCoord - vec2(0.5);
+                float dist = length(coord);
+                if (dist > 0.5) discard;
+                
+                float fade = 1.0 - smoothstep(0.0, 0.5, dist);
+                FragColor = vec4(particleColor.rgb, particleColor.a * fade);
+            }
+        )";
+#else
+        const char *vertexShader = R"(#version 300 es
+            precision highp float;
+            layout(location = 0) in vec3 aPos;
+            layout(location = 1) in vec4 aColor;
+            layout(location = 2) in float aSize;
+            
+            out vec4 particleColor;
+            
+            uniform mat4 view;
+            uniform mat4 projection;
+            
+            void main() {
+                gl_Position = projection * view * vec4(aPos, 1.0);
+                gl_PointSize = aSize;
+                particleColor = aColor;
+            }
+        )";
+
+        const char *fragmentShader = R"(#version 300 es
+            precision highp float;
+            in vec4 particleColor;
+            out vec4 FragColor;
+            
+            void main() {
+                vec2 coord = gl_PointCoord - vec2(0.5);
+                float dist = length(coord);
+                if (dist > 0.5) discard;
+                
+                float fade = 1.0 - smoothstep(0.0, 0.5, dist);
+                FragColor = vec4(particleColor.rgb, particleColor.a * fade);
+            }
+        )";
+#endif
+
+        if(!explosionShader.loadProgramFromText(vertexShader, fragmentShader)) {
+            throw mx::Exception("Failed to load explosion shader");
+        }
+
+        glGenVertexArrays(1, &vao);
+        glGenBuffers(1, &vbo);
+        
+        glBindVertexArray(vao);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, 1000 * 8 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+        
+        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+        glEnableVertexAttribArray(1);
+        
+        glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(7 * sizeof(float)));
+        glEnableVertexAttribArray(2);
+        
+        glBindVertexArray(0);
+    }
+
+    void createExplosion(const glm::vec3& position, int numParticles = 100) {
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_real_distribution<float> speed(2.0f, 10.0f);
+        std::uniform_real_distribution<float> angle(0.0f, 2.0f * M_PI);
+        std::uniform_real_distribution<float> elevation(-M_PI/4.0f, M_PI/4.0f);
+        std::uniform_real_distribution<float> colorVariation(0.8f, 1.0f);
+
+        for (int i = 0; i < numParticles; ++i) {
+            Particle particle;
+            particle.position = position;
+            
+            float theta = angle(gen);
+            float phi = elevation(gen);
+            float velocity = speed(gen);
+            
+            particle.velocity = glm::vec3(
+                velocity * cos(phi) * cos(theta),
+                velocity * sin(phi),
+                velocity * cos(phi) * sin(theta)
+            );
+            
+            float r = colorVariation(gen);
+            float g = colorVariation(gen) * 0.5f;
+            float b = 0.0f;
+            particle.color = glm::vec4(r, g, b, 1.0f);
+            
+            particle.lifetime = 0.0f;
+            particle.maxLifetime = 1.0f + speed(gen) * 0.2f;
+            particle.size = 10.0f + speed(gen) * 2.0f;
+            particle.active = true;
+            
+            particles.push_back(particle);
+        }
+        
+        std::cout << "Explosion created at (" << position.x << ", " << position.y << ", " << position.z 
+                  << ") with " << numParticles << " particles\n";
+    }
+
+    void update(float deltaTime) {
+        for (auto& particle : particles) {
+            if (!particle.active) continue;
+
+            particle.position += particle.velocity * deltaTime;
+            particle.velocity.y -= 9.8f * deltaTime; 
+            particle.lifetime += deltaTime;
+
+            float progress = particle.lifetime / particle.maxLifetime;
+            particle.color.a = 1.0f - progress;
+            particle.size *= 0.98f; 
+
+            if (particle.lifetime >= particle.maxLifetime) {
+                particle.active = false;
+            }
+        }
+
+        particles.erase(
+            std::remove_if(particles.begin(), particles.end(),
+                [](const Particle& p) { return !p.active; }),
+            particles.end()
+        );
+    }
+
+    void draw(const glm::mat4& view, const glm::mat4& projection) {
+        if (particles.empty()) return;
+
+#ifndef __EMSCRIPTEN__
+        glEnable(GL_PROGRAM_POINT_SIZE);
+#endif
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+        glDepthMask(GL_FALSE);
+
+        explosionShader.useProgram();
+        
+        GLuint viewLoc = glGetUniformLocation(explosionShader.id(), "view");
+        GLuint projectionLoc = glGetUniformLocation(explosionShader.id(), "projection");
+        
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+
+        std::vector<float> vertexData;
+        for (const auto& particle : particles) {
+            if (!particle.active) continue;
+
+            vertexData.push_back(particle.position.x);
+            vertexData.push_back(particle.position.y);
+            vertexData.push_back(particle.position.z);
+            vertexData.push_back(particle.color.r);
+            vertexData.push_back(particle.color.g);
+            vertexData.push_back(particle.color.b);
+            vertexData.push_back(particle.color.a);
+            vertexData.push_back(particle.size);
+        }
+
+        if (!vertexData.empty()) {
+            glBindVertexArray(vao);
+            glBindBuffer(GL_ARRAY_BUFFER, vbo);
+            glBufferSubData(GL_ARRAY_BUFFER, 0, vertexData.size() * sizeof(float), vertexData.data());
+            glDrawArrays(GL_POINTS, 0, particles.size());
+            glBindVertexArray(0);
+        }
+
+        glDepthMask(GL_TRUE);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    }
+};
+
 class Projectile {
 public:
+    struct TrailPoint {
+        glm::vec3 position;
+        float lifetime;
+        float maxLifetime;
+    };
+
     struct Bullet {
         glm::vec3 position;
         glm::vec3 direction;
@@ -469,16 +697,22 @@ public:
         float lifetime;
         float maxLifetime;
         bool active;
+        std::vector<TrailPoint> trail;
+        float trailTimer;
     };
 
     std::vector<Bullet> bullets;
     GLuint vao, vbo;
+    GLuint trailVao, trailVbo;
     gl::ShaderProgram bulletShader;
+    gl::ShaderProgram trailShader;
 
     Projectile() = default;
     ~Projectile() {
         if (vao != 0) glDeleteVertexArrays(1, &vao);
         if (vbo != 0) glDeleteBuffers(1, &vbo);
+        if (trailVao != 0) glDeleteVertexArrays(1, &trailVao);
+        if (trailVbo != 0) glDeleteBuffers(1, &trailVbo);
     }
 
     void load(gl::GLWindow *win) {
@@ -510,8 +744,42 @@ public:
                 if (dist > 0.5) discard;
                 
                 float fade = 1.0 - smoothstep(0.0, 0.5, dist);
-                fade = pow(fade, 0.5); 
+                fade = pow(fade, 0.5);
                 FragColor = vec4(bulletColor * 1.5, alpha * fade);
+            }
+        )";
+
+        const char *trailVertexShader = R"(
+            #version 330 core
+            layout(location = 0) in vec3 aPos;
+            layout(location = 1) in float aAlpha;
+            
+            out float trailAlpha;
+            
+            uniform mat4 view;
+            uniform mat4 projection;
+            
+            void main() {
+                gl_Position = projection * view * vec4(aPos, 1.0);
+                gl_PointSize = 8.0;
+                trailAlpha = aAlpha;
+            }
+        )";
+
+        const char *trailFragmentShader = R"(
+            #version 330 core
+            in float trailAlpha;
+            out vec4 FragColor;
+            
+            uniform vec3 trailColor;
+            
+            void main() {
+                vec2 coord = gl_PointCoord - vec2(0.5);
+                float dist = length(coord);
+                if (dist > 0.5) discard;
+                
+                float fade = 1.0 - smoothstep(0.0, 0.5, dist);
+                FragColor = vec4(trailColor, trailAlpha * fade);
             }
         )";
 #else
@@ -546,10 +814,48 @@ public:
                 FragColor = vec4(bulletColor * 1.5, alpha * fade);
             }
         )";
+
+        const char *trailVertexShader = R"(#version 300 es
+            precision highp float;
+            layout(location = 0) in vec3 aPos;
+            layout(location = 1) in float aAlpha;
+            
+            out float trailAlpha;
+            
+            uniform mat4 view;
+            uniform mat4 projection;
+            
+            void main() {
+                gl_Position = projection * view * vec4(aPos, 1.0);
+                gl_PointSize = 8.0;
+                trailAlpha = aAlpha;
+            }
+        )";
+
+        const char *trailFragmentShader = R"(#version 300 es
+            precision highp float;
+            in float trailAlpha;
+            out vec4 FragColor;
+            
+            uniform vec3 trailColor;
+            
+            void main() {
+                vec2 coord = gl_PointCoord - vec2(0.5);
+                float dist = length(coord);
+                if (dist > 0.5) discard;
+                
+                float fade = 1.0 - smoothstep(0.0, 0.5, dist);
+                FragColor = vec4(trailColor, trailAlpha * fade);
+            }
+        )";
 #endif
 
         if(!bulletShader.loadProgramFromText(vertexShader, fragmentShader)) {
             throw mx::Exception("Failed to load bullet shader");
+        }
+
+        if(!trailShader.loadProgramFromText(trailVertexShader, trailFragmentShader)) {
+            throw mx::Exception("Failed to load trail shader");
         }
 
         float vertex[] = { 0.0f, 0.0f, 0.0f };
@@ -565,6 +871,21 @@ public:
         glEnableVertexAttribArray(0);
         
         glBindVertexArray(0);
+
+        glGenVertexArrays(1, &trailVao);
+        glGenBuffers(1, &trailVbo);
+        
+        glBindVertexArray(trailVao);
+        glBindBuffer(GL_ARRAY_BUFFER, trailVbo);
+        glBufferData(GL_ARRAY_BUFFER, 1000 * 4 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+        
+        glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(3 * sizeof(float)));
+        glEnableVertexAttribArray(1);
+        
+        glBindVertexArray(0);
         
         std::cout << "Projectile system initialized\n";
     }
@@ -575,22 +896,44 @@ public:
         bullet.direction = glm::normalize(direction);
         bullet.speed = 50.0f;
         bullet.lifetime = 0.0f;
-        bullet.maxLifetime = 10.0f; 
+        bullet.maxLifetime = 10.0f;
         bullet.active = true;
+        bullet.trailTimer = 0.0f;
         bullets.push_back(bullet);
         std::cout << "Bullet fired from (" << position.x << ", " << position.y << ", " << position.z 
                   << ") in direction (" << direction.x << ", " << direction.y << ", " << direction.z << ")\n";
     }
 
-    void update(float deltaTime, Objects& objects) {
+    void update(float deltaTime, Objects& objects, Explosion& explosion) {
         for (auto& bullet : bullets) {
             if (!bullet.active) continue;
 
             bullet.position += bullet.direction * bullet.speed * deltaTime;
             bullet.lifetime += deltaTime;
+            bullet.trailTimer += deltaTime;
+
+            if (bullet.trailTimer >= 0.02f) {
+                TrailPoint trailPoint;
+                trailPoint.position = bullet.position;
+                trailPoint.lifetime = 0.0f;
+                trailPoint.maxLifetime = 0.5f;
+                bullet.trail.push_back(trailPoint);
+                bullet.trailTimer = 0.0f;
+            }
+
+            for (auto& point : bullet.trail) {
+                point.lifetime += deltaTime;
+            }
+
+            bullet.trail.erase(
+                std::remove_if(bullet.trail.begin(), bullet.trail.end(),
+                    [](const TrailPoint& p) { return p.lifetime >= p.maxLifetime; }),
+                bullet.trail.end()
+            );
 
             float hitIndex = -1;
             if (objects.checkCollision(bullet.position, hitIndex)) {
+                explosion.createExplosion(bullet.position, 150);
                 objects.removeObject(static_cast<int>(hitIndex));
                 bullet.active = false;
                 std::cout << "Bullet hit object " << static_cast<int>(hitIndex) << "!\n";
@@ -616,19 +959,51 @@ public:
 #ifndef __EMSCRIPTEN__
         glEnable(GL_PROGRAM_POINT_SIZE);
 #endif
-        glDisable(GL_DEPTH_TEST); 
+        glDisable(GL_DEPTH_TEST);
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE);
 
-        bulletShader.useProgram();
+        trailShader.useProgram();
         
-        GLuint viewLoc = glGetUniformLocation(bulletShader.id(), "view");
-        GLuint projectionLoc = glGetUniformLocation(bulletShader.id(), "projection");
-        GLuint colorLoc = glGetUniformLocation(bulletShader.id(), "bulletColor");
+        GLuint viewLoc = glGetUniformLocation(trailShader.id(), "view");
+        GLuint projectionLoc = glGetUniformLocation(trailShader.id(), "projection");
+        GLuint colorLoc = glGetUniformLocation(trailShader.id(), "trailColor");
         
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-        glUniform3f(colorLoc, 1.0f, 0.5f, 0.0f); 
+        glUniform3f(colorLoc, 1.0f, 0.7f, 0.0f);
+
+        for (const auto& bullet : bullets) {
+            if (!bullet.active || bullet.trail.empty()) continue;
+
+            std::vector<float> trailData;
+            for (const auto& point : bullet.trail) {
+                float fadeProgress = point.lifetime / point.maxLifetime;
+                float alpha = 1.0f - fadeProgress;
+
+                trailData.push_back(point.position.x);
+                trailData.push_back(point.position.y);
+                trailData.push_back(point.position.z);
+                trailData.push_back(alpha);
+            }
+
+            if (!trailData.empty()) {
+                glBindVertexArray(trailVao);
+                glBindBuffer(GL_ARRAY_BUFFER, trailVbo);
+                glBufferSubData(GL_ARRAY_BUFFER, 0, trailData.size() * sizeof(float), trailData.data());
+                glDrawArrays(GL_POINTS, 0, bullet.trail.size());
+            }
+        }
+
+        bulletShader.useProgram();
+        
+        viewLoc = glGetUniformLocation(bulletShader.id(), "view");
+        projectionLoc = glGetUniformLocation(bulletShader.id(), "projection");
+        colorLoc = glGetUniformLocation(bulletShader.id(), "bulletColor");
+        
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+        glUniform3f(colorLoc, 1.0f, 0.5f, 0.0f);
 
         glBindVertexArray(vao);
 
@@ -762,6 +1137,7 @@ public:
         game_floor.load(win);
         game_objects.load(win);
         projectiles.load(win);
+        explosion.load(win); 
         crosshair.load(win); 
         
         SDL_SetRelativeMouseMode(SDL_TRUE);
@@ -809,6 +1185,7 @@ public:
         
         game_objects.draw(win, view, projection, game_floor.getCameraPosition());
         projectiles.draw(win, view, projection);
+        explosion.draw(view, projection); 
         crosshair.draw(); 
         
         win->text.setColor({255, 255, 255, 255});
@@ -919,13 +1296,14 @@ public:
         float currentMinHeight = isCrouching ? 0.8f : 1.7f;
         if (cameraPos.y < currentMinHeight) {
             cameraPos.y = currentMinHeight;
-            jumpVelocity = 0.0f;  
+            jumpVelocity = 0.0f;
         }
         
         game_floor.setCameraPosition(cameraPos);
         game_floor.update(deltaTime);
         game_objects.update(deltaTime);
-        projectiles.update(deltaTime, game_objects); 
+        projectiles.update(deltaTime, game_objects, explosion); 
+        explosion.update(deltaTime); 
     }
     
 private:
@@ -934,7 +1312,8 @@ private:
     Floor game_floor;
     Objects game_objects;
     Projectile projectiles;
-    Crosshair crosshair; 
+    Explosion explosion; 
+    Crosshair crosshair;
     float lastX = 0.0f, lastY = 0.0f;
     float yaw = -90.0f; 
     float pitch = 0.0f;
