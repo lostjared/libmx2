@@ -933,7 +933,7 @@ public:
 
             float hitIndex = -1;
             if (objects.checkCollision(bullet.position, hitIndex)) {
-                explosion.createExplosion(bullet.position, 150);
+                explosion.createExplosion(bullet.position, 1000);
                 objects.removeObject(static_cast<int>(hitIndex));
                 bullet.active = false;
                 std::cout << "Bullet hit object " << static_cast<int>(hitIndex) << "!\n";
