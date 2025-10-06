@@ -782,6 +782,25 @@ public:
                 FragColor = vec4(trailColor, trailAlpha * fade);
             }
         )";
+
+        const char *debugVertexShader = R"(
+            #version 330 core
+            layout(location = 0) in vec3 aPos;
+            
+            void main() {
+                gl_Position = vec4(aPos, 1.0);
+                gl_PointSize = 5.0;
+            }
+        )";
+
+        const char *debugFragmentShader = R"(
+            #version 330 core
+            out vec4 FragColor;
+            
+            void main() {
+                FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+            }
+        )";
 #else
         const char *vertexShader = R"(#version 300 es
             precision highp float;
@@ -846,6 +865,25 @@ public:
                 
                 float fade = 1.0 - smoothstep(0.0, 0.5, dist);
                 FragColor = vec4(trailColor, trailAlpha * fade);
+            }
+        )";
+
+        const char *debugVertexShader = R"(#version 300 es
+            precision highp float;
+            layout(location = 0) in vec3 aPos;
+            
+            void main() {
+                gl_Position = vec4(aPos, 1.0);
+                gl_PointSize = 5.0;
+            }
+        )";
+
+        const char *debugFragmentShader = R"(#version 300 es
+            precision highp float;
+            out vec4 FragColor;
+            
+            void main() {
+                FragColor = vec4(1.0, 0.0, 0.0, 1.0);
             }
         )";
 #endif
@@ -1202,45 +1240,15 @@ public:
     }
     
     void event(gl::GLWindow *win, SDL_Event &e) override {
-        const float cameraSpeed = 0.1f;
-        const float minHeight = 1.7f;  
-        
         if (e.type == SDL_KEYDOWN) {
-            glm::vec3 cameraPos = game_floor.getCameraPosition();
-            glm::vec3 cameraFront = game_floor.getCameraFront();
-            
-            glm::vec3 horizontalFront = glm::normalize(glm::vec3(cameraFront.x, 0.0f, cameraFront.z));
-            glm::vec3 cameraRight = glm::normalize(glm::cross(horizontalFront, glm::vec3(0.0f, 1.0f, 0.0f)));
-            
             switch (e.key.keysym.sym) {
-                case SDLK_w:
-                    cameraPos += (isSprinting ? cameraSpeed * 2.0f : cameraSpeed) * horizontalFront;
-                    break;
-                case SDLK_s:
-                    cameraPos -= cameraSpeed * horizontalFront;
-                    break;
-                case SDLK_a:
-                    cameraPos -= cameraSpeed * cameraRight;
-                    break;
-                case SDLK_d:
-                    cameraPos += cameraSpeed * cameraRight;
-                    break;
                 case SDLK_ESCAPE:
                     toggleMouseCapture();
                     break;
                 case SDLK_f: 
                     showFPS = !showFPS;
                     break;
-                case SDLK_SPACE:  
-                    if (cameraPos.y <= minHeight + 0.01f) {  
-                        jumpVelocity = 0.3f;  
-                    }
-                    break;
             }
-            
-            cameraPos.y = std::max(cameraPos.y, minHeight);
-            
-            game_floor.setCameraPosition(cameraPos);
         }
         
         if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT && mouseCapture) {
@@ -1264,7 +1272,7 @@ public:
             updateCameraVectors();
         }
     }
-    
+
     void toggleMouseCapture() {
         mouseCapture = !mouseCapture;
         SDL_SetRelativeMouseMode(mouseCapture ? SDL_TRUE : SDL_FALSE);
@@ -1273,12 +1281,50 @@ public:
     void update(float deltaTime) {
         this->deltaTime = deltaTime;
         
+        
+        const Uint8 *keys = SDL_GetKeyboardState(NULL);
+        
         glm::vec3 cameraPos = game_floor.getCameraPosition();
+        glm::vec3 cameraFront = game_floor.getCameraFront();
+        
+        
+        const float cameraSpeed = 0.1f;
+        const float minHeight = 1.7f;
+        
+        glm::vec3 horizontalFront = glm::normalize(glm::vec3(cameraFront.x, 0.0f, cameraFront.z));
+        glm::vec3 cameraRight = glm::normalize(glm::cross(horizontalFront, glm::vec3(0.0f, 1.0f, 0.0f)));
+        
+        
+        isSprinting = keys[SDL_SCANCODE_LSHIFT];
+        isCrouching = keys[SDL_SCANCODE_LCTRL];
+        
+        
+        if (keys[SDL_SCANCODE_W]) {
+            cameraPos += (isSprinting ? cameraSpeed * 2.0f : cameraSpeed) * horizontalFront;
+        }
+        if (keys[SDL_SCANCODE_S]) {
+            cameraPos -= cameraSpeed * horizontalFront;
+        }
+        if (keys[SDL_SCANCODE_A]) {
+            cameraPos -= cameraSpeed * cameraRight;
+        }
+        if (keys[SDL_SCANCODE_D]) {
+            cameraPos += cameraSpeed * cameraRight;
+        }
+        
+        
+        if (keys[SDL_SCANCODE_SPACE]) {
+            if (cameraPos.y <= minHeight + 0.01f) {
+                jumpVelocity = 0.3f;
+            }
+        }
+        
         
         cameraPos.y += jumpVelocity * deltaTime * 60.0f;
         jumpVelocity -= gravity * deltaTime * 60.0f;
         
-        float currentMinHeight = isCrouching ? 0.8f : 1.7f;
+        
+        float currentMinHeight = isCrouching ? 0.8f : minHeight;
         if (cameraPos.y < currentMinHeight) {
             cameraPos.y = currentMinHeight;
             jumpVelocity = 0.0f;
@@ -1288,19 +1334,7 @@ public:
         game_floor.update(deltaTime);
         game_objects.update(deltaTime);
         projectiles.update(deltaTime, game_objects, explosion); 
-        explosion.update(deltaTime); 
-
-        const Uint8 *keys = SDL_GetKeyboardState(0);
-        if(keys[SDL_SCANCODE_LSHIFT]) {
-            isSprinting = true;
-        } else {
-            isSprinting = false;
-        }
-        if(keys[SDL_SCANCODE_LCTRL]) {
-            isCrouching = true;
-        } else {
-            isCrouching = false;
-        }
+        explosion.update(deltaTime);
     }
     
 private:
