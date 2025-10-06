@@ -1243,15 +1243,6 @@ public:
             game_floor.setCameraPosition(cameraPos);
         }
         
-        if (e.type == SDL_KEYUP) {
-            if (e.key.keysym.sym == SDLK_LCTRL) {
-                isCrouching = false;
-            }
-            if (e.key.keysym.sym == SDLK_LSHIFT) {
-                isSprinting = false;
-            }
-        }
-        
         if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT && mouseCapture) {
             glm::vec3 firePosition = game_floor.getCameraPosition();
             glm::vec3 fireDirection = game_floor.getCameraFront();
