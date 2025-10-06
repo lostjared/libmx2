@@ -202,7 +202,9 @@ public:
         glm::vec3 position;
         glm::vec3 rotation;
         glm::vec3 scale;
-        float rotationSpeed; 
+        float rotationSpeed;
+        bool active;  
+        float radius; 
     };
 
     std::vector<Object> objects;
@@ -247,24 +249,20 @@ public:
             uniform vec3 lightColor;
             
             void main() {
-        
                 float ambientStrength = 0.3;
                 vec3 ambient = ambientStrength * lightColor;
                 
-        
                 vec3 norm = normalize(Normal);
                 vec3 lightDir = normalize(lightPos - FragPos);
                 float diff = max(dot(norm, lightDir), 0.0);
                 vec3 diffuse = diff * lightColor;
                 
-        
                 float specularStrength = 0.5;
                 vec3 viewDir = normalize(viewPos - FragPos);
                 vec3 reflectDir = reflect(-lightDir, norm);
                 float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
                 vec3 specular = specularStrength * spec * lightColor;
                 
-        
                 vec4 texColor = texture(objectTexture, TexCoord);
                 vec3 result = (ambient + diffuse + specular) * vec3(texColor);
                 FragColor = vec4(result, texColor.a);
@@ -351,49 +349,76 @@ public:
         
         saturn.setTextures(win, win->util.getFilePath("data/planet.tex"), 
                                              win->util.getFilePath("data"));
-                
 
         if(!bird.openModel(win->util.getFilePath("data/bird.mxmod.z"))) {
             throw mx::Exception("Failed to load bird model");
         }
         bird.setTextures(win, win->util.getFilePath("data/bird.tex"), 
                                         win->util.getFilePath("data"));
-        
 
         for(int i = 0; i < MAX_OBJECTS; ++i) {
-        
+            objects[i].active = true; 
+            
             if(modelTypes[i] == 0) { 
                 objects[i].model = &saturn;  
                 float scale = 0.4f + ((rand() % 1000) / 1000.0f) * 0.4f;
                 objects[i].scale = glm::vec3(scale, scale, scale);
                 objects[i].rotationSpeed = 5.0f + ((rand() % 1000) / 1000.0f) * 10.0f;
+                objects[i].radius = 2.0f * scale; 
             } 
             else { 
                 objects[i].model = &bird;    
                 float scale = 0.3f + ((rand() % 1000) / 1000.0f) * 0.2f;
                 objects[i].scale = glm::vec3(scale, scale, scale);
                 objects[i].rotationSpeed = 20.0f + ((rand() % 1000) / 1000.0f) * 40.0f;
+                objects[i].radius = 1.5f * scale; 
             }
-            
             
             float x = ((i % 3) - 1) * 20.0f;  
             float z = ((i / 3) - 1) * 20.0f;  
             
-            
             x += ((rand() % 1000) / 1000.0f) * 10.0f - 5.0f;
             z += ((rand() % 1000) / 1000.0f) * 10.0f - 5.0f;
             
-            
             float y = (modelTypes[i] == 1) ? 1.5f + (rand() % 100) / 100.0f : 2.5f;
             objects[i].position = glm::vec3(x, y, z);
-            
             
             objects[i].rotation = glm::vec3(0.0f, static_cast<float>(rand() % 360), 0.0f);
         }
     }
 
+    bool checkCollision(const glm::vec3& point, float& hitObjectIndex) {
+        for(size_t i = 0; i < objects.size(); ++i) {
+            if (!objects[i].active) continue;
+            
+            float distance = glm::length(objects[i].position - point);
+            if (distance < objects[i].radius) {
+                hitObjectIndex = i;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void removeObject(int index) {
+        if (index >= 0 && index < static_cast<int>(objects.size())) {
+            objects[index].active = false;
+            std::cout << "Object " << index << " destroyed!\n";
+        }
+    }
+
+    int getActiveCount() const {
+        int count = 0;
+        for (const auto& obj : objects) {
+            if (obj.active) count++;
+        }
+        return count;
+    }
+
     void update(float deltaTime) {
         for(auto &obj : objects) {
+            if (!obj.active) continue; 
+            
             obj.rotation.y += obj.rotationSpeed * deltaTime;
             if(obj.rotation.y > 360.0f) {
                 obj.rotation.y -= 360.0f;
@@ -416,9 +441,9 @@ public:
         glUniform3f(viewPosLoc, cameraPos.x, cameraPos.y, cameraPos.z);
         glUniform3f(lightColorLoc, 1.0f, 1.0f, 1.0f);
         
-        
         for(auto &obj : objects) {
-        
+            if (!obj.active) continue; 
+            
             glm::mat4 model = glm::mat4(1.0f);
             model = glm::translate(model, obj.position);
             model = glm::rotate(model, glm::radians(obj.rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
@@ -426,11 +451,9 @@ public:
             model = glm::rotate(model, glm::radians(obj.rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
             model = glm::scale(model, obj.scale);
             
-        
             GLuint modelLoc = glGetUniformLocation(obj_shader.id(), "model");
             glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
             
-        
             obj.model->setShaderProgram(&obj_shader, "objectTexture");
             obj.model->drawArrays();
         }
@@ -543,7 +566,7 @@ public:
         
         glBindVertexArray(0);
         
-        printf("Projectile system initialized\n");
+        std::cout << "Projectile system initialized\n";
     }
 
     void fire(const glm::vec3& position, const glm::vec3& direction) {
@@ -552,22 +575,31 @@ public:
         bullet.direction = glm::normalize(direction);
         bullet.speed = 50.0f;
         bullet.lifetime = 0.0f;
-        bullet.maxLifetime = 5.0f; 
+        bullet.maxLifetime = 10.0f; 
         bullet.active = true;
         bullets.push_back(bullet);
-        printf("Bullet fired from (%.2f, %.2f, %.2f) in direction (%.2f, %.2f, %.2f)\n", 
-               position.x, position.y, position.z, direction.x, direction.y, direction.z);
+        std::cout << "Bullet fired from (" << position.x << ", " << position.y << ", " << position.z 
+                  << ") in direction (" << direction.x << ", " << direction.y << ", " << direction.z << ")\n";
     }
 
-    void update(float deltaTime) {
+    void update(float deltaTime, Objects& objects) {
         for (auto& bullet : bullets) {
             if (!bullet.active) continue;
 
             bullet.position += bullet.direction * bullet.speed * deltaTime;
             bullet.lifetime += deltaTime;
 
+            float hitIndex = -1;
+            if (objects.checkCollision(bullet.position, hitIndex)) {
+                objects.removeObject(static_cast<int>(hitIndex));
+                bullet.active = false;
+                std::cout << "Bullet hit object " << static_cast<int>(hitIndex) << "!\n";
+                continue;
+            }
+
             if (bullet.lifetime >= bullet.maxLifetime) {
                 bullet.active = false;
+                std::cout << "Bullet dissolved after " << bullet.lifetime << " seconds\n";
             }
         }
 
@@ -893,7 +925,7 @@ public:
         game_floor.setCameraPosition(cameraPos);
         game_floor.update(deltaTime);
         game_objects.update(deltaTime);
-        projectiles.update(deltaTime); 
+        projectiles.update(deltaTime, game_objects); 
     }
     
 private:
