@@ -1236,12 +1236,6 @@ public:
                         jumpVelocity = 0.3f;  
                     }
                     break;
-                case SDLK_LCTRL:
-                    isCrouching = true;
-                    break;
-                case SDLK_LSHIFT:
-                    isSprinting = true;
-                    break;
             }
             
             cameraPos.y = std::max(cameraPos.y, minHeight);
@@ -1304,6 +1298,18 @@ public:
         game_objects.update(deltaTime);
         projectiles.update(deltaTime, game_objects, explosion); 
         explosion.update(deltaTime); 
+
+        Uint8 *keys = SDL_GetKeyState(0);
+        if(keys[SDL_SCANCODE_LSHIFT]) {
+            isSprinting = true;
+        } else {
+            isSprinting = false;
+        }
+        if(keys[SDL_SCANCODE_LCTRL]) {
+            isCrouching = true;
+        } else {
+            isCrouching = false;
+        }
     }
     
 private:
