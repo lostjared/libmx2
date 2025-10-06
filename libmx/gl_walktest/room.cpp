@@ -783,24 +783,6 @@ public:
             }
         )";
 
-        const char *debugVertexShader = R"(
-            #version 330 core
-            layout(location = 0) in vec3 aPos;
-            
-            void main() {
-                gl_Position = vec4(aPos, 1.0);
-                gl_PointSize = 5.0;
-            }
-        )";
-
-        const char *debugFragmentShader = R"(
-            #version 330 core
-            out vec4 FragColor;
-            
-            void main() {
-                FragColor = vec4(1.0, 0.0, 0.0, 1.0);
-            }
-        )";
 #else
         const char *vertexShader = R"(#version 300 es
             precision highp float;
@@ -865,25 +847,6 @@ public:
                 
                 float fade = 1.0 - smoothstep(0.0, 0.5, dist);
                 FragColor = vec4(trailColor, trailAlpha * fade);
-            }
-        )";
-
-        const char *debugVertexShader = R"(#version 300 es
-            precision highp float;
-            layout(location = 0) in vec3 aPos;
-            
-            void main() {
-                gl_Position = vec4(aPos, 1.0);
-                gl_PointSize = 5.0;
-            }
-        )";
-
-        const char *debugFragmentShader = R"(#version 300 es
-            precision highp float;
-            out vec4 FragColor;
-            
-            void main() {
-                FragColor = vec4(1.0, 0.0, 0.0, 1.0);
             }
         )";
 #endif
