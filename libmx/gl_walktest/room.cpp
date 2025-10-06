@@ -1299,7 +1299,7 @@ public:
         projectiles.update(deltaTime, game_objects, explosion); 
         explosion.update(deltaTime); 
 
-        Uint8 *keys = SDL_GetKeyState(0);
+        const Uint8 *keys = SDL_GetKeyboardState(0);
         if(keys[SDL_SCANCODE_LSHIFT]) {
             isSprinting = true;
         } else {
