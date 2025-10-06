@@ -454,8 +454,8 @@ public:
 
     Projectile() = default;
     ~Projectile() {
-        glDeleteVertexArrays(1, &vao);
-        glDeleteBuffers(1, &vbo);
+        if (vao != 0) glDeleteVertexArrays(1, &vao);
+        if (vbo != 0) glDeleteBuffers(1, &vbo);
     }
 
     void load(gl::GLWindow *win) {
@@ -470,7 +470,7 @@ public:
             
             void main() {
                 gl_Position = projection * view * model * vec4(aPos, 1.0);
-                gl_PointSize = 10.0;
+                gl_PointSize = 15.0;
             }
         )";
 
@@ -486,8 +486,9 @@ public:
                 float dist = length(coord);
                 if (dist > 0.5) discard;
                 
-                float fade = 1.0 - (dist * 2.0);
-                FragColor = vec4(bulletColor, alpha * fade);
+                float fade = 1.0 - smoothstep(0.0, 0.5, dist);
+                fade = pow(fade, 0.5); 
+                FragColor = vec4(bulletColor * 1.5, alpha * fade);
             }
         )";
 #else
@@ -501,7 +502,7 @@ public:
             
             void main() {
                 gl_Position = projection * view * model * vec4(aPos, 1.0);
-                gl_PointSize = 10.0;
+                gl_PointSize = 15.0;
             }
         )";
 
@@ -517,8 +518,9 @@ public:
                 float dist = length(coord);
                 if (dist > 0.5) discard;
                 
-                float fade = 1.0 - (dist * 2.0);
-                FragColor = vec4(bulletColor, alpha * fade);
+                float fade = 1.0 - smoothstep(0.0, 0.5, dist);
+                fade = pow(fade, 0.5);
+                FragColor = vec4(bulletColor * 1.5, alpha * fade);
             }
         )";
 #endif
@@ -540,6 +542,8 @@ public:
         glEnableVertexAttribArray(0);
         
         glBindVertexArray(0);
+        
+        printf("Projectile system initialized\n");
     }
 
     void fire(const glm::vec3& position, const glm::vec3& direction) {
@@ -548,9 +552,11 @@ public:
         bullet.direction = glm::normalize(direction);
         bullet.speed = 50.0f;
         bullet.lifetime = 0.0f;
-        bullet.maxLifetime = 3.0f; 
+        bullet.maxLifetime = 5.0f; 
         bullet.active = true;
         bullets.push_back(bullet);
+        printf("Bullet fired from (%.2f, %.2f, %.2f) in direction (%.2f, %.2f, %.2f)\n", 
+               position.x, position.y, position.z, direction.x, direction.y, direction.z);
     }
 
     void update(float deltaTime) {
@@ -578,8 +584,9 @@ public:
 #ifndef __EMSCRIPTEN__
         glEnable(GL_PROGRAM_POINT_SIZE);
 #endif
+        glDisable(GL_DEPTH_TEST); 
         glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE);
 
         bulletShader.useProgram();
         
@@ -589,7 +596,7 @@ public:
         
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-        glUniform3f(colorLoc, 1.0f, 0.8f, 0.0f); 
+        glUniform3f(colorLoc, 1.0f, 0.5f, 0.0f); 
 
         glBindVertexArray(vao);
 
@@ -612,6 +619,103 @@ public:
         }
 
         glBindVertexArray(0);
+        glEnable(GL_DEPTH_TEST);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    }
+};
+
+class Crosshair {
+public:
+    GLuint vao, vbo;
+    gl::ShaderProgram crosshairShader;
+
+    Crosshair() = default;
+    ~Crosshair() {
+        glDeleteVertexArrays(1, &vao);
+        glDeleteBuffers(1, &vbo);
+    }
+
+    void load(gl::GLWindow *win) {
+#ifndef __EMSCRIPTEN__
+        const char *vertexShader = R"(
+            #version 330 core
+            layout(location = 0) in vec2 aPos;
+            
+            void main() {
+                gl_Position = vec4(aPos, 0.0, 1.0);
+            }
+        )";
+
+        const char *fragmentShader = R"(
+            #version 330 core
+            out vec4 FragColor;
+            
+            void main() {
+                FragColor = vec4(1.0, 1.0, 1.0, 0.8);
+            }
+        )";
+#else
+        const char *vertexShader = R"(#version 300 es
+            precision highp float;
+            layout(location = 0) in vec2 aPos;
+            
+            void main() {
+                gl_Position = vec4(aPos, 0.0, 1.0);
+            }
+        )";
+
+        const char *fragmentShader = R"(#version 300 es
+            precision highp float;
+            out vec4 FragColor;
+            
+            void main() {
+                FragColor = vec4(1.0, 1.0, 1.0, 0.8);
+            }
+        )";
+#endif
+
+        if(!crosshairShader.loadProgramFromText(vertexShader, fragmentShader)) {
+            throw mx::Exception("Failed to load crosshair shader");
+        }
+
+        float size = 0.02f;
+        float gap = 0.01f;
+        float vertices[] = {
+            -size - gap, 0.0f,
+            -gap, 0.0f,
+            gap, 0.0f,
+            size + gap, 0.0f,
+            0.0f, -size - gap,
+            0.0f, -gap,
+            0.0f, gap,
+            0.0f, size + gap
+        };
+
+        glGenVertexArrays(1, &vao);
+        glGenBuffers(1, &vbo);
+        
+        glBindVertexArray(vao);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+        
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+        
+        glBindVertexArray(0);
+    }
+
+    void draw() {
+        glDisable(GL_DEPTH_TEST);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        
+        crosshairShader.useProgram();
+        glBindVertexArray(vao);
+        glLineWidth(2.0f);
+        glDrawArrays(GL_LINES, 0, 8);
+        glBindVertexArray(0);
+        
+        glEnable(GL_DEPTH_TEST);
         glDisable(GL_BLEND);
     }
 };
@@ -625,7 +729,8 @@ public:
         font.loadFont(win->util.getFilePath("data/font.ttf"), 20);
         game_floor.load(win);
         game_objects.load(win);
-        projectiles.load(win); 
+        projectiles.load(win);
+        crosshair.load(win); 
         
         SDL_SetRelativeMouseMode(SDL_TRUE);
         lastX = win->w / 2.0f;
@@ -671,7 +776,8 @@ public:
                                             0.1f, 100.0f);
         
         game_objects.draw(win, view, projection, game_floor.getCameraPosition());
-        projectiles.draw(win, view, projection); 
+        projectiles.draw(win, view, projection);
+        crosshair.draw(); 
         
         win->text.setColor({255, 255, 255, 255});
         win->text.printText_Solid(font, 25.0f, 25.0f, 
@@ -681,6 +787,8 @@ public:
             float fps = 1.0f / deltaTime;
             win->text.printText_Solid(font, 25.0f, 65.0f, 
                                   "FPS: " + std::to_string(static_cast<int>(fps)));
+            win->text.printText_Solid(font, 25.0f, 95.0f, 
+                                  "Active Bullets: " + std::to_string(projectiles.bullets.size()));
         }
     }
     
@@ -793,7 +901,8 @@ private:
     Uint32 lastUpdateTime = SDL_GetTicks();
     Floor game_floor;
     Objects game_objects;
-    Projectile projectiles; 
+    Projectile projectiles;
+    Crosshair crosshair; 
     float lastX = 0.0f, lastY = 0.0f;
     float yaw = -90.0f; 
     float pitch = 0.0f;
