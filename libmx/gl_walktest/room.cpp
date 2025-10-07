@@ -170,66 +170,19 @@ public:
 
         for (const auto& wall : walls) {
             glm::vec3 dir = glm::normalize(wall.end - wall.start);
-            glm::vec3 normalInward = glm::vec3(dir.z, 0.0f, -dir.x);
-            glm::vec3 normalOutward = -normalInward;
-            
+            glm::vec3 inwardNormal = glm::vec3(dir.z, 0.0f, -dir.x);
+
             float length = glm::length(wall.end - wall.start);
             float texRepeat = length / 5.0f;
 
-            glm::vec3 innerStart = wall.start + normalInward * wallThickness;
-            glm::vec3 innerEnd = wall.end + normalInward * wallThickness;
-            
-            vertices.insert(vertices.end(), {
-                innerStart.x, 0.0f, innerStart.z, 0.0f, 0.0f, normalInward.x, normalInward.y, normalInward.z,
-                innerEnd.x, 0.0f, innerEnd.z, texRepeat, 0.0f, normalInward.x, normalInward.y, normalInward.z,
-                innerEnd.x, wall.height, innerEnd.z, texRepeat, 1.0f, normalInward.x, normalInward.y, normalInward.z,
-                innerStart.x, wall.height, innerStart.z, 0.0f, 1.0f, normalInward.x, normalInward.y, normalInward.z
-            });
-
-            indices.insert(indices.end(), {
-                indexOffset + 0, indexOffset + 1, indexOffset + 2,
-                indexOffset + 2, indexOffset + 3, indexOffset + 0
-            });
-            indexOffset += 4;
-
-            glm::vec3 outerStart = wall.start - normalInward * wallThickness;
-            glm::vec3 outerEnd = wall.end - normalInward * wallThickness;
-            
-            vertices.insert(vertices.end(), {
-                outerEnd.x, 0.0f, outerEnd.z, 0.0f, 0.0f, normalOutward.x, normalOutward.y, normalOutward.z,
-                outerStart.x, 0.0f, outerStart.z, texRepeat, 0.0f, normalOutward.x, normalOutward.y, normalOutward.z,
-                outerStart.x, wall.height, outerStart.z, texRepeat, 1.0f, normalOutward.x, normalOutward.y, normalOutward.z,
-                outerEnd.x, wall.height, outerEnd.z, 0.0f, 1.0f, normalOutward.x, normalOutward.y, normalOutward.z
-            });
-
-            indices.insert(indices.end(), {
-                indexOffset + 0, indexOffset + 1, indexOffset + 2,
-                indexOffset + 2, indexOffset + 3, indexOffset + 0
-            });
-            indexOffset += 4;
+            glm::vec3 innerStart = wall.start + inwardNormal * wallThickness;
+            glm::vec3 innerEnd   = wall.end   + inwardNormal * wallThickness;
 
             vertices.insert(vertices.end(), {
-                innerStart.x, wall.height, innerStart.z, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f,
-                innerEnd.x, wall.height, innerEnd.z, texRepeat, 0.0f, 0.0f, 1.0f, 0.0f,
-                outerEnd.x, wall.height, outerEnd.z, texRepeat, 0.2f, 0.0f, 1.0f, 0.0f,
-                outerStart.x, wall.height, outerStart.z, 0.0f, 0.2f, 0.0f, 1.0f, 0.0f
-            });
-
-            indices.insert(indices.end(), {
-                indexOffset + 0, indexOffset + 1, indexOffset + 2,
-                indexOffset + 2, indexOffset + 3, indexOffset + 0
-            });
-            indexOffset += 4;
-
-            glm::vec3 dirNorm = glm::normalize(wall.end - wall.start);
-            glm::vec3 startNormal = -dirNorm;
-            glm::vec3 endNormal   =  dirNorm;
-
-            vertices.insert(vertices.end(), {
-                innerStart.x, 0.0f,     innerStart.z, 0.0f, 0.0f,  startNormal.x, startNormal.y, startNormal.z, 
-                outerStart.x, 0.0f,     outerStart.z, 1.0f, 0.0f,  startNormal.x, startNormal.y, startNormal.z, 
-                outerStart.x, wall.height, outerStart.z, 1.0f, 1.0f, startNormal.x, startNormal.y, startNormal.z, 
-                innerStart.x, wall.height, innerStart.z, 0.0f, 1.0f, startNormal.x, startNormal.y, startNormal.z  
+                innerStart.x, 0.0f,        innerStart.z, 0.0f,      0.0f, inwardNormal.x, inwardNormal.y, inwardNormal.z,
+                innerEnd.x,   0.0f,        innerEnd.z,   texRepeat,  0.0f, inwardNormal.x, inwardNormal.y, inwardNormal.z,
+                innerEnd.x,   wall.height, innerEnd.z,   texRepeat,  1.0f, inwardNormal.x, inwardNormal.y, inwardNormal.z,
+                innerStart.x, wall.height, innerStart.z, 0.0f,      1.0f, inwardNormal.x, inwardNormal.y, inwardNormal.z
             });
             indices.insert(indices.end(), {
                 indexOffset + 0, indexOffset + 1, indexOffset + 2,
@@ -237,11 +190,12 @@ public:
             });
             indexOffset += 4;
 
+            glm::vec3 topNormal = glm::vec3(0.0f, 1.0f, 0.0f);
             vertices.insert(vertices.end(), {
-                outerEnd.x, 0.0f,     outerEnd.z, 0.0f, 0.0f,  endNormal.x, endNormal.y, endNormal.z, 
-                innerEnd.x, 0.0f,     innerEnd.z, 1.0f, 0.0f,  endNormal.x, endNormal.y, endNormal.z, 
-                innerEnd.x, wall.height, innerEnd.z, 1.0f, 1.0f, endNormal.x, endNormal.y, endNormal.z, 
-                outerEnd.x, wall.height, outerEnd.z, 0.0f, 1.0f, endNormal.x, endNormal.y, endNormal.z  
+                innerStart.x, wall.height, innerStart.z, 0.0f,      0.0f, topNormal.x, topNormal.y, topNormal.z,
+                innerEnd.x,   wall.height, innerEnd.z,   texRepeat,  0.0f, topNormal.x, topNormal.y, topNormal.z,
+                (innerEnd.x   - inwardNormal.x * wallThickness),   wall.height, (innerEnd.z   - inwardNormal.z * wallThickness), texRepeat, 0.2f, topNormal.x, topNormal.y, topNormal.z,
+                (innerStart.x - inwardNormal.x * wallThickness),   wall.height, (innerStart.z - inwardNormal.z * wallThickness), 0.0f,      0.2f, topNormal.x, topNormal.y, topNormal.z
             });
             indices.insert(indices.end(), {
                 indexOffset + 0, indexOffset + 1, indexOffset + 2,
@@ -298,30 +252,34 @@ public:
     void event(gl::GLWindow *win, SDL_Event &e) override {
     }
 
-    void draw(const glm::mat4& view, const glm::mat4& projection, const glm::vec3& cameraPos) {
+        void draw(const glm::mat4& view, const glm::mat4& projection, const glm::vec3& cameraPos) {
         wallShader.useProgram();
-        
+
         glm::mat4 model = glm::mat4(1.0f);
-        
         GLuint modelLoc = glGetUniformLocation(wallShader.id(), "model");
         GLuint viewLoc = glGetUniformLocation(wallShader.id(), "view");
         GLuint projectionLoc = glGetUniformLocation(wallShader.id(), "projection");
         GLuint lightPosLoc = glGetUniformLocation(wallShader.id(), "lightPos");
         GLuint viewPosLoc = glGetUniformLocation(wallShader.id(), "viewPos");
-        
+
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
         glUniform3f(lightPosLoc, 0.0f, 15.0f, 0.0f);
         glUniform3f(viewPosLoc, cameraPos.x, cameraPos.y, cameraPos.z);
-        
+
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, textureId);
         glUniform1i(glGetUniformLocation(wallShader.id(), "wallTexture"), 0);
-        
+
+        GLboolean cullWasEnabled = glIsEnabled(GL_CULL_FACE);
+        if (cullWasEnabled) glDisable(GL_CULL_FACE); 
+
         glBindVertexArray(vao);
         glDrawElements(GL_TRIANGLES, numIndices, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
+
+        if (cullWasEnabled) glEnable(GL_CULL_FACE);
     }
 
     bool checkCollision(const glm::vec3& position, float radius) {
@@ -1983,10 +1941,10 @@ public:
             glm::vec3(0.0f, 1.0f, 0.0f)
         );
         
-        glm::mat4 projection = glm::perspective(glm::radians(45.0f), 
-                                            static_cast<float>(win->w) / static_cast<float>(win->h),
-                                            0.1f, 100.0f);
-        
+        glm::mat4 projection = glm::perspective(glm::radians(45.0f),
+                                static_cast<float>(win->w) / static_cast<float>(win->h),
+                                0.01f, 100.0f);
+
         game_walls.draw(view, projection, game_floor.getCameraPosition());    
         game_pillars.draw(view, projection, game_floor.getCameraPosition());  
         game_objects.draw(win, view, projection, game_floor.getCameraPosition());
