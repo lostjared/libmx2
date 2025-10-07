@@ -686,7 +686,7 @@ public:
     std::vector<Particle> particles;
     GLuint vao, vbo;
     gl::ShaderProgram explosionShader;
-    const size_t MAX_PARTICLES = 10000; 
+    const size_t MAX_PARTICLES = 100000; 
 
     Explosion() = default;
     ~Explosion() {
@@ -789,22 +789,6 @@ public:
     }
 
     void createExplosion(const glm::vec3& position, int numParticles, bool isRed = false) {
-        if (particles.size() + numParticles > MAX_PARTICLES) {
-            particles.erase(
-                std::remove_if(particles.begin(), particles.end(),
-                    [](const Particle& p) { return !p.active; }),
-                particles.end()
-            );
-            
-            int availableSpace = MAX_PARTICLES - particles.size();
-            if (availableSpace < numParticles) {
-                numParticles = availableSpace;
-                std::cout << "Warning: Particle limit reached, reducing explosion size\n";
-            }
-        }
-        
-        if (numParticles <= 0) return; 
-
         std::random_device rd;
         std::mt19937 gen(rd());
         std::uniform_real_distribution<float> speed(3.0f, 15.0f); 
@@ -812,42 +796,141 @@ public:
         std::uniform_real_distribution<float> elevation(-M_PI/6.0f, M_PI/3.0f); 
         std::uniform_real_distribution<float> colorVariation(0.7f, 1.0f);
 
-        for (int i = 0; i < numParticles; ++i) {
-            Particle particle;
-            particle.position = position;
+        int particlesCreated = 0;
+        
+        for (auto& particle : particles) {
+            if (particlesCreated >= numParticles) break;
             
-            float theta = angle(gen);
-            float phi = elevation(gen);
-            float velocity = speed(gen);
-            
-            particle.velocity = glm::vec3(
-                velocity * cos(phi) * cos(theta),
-                velocity * sin(phi),
-                velocity * cos(phi) * sin(theta)
-            );
-            
-            if (isRed) {
-                float r = colorVariation(gen);
-                float g = colorVariation(gen) * 0.3f; 
-                float b = colorVariation(gen) * 0.1f;
-                particle.color = glm::vec4(r, g, b, 1.0f);
-            } else {
-                float r = colorVariation(gen);
-                float g = colorVariation(gen) * 0.7f; 
-                float b = colorVariation(gen) * 0.2f; 
-                particle.color = glm::vec4(r, g, b, 1.0f);
+            if (!particle.active) {
+                particle.position = position;
+                
+                float theta = angle(gen);
+                float phi = elevation(gen);
+                float velocity = speed(gen);
+                
+                particle.velocity = glm::vec3(
+                    velocity * cos(phi) * cos(theta),
+                    velocity * sin(phi),
+                    velocity * cos(phi) * sin(theta)
+                );
+                
+                if (isRed) {
+                    float r = colorVariation(gen);
+                    float g = colorVariation(gen) * 0.3f; 
+                    float b = colorVariation(gen) * 0.1f;
+                    particle.color = glm::vec4(r, g, b, 1.0f);
+                } else {
+                    float r = colorVariation(gen);
+                    float g = colorVariation(gen) * 0.7f; 
+                    float b = colorVariation(gen) * 0.2f; 
+                    particle.color = glm::vec4(r, g, b, 1.0f);
+                }
+                
+                particle.lifetime = 0.0f;
+                particle.maxLifetime = 1.5f + speed(gen) * 0.3f; 
+                particle.size = 12.0f + speed(gen) * 3.0f;
+                particle.active = true;
+                
+                particlesCreated++;
             }
+        }
+        
+        int remainingParticles = numParticles - particlesCreated;
+        if (remainingParticles > 0 && particles.size() < MAX_PARTICLES) {
+            int particlesToCreate = std::min(remainingParticles, 
+                                            static_cast<int>(MAX_PARTICLES - particles.size()));
             
-            particle.lifetime = 0.0f;
-            particle.maxLifetime = 1.5f + speed(gen) * 0.3f; 
-            particle.size = 12.0f + speed(gen) * 3.0f;
-            particle.active = true;
-            
-            particles.push_back(particle);
+            for (int i = 0; i < particlesToCreate; ++i) {
+                Particle particle;
+                particle.position = position;
+                
+                float theta = angle(gen);
+                float phi = elevation(gen);
+                float velocity = speed(gen);
+                
+                particle.velocity = glm::vec3(
+                    velocity * cos(phi) * cos(theta),
+                    velocity * sin(phi),
+                    velocity * cos(phi) * sin(theta)
+                );
+                
+                if (isRed) {
+                    float r = colorVariation(gen);
+                    float g = colorVariation(gen) * 0.3f; 
+                    float b = colorVariation(gen) * 0.1f;
+                    particle.color = glm::vec4(r, g, b, 1.0f);
+                } else {
+                    float r = colorVariation(gen);
+                    float g = colorVariation(gen) * 0.7f; 
+                    float b = colorVariation(gen) * 0.2f; 
+                    particle.color = glm::vec4(r, g, b, 1.0f);
+                }
+                
+                particle.lifetime = 0.0f;
+                particle.maxLifetime = 1.5f + speed(gen) * 0.3f; 
+                particle.size = 12.0f + speed(gen) * 3.0f;
+                particle.active = true;
+                
+                particles.push_back(particle);
+                particlesCreated++;
+            }
+        }
+        
+        if (particlesCreated < numParticles) {
+            std::cout << "Warning: Could only create " << particlesCreated << " of " << numParticles 
+                      << " requested particles\n";
         }
         
         std::cout << "Explosion created at (" << position.x << ", " << position.y << ", " << position.z 
-                  << ") with " << numParticles << " particles (total: " << particles.size() << ")\n";
+                  << ") with " << particlesCreated << " particles (total in pool: " << particles.size() << ")\n";
+    }
+
+    void draw(const glm::mat4& view, const glm::mat4& projection) {
+        if (particles.empty()) return;
+
+#ifndef __EMSCRIPTEN__
+        glEnable(GL_PROGRAM_POINT_SIZE);
+#endif
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+        glDepthMask(GL_FALSE);
+
+        explosionShader.useProgram();
+        
+        GLuint viewLoc = glGetUniformLocation(explosionShader.id(), "view");
+        GLuint projectionLoc = glGetUniformLocation(explosionShader.id(), "projection");
+        
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+
+        std::vector<float> vertexData;
+        vertexData.reserve(particles.size() * 8); 
+        
+        int drawCount = 0;
+        for (const auto& particle : particles) {
+            if (!particle.active) continue;
+
+            vertexData.push_back(particle.position.x);
+            vertexData.push_back(particle.position.y);
+            vertexData.push_back(particle.position.z);
+            vertexData.push_back(particle.color.r);
+            vertexData.push_back(particle.color.g);
+            vertexData.push_back(particle.color.b);
+            vertexData.push_back(particle.color.a);
+            vertexData.push_back(particle.size);
+            drawCount++;
+        }
+
+        if (!vertexData.empty()) {
+            glBindVertexArray(vao);
+            glBindBuffer(GL_ARRAY_BUFFER, vbo);
+            glBufferSubData(GL_ARRAY_BUFFER, 0, vertexData.size() * sizeof(float), vertexData.data());
+            glDrawArrays(GL_POINTS, 0, drawCount);
+            glBindVertexArray(0);
+        }
+
+        glDepthMask(GL_TRUE);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     }
 
         void update(float deltaTime, Pillar& pillars, Wall& walls) {
@@ -920,79 +1003,18 @@ public:
             particle.size *= 0.98f;
 
             if (particle.lifetime >= particle.maxLifetime) {
-                particle.active = false;
+                particle.active = false; 
             }
         }
 
-        if (particles.size() > MAX_PARTICLES * 0.5f) { 
-            particles.erase(
-                std::remove_if(particles.begin(), particles.end(),
-                    [](const Particle& p) { return !p.active; }),
-                particles.end()
-            );
+        if (particles.size() > MAX_PARTICLES * 0.8f) {
+            auto partition_point = std::partition(particles.begin(), particles.end(),
+                [](const Particle& p) { return p.active; });
             
-            if (particles.size() > MAX_PARTICLES * 0.9f) {
-                std::sort(particles.begin(), particles.end(),
-                    [](const Particle& a, const Particle& b) {
-                        return a.lifetime > b.lifetime;
-                    });
-                
-                size_t targetSize = MAX_PARTICLES * 0.7f;
-                if (particles.size() > targetSize) {
-                    particles.resize(targetSize);
-                }
-            }
+            particles.erase(partition_point, particles.end());
+            
+            std::cout << "Cleaned up inactive particles. Active: " << particles.size() << "\n";
         }
-        
-        std::cout << "Active particles: " << activeCount << " / " << particles.size() << " total\n";
-    }
-
-    void draw(const glm::mat4& view, const glm::mat4& projection) {
-        if (particles.empty()) return;
-
-#ifndef __EMSCRIPTEN__
-        glEnable(GL_PROGRAM_POINT_SIZE);
-#endif
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-        glDepthMask(GL_FALSE);
-
-        explosionShader.useProgram();
-        
-        GLuint viewLoc = glGetUniformLocation(explosionShader.id(), "view");
-        GLuint projectionLoc = glGetUniformLocation(explosionShader.id(), "projection");
-        
-        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-
-        std::vector<float> vertexData;
-        vertexData.reserve(particles.size() * 8); 
-        
-        int drawCount = 0;
-        for (const auto& particle : particles) {
-            if (!particle.active) continue;
-
-            vertexData.push_back(particle.position.x);
-            vertexData.push_back(particle.position.y);
-            vertexData.push_back(particle.position.z);
-            vertexData.push_back(particle.color.r);
-            vertexData.push_back(particle.color.g);
-            vertexData.push_back(particle.color.b);
-            vertexData.push_back(particle.color.a);
-            vertexData.push_back(particle.size);
-            drawCount++;
-        }
-
-        if (!vertexData.empty()) {
-            glBindVertexArray(vao);
-            glBindBuffer(GL_ARRAY_BUFFER, vbo);
-            glBufferSubData(GL_ARRAY_BUFFER, 0, vertexData.size() * sizeof(float), vertexData.data());
-            glDrawArrays(GL_POINTS, 0, drawCount);
-            glBindVertexArray(0);
-        }
-
-        glDepthMask(GL_TRUE);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     }
 };
 
