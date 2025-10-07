@@ -776,7 +776,7 @@ public:
                   << ") with " << numParticles << " particles (total: " << particles.size() << ")\n";
     }
 
-    void update(float deltaTime, Pillar& pillars) {
+    void update(float deltaTime, Pillar& pillars, Wall& walls) {
         int activeCount = 0;
         
         for (auto& particle : particles) {
@@ -792,8 +792,7 @@ public:
                 glm::vec2 pillarPos2D(pillar.position.x, pillar.position.z);
                 
                 float distance = glm::length(particlePos2D - pillarPos2D);
-                
-                if (distance < pillar.radius && particle.position.y < pillar.height && particle.position.y > 0.0f) {
+                if (distance < pillar.radius && particle.position.y > 0.0f && particle.position.y < pillar.height) {
                     glm::vec2 normal = glm::normalize(particlePos2D - pillarPos2D);
                     glm::vec2 velocity2D(particle.velocity.x, particle.velocity.z);
                     
@@ -805,6 +804,33 @@ public:
                     glm::vec2 correction = normal * (pillar.radius - distance + 0.1f);
                     particle.position.x += correction.x;
                     particle.position.z += correction.y;
+                }
+            }
+            
+            for (const auto& wall : walls.walls) {
+                glm::vec3 wallDir = wall.end - wall.start;
+                glm::vec3 pointToStart = particle.position - wall.start;
+                
+                float wallLength = glm::length(wallDir);
+                wallDir = glm::normalize(wallDir);
+                
+                float proj = glm::dot(pointToStart, wallDir);
+                proj = glm::clamp(proj, 0.0f, wallLength);
+                
+                glm::vec3 closestPoint = wall.start + wallDir * proj;
+                glm::vec2 particlePos2D(particle.position.x, particle.position.z);
+                glm::vec2 closestPoint2D(closestPoint.x, closestPoint.z);
+                
+                float distance = glm::length(particlePos2D - closestPoint2D);
+                
+                if (distance < 0.5f && particle.position.y >= 0.0f && particle.position.y <= wall.height) {
+                    glm::vec2 wallNormal2D = glm::normalize(particlePos2D - closestPoint2D);
+                    glm::vec3 wallNormal(wallNormal2D.x, 0.0f, wallNormal2D.y);
+                    
+                    glm::vec3 reflected = glm::reflect(particle.velocity, wallNormal);
+                    particle.velocity = reflected * 0.5f; 
+                    
+                    particle.position += wallNormal * 0.2f;
                 }
             }
             
@@ -2047,7 +2073,7 @@ public:
         game_floor.update(deltaTime);
         game_objects.update(deltaTime);
         projectiles.update(deltaTime, game_objects, explosion, game_pillars, game_walls); 
-        explosion.update(deltaTime, game_pillars); 
+        explosion.update(deltaTime, game_pillars, game_walls); 
     }
     
 private:
