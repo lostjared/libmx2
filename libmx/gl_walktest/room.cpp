@@ -1264,15 +1264,17 @@ void update(float deltaTime, Objects& objects, Explosion& explosion, Pillar& pil
         );
 
         if (bullet.position.y <= 0.0f) {
-            explosion.createExplosion(glm::vec3(bullet.position.x, 0.0f, bullet.position.z), 300, true);
+            glm::vec3 impactPos = glm::vec3(bullet.position.x, 0.0f, bullet.position.z);
+            explosion.createExplosion(impactPos, 300, true);
             bullet.active = false;
-            std::cout << "Bullet hit floor at (" << bullet.position.x << ", " << bullet.position.y << ", " << bullet.position.z << ")\n";
-            continue;
+            std::cout << "Bullet #" << &bullet - &bullets[0] << " hit floor at (" 
+                      << impactPos.x << ", " << impactPos.y << ", " << impactPos.z << ")\n";
+            continue; 
         }
 
+        bool hitPillar = false;
         for (const auto& pillar : pillars.pillars) {
             int steps = 5;
-            bool hitPillar = false;
             for (int i = 0; i <= steps; ++i) {
                 float t = static_cast<float>(i) / steps;
                 glm::vec3 checkPos = oldPosition + (bullet.position - oldPosition) * t;
@@ -1285,16 +1287,17 @@ void update(float deltaTime, Objects& objects, Explosion& explosion, Pillar& pil
                 if (distance < pillar.radius && checkPos.y > 0.0f && checkPos.y < pillar.height) {
                     explosion.createExplosion(checkPos, 500, true);
                     bullet.active = false;
-                    std::cout << "Bullet hit pillar at (" << checkPos.x << ", " << checkPos.y << ", " << checkPos.z << ")\n";
                     hitPillar = true;
-                    break;
+                    std::cout << "Bullet #" << &bullet - &bullets[0] << " hit pillar at (" 
+                              << checkPos.x << ", " << checkPos.y << ", " << checkPos.z << ")\n";
+                    break; 
                 }
             }
             
-            if (hitPillar) break;
+            if (hitPillar) break; 
         }
 
-        if (!bullet.active) continue;
+        if (!bullet.active) continue; 
 
         int steps = 5;
         for (int i = 0; i <= steps; ++i) {
@@ -1306,16 +1309,18 @@ void update(float deltaTime, Objects& objects, Explosion& explosion, Pillar& pil
                 explosion.createExplosion(checkPos, 1000, false); 
                 objects.removeObject(static_cast<int>(hitIndex));
                 bullet.active = false;
-                std::cout << "Bullet hit object " << static_cast<int>(hitIndex) << "!\n";
-                break;
+                std::cout << "Bullet #" << &bullet - &bullets[0] << " hit object " 
+                          << static_cast<int>(hitIndex) << "!\n";
+                break; 
             }
         }
 
-        if (!bullet.active) continue;
+        if (!bullet.active) continue; 
 
         if (bullet.lifetime >= bullet.maxLifetime) {
             bullet.active = false;
-            std::cout << "Bullet dissolved after " << bullet.lifetime << " seconds\n";
+            std::cout << "Bullet #" << &bullet - &bullets[0] << " dissolved after " 
+                      << bullet.lifetime << " seconds\n";
         }
     }
 
