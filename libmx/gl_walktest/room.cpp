@@ -1156,8 +1156,8 @@ public:
             throw mx::Exception("Failed to load trail shader");
         }
 
-    float length = 0.5f;
-    float width = 0.05f;
+    float length = 0.15f;  
+    float width = 0.015f;  
     
     float vertices[] = {
         -width, -width, 0.0f,
@@ -1384,7 +1384,7 @@ void update(float deltaTime, Objects& objects, Explosion& explosion, Pillar& pil
             rotation[2] = glm::vec4(bullet.direction, 0.0f);
             
             model = model * rotation;
-            model = glm::scale(model, glm::vec3(1.5f, 1.5f, 2.0f)); 
+            model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f)); 
 
             GLuint modelLoc = glGetUniformLocation(bulletShader.id(), "model");
             GLuint alphaLoc = glGetUniformLocation(bulletShader.id(), "alpha");
