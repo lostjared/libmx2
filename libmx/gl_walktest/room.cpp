@@ -895,7 +895,7 @@ public:
         Bullet bullet;
         bullet.position = position;
         bullet.direction = glm::normalize(direction);
-        bullet.speed = 50.0f;
+        bullet.speed = 100.0f;
         bullet.lifetime = 0.0f;
         bullet.maxLifetime = 10.0f;
         bullet.active = true;
