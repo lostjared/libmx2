@@ -2041,7 +2041,7 @@ public:
         
         glm::mat4 projection = glm::perspective(glm::radians(45.0f),
                                 static_cast<float>(win->w) / static_cast<float>(win->h),
-                                0.1f, 100.0f);
+                                0.1f, 1000.0f);
 
         game_floor.draw(win, view, projection);
         glEnable(GL_CULL_FACE);
