@@ -1520,13 +1520,17 @@ public:
             uniform vec3 viewPos;
             
             void main() {
-                float ambientStrength = 0.3;
+                float ambientStrength = 0.5;
                 vec3 ambient = ambientStrength * vec3(1.0);
                 
                 vec3 norm = normalize(Normal);
                 vec3 lightDir = normalize(lightPos - FragPos);
                 float diff = max(dot(norm, lightDir), 0.0);
-                vec3 diffuse = diff * vec3(1.0);
+                
+                float distance = length(lightPos - FragPos);
+                float attenuation = 1.0 / (1.0 + 0.005 * distance + 0.0001 * distance * distance);
+                
+                vec3 diffuse = diff * attenuation * vec3(1.0);
                 
                 vec4 texColor = texture(wallTexture, TexCoord);
                 vec3 result = (ambient + diffuse) * vec3(texColor);
@@ -1569,13 +1573,17 @@ public:
             uniform vec3 viewPos;
             
             void main() {
-                float ambientStrength = 0.3;
+                float ambientStrength = 0.5;
                 vec3 ambient = ambientStrength * vec3(1.0);
                 
                 vec3 norm = normalize(Normal);
                 vec3 lightDir = normalize(lightPos - FragPos);
                 float diff = max(dot(norm, lightDir), 0.0);
-                vec3 diffuse = diff * vec3(1.0);
+                
+                float distance = length(lightPos - FragPos);
+                float attenuation = 1.0 / (1.0 + 0.005 * distance + 0.0001 * distance * distance);
+                
+                vec3 diffuse = diff * attenuation * vec3(1.0);
                 
                 vec4 texColor = texture(wallTexture, TexCoord);
                 vec3 result = (ambient + diffuse) * vec3(texColor);
@@ -1590,11 +1598,12 @@ public:
 
         float size = 50.0f;
         float wallHeight = 5.0f;
+        float wallThickness = 0.2f; 
         
-        walls.push_back({glm::vec3(-size, 0.0f, -size), glm::vec3(size, 0.0f, -size), wallHeight});
-        walls.push_back({glm::vec3(-size, 0.0f, size), glm::vec3(size, 0.0f, size), wallHeight});
-        walls.push_back({glm::vec3(-size, 0.0f, -size), glm::vec3(-size, 0.0f, size), wallHeight});
-        walls.push_back({glm::vec3(size, 0.0f, -size), glm::vec3(size, 0.0f, size), wallHeight});
+        walls.push_back({glm::vec3(-size, 0.0f, -size), glm::vec3(size, 0.0f, -size), wallHeight});  
+        walls.push_back({glm::vec3(-size, 0.0f, size), glm::vec3(size, 0.0f, size), wallHeight});    
+        walls.push_back({glm::vec3(-size, 0.0f, -size), glm::vec3(-size, 0.0f, size), wallHeight});  
+        walls.push_back({glm::vec3(size, 0.0f, -size), glm::vec3(size, 0.0f, size), wallHeight});    
 
         std::vector<float> vertices;
         std::vector<unsigned int> indices;
@@ -1602,16 +1611,49 @@ public:
 
         for (const auto& wall : walls) {
             glm::vec3 dir = glm::normalize(wall.end - wall.start);
-            glm::vec3 normal = glm::vec3(dir.z, 0.0f, -dir.x); 
+            glm::vec3 normalInward = glm::vec3(dir.z, 0.0f, -dir.x);
+            glm::vec3 normalOutward = -normalInward;
             
             float length = glm::length(wall.end - wall.start);
             float texRepeat = length / 5.0f;
 
+            glm::vec3 innerStart = wall.start + normalInward * wallThickness;
+            glm::vec3 innerEnd = wall.end + normalInward * wallThickness;
+            
             vertices.insert(vertices.end(), {
-                wall.start.x, 0.0f, wall.start.z, 0.0f, 0.0f, normal.x, normal.y, normal.z,
-                wall.end.x, 0.0f, wall.end.z, texRepeat, 0.0f, normal.x, normal.y, normal.z,
-                wall.end.x, wall.height, wall.end.z, texRepeat, 1.0f, normal.x, normal.y, normal.z,
-                wall.start.x, wall.height, wall.start.z, 0.0f, 1.0f, normal.x, normal.y, normal.z
+                innerStart.x, 0.0f, innerStart.z, 0.0f, 0.0f, normalInward.x, normalInward.y, normalInward.z,
+                innerEnd.x, 0.0f, innerEnd.z, texRepeat, 0.0f, normalInward.x, normalInward.y, normalInward.z,
+                innerEnd.x, wall.height, innerEnd.z, texRepeat, 1.0f, normalInward.x, normalInward.y, normalInward.z,
+                innerStart.x, wall.height, innerStart.z, 0.0f, 1.0f, normalInward.x, normalInward.y, normalInward.z
+            });
+
+            indices.insert(indices.end(), {
+                indexOffset + 0, indexOffset + 1, indexOffset + 2,
+                indexOffset + 2, indexOffset + 3, indexOffset + 0
+            });
+            indexOffset += 4;
+
+            glm::vec3 outerStart = wall.start - normalInward * wallThickness;
+            glm::vec3 outerEnd = wall.end - normalInward * wallThickness;
+            
+            vertices.insert(vertices.end(), {
+                outerEnd.x, 0.0f, outerEnd.z, 0.0f, 0.0f, normalOutward.x, normalOutward.y, normalOutward.z,
+                outerStart.x, 0.0f, outerStart.z, texRepeat, 0.0f, normalOutward.x, normalOutward.y, normalOutward.z,
+                outerStart.x, wall.height, outerStart.z, texRepeat, 1.0f, normalOutward.x, normalOutward.y, normalOutward.z,
+                outerEnd.x, wall.height, outerEnd.z, 0.0f, 1.0f, normalOutward.x, normalOutward.y, normalOutward.z
+            });
+
+            indices.insert(indices.end(), {
+                indexOffset + 0, indexOffset + 1, indexOffset + 2,
+                indexOffset + 2, indexOffset + 3, indexOffset + 0
+            });
+            indexOffset += 4;
+
+            vertices.insert(vertices.end(), {
+                innerStart.x, wall.height, innerStart.z, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+                innerEnd.x, wall.height, innerEnd.z, texRepeat, 0.0f, 0.0f, 1.0f, 0.0f,
+                outerEnd.x, wall.height, outerEnd.z, texRepeat, 0.2f, 0.0f, 1.0f, 0.0f,
+                outerStart.x, wall.height, outerStart.z, 0.0f, 0.2f, 0.0f, 1.0f, 0.0f
             });
 
             indices.insert(indices.end(), {
