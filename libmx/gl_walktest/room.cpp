@@ -1008,7 +1008,7 @@ public:
     };
 
     std::vector<Bullet> bullets;
-    GLuint vao, vbo;
+    GLuint vao, vbo, ebo;
     GLuint trailVao, trailVbo;
     gl::ShaderProgram bulletShader;
     gl::ShaderProgram trailShader;
@@ -1017,171 +1017,126 @@ public:
     ~Projectile() {
         if (vao != 0) glDeleteVertexArrays(1, &vao);
         if (vbo != 0) glDeleteBuffers(1, &vbo);
+        if (ebo != 0) glDeleteBuffers(1, &ebo);
         if (trailVao != 0) glDeleteVertexArrays(1, &trailVao);
         if (trailVbo != 0) glDeleteBuffers(1, &trailVbo);
     }
 
     void load(gl::GLWindow *win) {
 #ifndef __EMSCRIPTEN__
-        const char *vertexShader = R"(
-            #version 330 core
-            layout(location = 0) in vec3 aPos;
-            
-            uniform mat4 model;
-            uniform mat4 view;
-            uniform mat4 projection;
-            
-            void main() {
-                gl_Position = projection * view * model * vec4(aPos, 1.0);
-                gl_PointSize = 15.0;
-            }
-        )";
-
-        const char *fragmentShader = R"(
-            #version 330 core
-            out vec4 FragColor;
-            
-            uniform float alpha;
-            uniform vec3 bulletColor;
-            
-            void main() {
-                vec2 coord = gl_PointCoord - vec2(0.5);
-                float dist = length(coord);
-                if (dist > 0.5) discard;
-                
-                float fade = 1.0 - smoothstep(0.0, 0.5, dist);
-                fade = pow(fade, 0.5);
-                FragColor = vec4(bulletColor * 1.5, alpha * fade);
-            }
-        )";
-
-        const char *trailVertexShader = R"(
-            #version 330 core
-            layout(location = 0) in vec3 aPos;
-            layout(location = 1) in float aAlpha;
-            
-            out float trailAlpha;
-            
-            uniform mat4 view;
-            uniform mat4 projection;
-            
-            void main() {
-                gl_Position = projection * view * vec4(aPos, 1.0);
-                gl_PointSize = 8.0;
-                trailAlpha = aAlpha;
-            }
-        )";
-
-        const char *trailFragmentShader = R"(
-            #version 330 core
-            in float trailAlpha;
-            out vec4 FragColor;
-            
-            uniform vec3 trailColor;
-            
-            void main() {
-                vec2 coord = gl_PointCoord - vec2(0.5);
-                float dist = length(coord);
-                if (dist > 0.5) discard;
-                
-                float fade = 1.0 - smoothstep(0.0, 0.5, dist);
-                FragColor = vec4(trailColor, trailAlpha * fade);
-            }
-        )";
-
+    const char *vertexShader = R"(
+        #version 330 core
+        layout(location = 0) in vec3 aPos;
         
+        uniform mat4 model;
+        uniform mat4 view;
+        uniform mat4 projection;
+        
+        void main() {
+            gl_Position = projection * view * model * vec4(aPos, 1.0);
+        }
+    )";
+
+    const char *fragmentShader = R"(
+        #version 330 core
+        out vec4 FragColor;
+        
+        uniform float alpha;
+        
+        void main() {
+            FragColor = vec4(1.0, 0.1, 0.0, alpha);
+        }
+    )";
+
+    const char *trailVertexShader = R"(
+        #version 330 core
+        layout(location = 0) in vec3 aPos;
+        layout(location = 1) in float aAlpha;
+        
+        out float trailAlpha;
+        
+        uniform mat4 view;
+        uniform mat4 projection;
+        
+        void main() {
+            gl_Position = projection * view * vec4(aPos, 1.0);
+            gl_PointSize = 12.0;
+            trailAlpha = aAlpha;
+        }
+    )";
+
+    const char *trailFragmentShader = R"(
+        #version 330 core
+        in float trailAlpha;
+        out vec4 FragColor;
+        
+        void main() {
+            vec2 coord = gl_PointCoord - vec2(0.5);
+            float dist = length(coord);
+            if (dist > 0.5) discard;
+            
+            float fade = 1.0 - smoothstep(0.0, 0.5, dist);
+            vec3 color = vec3(1.0, 0.2, 0.0);
+            FragColor = vec4(color, trailAlpha * fade);
+        }
+    )";
 #else
-        const char *vertexShader = R"(#version 300 es
-            precision highp float;
-            layout(location = 0) in vec3 aPos;
-            layout(location = 1) in vec2 aTexCoord;
-            layout(location = 2) in vec3 aNormal;
-            
-            out vec2 TexCoord;
-            out vec3 Normal;
-            out vec3 FragPos;
-            
-            uniform mat4 model;
-            uniform mat4 view;
-            uniform mat4 projection;
-            
-            void main() {
-                gl_Position = projection * view * model * vec4(aPos, 1.0);
-                FragPos = vec3(model * vec4(aPos, 1.0));
-                Normal = mat3(transpose(inverse(model))) * aNormal;
-                TexCoord = aTexCoord;
-            }
-        )";
-
-        const char *fragmentShader = R"(#version 300 es
-            precision highp float;
-            out vec4 FragColor;
-            
-            in vec2 TexCoord;
-            in vec3 Normal;
-            in vec3 FragPos;
-            
-            uniform sampler2D objectTexture;
-            uniform vec3 lightPos;
-            uniform vec3 viewPos;
-            uniform vec3 lightColor;
-            
-            void main() {
-                float ambientStrength = 0.3;
-                vec3 ambient = ambientStrength * vec3(1.0);
-                
-                vec3 norm = normalize(Normal);
-                vec3 lightDir = normalize(lightPos - FragPos);
-                float diff = max(dot(norm, lightDir), 0.0);
-                vec3 diffuse = diff * vec3(1.0);
-                
-                float specularStrength = 0.5;
-                vec3 viewDir = normalize(viewPos - FragPos);
-                vec3 reflectDir = reflect(-lightDir, norm);
-                float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
-                vec3 specular = specularStrength * spec * lightColor;
-                
-                vec4 texColor = texture(objectTexture, TexCoord);
-                vec3 result = (ambient + diffuse + specular) * vec3(texColor);
-                FragColor = vec4(result, texColor.a);
-            }
-        )";
-
-        const char *trailVertexShader = R"(#version 300 es
-            precision highp float;
-            layout(location = 0) in vec3 aPos;
-            layout(location = 1) in float aAlpha;
-            
-            out float trailAlpha;
-            
-            uniform mat4 view;
-            uniform mat4 projection;
-            
-            void main() {
-                gl_Position = projection * view * vec4(aPos, 1.0);
-                gl_PointSize = 8.0;
-                trailAlpha = aAlpha;
-            }
-        )";
-
-        const char *trailFragmentShader = R"(#version 300 es
-            precision highp float;
-            in float trailAlpha;
-            out vec4 FragColor;
-            
-            uniform vec3 trailColor;
-            
-            void main() {
-                vec2 coord = gl_PointCoord - vec2(0.5);
-                float dist = length(coord);
-                if (dist > 0.5) discard;
-                
-                float fade = 1.0 - smoothstep(0.0, 0.5, dist);
-                FragColor = vec4(trailColor, trailAlpha * fade);
-            }
-        )";
-
+    const char *vertexShader = R"(#version 300 es
+        precision highp float;
+        layout(location = 0) in vec3 aPos;
         
+        uniform mat4 model;
+        uniform mat4 view;
+        uniform mat4 projection;
+        
+        void main() {
+            gl_Position = projection * view * model * vec4(aPos, 1.0);
+        }
+    )";
+
+    const char *fragmentShader = R"(#version 300 es
+        precision highp float;
+        out vec4 FragColor;
+        
+        uniform float alpha;
+        
+        void main() {
+            FragColor = vec4(1.0, 0.1, 0.0, alpha);
+        }
+    )";
+
+    const char *trailVertexShader = R"(#version 300 es
+        precision highp float;
+        layout(location = 0) in vec3 aPos;
+        layout(location = 1) in float aAlpha;
+        
+        out float trailAlpha;
+        
+        uniform mat4 view;
+        uniform mat4 projection;
+        
+        void main() {
+            gl_Position = projection * view * vec4(aPos, 1.0);
+            gl_PointSize = 12.0;
+            trailAlpha = aAlpha;
+        }
+    )";
+
+    const char *trailFragmentShader = R"(#version 300 es
+        precision highp float;
+        in float trailAlpha;
+        out vec4 FragColor;
+        
+        void main() {
+            vec2 coord = gl_PointCoord - vec2(0.5);
+            float dist = length(coord);
+            if (dist > 0.5) discard;
+            
+            float fade = 1.0 - smoothstep(0.0, 0.5, dist);
+            vec3 color = vec3(1.0, 0.2, 0.0);
+            FragColor = vec4(color, trailAlpha * fade);
+        }
+    )";
 #endif
 
         if(!bulletShader.loadProgramFromText(vertexShader, fragmentShader)) {
@@ -1192,118 +1147,161 @@ public:
             throw mx::Exception("Failed to load trail shader");
         }
 
-        
+    float length = 0.5f;
+    float width = 0.05f;
+    
+    float vertices[] = {
+        -width, -width, 0.0f,
+         width, -width, 0.0f,
+         width,  width, 0.0f,
+        -width,  width, 0.0f,
+        -width, -width, -length,
+         width, -width, -length,
+         width,  width, -length,
+        -width,  width, -length
+    };
+    
+    unsigned int indices[] = {
+        0, 1, 2, 2, 3, 0,
+        4, 5, 6, 6, 7, 4,
+        3, 2, 6, 6, 7, 3,
+        0, 1, 5, 5, 4, 0,
+        1, 2, 6, 6, 5, 1,
+        0, 3, 7, 7, 4, 0
+    };
 
-        float vertex[] = { 0.0f, 0.0f, 0.0f };
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
+    glGenBuffers(1, &ebo);
+    
+    glBindVertexArray(vao);
+    
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+    
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    
+    glBindVertexArray(0);
 
-        glGenVertexArrays(1, &vao);
-        glGenBuffers(1, &vbo);
-        
-        glBindVertexArray(vao);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(vertex), vertex, GL_STATIC_DRAW);
-        
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-        glEnableVertexAttribArray(0);
-        
-        glBindVertexArray(0);
+    glGenVertexArrays(1, &trailVao);
+    glGenBuffers(1, &trailVbo);
+    
+    glBindVertexArray(trailVao);
+    glBindBuffer(GL_ARRAY_BUFFER, trailVbo);
+    glBufferData(GL_ARRAY_BUFFER, 1000 * 4 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+    
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    
+    glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+    
+    glBindVertexArray(0);
+    
+    std::cout << "Laser projectile system initialized\n";
+}
 
-        glGenVertexArrays(1, &trailVao);
-        glGenBuffers(1, &trailVbo);
-        
-        glBindVertexArray(trailVao);
-        glBindBuffer(GL_ARRAY_BUFFER, trailVbo);
-        glBufferData(GL_ARRAY_BUFFER, 1000 * 4 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
-        
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-        glEnableVertexAttribArray(0);
-        
-        glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(3 * sizeof(float)));
-        glEnableVertexAttribArray(1);
-        
-        glBindVertexArray(0);
-        
-        std::cout << "Projectile system initialized\n";
-    }
+void fire(const glm::vec3& position, const glm::vec3& direction) {
+    Bullet bullet;
+    bullet.position = position;
+    bullet.direction = glm::normalize(direction);
+    bullet.speed = 100.0f;  
+    bullet.lifetime = 0.0f;
+    bullet.maxLifetime = 10.0f;
+    bullet.active = true;
+    bullet.trailTimer = 0.0f;
+    bullets.push_back(bullet);
+    std::cout << "Laser bolt fired from (" << position.x << ", " << position.y << ", " << position.z 
+              << ") in direction (" << direction.x << ", " << direction.y << ", " << direction.z << ")\n";
+}
 
-    void fire(const glm::vec3& position, const glm::vec3& direction) {
-        Bullet bullet;
-        bullet.position = position;
-        bullet.direction = glm::normalize(direction);
-        bullet.speed = 50.0f;
-        bullet.lifetime = 0.0f;
-        bullet.maxLifetime = 10.0f;
-        bullet.active = true;
-        bullet.trailTimer = 0.0f;
-        bullets.push_back(bullet);
-        std::cout << "Bullet fired from (" << position.x << ", " << position.y << ", " << position.z 
-                  << ") in direction (" << direction.x << ", " << direction.y << ", " << direction.z << ")\n";
-    }
+void update(float deltaTime, Objects& objects, Explosion& explosion, Pillar& pillars) {
+    for (auto& bullet : bullets) {
+        if (!bullet.active) continue;
 
-    void update(float deltaTime, Objects& objects, Explosion& explosion, Pillar& pillars) {
-        for (auto& bullet : bullets) {
-            if (!bullet.active) continue;
+        glm::vec3 oldPosition = bullet.position;
+        bullet.position += bullet.direction * bullet.speed * deltaTime;
+        bullet.lifetime += deltaTime;
+        bullet.trailTimer += deltaTime;
 
-            bullet.position += bullet.direction * bullet.speed * deltaTime;
-            bullet.lifetime += deltaTime;
-            bullet.trailTimer += deltaTime;
+        if (bullet.trailTimer >= 0.02f) {
+            TrailPoint trailPoint;
+            trailPoint.position = bullet.position;
+            trailPoint.lifetime = 0.0f;
+            trailPoint.maxLifetime = 0.5f;
+            bullet.trail.push_back(trailPoint);
+            bullet.trailTimer = 0.0f;
+        }
 
-            if (bullet.trailTimer >= 0.02f) {
-                TrailPoint trailPoint;
-                trailPoint.position = bullet.position;
-                trailPoint.lifetime = 0.0f;
-                trailPoint.maxLifetime = 0.5f;
-                bullet.trail.push_back(trailPoint);
-                bullet.trailTimer = 0.0f;
-            }
+        for (auto& point : bullet.trail) {
+            point.lifetime += deltaTime;
+        }
 
-            for (auto& point : bullet.trail) {
-                point.lifetime += deltaTime;
-            }
+        bullet.trail.erase(
+            std::remove_if(bullet.trail.begin(), bullet.trail.end(),
+                [](const TrailPoint& p) { return p.lifetime >= p.maxLifetime; }),
+            bullet.trail.end()
+        );
 
-            bullet.trail.erase(
-                std::remove_if(bullet.trail.begin(), bullet.trail.end(),
-                    [](const TrailPoint& p) { return p.lifetime >= p.maxLifetime; }),
-                bullet.trail.end()
-            );
-
-            for (const auto& pillar : pillars.pillars) {
-                glm::vec2 bulletPos2D(bullet.position.x, bullet.position.z);
+        for (const auto& pillar : pillars.pillars) {
+            int steps = 5;
+            bool hitPillar = false;
+            for (int i = 0; i <= steps; ++i) {
+                float t = static_cast<float>(i) / steps;
+                glm::vec3 checkPos = oldPosition + (bullet.position - oldPosition) * t;
+                
+                glm::vec2 bulletPos2D(checkPos.x, checkPos.z);
                 glm::vec2 pillarPos2D(pillar.position.x, pillar.position.z);
                 
                 float distance = glm::length(bulletPos2D - pillarPos2D);
                 
-                if (distance < pillar.radius && bullet.position.y > 0.0f && bullet.position.y < pillar.height) {
-                    explosion.createExplosion(bullet.position, 500);
+                if (distance < pillar.radius && checkPos.y > 0.0f && checkPos.y < pillar.height) {
+                    explosion.createExplosion(checkPos, 500);
                     bullet.active = false;
-                    std::cout << "Bullet hit pillar at (" << bullet.position.x << ", " << bullet.position.y << ", " << bullet.position.z << ")\n";
-                    break; 
+                    std::cout << "Bullet hit pillar at (" << checkPos.x << ", " << checkPos.y << ", " << checkPos.z << ")\n";
+                    hitPillar = true;
+                    break;
                 }
             }
+            
+            if (hitPillar) break;
+        }
 
-            if (!bullet.active) continue; 
+        if (!bullet.active) continue;
 
+        int steps = 5;
+        for (int i = 0; i <= steps; ++i) {
+            float t = static_cast<float>(i) / steps;
+            glm::vec3 checkPos = oldPosition + (bullet.position - oldPosition) * t;
+            
             float hitIndex = -1;
-            if (objects.checkCollision(bullet.position, hitIndex)) {
-                explosion.createExplosion(bullet.position, 1000);
+            if (objects.checkCollision(checkPos, hitIndex)) {
+                explosion.createExplosion(checkPos, 1000);
                 objects.removeObject(static_cast<int>(hitIndex));
                 bullet.active = false;
                 std::cout << "Bullet hit object " << static_cast<int>(hitIndex) << "!\n";
-                continue;
-            }
-
-            if (bullet.lifetime >= bullet.maxLifetime) {
-                bullet.active = false;
-                std::cout << "Bullet dissolved after " << bullet.lifetime << " seconds\n";
+                break;
             }
         }
 
-        bullets.erase(
-            std::remove_if(bullets.begin(), bullets.end(),
-                [](const Bullet& b) { return !b.active; }),
-            bullets.end()
-        );
+        if (!bullet.active) continue;
+
+        if (bullet.lifetime >= bullet.maxLifetime) {
+            bullet.active = false;
+            std::cout << "Bullet dissolved after " << bullet.lifetime << " seconds\n";
+        }
     }
+
+    bullets.erase(
+        std::remove_if(bullets.begin(), bullets.end(),
+            [](const Bullet& b) { return !b.active; }),
+        bullets.end()
+    );
+}
 
     void draw(gl::GLWindow *win, const glm::mat4& view, const glm::mat4& projection) {
         if (bullets.empty()) return;
@@ -1319,11 +1317,9 @@ public:
         
         GLuint viewLoc = glGetUniformLocation(trailShader.id(), "view");
         GLuint projectionLoc = glGetUniformLocation(trailShader.id(), "projection");
-        GLuint colorLoc = glGetUniformLocation(trailShader.id(), "trailColor");
         
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-        glUniform3f(colorLoc, 1.0f, 0.7f, 0.0f);
 
         for (const auto& bullet : bullets) {
             if (!bullet.active || bullet.trail.empty()) continue;
@@ -1331,7 +1327,7 @@ public:
             std::vector<float> trailData;
             for (const auto& point : bullet.trail) {
                 float fadeProgress = point.lifetime / point.maxLifetime;
-                float alpha = 1.0f - fadeProgress;
+                float alpha = (1.0f - fadeProgress) * 0.6f;
 
                 trailData.push_back(point.position.x);
                 trailData.push_back(point.position.y);
@@ -1351,11 +1347,9 @@ public:
         
         viewLoc = glGetUniformLocation(bulletShader.id(), "view");
         projectionLoc = glGetUniformLocation(bulletShader.id(), "projection");
-        colorLoc = glGetUniformLocation(bulletShader.id(), "bulletColor");
         
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-        glUniform3f(colorLoc, 1.0f, 0.5f, 0.0f);
 
         glBindVertexArray(vao);
 
@@ -1365,8 +1359,23 @@ public:
             float fadeProgress = bullet.lifetime / bullet.maxLifetime;
             float alpha = 1.0f - fadeProgress;
 
+            glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+            glm::vec3 right = glm::normalize(glm::cross(up, bullet.direction));
+            if (glm::length(right) < 0.001f) {
+                right = glm::vec3(1.0f, 0.0f, 0.0f);
+            }
+            up = glm::normalize(glm::cross(bullet.direction, right));
+            
             glm::mat4 model = glm::mat4(1.0f);
             model = glm::translate(model, bullet.position);
+            
+            glm::mat4 rotation = glm::mat4(1.0f);
+            rotation[0] = glm::vec4(right, 0.0f);
+            rotation[1] = glm::vec4(up, 0.0f);
+            rotation[2] = glm::vec4(bullet.direction, 0.0f);
+            
+            model = model * rotation;
+            model = glm::scale(model, glm::vec3(1.5f, 1.5f, 2.0f)); 
 
             GLuint modelLoc = glGetUniformLocation(bulletShader.id(), "model");
             GLuint alphaLoc = glGetUniformLocation(bulletShader.id(), "alpha");
@@ -1374,13 +1383,13 @@ public:
             glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
             glUniform1f(alphaLoc, alpha);
 
-            glDrawArrays(GL_POINTS, 0, 1);
+            glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
         }
 
         glBindVertexArray(0);
         glEnable(GL_DEPTH_TEST);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    }
+}
 };
 
 class Crosshair {
@@ -1836,7 +1845,7 @@ public:
         
         glm::mat4 projection = glm::perspective(glm::radians(45.0f), 
                                             static_cast<float>(win->w) / static_cast<float>(win->h),
-                                            0.1f, 100.0f);
+                                                                                       0.1f, 100.0f);
         
         game_walls.draw(view, projection, game_floor.getCameraPosition());    
         game_pillars.draw(view, projection, game_floor.getCameraPosition());  
