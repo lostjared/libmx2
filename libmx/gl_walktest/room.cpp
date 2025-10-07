@@ -686,7 +686,7 @@ public:
     std::vector<Particle> particles;
     GLuint vao, vbo;
     gl::ShaderProgram explosionShader;
-    const size_t MAX_PARTICLES = 60000; 
+    const size_t MAX_PARTICLES = 10000; 
 
     Explosion() = default;
     ~Explosion() {
@@ -850,7 +850,7 @@ public:
                   << ") with " << numParticles << " particles (total: " << particles.size() << ")\n";
     }
 
-    void update(float deltaTime, Pillar& pillars, Wall& walls) {
+        void update(float deltaTime, Pillar& pillars, Wall& walls) {
         int activeCount = 0;
         
         for (auto& particle : particles) {
@@ -924,13 +924,27 @@ public:
             }
         }
 
-        if (particles.size() > MAX_PARTICLES * 0.8f) { 
+        if (particles.size() > MAX_PARTICLES * 0.5f) { 
             particles.erase(
                 std::remove_if(particles.begin(), particles.end(),
                     [](const Particle& p) { return !p.active; }),
                 particles.end()
             );
+            
+            if (particles.size() > MAX_PARTICLES * 0.9f) {
+                std::sort(particles.begin(), particles.end(),
+                    [](const Particle& a, const Particle& b) {
+                        return a.lifetime > b.lifetime;
+                    });
+                
+                size_t targetSize = MAX_PARTICLES * 0.7f;
+                if (particles.size() > targetSize) {
+                    particles.resize(targetSize);
+                }
+            }
         }
+        
+        std::cout << "Active particles: " << activeCount << " / " << particles.size() << " total\n";
     }
 
     void draw(const glm::mat4& view, const glm::mat4& projection) {
