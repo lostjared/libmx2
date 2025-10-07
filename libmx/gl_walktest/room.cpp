@@ -1048,11 +1048,12 @@ const char *fragmentShader = R"(#version 300 es
         throw mx::Exception("Failed to load floor shader program");
     }
 
+    float y = -0.01f;
     float vertices[] = {
-        -50.0f, 0.0f, -50.0f,   0.0f,   0.0f,
-         50.0f, 0.0f, -50.0f,   20.0f,  0.0f,   
-         50.0f, 0.0f,  50.0f,   20.0f,  20.0f,  
-        -50.0f, 0.0f,  50.0f,   0.0f,   20.0f   
+        -50.0f, y, -50.0f,  0.0f,  0.0f,
+        50.0f, y, -50.0f, 20.0f,  0.0f,
+        50.0f, y,  50.0f, 20.0f, 20.0f,
+        -50.0f, y,  50.0f,  0.0f, 20.0f
     };
     
     unsigned int indices[] = {
@@ -1109,33 +1110,15 @@ const char *fragmentShader = R"(#version 300 es
     void update(float deltaTime) {
     }
 
-    void draw(gl::GLWindow *win) {
-        glm::mat4 model = glm::mat4(1.0f);
-        
-        glm::mat4 view = glm::lookAt(
-            glm::vec3(cameraPos.x, cameraPos.y, cameraPos.z),
-            glm::vec3(cameraPos.x + cameraFront.x, cameraPos.y + cameraFront.y, cameraPos.z + cameraFront.z),
-            glm::vec3(0.0f, 1.0f, 0.0f)
-        );
-        
-        glm::mat4 projection = glm::perspective(glm::radians(45.0f), 
-                                            static_cast<float>(win->w) / static_cast<float>(win->h),
-                                            0.1f, 100.0f);
-        
+    void draw(gl::GLWindow* win, const glm::mat4& view, const glm::mat4& projection) {
+        glm::mat4 model(1.0f);
         floorShader.useProgram();
-        
-        GLuint modelLoc = glGetUniformLocation(floorShader.id(), "model");
-        GLuint viewLoc = glGetUniformLocation(floorShader.id(), "view");
-        GLuint projectionLoc = glGetUniformLocation(floorShader.id(), "projection");
-        
-        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-        
+        glUniformMatrix4fv(glGetUniformLocation(floorShader.id(), "model"), 1, GL_FALSE, glm::value_ptr(model));
+        glUniformMatrix4fv(glGetUniformLocation(floorShader.id(), "view"), 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(glGetUniformLocation(floorShader.id(), "projection"), 1, GL_FALSE, glm::value_ptr(projection));
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, textureId);
         glUniform1i(glGetUniformLocation(floorShader.id(), "floorTexture"), 0);
-        
         glBindVertexArray(vao);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
@@ -2020,11 +2003,6 @@ public:
         lastUpdateTime = currentTime;
         
         update(deltaTime);
-
-        glEnable(GL_POLYGON_OFFSET_FILL);
-        glPolygonOffset(1.0f, 1.0f);
-        game_floor.draw(win);
-        glDisable(GL_POLYGON_OFFSET_FILL);
         
         glm::mat4 view = glm::lookAt(
             glm::vec3(game_floor.getCameraPosition().x, game_floor.getCameraPosition().y, game_floor.getCameraPosition().z),
@@ -2036,9 +2014,9 @@ public:
                                 static_cast<float>(win->w) / static_cast<float>(win->h),
                                 0.1f, 100.0f);
 
-        
-        game_walls.draw(view, projection, game_floor.getCameraPosition());    
+        game_floor.draw(win, view, projection);
         glEnable(GL_CULL_FACE);
+        game_walls.draw(view, projection, game_floor.getCameraPosition());    
         glCullFace(GL_BACK);
         game_pillars.draw(view, projection, game_floor.getCameraPosition());  
         glDisable(GL_CULL_FACE);
