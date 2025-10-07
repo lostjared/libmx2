@@ -457,99 +457,160 @@ public:
         if(!pillarShader.loadProgramFromText(vertexShader, fragmentShader)) {
             throw mx::Exception("Failed to load pillar shader");
         }
+ 
+    int segments = 16;
+    std::vector<float> vertices;
+    std::vector<unsigned int> indices;
 
-        int segments = 16;
-        std::vector<float> vertices;
-        std::vector<unsigned int> indices;
+    float bottomCapScale = 1.5f;
+    float baseDepth = -0.05f;  
 
-        for (int i = 0; i <= segments; ++i) {
-            float angle = (float)i / segments * 2.0f * M_PI;
-            float x = cos(angle);
-            float z = sin(angle);
-            float u = (float)i / segments;
+    for (int i = 0; i <= segments; ++i) {
+        float angle = (float)i / segments * 2.0f * M_PI;
+        float x_bottom = cos(angle) * bottomCapScale;
+        float z_bottom = sin(angle) * bottomCapScale;
+        float x_top = cos(angle);
+        float z_top = sin(angle);
+        float u = (float)i / segments;
 
-            vertices.insert(vertices.end(), {
-                x, 0.0f, z,           
-                u, 0.0f,              
-                x, 0.0f, z            
-            });
+        vertices.insert(vertices.end(), {
+            x_bottom, 0.0f, z_bottom,
+            u, 0.0f,
+            x_bottom, 0.0f, z_bottom
+        });
 
-            vertices.insert(vertices.end(), {
-                x, 1.0f, z,           
-                u, 1.0f,              
-                x, 0.0f, z            
-            });
-        }
-
-        for (int i = 0; i < segments; ++i) {
-            int current = i * 2;
-            int next = (i + 1) * 2;
-
-            indices.insert(indices.end(), {
-                (unsigned int)current, (unsigned int)(current + 1), (unsigned int)next,
-                (unsigned int)next, (unsigned int)(current + 1), (unsigned int)(next + 1)
-            });
-        }
-
-        glGenVertexArrays(1, &vao);
-        glGenBuffers(1, &vbo);
-        glGenBuffers(1, &ebo);
-        
-        glBindVertexArray(vao);
-        
-        glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
-        
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
-        
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-        glEnableVertexAttribArray(0);
-        
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-        glEnableVertexAttribArray(1);
-        
-        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float)));
-        glEnableVertexAttribArray(2);
-        
-        SDL_Surface* pillarSurface = png::LoadPNG(win->util.getFilePath("data/ground.png").c_str());
-        if(!pillarSurface) {
-            throw mx::Exception("Failed to load pillar texture");
-        }
-
-        glGenTextures(1, &textureId);
-        glBindTexture(GL_TEXTURE_2D, textureId);
-        
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, pillarSurface->w, pillarSurface->h,
-                    0, GL_RGBA, GL_UNSIGNED_BYTE, pillarSurface->pixels);
-        
-        SDL_FreeSurface(pillarSurface);
-
-        numIndices = indices.size();
-
-        std::random_device rd;
-        std::mt19937 gen(rd());
-        std::uniform_real_distribution<float> posX(-40.0f, 40.0f);
-        std::uniform_real_distribution<float> posZ(-40.0f, 40.0f);
-        std::uniform_real_distribution<float> radiusDist(0.5f, 1.5f);
-        std::uniform_real_distribution<float> heightDist(3.0f, 6.0f);
-
-        int numPillars = 15;
-        for (int i = 0; i < numPillars; ++i) {
-            PillarInstance pillar;
-            pillar.position = glm::vec3(posX(gen), 0.0f, posZ(gen));
-            pillar.radius = radiusDist(gen);
-            pillar.height = heightDist(gen);
-            pillars.push_back(pillar);
-        }
-
-        std::cout << "Generated " << numPillars << " pillars\n";
+        vertices.insert(vertices.end(), {
+            x_top, 1.0f, z_top,
+            u, 1.0f,
+            x_top, 0.0f, z_top
+        });
     }
+
+    for (int i = 0; i < segments; ++i) {
+        int current = i * 2;
+        int next = (i + 1) * 2;
+
+        indices.insert(indices.end(), {
+            (unsigned int)current, (unsigned int)(current + 1), (unsigned int)next,
+            (unsigned int)next, (unsigned int)(current + 1), (unsigned int)(next + 1)
+        });
+    }
+
+    int bottomCenterIndex = vertices.size() / 8;
+    vertices.insert(vertices.end(), {
+        0.0f, baseDepth, 0.0f,     
+        0.5f, 0.5f,
+        0.0f, -1.0f, 0.0f
+    });
+
+    int bottomCapStart = vertices.size() / 8;
+    for (int i = 0; i <= segments; ++i) {
+        float angle = (float)i / segments * 2.0f * M_PI;
+        float x = cos(angle) * bottomCapScale;
+        float z = sin(angle) * bottomCapScale;
+        
+        vertices.insert(vertices.end(), {
+            x, 0.0f, z,  
+            0.5f + x * 0.5f / bottomCapScale, 0.5f + z * 0.5f / bottomCapScale,
+            0.0f, -1.0f, 0.0f
+        });
+    }
+
+    for (int i = 0; i < segments; ++i) {
+        indices.insert(indices.end(), {
+            (unsigned int)bottomCenterIndex,
+            (unsigned int)(bottomCapStart + i + 1),
+            (unsigned int)(bottomCapStart + i)
+        });
+    }
+
+    int topCenterIndex = vertices.size() / 8;
+    vertices.insert(vertices.end(), {
+        0.0f, 1.0f, 0.0f,
+        0.5f, 0.5f,
+        0.0f, 1.0f, 0.0f
+    });
+
+    int topCapStart = vertices.size() / 8;
+    for (int i = 0; i <= segments; ++i) {
+        float angle = (float)i / segments * 2.0f * M_PI;
+        float x = cos(angle);
+        float z = sin(angle);
+        
+        vertices.insert(vertices.end(), {
+            x, 1.0f, z,
+            0.5f + x * 0.5f, 0.5f + z * 0.5f,
+            0.0f, 1.0f, 0.0f
+        });
+    }
+
+    for (int i = 0; i < segments; ++i) {
+        indices.insert(indices.end(), {
+            (unsigned int)topCenterIndex,
+            (unsigned int)(topCapStart + i),
+            (unsigned int)(topCapStart + i + 1)
+        });
+    }
+
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
+    glGenBuffers(1, &ebo);
+    
+    glBindVertexArray(vao);
+    
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
+    
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
+    
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+    
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float)));
+    glEnableVertexAttribArray(2);
+    
+    SDL_Surface* pillarSurface = png::LoadPNG(win->util.getFilePath("data/ground.png").c_str());
+    if(!pillarSurface) {
+        throw mx::Exception("Failed to load pillar texture");
+    }
+
+    glGenTextures(1, &textureId);
+    glBindTexture(GL_TEXTURE_2D, textureId);
+    
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, pillarSurface->w, pillarSurface->h,
+                0, GL_RGBA, GL_UNSIGNED_BYTE, pillarSurface->pixels);
+    
+    SDL_FreeSurface(pillarSurface);
+
+    numIndices = indices.size();
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<float> posX(-40.0f, 40.0f);
+    std::uniform_real_distribution<float> posZ(-40.0f, 40.0f);
+    std::uniform_real_distribution<float> radiusDist(0.5f, 1.5f);
+    std::uniform_real_distribution<float> heightDist(3.0f, 6.0f);
+
+    int numPillars = 15;
+    for (int i = 0; i < numPillars; ++i) {
+        PillarInstance pillar;
+        pillar.position = glm::vec3(posX(gen), 0.0f, posZ(gen));
+        pillar.radius = radiusDist(gen);
+        pillar.height = heightDist(gen);
+        pillars.push_back(pillar);
+    }
+
+    std::cout << "Generated " << numPillars << " pillars with caps\n";
+}
 
     void draw(gl::GLWindow *win) override {
     }
@@ -1967,7 +2028,7 @@ public:
         
         glm::mat4 projection = glm::perspective(glm::radians(45.0f),
                                 static_cast<float>(win->w) / static_cast<float>(win->h),
-                                0.01f, 100.0f);
+                                0.1f, 100.0f);
 
         game_walls.draw(view, projection, game_floor.getCameraPosition());    
         game_pillars.draw(view, projection, game_floor.getCameraPosition());  
