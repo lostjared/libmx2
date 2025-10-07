@@ -1313,20 +1313,6 @@ public:
                 indexOffset + 2, indexOffset + 3, indexOffset + 0
             });
             indexOffset += 4;
-
-            normal = -normal;
-            vertices.insert(vertices.end(), {
-                wall.end.x, 0.0f, wall.end.z, 0.0f, 0.0f, normal.x, normal.y, normal.z,
-                wall.start.x, 0.0f, wall.start.z, texRepeat, 0.0f, normal.x, normal.y, normal.z,
-                wall.start.x, wall.height, wall.start.z, texRepeat, 1.0f, normal.x, normal.y, normal.z,
-                wall.end.x, wall.height, wall.end.z, 0.0f, 1.0f, normal.x, normal.y, normal.z
-            });
-
-            indices.insert(indices.end(), {
-                indexOffset + 0, indexOffset + 1, indexOffset + 2,
-                indexOffset + 2, indexOffset + 3, indexOffset + 0
-            });
-            indexOffset += 4;
         }
 
         glGenVertexArrays(1, &vao);
@@ -1378,29 +1364,34 @@ public:
     }
 
     void draw(const glm::mat4& view, const glm::mat4& projection, const glm::vec3& cameraPos) {
-        wallShader.useProgram();
-        
-        glm::mat4 model = glm::mat4(1.0f);
-        
-        GLuint modelLoc = glGetUniformLocation(wallShader.id(), "model");
-        GLuint viewLoc = glGetUniformLocation(wallShader.id(), "view");
-        GLuint projectionLoc = glGetUniformLocation(wallShader.id(), "projection");
-        GLuint lightPosLoc = glGetUniformLocation(wallShader.id(), "lightPos");
-        GLuint viewPosLoc = glGetUniformLocation(wallShader.id(), "viewPos");
-        
-        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-        glUniform3f(lightPosLoc, 0.0f, 15.0f, 0.0f);
-        glUniform3f(viewPosLoc, cameraPos.x, cameraPos.y, cameraPos.z);
-        
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, textureId);
-        glUniform1i(glGetUniformLocation(wallShader.id(), "wallTexture"), 0);
-        
-        glBindVertexArray(vao);
-        glDrawElements(GL_TRIANGLES, numIndices, GL_UNSIGNED_INT, 0);
-        glBindVertexArray(0);
+        glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+    
+    wallShader.useProgram();
+    
+    glm::mat4 model = glm::mat4(1.0f);
+    
+    GLuint modelLoc = glGetUniformLocation(wallShader.id(), "model");
+    GLuint viewLoc = glGetUniformLocation(wallShader.id(), "view");
+    GLuint projectionLoc = glGetUniformLocation(wallShader.id(), "projection");
+    GLuint lightPosLoc = glGetUniformLocation(wallShader.id(), "lightPos");
+    GLuint viewPosLoc = glGetUniformLocation(wallShader.id(), "viewPos");
+    
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+    glUniform3f(lightPosLoc, 0.0f, 15.0f, 0.0f);
+    glUniform3f(viewPosLoc, cameraPos.x, cameraPos.y, cameraPos.z);
+    
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, textureId);
+    glUniform1i(glGetUniformLocation(wallShader.id(), "wallTexture"), 0);
+    
+    glBindVertexArray(vao);
+    glDrawElements(GL_TRIANGLES, numIndices, GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
+    
+    glDisable(GL_CULL_FACE);
     }
 
     bool checkCollision(const glm::vec3& position, float radius) {
