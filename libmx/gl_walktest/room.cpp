@@ -1048,18 +1048,37 @@ const char *fragmentShader = R"(#version 300 es
         throw mx::Exception("Failed to load floor shader program");
     }
 
-    float y = -0.01f;
-    float vertices[] = {
-        -50.0f, y, -50.0f,  0.0f,  0.0f,
-        50.0f, y, -50.0f, 20.0f,  0.0f,
-        50.0f, y,  50.0f, 20.0f, 20.0f,
-        -50.0f, y,  50.0f,  0.0f, 20.0f
-    };
-    
-    unsigned int indices[] = {
-        0, 1, 2,
-        2, 3, 0
-    };
+    const int N = 64;                // grid resolution
+    const float half = 50.0f;
+    const float y = -0.01f;
+    const float uvTiles = 20.0f;
+
+    std::vector<float> verts;
+    std::vector<unsigned int> idx;
+    verts.reserve((N+1)*(N+1)*5);
+    idx.reserve(N*N*6);
+
+    for (int z=0; z<=N; ++z) {
+    float tz = float(z)/N;
+    float Z  = -half + tz * (2.0f*half);
+        for (int x=0; x<=N; ++x) {
+            float tx = float(x)/N;
+            float X  = -half + tx * (2.0f*half);
+            float u = tx * uvTiles;
+            float v = tz * uvTiles;
+            verts.insert(verts.end(), { X, y, Z, u, v });
+        }
+    }
+    auto vid = [&](int x,int z){ return z*(N+1)+x; };
+    for (int z=0; z<N; ++z) {
+        for (int x=0; x<N; ++x) {
+            unsigned a = vid(x,   z);
+            unsigned b = vid(x+1, z);
+            unsigned c = vid(x+1, z+1);
+            unsigned d = vid(x,   z+1);
+            idx.insert(idx.end(), { a,b,c,  c,d,a });
+        }
+    }
 
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
@@ -1089,7 +1108,8 @@ const char *fragmentShader = R"(#version 300 es
     
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+//    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     
 #ifndef __EMSCRIPTEN__
