@@ -617,9 +617,9 @@ const char *fragmentShader = R"(#version 300 es
 
     float vertices[] = {
         -50.0f, 0.0f, -50.0f,   0.0f,   0.0f,
-         50.0f, 0.0f, -50.0f,   10.0f,  0.0f,
-         50.0f, 0.0f,  50.0f,   10.0f,  10.0f,
-        -50.0f, 0.0f,  50.0f,   0.0f,   10.0f
+         50.0f, 0.0f, -50.0f,   20.0f,  0.0f,   
+         50.0f, 0.0f,  50.0f,   20.0f,  20.0f,  
+        -50.0f, 0.0f,  50.0f,   0.0f,   20.0f   
     };
     
     unsigned int indices[] = {
