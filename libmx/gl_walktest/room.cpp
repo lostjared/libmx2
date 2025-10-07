@@ -410,7 +410,7 @@ public:
         glBindVertexArray(0);
     }
 
-    void createExplosion(const glm::vec3& position, int numParticles = 100) {
+    void createExplosion(const glm::vec3& position, int numParticles, bool isRed = false) {
         std::random_device rd;
         std::mt19937 gen(rd());
         std::uniform_real_distribution<float> speed(2.0f, 10.0f);
@@ -432,10 +432,17 @@ public:
                 velocity * cos(phi) * sin(theta)
             );
             
-            float r = colorVariation(gen);
-            float g = colorVariation(gen) * 0.7f; 
-            float b = colorVariation(gen) * 0.2f; 
-            particle.color = glm::vec4(r, g, b, 1.0f);
+            if (isRed) {
+                float r = colorVariation(gen);
+                float g = colorVariation(gen) * 0.2f;
+                float b = colorVariation(gen) * 0.1f;
+                particle.color = glm::vec4(r, g, b, 1.0f);
+            } else {
+                float r = colorVariation(gen);
+                float g = colorVariation(gen) * 0.7f; 
+                float b = colorVariation(gen) * 0.2f; 
+                particle.color = glm::vec4(r, g, b, 1.0f);
+            }
             
             particle.lifetime = 0.0f;
             particle.maxLifetime = 1.0f + speed(gen) * 0.2f;
@@ -1256,6 +1263,13 @@ void update(float deltaTime, Objects& objects, Explosion& explosion, Pillar& pil
             bullet.trail.end()
         );
 
+        if (bullet.position.y <= 0.0f) {
+            explosion.createExplosion(glm::vec3(bullet.position.x, 0.0f, bullet.position.z), 300, true);
+            bullet.active = false;
+            std::cout << "Bullet hit floor at (" << bullet.position.x << ", " << bullet.position.y << ", " << bullet.position.z << ")\n";
+            continue;
+        }
+
         for (const auto& pillar : pillars.pillars) {
             int steps = 5;
             bool hitPillar = false;
@@ -1269,7 +1283,7 @@ void update(float deltaTime, Objects& objects, Explosion& explosion, Pillar& pil
                 float distance = glm::length(bulletPos2D - pillarPos2D);
                 
                 if (distance < pillar.radius && checkPos.y > 0.0f && checkPos.y < pillar.height) {
-                    explosion.createExplosion(checkPos, 500);
+                    explosion.createExplosion(checkPos, 500, true);
                     bullet.active = false;
                     std::cout << "Bullet hit pillar at (" << checkPos.x << ", " << checkPos.y << ", " << checkPos.z << ")\n";
                     hitPillar = true;
@@ -1289,7 +1303,7 @@ void update(float deltaTime, Objects& objects, Explosion& explosion, Pillar& pil
             
             float hitIndex = -1;
             if (objects.checkCollision(checkPos, hitIndex)) {
-                explosion.createExplosion(checkPos, 1000);
+                explosion.createExplosion(checkPos, 1000, false); 
                 objects.removeObject(static_cast<int>(hitIndex));
                 bullet.active = false;
                 std::cout << "Bullet hit object " << static_cast<int>(hitIndex) << "!\n";
@@ -1336,7 +1350,7 @@ void update(float deltaTime, Objects& objects, Explosion& explosion, Pillar& pil
             std::vector<float> trailData;
             for (const auto& point : bullet.trail) {
                 float fadeProgress = point.lifetime / point.maxLifetime;
-                float alpha = (1.0f - fadeProgress) * 0.6f;
+                float alpha = (1.0f - fadeProgress) * 0.8f; 
 
                 trailData.push_back(point.position.x);
                 trailData.push_back(point.position.y);
@@ -1384,7 +1398,7 @@ void update(float deltaTime, Objects& objects, Explosion& explosion, Pillar& pil
             rotation[2] = glm::vec4(bullet.direction, 0.0f);
             
             model = model * rotation;
-            model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f)); 
+            model = glm::scale(model, glm::vec3(1.5f, 1.5f, 3.0f)); 
 
             GLuint modelLoc = glGetUniformLocation(bulletShader.id(), "model");
             GLuint alphaLoc = glGetUniformLocation(bulletShader.id(), "alpha");
