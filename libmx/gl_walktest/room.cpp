@@ -783,10 +783,17 @@ public:
             }
         )";
 
+        
 #else
         const char *vertexShader = R"(#version 300 es
             precision highp float;
             layout(location = 0) in vec3 aPos;
+            layout(location = 1) in vec2 aTexCoord;
+            layout(location = 2) in vec3 aNormal;
+            
+            out vec2 TexCoord;
+            out vec3 Normal;
+            out vec3 FragPos;
             
             uniform mat4 model;
             uniform mat4 view;
@@ -794,7 +801,9 @@ public:
             
             void main() {
                 gl_Position = projection * view * model * vec4(aPos, 1.0);
-                gl_PointSize = 15.0;
+                FragPos = vec3(model * vec4(aPos, 1.0));
+                Normal = mat3(transpose(inverse(model))) * aNormal;
+                TexCoord = aTexCoord;
             }
         )";
 
@@ -802,17 +811,33 @@ public:
             precision highp float;
             out vec4 FragColor;
             
-            uniform float alpha;
-            uniform vec3 bulletColor;
+            in vec2 TexCoord;
+            in vec3 Normal;
+            in vec3 FragPos;
+            
+            uniform sampler2D objectTexture;
+            uniform vec3 lightPos;
+            uniform vec3 viewPos;
+            uniform vec3 lightColor;
             
             void main() {
-                vec2 coord = gl_PointCoord - vec2(0.5);
-                float dist = length(coord);
-                if (dist > 0.5) discard;
+                float ambientStrength = 0.3;
+                vec3 ambient = ambientStrength * vec3(1.0);
                 
-                float fade = 1.0 - smoothstep(0.0, 0.5, dist);
-                fade = pow(fade, 0.5);
-                FragColor = vec4(bulletColor * 1.5, alpha * fade);
+                vec3 norm = normalize(Normal);
+                vec3 lightDir = normalize(lightPos - FragPos);
+                float diff = max(dot(norm, lightDir), 0.0);
+                vec3 diffuse = diff * vec3(1.0);
+                
+                float specularStrength = 0.5;
+                vec3 viewDir = normalize(viewPos - FragPos);
+                vec3 reflectDir = reflect(-lightDir, norm);
+                float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
+                vec3 specular = specularStrength * spec * lightColor;
+                
+                vec4 texColor = texture(objectTexture, TexCoord);
+                vec3 result = (ambient + diffuse + specular) * vec3(texColor);
+                FragColor = vec4(result, texColor.a);
             }
         )";
 
@@ -849,6 +874,8 @@ public:
                 FragColor = vec4(trailColor, trailAlpha * fade);
             }
         )";
+
+        
 #endif
 
         if(!bulletShader.loadProgramFromText(vertexShader, fragmentShader)) {
@@ -858,6 +885,8 @@ public:
         if(!trailShader.loadProgramFromText(trailVertexShader, trailFragmentShader)) {
             throw mx::Exception("Failed to load trail shader");
         }
+
+        
 
         float vertex[] = { 0.0f, 0.0f, 0.0f };
 
@@ -1039,8 +1068,8 @@ public:
 
     Crosshair() = default;
     ~Crosshair() {
-        glDeleteVertexArrays(1, &vao);
-        glDeleteBuffers(1, &vbo);
+        if (vao != 0) glDeleteVertexArrays(1, &vao);
+        if (vbo != 0) glDeleteBuffers(1, &vbo);
     }
 
     void load(gl::GLWindow *win) {
@@ -1128,6 +1157,553 @@ public:
     }
 };
 
+class Wall : public gl::GLObject {
+public:
+    Wall() = default;
+    ~Wall() {
+        if (vao != 0) glDeleteVertexArrays(1, &vao);
+        if (vbo != 0) glDeleteBuffers(1, &vbo);
+        if (ebo != 0) glDeleteBuffers(1, &ebo);
+    }
+
+    struct WallSegment {
+        glm::vec3 start;
+        glm::vec3 end;
+        float height;
+    };
+
+    std::vector<WallSegment> walls;
+    GLuint vao = 0, vbo = 0, ebo = 0;
+    GLuint textureId = 0;
+    gl::ShaderProgram wallShader;
+
+    void load(gl::GLWindow *win) override {
+#ifndef __EMSCRIPTEN__
+        const char *vertexShader = R"(
+            #version 330 core
+            layout(location = 0) in vec3 aPos;
+            layout(location = 1) in vec2 aTexCoord;
+            layout(location = 2) in vec3 aNormal;
+            
+            out vec2 TexCoord;
+            out vec3 Normal;
+            out vec3 FragPos;
+            
+            uniform mat4 model;
+            uniform mat4 view;
+            uniform mat4 projection;
+            
+            void main() {
+                gl_Position = projection * view * model * vec4(aPos, 1.0);
+                FragPos = vec3(model * vec4(aPos, 1.0));
+                Normal = mat3(transpose(inverse(model))) * aNormal;
+                TexCoord = aTexCoord;
+            }
+        )";
+
+        const char *fragmentShader = R"(
+            #version 330 core
+            out vec4 FragColor;
+            
+            in vec2 TexCoord;
+            in vec3 Normal;
+            in vec3 FragPos;
+            
+            uniform sampler2D wallTexture;
+            uniform vec3 lightPos;
+            uniform vec3 viewPos;
+            
+            void main() {
+                float ambientStrength = 0.3;
+                vec3 ambient = ambientStrength * vec3(1.0);
+                
+                vec3 norm = normalize(Normal);
+                vec3 lightDir = normalize(lightPos - FragPos);
+                float diff = max(dot(norm, lightDir), 0.0);
+                vec3 diffuse = diff * vec3(1.0);
+                
+                vec4 texColor = texture(wallTexture, TexCoord);
+                vec3 result = (ambient + diffuse) * vec3(texColor);
+                FragColor = vec4(result, texColor.a);
+            }
+        )";
+#else
+        const char *vertexShader = R"(#version 300 es
+            precision highp float;
+            layout(location = 0) in vec3 aPos;
+            layout(location = 1) in vec2 aTexCoord;
+            layout(location = 2) in vec3 aNormal;
+            
+            out vec2 TexCoord;
+            out vec3 Normal;
+            out vec3 FragPos;
+            
+            uniform mat4 model;
+            uniform mat4 view;
+            uniform mat4 projection;
+            
+            void main() {
+                gl_Position = projection * view * model * vec4(aPos, 1.0);
+                FragPos = vec3(model * vec4(aPos, 1.0));
+                Normal = mat3(transpose(inverse(model))) * aNormal;
+                TexCoord = aTexCoord;
+            }
+        )";
+
+        const char *fragmentShader = R"(#version 300 es
+            precision highp float;
+            out vec4 FragColor;
+            
+            in vec2 TexCoord;
+            in vec3 Normal;
+            in vec3 FragPos;
+            
+            uniform sampler2D wallTexture;
+            uniform vec3 lightPos;
+            uniform vec3 viewPos;
+            
+            void main() {
+                float ambientStrength = 0.3;
+                vec3 ambient = ambientStrength * vec3(1.0);
+                
+                vec3 norm = normalize(Normal);
+                vec3 lightDir = normalize(lightPos - FragPos);
+                float diff = max(dot(norm, lightDir), 0.0);
+                vec3 diffuse = diff * vec3(1.0);
+                
+                vec4 texColor = texture(wallTexture, TexCoord);
+                vec3 result = (ambient + diffuse) * vec3(texColor);
+                FragColor = vec4(result, texColor.a);
+            }
+        )";
+#endif
+
+        if(!wallShader.loadProgramFromText(vertexShader, fragmentShader)) {
+            throw mx::Exception("Failed to load wall shader");
+        }
+
+        float size = 50.0f;
+        float wallHeight = 5.0f;
+        
+        walls.push_back({glm::vec3(-size, 0.0f, -size), glm::vec3(size, 0.0f, -size), wallHeight});
+        walls.push_back({glm::vec3(-size, 0.0f, size), glm::vec3(size, 0.0f, size), wallHeight});
+        walls.push_back({glm::vec3(-size, 0.0f, -size), glm::vec3(-size, 0.0f, size), wallHeight});
+        walls.push_back({glm::vec3(size, 0.0f, -size), glm::vec3(size, 0.0f, size), wallHeight});
+
+        std::vector<float> vertices;
+        std::vector<unsigned int> indices;
+        unsigned int indexOffset = 0;
+
+        for (const auto& wall : walls) {
+            glm::vec3 dir = glm::normalize(wall.end - wall.start);
+            glm::vec3 normal = glm::vec3(-dir.z, 0.0f, dir.x); 
+            
+            float length = glm::length(wall.end - wall.start);
+            float texRepeat = length / 5.0f;
+
+            vertices.insert(vertices.end(), {
+                wall.start.x, 0.0f, wall.start.z, 0.0f, 0.0f, normal.x, normal.y, normal.z,
+                wall.end.x, 0.0f, wall.end.z, texRepeat, 0.0f, normal.x, normal.y, normal.z,
+                wall.end.x, wall.height, wall.end.z, texRepeat, 1.0f, normal.x, normal.y, normal.z,
+                wall.start.x, wall.height, wall.start.z, 0.0f, 1.0f, normal.x, normal.y, normal.z
+            });
+
+            indices.insert(indices.end(), {
+                indexOffset + 0, indexOffset + 1, indexOffset + 2,
+                indexOffset + 2, indexOffset + 3, indexOffset + 0
+            });
+            indexOffset += 4;
+
+            normal = -normal;
+            vertices.insert(vertices.end(), {
+                wall.end.x, 0.0f, wall.end.z, 0.0f, 0.0f, normal.x, normal.y, normal.z,
+                wall.start.x, 0.0f, wall.start.z, texRepeat, 0.0f, normal.x, normal.y, normal.z,
+                wall.start.x, wall.height, wall.start.z, texRepeat, 1.0f, normal.x, normal.y, normal.z,
+                wall.end.x, wall.height, wall.end.z, 0.0f, 1.0f, normal.x, normal.y, normal.z
+            });
+
+            indices.insert(indices.end(), {
+                indexOffset + 0, indexOffset + 1, indexOffset + 2,
+                indexOffset + 2, indexOffset + 3, indexOffset + 0
+            });
+            indexOffset += 4;
+        }
+
+        glGenVertexArrays(1, &vao);
+        glGenBuffers(1, &vbo);
+        glGenBuffers(1, &ebo);
+        
+        glBindVertexArray(vao);
+        
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
+        
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
+        
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+        
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+        glEnableVertexAttribArray(1);
+        
+        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float)));
+        glEnableVertexAttribArray(2);
+        
+        SDL_Surface* wallSurface = png::LoadPNG(win->util.getFilePath("data/ground.png").c_str());
+        if(!wallSurface) {
+            throw mx::Exception("Failed to load wall texture");
+        }
+
+        glGenTextures(1, &textureId);
+        glBindTexture(GL_TEXTURE_2D, textureId);
+        
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, wallSurface->w, wallSurface->h,
+                    0, GL_RGBA, GL_UNSIGNED_BYTE, wallSurface->pixels);
+        
+        SDL_FreeSurface(wallSurface);
+
+        numIndices = indices.size();
+    }
+
+    void draw(gl::GLWindow *win) override {
+    }
+
+    void event(gl::GLWindow *win, SDL_Event &e) override {
+    }
+
+    void draw(const glm::mat4& view, const glm::mat4& projection, const glm::vec3& cameraPos) {
+        wallShader.useProgram();
+        
+        glm::mat4 model = glm::mat4(1.0f);
+        
+        GLuint modelLoc = glGetUniformLocation(wallShader.id(), "model");
+        GLuint viewLoc = glGetUniformLocation(wallShader.id(), "view");
+        GLuint projectionLoc = glGetUniformLocation(wallShader.id(), "projection");
+        GLuint lightPosLoc = glGetUniformLocation(wallShader.id(), "lightPos");
+        GLuint viewPosLoc = glGetUniformLocation(wallShader.id(), "viewPos");
+        
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+        glUniform3f(lightPosLoc, 0.0f, 15.0f, 0.0f);
+        glUniform3f(viewPosLoc, cameraPos.x, cameraPos.y, cameraPos.z);
+        
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, textureId);
+        glUniform1i(glGetUniformLocation(wallShader.id(), "wallTexture"), 0);
+        
+        glBindVertexArray(vao);
+        glDrawElements(GL_TRIANGLES, numIndices, GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
+    }
+
+    bool checkCollision(const glm::vec3& position, float radius) {
+        for (const auto& wall : walls) {
+            glm::vec3 wallDir = wall.end - wall.start;
+            glm::vec3 pointToStart = position - wall.start;
+            
+            float wallLength = glm::length(wallDir);
+            wallDir = glm::normalize(wallDir);
+            
+            float t = glm::dot(pointToStart, wallDir);
+            t = glm::clamp(t, 0.0f, wallLength);
+            
+            glm::vec3 closestPoint = wall.start + wallDir * t;
+            closestPoint.y = position.y; 
+            
+            float distance = glm::length(position - closestPoint);
+            
+            if (distance < radius) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+private:
+    size_t numIndices = 0;
+};
+
+class Pillar : public gl::GLObject {
+public:
+    struct PillarInstance {
+        glm::vec3 position;
+        float radius;
+        float height;
+    };
+
+    std::vector<PillarInstance> pillars;
+    GLuint vao = 0, vbo = 0, ebo = 0;
+    GLuint textureId = 0;
+    gl::ShaderProgram pillarShader;
+
+    Pillar() = default;
+    ~Pillar() {
+        if (vao != 0) glDeleteVertexArrays(1, &vao);
+        if (vbo != 0) glDeleteBuffers(1, &vbo);
+        if (ebo != 0) glDeleteBuffers(1, &ebo);
+    }
+
+    void load(gl::GLWindow *win) override {
+#ifndef __EMSCRIPTEN__
+        const char *vertexShader = R"(
+            #version 330 core
+            layout(location = 0) in vec3 aPos;
+            layout(location = 1) in vec2 aTexCoord;
+            layout(location = 2) in vec3 aNormal;
+            
+            out vec2 TexCoord;
+            out vec3 Normal;
+            out vec3 FragPos;
+            
+            uniform mat4 model;
+            uniform mat4 view;
+            uniform mat4 projection;
+            
+            void main() {
+                gl_Position = projection * view * model * vec4(aPos, 1.0);
+                FragPos = vec3(model * vec4(aPos, 1.0));
+                Normal = mat3(transpose(inverse(model))) * aNormal;
+                TexCoord = aTexCoord;
+            }
+        )";
+
+        const char *fragmentShader = R"(
+            #version 330 core
+            out vec4 FragColor;
+            
+            in vec2 TexCoord;
+            in vec3 Normal;
+            in vec3 FragPos;
+            
+            uniform sampler2D pillarTexture;
+            uniform vec3 lightPos;
+            uniform vec3 viewPos;
+            
+            void main() {
+                float ambientStrength = 0.3;
+                vec3 ambient = ambientStrength * vec3(1.0);
+                
+                vec3 norm = normalize(Normal);
+                vec3 lightDir = normalize(lightPos - FragPos);
+                float diff = max(dot(norm, lightDir), 0.0);
+                vec3 diffuse = diff * vec3(1.0);
+                
+                vec4 texColor = texture(pillarTexture, TexCoord);
+                vec3 result = (ambient + diffuse) * vec3(texColor);
+                FragColor = vec4(result, texColor.a);
+            }
+        )";
+#else
+        const char *vertexShader = R"(#version 300 es
+            precision highp float;
+            layout(location = 0) in vec3 aPos;
+            layout(location = 1) in vec2 aTexCoord;
+            layout(location = 2) in vec3 aNormal;
+            
+            out vec2 TexCoord;
+            out vec3 Normal;
+            out vec3 FragPos;
+            
+            uniform mat4 model;
+            uniform mat4 view;
+            uniform mat4 projection;
+            
+            void main() {
+                gl_Position = projection * view * model * vec4(aPos, 1.0);
+                FragPos = vec3(model * vec4(aPos, 1.0));
+                Normal = mat3(transpose(inverse(model))) * aNormal;
+                TexCoord = aTexCoord;
+            }
+        )";
+
+        const char *fragmentShader = R"(#version 300 es
+            precision highp float;
+            out vec4 FragColor;
+            
+            in vec2 TexCoord;
+            in vec3 Normal;
+            in vec3 FragPos;
+            
+            uniform sampler2D pillarTexture;
+            uniform vec3 lightPos;
+            uniform vec3 viewPos;
+            
+            void main() {
+                float ambientStrength = 0.3;
+                vec3 ambient = ambientStrength * vec3(1.0);
+                
+                vec3 norm = normalize(Normal);
+                vec3 lightDir = normalize(lightPos - FragPos);
+                float diff = max(dot(norm, lightDir), 0.0);
+                vec3 diffuse = diff * vec3(1.0);
+                
+                vec4 texColor = texture(pillarTexture, TexCoord);
+                vec3 result = (ambient + diffuse) * vec3(texColor);
+                FragColor = vec4(result, texColor.a);
+            }
+        )";
+#endif
+
+        if(!pillarShader.loadProgramFromText(vertexShader, fragmentShader)) {
+            throw mx::Exception("Failed to load pillar shader");
+        }
+
+        int segments = 16;
+        std::vector<float> vertices;
+        std::vector<unsigned int> indices;
+
+        for (int i = 0; i <= segments; ++i) {
+            float angle = (float)i / segments * 2.0f * M_PI;
+            float x = cos(angle);
+            float z = sin(angle);
+            float u = (float)i / segments;
+
+            vertices.insert(vertices.end(), {
+                x, 0.0f, z,           
+                u, 0.0f,              
+                x, 0.0f, z            
+            });
+
+            vertices.insert(vertices.end(), {
+                x, 1.0f, z,           
+                u, 1.0f,              
+                x, 0.0f, z            
+            });
+        }
+
+        for (int i = 0; i < segments; ++i) {
+            int current = i * 2;
+            int next = (i + 1) * 2;
+
+            indices.insert(indices.end(), {
+                (unsigned int)current, (unsigned int)(current + 1), (unsigned int)next,
+                (unsigned int)next, (unsigned int)(current + 1), (unsigned int)(next + 1)
+            });
+        }
+
+        glGenVertexArrays(1, &vao);
+        glGenBuffers(1, &vbo);
+        glGenBuffers(1, &ebo);
+        
+        glBindVertexArray(vao);
+        
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
+        
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
+        
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+        
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+        glEnableVertexAttribArray(1);
+        
+        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float)));
+        glEnableVertexAttribArray(2);
+        
+        SDL_Surface* pillarSurface = png::LoadPNG(win->util.getFilePath("data/ground.png").c_str());
+        if(!pillarSurface) {
+            throw mx::Exception("Failed to load pillar texture");
+        }
+
+        glGenTextures(1, &textureId);
+        glBindTexture(GL_TEXTURE_2D, textureId);
+        
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, pillarSurface->w, pillarSurface->h,
+                    0, GL_RGBA, GL_UNSIGNED_BYTE, pillarSurface->pixels);
+        
+        SDL_FreeSurface(pillarSurface);
+
+        numIndices = indices.size();
+
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_real_distribution<float> posX(-40.0f, 40.0f);
+        std::uniform_real_distribution<float> posZ(-40.0f, 40.0f);
+        std::uniform_real_distribution<float> radiusDist(0.5f, 1.5f);
+        std::uniform_real_distribution<float> heightDist(3.0f, 6.0f);
+
+        int numPillars = 15;
+        for (int i = 0; i < numPillars; ++i) {
+            PillarInstance pillar;
+            pillar.position = glm::vec3(posX(gen), 0.0f, posZ(gen));
+            pillar.radius = radiusDist(gen);
+            pillar.height = heightDist(gen);
+            pillars.push_back(pillar);
+        }
+
+        std::cout << "Generated " << numPillars << " pillars\n";
+    }
+
+    void draw(gl::GLWindow *win) override {
+    }
+
+    void event(gl::GLWindow *win, SDL_Event &e) override {
+    }
+
+    void draw(const glm::mat4& view, const glm::mat4& projection, const glm::vec3& cameraPos) {
+        pillarShader.useProgram();
+        
+        GLuint viewLoc = glGetUniformLocation(pillarShader.id(), "view");
+        GLuint projectionLoc = glGetUniformLocation(pillarShader.id(), "projection");
+        GLuint lightPosLoc = glGetUniformLocation(pillarShader.id(), "lightPos");
+        GLuint viewPosLoc = glGetUniformLocation(pillarShader.id(), "viewPos");
+        
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+        glUniform3f(lightPosLoc, 0.0f, 15.0f, 0.0f);
+        glUniform3f(viewPosLoc, cameraPos.x, cameraPos.y, cameraPos.z);
+        
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, textureId);
+        glUniform1i(glGetUniformLocation(pillarShader.id(), "pillarTexture"), 0);
+        
+        glBindVertexArray(vao);
+
+        for (const auto& pillar : pillars) {
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::translate(model, pillar.position);
+            model = glm::scale(model, glm::vec3(pillar.radius, pillar.height, pillar.radius));
+            
+            GLuint modelLoc = glGetUniformLocation(pillarShader.id(), "model");
+            glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+            
+            glDrawElements(GL_TRIANGLES, numIndices, GL_UNSIGNED_INT, 0);
+        }
+
+        glBindVertexArray(0);
+    }
+
+    bool checkCollision(const glm::vec3& position, float playerRadius) {
+        for (const auto& pillar : pillars) {
+            glm::vec2 playerPos2D(position.x, position.z);
+            glm::vec2 pillarPos2D(pillar.position.x, pillar.position.z);
+            
+            float distance = glm::length(playerPos2D - pillarPos2D);
+            if (distance < (pillar.radius + playerRadius)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+private:
+    size_t numIndices = 0;
+};
+
 class Game : public gl::GLObject {
 public:
     Game() = default;
@@ -1136,6 +1712,8 @@ public:
     void load(gl::GLWindow *win) override {
         font.loadFont(win->util.getFilePath("data/font.ttf"), 20);
         game_floor.load(win);
+        game_walls.load(win);    
+        game_pillars.load(win);  
         game_objects.load(win);
         projectiles.load(win);
         explosion.load(win); 
@@ -1156,8 +1734,7 @@ public:
         front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
         front.y = sin(glm::radians(pitch));
         front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-        
-        glm::vec3 cameraFront = glm::normalize(front);
+        cameraFront = glm::normalize(front);
         game_floor.setCameraFront(cameraFront);
     }
 
@@ -1184,6 +1761,8 @@ public:
                                             static_cast<float>(win->w) / static_cast<float>(win->h),
                                             0.1f, 100.0f);
         
+        game_walls.draw(view, projection, game_floor.getCameraPosition());    
+        game_pillars.draw(view, projection, game_floor.getCameraPosition());  
         game_objects.draw(win, view, projection, game_floor.getCameraPosition());
         projectiles.draw(win, view, projection);
         explosion.draw(view, projection); 
@@ -1203,78 +1782,77 @@ public:
     }
     
     void event(gl::GLWindow *win, SDL_Event &e) override {
-        if (e.type == SDL_KEYDOWN) {
-            switch (e.key.keysym.sym) {
-                case SDLK_ESCAPE:
-                    toggleMouseCapture();
-                    break;
-                case SDLK_f: 
-                    showFPS = !showFPS;
-                    break;
-            }
-        }
-        
-        if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT && mouseCapture) {
-            glm::vec3 firePosition = game_floor.getCameraPosition();
-            glm::vec3 fireDirection = game_floor.getCameraFront();
-            projectiles.fire(firePosition, fireDirection);
-        }
-        
         if (e.type == SDL_MOUSEMOTION && mouseCapture) {
             float xoffset = e.motion.xrel * mouseSensitivity;
-            float yoffset = -e.motion.yrel * mouseSensitivity; 
+            float yoffset = e.motion.yrel * mouseSensitivity;
             
             yaw += xoffset;
-            pitch += yoffset;
+            pitch -= yoffset;
             
-            if (pitch > 89.0f)
-                pitch = 89.0f;
-            if (pitch < -89.0f)
-                pitch = -89.0f;
-                
+            if(pitch > 89.0f) pitch = 89.0f;
+            if(pitch < -89.0f) pitch = -89.0f;
+            
             updateCameraVectors();
         }
-    }
-
-    void toggleMouseCapture() {
-        mouseCapture = !mouseCapture;
-        SDL_SetRelativeMouseMode(mouseCapture ? SDL_TRUE : SDL_FALSE);
+        else if (e.type == SDL_KEYDOWN) {
+            if (e.key.keysym.sym == SDLK_ESCAPE) {
+                mouseCapture = !mouseCapture;
+                if (mouseCapture) {
+                    SDL_SetRelativeMouseMode(SDL_TRUE);
+                    SDL_WarpMouseInWindow(win->getWindow(), lastX, lastY);
+                }
+                else {
+                    SDL_SetRelativeMouseMode(SDL_FALSE);
+                }
+            }
+            else if (e.key.keysym.sym == SDLK_f) {
+                showFPS = !showFPS;
+            }
+        }
+        else if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT && mouseCapture) {
+            glm::vec3 firePosition = game_floor.getCameraPosition();
+            glm::vec3 fireDirection = cameraFront;
+            projectiles.fire(firePosition, fireDirection);
+        }
     }
     
     void update(float deltaTime) {
         this->deltaTime = deltaTime;
-        
         
         const Uint8 *keys = SDL_GetKeyboardState(NULL);
         
         glm::vec3 cameraPos = game_floor.getCameraPosition();
         glm::vec3 cameraFront = game_floor.getCameraFront();
         
-        
         const float cameraSpeed = 0.1f;
         const float minHeight = 1.7f;
+        const float playerRadius = 0.5f;  
         
         glm::vec3 horizontalFront = glm::normalize(glm::vec3(cameraFront.x, 0.0f, cameraFront.z));
         glm::vec3 cameraRight = glm::normalize(glm::cross(horizontalFront, glm::vec3(0.0f, 1.0f, 0.0f)));
         
-        
         isSprinting = keys[SDL_SCANCODE_LSHIFT];
         isCrouching = keys[SDL_SCANCODE_LCTRL];
         
+        glm::vec3 newPos = cameraPos;
         
         if (keys[SDL_SCANCODE_W]) {
-            cameraPos += (isSprinting ? cameraSpeed * 2.0f : cameraSpeed) * horizontalFront;
+            newPos += (isSprinting ? cameraSpeed * 2.0f : cameraSpeed) * horizontalFront;
         }
         if (keys[SDL_SCANCODE_S]) {
-            cameraPos -= cameraSpeed * horizontalFront;
+            newPos -= cameraSpeed * horizontalFront;
         }
         if (keys[SDL_SCANCODE_A]) {
-            cameraPos -= cameraSpeed * cameraRight;
+            newPos -= cameraSpeed * cameraRight;
         }
         if (keys[SDL_SCANCODE_D]) {
-            cameraPos += cameraSpeed * cameraRight;
+            newPos += cameraSpeed * cameraRight;
         }
         
+        if (!game_walls.checkCollision(newPos, playerRadius) && 
+            !game_pillars.checkCollision(newPos, playerRadius)) {
+            cameraPos = newPos;
+        }
         
         if (keys[SDL_SCANCODE_SPACE]) {
             if (cameraPos.y <= minHeight + 0.01f) {
@@ -1282,10 +1860,8 @@ public:
             }
         }
         
-        
         cameraPos.y += jumpVelocity * deltaTime * 60.0f;
         jumpVelocity -= gravity * deltaTime * 60.0f;
-        
         
         float currentMinHeight = isCrouching ? 0.8f : minHeight;
         if (cameraPos.y < currentMinHeight) {
@@ -1304,21 +1880,24 @@ private:
     mx::Font font;
     Uint32 lastUpdateTime = SDL_GetTicks();
     Floor game_floor;
+    Wall game_walls;       
+    Pillar game_pillars;   
     Objects game_objects;
     Projectile projectiles;
     Explosion explosion; 
     Crosshair crosshair;
+    glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
     float lastX = 0.0f, lastY = 0.0f;
     float yaw = -90.0f; 
     float pitch = 0.0f;
     bool mouseCapture = true;
     float mouseSensitivity = 0.15f;
     bool showFPS = true;
-    float deltaTime = 0.0f;
+    float deltaTime =  0.0f;
     float jumpVelocity = 0.0f;  
     const float gravity = 0.015f;
     bool isCrouching = false;  
-    bool isSprinting = false;  
+    bool isSprinting = false;
 };
 
 class MainWindow : public gl::GLWindow {
