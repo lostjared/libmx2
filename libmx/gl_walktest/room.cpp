@@ -212,25 +212,21 @@ public:
          const float vRepeat = wallHeight / tileScale;
         const float topVRepeat = wallThickness / tileScale;
 
-        // Outer Walls (CCW from outside)
-        addQuad(A, B, B2, A2, glm::vec3(0,0,-1), lengthU(A,B), vRepeat); // North
-        addQuad(B, C, C2, B2, glm::vec3(1,0,0),  lengthU(B,C), vRepeat); // East
-        addQuad(C, D, D2, C2, glm::vec3(0,0,1),  lengthU(C,D), vRepeat); // South
-        addQuad(D, A, A2, D2, glm::vec3(-1,0,0), lengthU(D,A), vRepeat); // West
+        addQuad(A, B, B2, A2, glm::vec3(0,0,-1), lengthU(A,B), vRepeat); 
+        addQuad(B, C, C2, B2, glm::vec3(1,0,0),  lengthU(B,C), vRepeat); 
+        addQuad(C, D, D2, C2, glm::vec3(0,0,1),  lengthU(C,D), vRepeat); 
+        addQuad(D, A, A2, D2, glm::vec3(-1,0,0), lengthU(D,A), vRepeat); 
 
-        // Inner Walls (CCW from inside) - ALL FIXED
-        // For a quad to be CCW from inside, we reverse the order compared to outer
-        addQuad(b, a, a2, b2, glm::vec3(0,0,1),  lengthU(a,b), vRepeat); // North Inner
-        addQuad(c, b, b2, c2, glm::vec3(-1,0,0), lengthU(b,c), vRepeat); // East Inner
-        addQuad(d, c, c2, d2, glm::vec3(0,0,-1), lengthU(c,d), vRepeat); // South Inner
-        addQuad(a, d, d2, a2, glm::vec3(1,0,0),  lengthU(d,a), vRepeat); // West Inner
+        addQuad(b, a, a2, b2, glm::vec3(0,0,1),  lengthU(a,b), vRepeat); 
+        addQuad(c, b, b2, c2, glm::vec3(-1,0,0), lengthU(b,c), vRepeat); 
+        addQuad(d, c, c2, d2, glm::vec3(0,0,-1), lengthU(c,d), vRepeat); 
+        addQuad(a, d, d2, a2, glm::vec3(1,0,0),  lengthU(d,a), vRepeat); 
 
-        // Top Ring
         const glm::vec3 upNormal(0,1,0);
-        addQuad(A2, a2, b2, B2, upNormal, lengthU(A2,B2), topVRepeat); // North top (reordered)
-        addQuad(B2, b2, c2, C2, upNormal, lengthU(B2,C2), topVRepeat); // East top (reordered)
-        addQuad(C2, c2, d2, D2, upNormal, lengthU(C2,D2), topVRepeat); // South top (reordered)
-        addQuad(D2, d2, a2, A2, upNormal, lengthU(D2,A2), topVRepeat); // West top (reordered)
+        addQuad(A2, a2, b2, B2, upNormal, lengthU(A2,B2), topVRepeat); 
+        addQuad(B2, b2, c2, C2, upNormal, lengthU(B2,C2), topVRepeat); 
+        addQuad(C2, c2, d2, D2, upNormal, lengthU(C2,D2), topVRepeat); 
+        addQuad(D2, d2, a2, A2, upNormal, lengthU(D2,A2), topVRepeat); 
         
         glGenVertexArrays(1, &vao);
         glGenBuffers(1, &vbo);
