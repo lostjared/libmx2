@@ -209,25 +209,29 @@ public:
         auto lengthU = [&](const glm::vec3 &p0, const glm::vec3 &p1){
             return glm::length(p1 - p0) / tileScale;
         };
-        const float vRepeat = wallHeight / tileScale;
+         const float vRepeat = wallHeight / tileScale;
         const float topVRepeat = wallThickness / tileScale;
 
-        addQuad(A, B, B2, A2, glm::vec3(0,0,-1), lengthU(A,B), vRepeat); 
-        addQuad(B, C, C2, B2, glm::vec3(1,0,0),  lengthU(B,C), vRepeat); 
-        addQuad(C, D, D2, C2, glm::vec3(0,0,1),  lengthU(C,D), vRepeat); 
-        addQuad(D, A, A2, D2, glm::vec3(-1,0,0), lengthU(D,A), vRepeat); 
+        // Outer Walls (CCW from outside)
+        addQuad(A, B, B2, A2, glm::vec3(0,0,-1), lengthU(A,B), vRepeat); // North
+        addQuad(B, C, C2, B2, glm::vec3(1,0,0),  lengthU(B,C), vRepeat); // East
+        addQuad(C, D, D2, C2, glm::vec3(0,0,1),  lengthU(C,D), vRepeat); // South
+        addQuad(D, A, A2, D2, glm::vec3(-1,0,0), lengthU(D,A), vRepeat); // West
 
-        addQuad(b, a, a2, b2, glm::vec3(0,0,1),  lengthU(b,a), vRepeat); 
-        addQuad(c, b, b2, c2, glm::vec3(-1,0,0), lengthU(c,b), vRepeat); 
-        addQuad(d, c, c2, d2, glm::vec3(0,0,-1), lengthU(d,c), vRepeat); 
-        addQuad(a, d, d2, a2, glm::vec3(1,0,0),  lengthU(a,d), vRepeat); 
+        // Inner Walls (CCW from inside) - ALL FIXED
+        // For a quad to be CCW from inside, we reverse the order compared to outer
+        addQuad(b, a, a2, b2, glm::vec3(0,0,1),  lengthU(a,b), vRepeat); // North Inner
+        addQuad(c, b, b2, c2, glm::vec3(-1,0,0), lengthU(b,c), vRepeat); // East Inner
+        addQuad(d, c, c2, d2, glm::vec3(0,0,-1), lengthU(c,d), vRepeat); // South Inner
+        addQuad(a, d, d2, a2, glm::vec3(1,0,0),  lengthU(d,a), vRepeat); // West Inner
 
+        // Top Ring
         const glm::vec3 upNormal(0,1,0);
-        addQuad(a2, b2, B2, A2, upNormal, lengthU(a2,b2), topVRepeat); 
-        addQuad(b2, c2, C2, B2, upNormal, lengthU(b2,c2), topVRepeat); 
-        addQuad(c2, d2, D2, C2, upNormal, lengthU(c2,d2), topVRepeat); 
-        addQuad(d2, a2, A2, D2, upNormal, lengthU(d2,a2), topVRepeat); 
-
+        addQuad(A2, a2, b2, B2, upNormal, lengthU(A2,B2), topVRepeat); // North top (reordered)
+        addQuad(B2, b2, c2, C2, upNormal, lengthU(B2,C2), topVRepeat); // East top (reordered)
+        addQuad(C2, c2, d2, D2, upNormal, lengthU(C2,D2), topVRepeat); // South top (reordered)
+        addQuad(D2, d2, a2, A2, upNormal, lengthU(D2,A2), topVRepeat); // West top (reordered)
+        
         glGenVertexArrays(1, &vao);
         glGenBuffers(1, &vbo);
         glGenBuffers(1, &ebo);
@@ -710,13 +714,13 @@ public:
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
         glBufferData(GL_ARRAY_BUFFER, MAX_PARTICLES * 8 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
         
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
         glEnableVertexAttribArray(0);
         
-        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(3 * sizeof(float)));
         glEnableVertexAttribArray(1);
         
-        glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(7 * sizeof(float)));
+        glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(7 * sizeof(float)));
         glEnableVertexAttribArray(2);
         
         glBindVertexArray(0);
@@ -1470,7 +1474,7 @@ public:
         uniform mat4 projection;
         
         void main() {
-            gl_Position = projection * view * model * vec4(aPos, 1.0);
+            gl_Position = projection * view * vec4(aPos, 1.0);
         }
     )";
 
