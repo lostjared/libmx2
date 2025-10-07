@@ -220,6 +220,34 @@ public:
                 indexOffset + 2, indexOffset + 3, indexOffset + 0
             });
             indexOffset += 4;
+
+            glm::vec3 dirNorm = glm::normalize(wall.end - wall.start);
+            glm::vec3 startNormal = -dirNorm;
+            glm::vec3 endNormal   =  dirNorm;
+
+            vertices.insert(vertices.end(), {
+                innerStart.x, 0.0f,     innerStart.z, 0.0f, 0.0f,  startNormal.x, startNormal.y, startNormal.z, 
+                outerStart.x, 0.0f,     outerStart.z, 1.0f, 0.0f,  startNormal.x, startNormal.y, startNormal.z, 
+                outerStart.x, wall.height, outerStart.z, 1.0f, 1.0f, startNormal.x, startNormal.y, startNormal.z, 
+                innerStart.x, wall.height, innerStart.z, 0.0f, 1.0f, startNormal.x, startNormal.y, startNormal.z  
+            });
+            indices.insert(indices.end(), {
+                indexOffset + 0, indexOffset + 1, indexOffset + 2,
+                indexOffset + 2, indexOffset + 3, indexOffset + 0
+            });
+            indexOffset += 4;
+
+            vertices.insert(vertices.end(), {
+                outerEnd.x, 0.0f,     outerEnd.z, 0.0f, 0.0f,  endNormal.x, endNormal.y, endNormal.z, 
+                innerEnd.x, 0.0f,     innerEnd.z, 1.0f, 0.0f,  endNormal.x, endNormal.y, endNormal.z, 
+                innerEnd.x, wall.height, innerEnd.z, 1.0f, 1.0f, endNormal.x, endNormal.y, endNormal.z, 
+                outerEnd.x, wall.height, outerEnd.z, 0.0f, 1.0f, endNormal.x, endNormal.y, endNormal.z  
+            });
+            indices.insert(indices.end(), {
+                indexOffset + 0, indexOffset + 1, indexOffset + 2,
+                indexOffset + 2, indexOffset + 3, indexOffset + 0
+            });
+            indexOffset += 4;
         }
 
         glGenVertexArrays(1, &vao);
@@ -818,14 +846,12 @@ public:
                 proj = glm::clamp(proj, 0.0f, wallLength);
                 
                 glm::vec3 closestPoint = wall.start + wallDir * proj;
-                glm::vec2 particlePos2D(particle.position.x, particle.position.z);
-                glm::vec2 closestPoint2D(closestPoint.x, closestPoint.z);
+                closestPoint.y = particle.position.y; 
                 
-                float distance = glm::length(particlePos2D - closestPoint2D);
+                float distance = glm::length(particle.position - closestPoint);
                 
                 if (distance < 0.5f && particle.position.y >= 0.0f && particle.position.y <= wall.height) {
-                    glm::vec2 wallNormal2D = glm::normalize(particlePos2D - closestPoint2D);
-                    glm::vec3 wallNormal(wallNormal2D.x, 0.0f, wallNormal2D.y);
+                    glm::vec3 wallNormal = glm::normalize(particle.position - closestPoint);
                     
                     glm::vec3 reflected = glm::reflect(particle.velocity, wallNormal);
                     particle.velocity = reflected * 0.5f; 
