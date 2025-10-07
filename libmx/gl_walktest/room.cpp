@@ -42,7 +42,7 @@ public:
     GLuint textureId = 0;
     gl::ShaderProgram wallShader;
 
-    void load(gl::GLWindow *win) override {
+        void load(gl::GLWindow *win) override {
 #ifndef __EMSCRIPTEN__
         const char *vertexShader = R"(
             #version 330 core
@@ -157,7 +157,7 @@ public:
 
         float size = 50.0f;
         float wallHeight = 5.0f;
-        float wallThickness = 0.2f; 
+        float wallThickness = 0.2f;
         
         walls.push_back({glm::vec3(-size, 0.0f, -size), glm::vec3(size, 0.0f, -size), wallHeight});  
         walls.push_back({glm::vec3(-size, 0.0f, size), glm::vec3(size, 0.0f, size), wallHeight});    
@@ -168,41 +168,66 @@ public:
         std::vector<unsigned int> indices;
         unsigned int indexOffset = 0;
 
-        for (const auto& wall : walls) {
-            glm::vec3 dir = glm::normalize(wall.end - wall.start);
-            glm::vec3 inwardNormal = glm::vec3(dir.z, 0.0f, -dir.x);
+        const float tileScale = 5.0f;
+        const float outerMin = -size;
+        const float outerMax = size;
+        const float innerMin = outerMin + wallThickness;
+        const float innerMax = outerMax - wallThickness;
 
-            float length = glm::length(wall.end - wall.start);
-            float texRepeat = length / 5.0f;
+        glm::vec3 A(outerMin, 0.0f, outerMin);  
+        glm::vec3 B(outerMax, 0.0f, outerMin);  
+        glm::vec3 C(outerMax, 0.0f, outerMax);  
+        glm::vec3 D(outerMin, 0.0f, outerMax);  
 
-            glm::vec3 innerStart = wall.start + inwardNormal * wallThickness;
-            glm::vec3 innerEnd   = wall.end   + inwardNormal * wallThickness;
+        glm::vec3 a(innerMin, 0.0f, innerMin);  
+        glm::vec3 b(innerMax, 0.0f, innerMin);  
+        glm::vec3 c(innerMax, 0.0f, innerMax);  
+        glm::vec3 d(innerMin, 0.0f, innerMax);  
 
+        auto topify = [wallHeight](const glm::vec3 &p) { 
+            return glm::vec3(p.x, wallHeight, p.z); 
+        };
+        glm::vec3 A2 = topify(A), B2 = topify(B), C2 = topify(C), D2 = topify(D);
+        glm::vec3 a2 = topify(a), b2 = topify(b), c2 = topify(c), d2 = topify(d);
+
+        auto addQuad = [&](const glm::vec3 &p0, const glm::vec3 &p1,
+                           const glm::vec3 &p2, const glm::vec3 &p3,
+                           const glm::vec3 &normal, float uLen, float vLen)
+        {
             vertices.insert(vertices.end(), {
-                innerStart.x, 0.0f,        innerStart.z, 0.0f,      0.0f, inwardNormal.x, inwardNormal.y, inwardNormal.z,
-                innerEnd.x,   0.0f,        innerEnd.z,   texRepeat,  0.0f, inwardNormal.x, inwardNormal.y, inwardNormal.z,
-                innerEnd.x,   wall.height, innerEnd.z,   texRepeat,  1.0f, inwardNormal.x, inwardNormal.y, inwardNormal.z,
-                innerStart.x, wall.height, innerStart.z, 0.0f,      1.0f, inwardNormal.x, inwardNormal.y, inwardNormal.z
+                p0.x, p0.y, p0.z,  0.0f, 0.0f,     normal.x, normal.y, normal.z,
+                p1.x, p1.y, p1.z,  uLen, 0.0f,     normal.x, normal.y, normal.z,
+                p2.x, p2.y, p2.z,  uLen, vLen,     normal.x, normal.y, normal.z,
+                p3.x, p3.y, p3.z,  0.0f, vLen,     normal.x, normal.y, normal.z
             });
             indices.insert(indices.end(), {
                 indexOffset + 0, indexOffset + 1, indexOffset + 2,
                 indexOffset + 2, indexOffset + 3, indexOffset + 0
             });
             indexOffset += 4;
+        };
 
-            glm::vec3 topNormal = glm::vec3(0.0f, 1.0f, 0.0f);
-            vertices.insert(vertices.end(), {
-                innerStart.x, wall.height, innerStart.z, 0.0f,      0.0f, topNormal.x, topNormal.y, topNormal.z,
-                innerEnd.x,   wall.height, innerEnd.z,   texRepeat,  0.0f, topNormal.x, topNormal.y, topNormal.z,
-                (innerEnd.x   - inwardNormal.x * wallThickness),   wall.height, (innerEnd.z   - inwardNormal.z * wallThickness), texRepeat, 0.2f, topNormal.x, topNormal.y, topNormal.z,
-                (innerStart.x - inwardNormal.x * wallThickness),   wall.height, (innerStart.z - inwardNormal.z * wallThickness), 0.0f,      0.2f, topNormal.x, topNormal.y, topNormal.z
-            });
-            indices.insert(indices.end(), {
-                indexOffset + 0, indexOffset + 1, indexOffset + 2,
-                indexOffset + 2, indexOffset + 3, indexOffset + 0
-            });
-            indexOffset += 4;
-        }
+        auto lengthU = [&](const glm::vec3 &p0, const glm::vec3 &p1) {
+            return glm::length(p1 - p0) / tileScale;
+        };
+        const float vFull = 1.0f;
+        const float topV = wallThickness / tileScale;
+
+        addQuad(A, B, B2, A2, glm::vec3(0,0,-1), lengthU(A,B), vFull);
+        addQuad(B, C, C2, B2, glm::vec3(1,0,0), lengthU(B,C), vFull);
+        addQuad(C, D, D2, C2, glm::vec3(0,0,1), lengthU(C,D), vFull);
+        addQuad(D, A, A2, D2, glm::vec3(-1,0,0), lengthU(D,A), vFull);
+
+        addQuad(a, a2, b2, b, glm::vec3(0,0,1), lengthU(a,b), vFull);
+        addQuad(b, b2, c2, c, glm::vec3(-1,0,0), lengthU(b,c), vFull);
+        addQuad(c, c2, d2, d, glm::vec3(0,0,-1), lengthU(c,d), vFull);
+        addQuad(d, d2, a2, a, glm::vec3(1,0,0), lengthU(d,a), vFull);
+
+        const glm::vec3 upN(0,1,0);
+        addQuad(A2, B2, b2, a2, upN, lengthU(A,B), topV);
+        addQuad(B2, C2, c2, b2, upN, lengthU(B,C), topV);
+        addQuad(C2, D2, d2, c2, upN, lengthU(C,D), topV);
+        addQuad(D2, A2, a2, d2, upN, lengthU(D,A), topV);
 
         glGenVertexArrays(1, &vao);
         glGenBuffers(1, &vbo);
@@ -242,8 +267,8 @@ public:
                     0, GL_RGBA, GL_UNSIGNED_BYTE, wallSurface->pixels);
         
         SDL_FreeSurface(wallSurface);
-
-        numIndices = indices.size();
+        numIndices = indices.size();   
+        std::cout << "Thick perimeter wall mesh created with " << numIndices << " indices\n";
     }
 
     void draw(gl::GLWindow *win) override {
