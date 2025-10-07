@@ -611,58 +611,67 @@ const char *fragmentShader = R"(#version 300 es
     }
 )";
 #endif
-        if(floorShader.loadProgramFromText(vertexShader, fragmentShader) == false) {
-            throw mx::Exception("Failed to load floor shader program");
-        }
-
-        float vertices[] = {
-            -50.0f, 0.0f, -50.0f,  0.0f,  0.0f,
-             50.0f, 0.0f, -50.0f, 25.0f,  0.0f,
-             50.0f, 0.0f,  50.0f, 25.0f, 25.0f,
-            -50.0f, 0.0f,  50.0f,  0.0f, 25.0f
-        };
-        
-        unsigned int indices[] = {
-            0, 1, 2,
-            2, 3, 0
-        };
-
-        glGenVertexArrays(1, &vao);
-        glGenBuffers(1, &vbo);
-        glGenBuffers(1, &ebo);
-        
-        glBindVertexArray(vao);
-        
-        glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-        
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-        
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
-        glEnableVertexAttribArray(0);
-        
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-        glEnableVertexAttribArray(1);
-        
-        SDL_Surface* floorSurface = png::LoadPNG(win->util.getFilePath("data/ground.png").c_str());
-        if(!floorSurface) {
-            throw mx::Exception("Failed to load floor texture");
-        }
-
-        glGenTextures(1, &textureId);
-        glBindTexture(GL_TEXTURE_2D, textureId);
-        
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, floorSurface->w, floorSurface->h,
-                    0, GL_RGBA, GL_UNSIGNED_BYTE, floorSurface->pixels);
-        
-        SDL_FreeSurface(floorSurface);
+    if(floorShader.loadProgramFromText(vertexShader, fragmentShader) == false) {
+        throw mx::Exception("Failed to load floor shader program");
     }
+
+    float vertices[] = {
+        -50.0f, 0.0f, -50.0f,   0.0f,   0.0f,
+         50.0f, 0.0f, -50.0f,   10.0f,  0.0f,
+         50.0f, 0.0f,  50.0f,   10.0f,  10.0f,
+        -50.0f, 0.0f,  50.0f,   0.0f,   10.0f
+    };
+    
+    unsigned int indices[] = {
+        0, 1, 2,
+        2, 3, 0
+    };
+
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
+    glGenBuffers(1, &ebo);
+    
+    glBindVertexArray(vao);
+    
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+    
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+    
+    SDL_Surface* floorSurface = png::LoadPNG(win->util.getFilePath("data/ground.png").c_str());
+    if(!floorSurface) {
+        throw mx::Exception("Failed to load floor texture");
+    }
+
+    glGenTextures(1, &textureId);
+    glBindTexture(GL_TEXTURE_2D, textureId);
+    
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    
+#ifndef __EMSCRIPTEN__
+    #ifdef GL_EXT_texture_filter_anisotropic
+    GLfloat maxAnisotropy;
+    glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &maxAnisotropy);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, maxAnisotropy);
+    #endif
+#endif
+    
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, floorSurface->w, floorSurface->h,
+                0, GL_RGBA, GL_UNSIGNED_BYTE, floorSurface->pixels);
+    glGenerateMipmap(GL_TEXTURE_2D); 
+    
+    SDL_FreeSurface(floorSurface);
+}
 
     void update(float deltaTime) {
     }
@@ -1845,7 +1854,7 @@ public:
         
         glm::mat4 projection = glm::perspective(glm::radians(45.0f), 
                                             static_cast<float>(win->w) / static_cast<float>(win->h),
-                                                                                       0.1f, 100.0f);
+                                            0.1f, 100.0f);
         
         game_walls.draw(view, projection, game_floor.getCameraPosition());    
         game_pillars.draw(view, projection, game_floor.getCameraPosition());  
