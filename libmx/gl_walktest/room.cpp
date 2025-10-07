@@ -1688,9 +1688,9 @@ void update(float deltaTime, Objects& objects, Explosion& explosion, Pillar& pil
             bullet.trail.end()
         );
 
-        if (bullet.position.y <= 0.0f) {
+         if (bullet.position.y <= 0.0f) {
             glm::vec3 impactPos = glm::vec3(bullet.position.x, 0.0f, bullet.position.z);
-            explosion.createExplosion(impactPos, 300, true);
+            explosion.createExplosion(impactPos, 800, true); 
             bullet.active = false;
             std::cout << "Bullet #" << &bullet - &bullets[0] << " hit floor at (" 
                       << impactPos.x << ", " << impactPos.y << ", " << impactPos.z << ")\n";
@@ -2012,6 +2012,7 @@ public:
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
         glEnable(GL_DEPTH_TEST); 
+
         
         Uint32 currentTime = SDL_GetTicks();
         float deltaTime = (currentTime - lastUpdateTime) / 1000.0f; 
@@ -2030,8 +2031,12 @@ public:
                                 static_cast<float>(win->w) / static_cast<float>(win->h),
                                 0.1f, 100.0f);
 
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_BACK);
         game_walls.draw(view, projection, game_floor.getCameraPosition());    
         game_pillars.draw(view, projection, game_floor.getCameraPosition());  
+        glDisable(GL_CULL_FACE);
+
         game_objects.draw(win, view, projection, game_floor.getCameraPosition());
         projectiles.draw(win, view, projection);
         explosion.draw(view, projection); 
