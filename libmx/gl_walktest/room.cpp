@@ -271,6 +271,8 @@ public:
     }
 
     void draw(const glm::mat4& view, const glm::mat4& projection, const glm::vec3& cameraPos) {
+        glDisable(GL_CULL_FACE);
+        
         wallShader.useProgram();
         
         glm::mat4 model = glm::mat4(1.0f);
@@ -294,6 +296,8 @@ public:
         glBindVertexArray(vao);
         glDrawElements(GL_TRIANGLES, numIndices, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
+        
+        glEnable(GL_CULL_FACE);
     }
 
     bool checkCollision(const glm::vec3& position, float radius) {
@@ -1933,7 +1937,10 @@ public:
         glClearColor(0.53f, 0.81f, 0.92f, 1.0f); 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
-        glEnable(GL_DEPTH_TEST); 
+        glEnable(GL_DEPTH_TEST);
+        glDepthFunc(GL_LESS); 
+        glEnable(GL_CULL_FACE); 
+        glCullFace(GL_BACK); 
         
         Uint32 currentTime = SDL_GetTicks();
         float deltaTime = (currentTime - lastUpdateTime) / 1000.0f; 
@@ -1961,14 +1968,14 @@ public:
         
         win->text.setColor({255, 255, 255, 255});
         win->text.printText_Solid(font, 25.0f, 25.0f, 
-                               "3D Room - [Escape to Release Mouse] WASD to move, Mouse to look around, Left Click to shoot");
+                           "3D Room - [Escape to Release Mouse] WASD to move, Mouse to look around, Left Click to shoot");
         
         if (showFPS) {
             float fps = 1.0f / deltaTime;
             win->text.printText_Solid(font,   25.0f, 65.0f, 
-                                  "FPS: " + std::to_string(static_cast<int>(fps)));
+                              "FPS: " + std::to_string(static_cast<int>(fps)));
             win->text.printText_Solid(font, 25.0f, 95.0f, 
-                                  "Active Bullets: " + std::to_string(projectiles.bullets.size()));
+                              "Active Bullets: " + std::to_string(projectiles.bullets.size()));
         }
     }
     
