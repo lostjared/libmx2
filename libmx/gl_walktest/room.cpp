@@ -2020,7 +2020,11 @@ public:
         lastUpdateTime = currentTime;
         
         update(deltaTime);
+
+        glEnable(GL_POLYGON_OFFSET_FILL);
+        glPolygonOffset(1.0f, 1.0f);
         game_floor.draw(win);
+        glDisable(GL_POLYGON_OFFSET_FILL);
         
         glm::mat4 view = glm::lookAt(
             glm::vec3(game_floor.getCameraPosition().x, game_floor.getCameraPosition().y, game_floor.getCameraPosition().z),
