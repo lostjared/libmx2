@@ -998,9 +998,9 @@ const char *fragmentShader = R"(#version 300 es
 
     float vertices[] = {
         -50.0f, 0.0f, -50.0f,   0.0f,   0.0f,
-         50.0f, 0.0f, -50.0f,   20.0f,  0.0f,   
-         50.0f, 0.0f,  50.0f,   20.0f,  20.0f,  
-        -50.0f, 0.0f,  50.0f,   0.0f,   20.0f   
+         50.0f, 0.0f, -50.0f,   10.0f,  0.0f,
+         50.0f, 0.0f,  50.0f,   10.0f,  10.0f,
+        -50.0f, 0.0f,  50.0f,   0.0f,   10.0f
     };
     
     unsigned int indices[] = {
@@ -1938,20 +1938,23 @@ public:
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
         glEnable(GL_DEPTH_TEST);
-        glDepthFunc(GL_LESS); 
-        glEnable(GL_CULL_FACE); 
-        glCullFace(GL_BACK); 
+        glDepthFunc(GL_LESS);
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_BACK);
         
         Uint32 currentTime = SDL_GetTicks();
         float deltaTime = (currentTime - lastUpdateTime) / 1000.0f; 
         lastUpdateTime = currentTime;
         
         update(deltaTime);
+        
         game_floor.draw(win);
         
         glm::mat4 view = glm::lookAt(
             glm::vec3(game_floor.getCameraPosition().x, game_floor.getCameraPosition().y, game_floor.getCameraPosition().z),
-            glm::vec3(game_floor.getCameraPosition().x + game_floor.getCameraFront().x, game_floor.getCameraPosition().y + game_floor.getCameraFront().y, game_floor.getCameraPosition().z + game_floor.getCameraFront().z),
+            glm::vec3(game_floor.getCameraPosition().x + game_floor.getCameraFront().x, 
+                      game_floor.getCameraPosition().y + game_floor.getCameraFront().y, 
+                      game_floor.getCameraPosition().z + game_floor.getCameraFront().z),
             glm::vec3(0.0f, 1.0f, 0.0f)
         );
         
@@ -1964,6 +1967,7 @@ public:
         game_objects.draw(win, view, projection, game_floor.getCameraPosition());
         projectiles.draw(win, view, projection);
         explosion.draw(view, projection); 
+        
         crosshair.draw(); 
         
         win->text.setColor({255, 255, 255, 255});
@@ -1972,7 +1976,7 @@ public:
         
         if (showFPS) {
             float fps = 1.0f / deltaTime;
-            win->text.printText_Solid(font,   25.0f, 65.0f, 
+            win->text.printText_Solid(font, 25.0f, 65.0f, 
                               "FPS: " + std::to_string(static_cast<int>(fps)));
             win->text.printText_Solid(font, 25.0f, 95.0f, 
                               "Active Bullets: " + std::to_string(projectiles.bullets.size()));
