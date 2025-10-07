@@ -1240,7 +1240,7 @@ public:
                   << ") in direction (" << direction.x << ", " << direction.y << ", " << direction.z << ")\n";
     }
 
-    void update(float deltaTime, Objects& objects, Explosion& explosion) {
+    void update(float deltaTime, Objects& objects, Explosion& explosion, Pillar& pillars) {
         for (auto& bullet : bullets) {
             if (!bullet.active) continue;
 
@@ -1266,6 +1266,22 @@ public:
                     [](const TrailPoint& p) { return p.lifetime >= p.maxLifetime; }),
                 bullet.trail.end()
             );
+
+            for (const auto& pillar : pillars.pillars) {
+                glm::vec2 bulletPos2D(bullet.position.x, bullet.position.z);
+                glm::vec2 pillarPos2D(pillar.position.x, pillar.position.z);
+                
+                float distance = glm::length(bulletPos2D - pillarPos2D);
+                
+                if (distance < pillar.radius && bullet.position.y > 0.0f && bullet.position.y < pillar.height) {
+                    explosion.createExplosion(bullet.position, 500);
+                    bullet.active = false;
+                    std::cout << "Bullet hit pillar at (" << bullet.position.x << ", " << bullet.position.y << ", " << bullet.position.z << ")\n";
+                    break; 
+                }
+            }
+
+            if (!bullet.active) continue; 
 
             float hitIndex = -1;
             if (objects.checkCollision(bullet.position, hitIndex)) {
@@ -1835,7 +1851,7 @@ public:
         
         if (showFPS) {
             float fps = 1.0f / deltaTime;
-            win->text.printText_Solid(font, 25.0f, 65.0f, 
+            win->text.printText_Solid(font,   25.0f, 65.0f, 
                                   "FPS: " + std::to_string(static_cast<int>(fps)));
             win->text.printText_Solid(font, 25.0f, 95.0f, 
                                   "Active Bullets: " + std::to_string(projectiles.bullets.size()));
@@ -1933,7 +1949,7 @@ public:
         game_floor.setCameraPosition(cameraPos);
         game_floor.update(deltaTime);
         game_objects.update(deltaTime);
-        projectiles.update(deltaTime, game_objects, explosion); 
+        projectiles.update(deltaTime, game_objects, explosion, game_pillars); 
         explosion.update(deltaTime, game_pillars); 
     }
     
