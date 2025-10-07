@@ -20,6 +20,533 @@ printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
 #define M_PI 3.14159265358979323846
 #endif
 
+class Objects;
+
+class Pillar : public gl::GLObject {
+public:
+    struct PillarInstance {
+        glm::vec3 position;
+        float radius;
+        float height;
+    };
+
+    std::vector<PillarInstance> pillars;
+    GLuint vao = 0, vbo = 0, ebo = 0;
+    GLuint textureId = 0;
+    gl::ShaderProgram pillarShader;
+
+    Pillar() = default;
+    ~Pillar() {
+        if (vao != 0) glDeleteVertexArrays(1, &vao);
+        if (vbo != 0) glDeleteBuffers(1, &vbo);
+        if (ebo != 0) glDeleteBuffers(1, &ebo);
+    }
+
+    void load(gl::GLWindow *win) override {
+#ifndef __EMSCRIPTEN__
+        const char *vertexShader = R"(
+            #version 330 core
+            layout(location = 0) in vec3 aPos;
+            layout(location = 1) in vec2 aTexCoord;
+            layout(location = 2) in vec3 aNormal;
+            
+            out vec2 TexCoord;
+            out vec3 Normal;
+            out vec3 FragPos;
+            
+            uniform mat4 model;
+            uniform mat4 view;
+            uniform mat4 projection;
+            
+            void main() {
+                gl_Position = projection * view * model * vec4(aPos, 1.0);
+                FragPos = vec3(model * vec4(aPos, 1.0));
+                Normal = mat3(transpose(inverse(model))) * aNormal;
+                TexCoord = aTexCoord;
+            }
+        )";
+
+        const char *fragmentShader = R"(
+            #version 330 core
+            out vec4 FragColor;
+            
+            in vec2 TexCoord;
+            in vec3 Normal;
+            in vec3 FragPos;
+            
+            uniform sampler2D pillarTexture;
+            uniform vec3 lightPos;
+            uniform vec3 viewPos;
+            
+            void main() {
+                float ambientStrength = 0.3;
+                vec3 ambient = ambientStrength * vec3(1.0);
+                
+                vec3 norm = normalize(Normal);
+                vec3 lightDir = normalize(lightPos - FragPos);
+                float diff = max(dot(norm, lightDir), 0.0);
+                vec3 diffuse = diff * vec3(1.0);
+                
+                vec4 texColor = texture(pillarTexture, TexCoord);
+                vec3 result = (ambient + diffuse) * vec3(texColor);
+                FragColor = vec4(result, texColor.a);
+            }
+        )";
+#else
+        const char *vertexShader = R"(#version 300 es
+            precision highp float;
+            layout(location = 0) in vec3 aPos;
+            layout(location = 1) in vec2 aTexCoord;
+            layout(location = 2) in vec3 aNormal;
+            
+            out vec2 TexCoord;
+            out vec3 Normal;
+            out vec3 FragPos;
+            
+            uniform mat4 model;
+            uniform mat4 view;
+            uniform mat4 projection;
+            
+            void main() {
+                gl_Position = projection * view * model * vec4(aPos, 1.0);
+                FragPos = vec3(model * vec4(aPos, 1.0));
+                Normal = mat3(transpose(inverse(model))) * aNormal;
+                TexCoord = aTexCoord;
+            }
+        )";
+
+        const char *fragmentShader = R"(#version 300 es
+            precision highp float;
+            out vec4 FragColor;
+            
+            in vec2 TexCoord;
+            in vec3 Normal;
+            in vec3 FragPos;
+            
+            uniform sampler2D pillarTexture;
+            uniform vec3 lightPos;
+            uniform vec3 viewPos;
+            
+            void main() {
+                float ambientStrength = 0.3;
+                vec3 ambient = ambientStrength * vec3(1.0);
+                
+                vec3 norm = normalize(Normal);
+                vec3 lightDir = normalize(lightPos - FragPos);
+                float diff = max(dot(norm, lightDir), 0.0);
+                vec3 diffuse = diff * vec3(1.0);
+                
+                vec4 texColor = texture(pillarTexture, TexCoord);
+                vec3 result = (ambient + diffuse) * vec3(texColor);
+                FragColor = vec4(result, texColor.a);
+            }
+        )";
+#endif
+
+        if(!pillarShader.loadProgramFromText(vertexShader, fragmentShader)) {
+            throw mx::Exception("Failed to load pillar shader");
+        }
+
+        int segments = 16;
+        std::vector<float> vertices;
+        std::vector<unsigned int> indices;
+
+        for (int i = 0; i <= segments; ++i) {
+            float angle = (float)i / segments * 2.0f * M_PI;
+            float x = cos(angle);
+            float z = sin(angle);
+            float u = (float)i / segments;
+
+            vertices.insert(vertices.end(), {
+                x, 0.0f, z,           
+                u, 0.0f,              
+                x, 0.0f, z            
+            });
+
+            vertices.insert(vertices.end(), {
+                x, 1.0f, z,           
+                u, 1.0f,              
+                x, 0.0f, z            
+            });
+        }
+
+        for (int i = 0; i < segments; ++i) {
+            int current = i * 2;
+            int next = (i + 1) * 2;
+
+            indices.insert(indices.end(), {
+                (unsigned int)current, (unsigned int)(current + 1), (unsigned int)next,
+                (unsigned int)next, (unsigned int)(current + 1), (unsigned int)(next + 1)
+            });
+        }
+
+        glGenVertexArrays(1, &vao);
+        glGenBuffers(1, &vbo);
+        glGenBuffers(1, &ebo);
+        
+        glBindVertexArray(vao);
+        
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
+        
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
+        
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+        
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+        glEnableVertexAttribArray(1);
+        
+        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float)));
+        glEnableVertexAttribArray(2);
+        
+        SDL_Surface* pillarSurface = png::LoadPNG(win->util.getFilePath("data/ground.png").c_str());
+        if(!pillarSurface) {
+            throw mx::Exception("Failed to load pillar texture");
+        }
+
+        glGenTextures(1, &textureId);
+        glBindTexture(GL_TEXTURE_2D, textureId);
+        
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, pillarSurface->w, pillarSurface->h,
+                    0, GL_RGBA, GL_UNSIGNED_BYTE, pillarSurface->pixels);
+        
+        SDL_FreeSurface(pillarSurface);
+
+        numIndices = indices.size();
+
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_real_distribution<float> posX(-40.0f, 40.0f);
+        std::uniform_real_distribution<float> posZ(-40.0f, 40.0f);
+        std::uniform_real_distribution<float> radiusDist(0.5f, 1.5f);
+        std::uniform_real_distribution<float> heightDist(3.0f, 6.0f);
+
+        int numPillars = 15;
+        for (int i = 0; i < numPillars; ++i) {
+            PillarInstance pillar;
+            pillar.position = glm::vec3(posX(gen), 0.0f, posZ(gen));
+            pillar.radius = radiusDist(gen);
+            pillar.height = heightDist(gen);
+            pillars.push_back(pillar);
+        }
+
+        std::cout << "Generated " << numPillars << " pillars\n";
+    }
+
+    void draw(gl::GLWindow *win) override {
+    }
+
+    void event(gl::GLWindow *win, SDL_Event &e) override {
+    }
+
+    void draw(const glm::mat4& view, const glm::mat4& projection, const glm::vec3& cameraPos) {
+        pillarShader.useProgram();
+        
+        GLuint viewLoc = glGetUniformLocation(pillarShader.id(), "view");
+        GLuint projectionLoc = glGetUniformLocation(pillarShader.id(), "projection");
+        GLuint lightPosLoc = glGetUniformLocation(pillarShader.id(), "lightPos");
+        GLuint viewPosLoc = glGetUniformLocation(pillarShader.id(), "viewPos");
+        
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+        glUniform3f(lightPosLoc, 0.0f, 15.0f, 0.0f);
+        glUniform3f(viewPosLoc, cameraPos.x, cameraPos.y, cameraPos.z);
+        
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, textureId);
+        glUniform1i(glGetUniformLocation(pillarShader.id(), "pillarTexture"), 0);
+        
+        glBindVertexArray(vao);
+
+        for (const auto& pillar : pillars) {
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::translate(model, pillar.position);
+            model = glm::scale(model, glm::vec3(pillar.radius, pillar.height, pillar.radius));
+            
+            GLuint modelLoc = glGetUniformLocation(pillarShader.id(), "model");
+            glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+            
+            glDrawElements(GL_TRIANGLES, numIndices, GL_UNSIGNED_INT, 0);
+        }
+
+        glBindVertexArray(0);
+    }
+
+    bool checkCollision(const glm::vec3& position, float playerRadius) {
+        for (const auto& pillar : pillars) {
+            glm::vec2 playerPos2D(position.x, position.z);
+            glm::vec2 pillarPos2D(pillar.position.x, pillar.position.z);
+            
+            float distance = glm::length(playerPos2D - pillarPos2D);
+            if (distance < (pillar.radius + playerRadius)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+private:
+    size_t numIndices = 0;
+};
+
+class Explosion {
+public:
+    struct Particle {
+        glm::vec3 position;
+        glm::vec3 velocity;
+        glm::vec4 color;
+        float lifetime;
+        float maxLifetime;
+        float size;
+        bool active;
+    };
+
+    std::vector<Particle> particles;
+    GLuint vao, vbo;
+    gl::ShaderProgram explosionShader;
+
+    Explosion() = default;
+    ~Explosion() {
+        if (vao != 0) glDeleteVertexArrays(1, &vao);
+        if (vbo != 0) glDeleteBuffers(1, &vbo);
+    }
+
+    void load(gl::GLWindow *win) {
+#ifndef __EMSCRIPTEN__
+        const char *vertexShader = R"(
+            #version 330 core
+            layout(location = 0) in vec3 aPos;
+            layout(location = 1) in vec4 aColor;
+            layout(location = 2) in float aSize;
+            
+            out vec4 particleColor;
+            
+            uniform mat4 view;
+            uniform mat4 projection;
+            
+            void main() {
+                gl_Position = projection * view * vec4(aPos, 1.0);
+                gl_PointSize = aSize;
+                particleColor = aColor;
+            }
+        )";
+
+        const char *fragmentShader = R"(
+            #version 330 core
+            in vec4 particleColor;
+            out vec4 FragColor;
+            
+            void main() {
+                vec2 coord = gl_PointCoord - vec2(0.5);
+                float dist = length(coord);
+                if (dist > 0.5) discard;
+                
+                float fade = 1.0 - smoothstep(0.0, 0.5, dist);
+                FragColor = vec4(particleColor.rgb, particleColor.a * fade);
+            }
+        )";
+#else
+        const char *vertexShader = R"(#version 300 es
+            precision highp float;
+            layout(location = 0) in vec3 aPos;
+            layout(location = 1) in vec4 aColor;
+            layout(location = 2) in float aSize;
+            
+            out vec4 particleColor;
+            
+            uniform mat4 view;
+            uniform mat4 projection;
+            
+            void main() {
+                gl_Position = projection * view * vec4(aPos, 1.0);
+                gl_PointSize = aSize;
+                particleColor = aColor;
+            }
+        )";
+
+        const char *fragmentShader = R"(#version 300 es
+            precision highp float;
+            in vec4 particleColor;
+            out vec4 FragColor;
+            
+            void main() {
+                vec2 coord = gl_PointCoord - vec2(0.5);
+                float dist = length(coord);
+                if (dist > 0.5) discard;
+                
+                float fade = 1.0 - smoothstep(0.0, 0.5, dist);
+                FragColor = vec4(particleColor.rgb, particleColor.a * fade);
+            }
+        )";
+#endif
+
+        if(!explosionShader.loadProgramFromText(vertexShader, fragmentShader)) {
+            throw mx::Exception("Failed to load explosion shader");
+        }
+
+        glGenVertexArrays(1, &vao);
+        glGenBuffers(1, &vbo);
+        
+        glBindVertexArray(vao);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, 1000 * 8 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+        
+        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+        glEnableVertexAttribArray(1);
+        
+        glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(7 * sizeof(float)));
+        glEnableVertexAttribArray(2);
+        
+        glBindVertexArray(0);
+    }
+
+    void createExplosion(const glm::vec3& position, int numParticles = 100) {
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_real_distribution<float> speed(2.0f, 10.0f);
+        std::uniform_real_distribution<float> angle(0.0f, 2.0f * M_PI);
+        std::uniform_real_distribution<float> elevation(-M_PI/4.0f, M_PI/4.0f);
+        std::uniform_real_distribution<float> colorVariation(0.8f, 1.0f);
+
+        for (int i = 0; i < numParticles; ++i) {
+            Particle particle;
+            particle.position = position;
+            
+            float theta = angle(gen);
+            float phi = elevation(gen);
+            float velocity = speed(gen);
+            
+            particle.velocity = glm::vec3(
+                velocity * cos(phi) * cos(theta),
+                velocity * sin(phi),
+                velocity * cos(phi) * sin(theta)
+            );
+            
+            float r = colorVariation(gen);
+            float g = colorVariation(gen) * 0.5f;
+            float b = 0.0f;
+            particle.color = glm::vec4(r, g, b, 1.0f);
+            
+            particle.lifetime = 0.0f;
+            particle.maxLifetime = 1.0f + speed(gen) * 0.2f;
+            particle.size = 10.0f + speed(gen) * 2.0f;
+            particle.active = true;
+            
+            particles.push_back(particle);
+        }
+        
+        std::cout << "Explosion created at (" << position.x << ", " << position.y << ", " << position.z 
+                  << ") with " << numParticles << " particles\n";
+    }
+
+    void update(float deltaTime, Pillar& pillars) {
+        for (auto& particle : particles) {
+            if (!particle.active) continue;
+
+            particle.position += particle.velocity * deltaTime;
+            particle.velocity.y -= 9.8f * deltaTime;
+            
+            for (const auto& pillar : pillars.pillars) {
+                glm::vec2 particlePos2D(particle.position.x, particle.position.z);
+                glm::vec2 pillarPos2D(pillar.position.x, pillar.position.z);
+                
+                float distance = glm::length(particlePos2D - pillarPos2D);
+                
+                if (distance < pillar.radius && particle.position.y < pillar.height && particle.position.y > 0.0f) {
+                    glm::vec2 normal = glm::normalize(particlePos2D - pillarPos2D);
+                    glm::vec2 velocity2D(particle.velocity.x, particle.velocity.z);
+                    
+                    glm::vec2 reflected = velocity2D - 2.0f * glm::dot(velocity2D, normal) * normal;
+                    
+                    particle.velocity.x = reflected.x * 0.5f; 
+                    particle.velocity.z = reflected.y * 0.5f;
+                    
+                    glm::vec2 correction = normal * (pillar.radius - distance + 0.1f);
+                    particle.position.x += correction.x;
+                    particle.position.z += correction.y;
+                }
+            }
+            
+            if (particle.position.y < 0.0f) {
+                particle.position.y = 0.0f;
+                particle.velocity.y = -particle.velocity.y * 0.3f; 
+                particle.velocity.x *= 0.8f; 
+                particle.velocity.z *= 0.8f;
+            }
+            
+            particle.lifetime += deltaTime;
+
+            float progress = particle.lifetime / particle.maxLifetime;
+            particle.color.a = 1.0f - progress;
+            particle.size *= 0.98f;
+
+            if (particle.lifetime >= particle.maxLifetime) {
+                particle.active = false;
+            }
+        }
+
+        particles.erase(
+            std::remove_if(particles.begin(), particles.end(),
+                [](const Particle& p) { return !p.active; }),
+            particles.end()
+        );
+    }
+
+    void draw(const glm::mat4& view, const glm::mat4& projection) {
+        if (particles.empty()) return;
+
+#ifndef __EMSCRIPTEN__
+        glEnable(GL_PROGRAM_POINT_SIZE);
+#endif
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+        glDepthMask(GL_FALSE);
+
+        explosionShader.useProgram();
+        
+        GLuint viewLoc = glGetUniformLocation(explosionShader.id(), "view");
+        GLuint projectionLoc = glGetUniformLocation(explosionShader.id(), "projection");
+        
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+
+        std::vector<float> vertexData;
+        for (const auto& particle : particles) {
+            if (!particle.active) continue;
+
+            vertexData.push_back(particle.position.x);
+            vertexData.push_back(particle.position.y);
+            vertexData.push_back(particle.position.z);
+            vertexData.push_back(particle.color.r);
+            vertexData.push_back(particle.color.g);
+            vertexData.push_back(particle.color.b);
+            vertexData.push_back(particle.color.a);
+            vertexData.push_back(particle.size);
+        }
+
+        if (!vertexData.empty()) {
+            glBindVertexArray(vao);
+            glBindBuffer(GL_ARRAY_BUFFER, vbo);
+            glBufferSubData(GL_ARRAY_BUFFER, 0, vertexData.size() * sizeof(float), vertexData.data());
+            glDrawArrays(GL_POINTS, 0, particles.size());
+            glBindVertexArray(0);
+        }
+
+        glDepthMask(GL_TRUE);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    }
+};
+
 class Floor {
 public:
     Floor() = default;
@@ -460,227 +987,6 @@ public:
     }
 };
 
-class Explosion {
-public:
-    struct Particle {
-        glm::vec3 position;
-        glm::vec3 velocity;
-        glm::vec4 color;
-        float lifetime;
-        float maxLifetime;
-        float size;
-        bool active;
-    };
-
-    std::vector<Particle> particles;
-    GLuint vao, vbo;
-    gl::ShaderProgram explosionShader;
-
-    Explosion() = default;
-    ~Explosion() {
-        if (vao != 0) glDeleteVertexArrays(1, &vao);
-        if (vbo != 0) glDeleteBuffers(1, &vbo);
-    }
-
-    void load(gl::GLWindow *win) {
-#ifndef __EMSCRIPTEN__
-        const char *vertexShader = R"(
-            #version 330 core
-            layout(location = 0) in vec3 aPos;
-            layout(location = 1) in vec4 aColor;
-            layout(location = 2) in float aSize;
-            
-            out vec4 particleColor;
-            
-            uniform mat4 view;
-            uniform mat4 projection;
-            
-            void main() {
-                gl_Position = projection * view * vec4(aPos, 1.0);
-                gl_PointSize = aSize;
-                particleColor = aColor;
-            }
-        )";
-
-        const char *fragmentShader = R"(
-            #version 330 core
-            in vec4 particleColor;
-            out vec4 FragColor;
-            
-            void main() {
-                vec2 coord = gl_PointCoord - vec2(0.5);
-                float dist = length(coord);
-                if (dist > 0.5) discard;
-                
-                float fade = 1.0 - smoothstep(0.0, 0.5, dist);
-                FragColor = vec4(particleColor.rgb, particleColor.a * fade);
-            }
-        )";
-#else
-        const char *vertexShader = R"(#version 300 es
-            precision highp float;
-            layout(location = 0) in vec3 aPos;
-            layout(location = 1) in vec4 aColor;
-            layout(location = 2) in float aSize;
-            
-            out vec4 particleColor;
-            
-            uniform mat4 view;
-            uniform mat4 projection;
-            
-            void main() {
-                gl_Position = projection * view * vec4(aPos, 1.0);
-                gl_PointSize = aSize;
-                particleColor = aColor;
-            }
-        )";
-
-        const char *fragmentShader = R"(#version 300 es
-            precision highp float;
-            in vec4 particleColor;
-            out vec4 FragColor;
-            
-            void main() {
-                vec2 coord = gl_PointCoord - vec2(0.5);
-                float dist = length(coord);
-                if (dist > 0.5) discard;
-                
-                float fade = 1.0 - smoothstep(0.0, 0.5, dist);
-                FragColor = vec4(particleColor.rgb, particleColor.a * fade);
-            }
-        )";
-#endif
-
-        if(!explosionShader.loadProgramFromText(vertexShader, fragmentShader)) {
-            throw mx::Exception("Failed to load explosion shader");
-        }
-
-        glGenVertexArrays(1, &vao);
-        glGenBuffers(1, &vbo);
-        
-        glBindVertexArray(vao);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        glBufferData(GL_ARRAY_BUFFER, 1000 * 8 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
-        
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-        glEnableVertexAttribArray(0);
-        
-        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-        glEnableVertexAttribArray(1);
-        
-        glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(7 * sizeof(float)));
-        glEnableVertexAttribArray(2);
-        
-        glBindVertexArray(0);
-    }
-
-    void createExplosion(const glm::vec3& position, int numParticles = 100) {
-        std::random_device rd;
-        std::mt19937 gen(rd());
-        std::uniform_real_distribution<float> speed(2.0f, 10.0f);
-        std::uniform_real_distribution<float> angle(0.0f, 2.0f * M_PI);
-        std::uniform_real_distribution<float> elevation(-M_PI/4.0f, M_PI/4.0f);
-        std::uniform_real_distribution<float> colorVariation(0.8f, 1.0f);
-
-        for (int i = 0; i < numParticles; ++i) {
-            Particle particle;
-            particle.position = position;
-            
-            float theta = angle(gen);
-            float phi = elevation(gen);
-            float velocity = speed(gen);
-            
-            particle.velocity = glm::vec3(
-                velocity * cos(phi) * cos(theta),
-                velocity * sin(phi),
-                velocity * cos(phi) * sin(theta)
-            );
-            
-            float r = colorVariation(gen);
-            float g = colorVariation(gen) * 0.5f;
-            float b = 0.0f;
-            particle.color = glm::vec4(r, g, b, 1.0f);
-            
-            particle.lifetime = 0.0f;
-            particle.maxLifetime = 1.0f + speed(gen) * 0.2f;
-            particle.size = 10.0f + speed(gen) * 2.0f;
-            particle.active = true;
-            
-            particles.push_back(particle);
-        }
-        
-        std::cout << "Explosion created at (" << position.x << ", " << position.y << ", " << position.z 
-                  << ") with " << numParticles << " particles\n";
-    }
-
-    void update(float deltaTime) {
-        for (auto& particle : particles) {
-            if (!particle.active) continue;
-
-            particle.position += particle.velocity * deltaTime;
-            particle.velocity.y -= 9.8f * deltaTime; 
-            particle.lifetime += deltaTime;
-
-            float progress = particle.lifetime / particle.maxLifetime;
-            particle.color.a = 1.0f - progress;
-            particle.size *= 0.98f; 
-
-            if (particle.lifetime >= particle.maxLifetime) {
-                particle.active = false;
-            }
-        }
-
-        particles.erase(
-            std::remove_if(particles.begin(), particles.end(),
-                [](const Particle& p) { return !p.active; }),
-            particles.end()
-        );
-    }
-
-    void draw(const glm::mat4& view, const glm::mat4& projection) {
-        if (particles.empty()) return;
-
-#ifndef __EMSCRIPTEN__
-        glEnable(GL_PROGRAM_POINT_SIZE);
-#endif
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-        glDepthMask(GL_FALSE);
-
-        explosionShader.useProgram();
-        
-        GLuint viewLoc = glGetUniformLocation(explosionShader.id(), "view");
-        GLuint projectionLoc = glGetUniformLocation(explosionShader.id(), "projection");
-        
-        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-
-        std::vector<float> vertexData;
-        for (const auto& particle : particles) {
-            if (!particle.active) continue;
-
-            vertexData.push_back(particle.position.x);
-            vertexData.push_back(particle.position.y);
-            vertexData.push_back(particle.position.z);
-            vertexData.push_back(particle.color.r);
-            vertexData.push_back(particle.color.g);
-            vertexData.push_back(particle.color.b);
-            vertexData.push_back(particle.color.a);
-            vertexData.push_back(particle.size);
-        }
-
-        if (!vertexData.empty()) {
-            glBindVertexArray(vao);
-            glBindBuffer(GL_ARRAY_BUFFER, vbo);
-            glBufferSubData(GL_ARRAY_BUFFER, 0, vertexData.size() * sizeof(float), vertexData.data());
-            glDrawArrays(GL_POINTS, 0, particles.size());
-            glBindVertexArray(0);
-        }
-
-        glDepthMask(GL_TRUE);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    }
-};
 
 class Projectile {
 public:
@@ -1364,34 +1670,29 @@ public:
     }
 
     void draw(const glm::mat4& view, const glm::mat4& projection, const glm::vec3& cameraPos) {
-        glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
-    
-    wallShader.useProgram();
-    
-    glm::mat4 model = glm::mat4(1.0f);
-    
-    GLuint modelLoc = glGetUniformLocation(wallShader.id(), "model");
-    GLuint viewLoc = glGetUniformLocation(wallShader.id(), "view");
-    GLuint projectionLoc = glGetUniformLocation(wallShader.id(), "projection");
-    GLuint lightPosLoc = glGetUniformLocation(wallShader.id(), "lightPos");
-    GLuint viewPosLoc = glGetUniformLocation(wallShader.id(), "viewPos");
-    
-    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-    glUniform3f(lightPosLoc, 0.0f, 15.0f, 0.0f);
-    glUniform3f(viewPosLoc, cameraPos.x, cameraPos.y, cameraPos.z);
-    
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, textureId);
-    glUniform1i(glGetUniformLocation(wallShader.id(), "wallTexture"), 0);
-    
-    glBindVertexArray(vao);
-    glDrawElements(GL_TRIANGLES, numIndices, GL_UNSIGNED_INT, 0);
-    glBindVertexArray(0);
-    
-    glDisable(GL_CULL_FACE);
+        wallShader.useProgram();
+        
+        glm::mat4 model = glm::mat4(1.0f);
+        
+        GLuint modelLoc = glGetUniformLocation(wallShader.id(), "model");
+        GLuint viewLoc = glGetUniformLocation(wallShader.id(), "view");
+        GLuint projectionLoc = glGetUniformLocation(wallShader.id(), "projection");
+        GLuint lightPosLoc = glGetUniformLocation(wallShader.id(), "lightPos");
+        GLuint viewPosLoc = glGetUniformLocation(wallShader.id(), "viewPos");
+        
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+        glUniform3f(lightPosLoc, 0.0f, 15.0f, 0.0f);
+        glUniform3f(viewPosLoc, cameraPos.x, cameraPos.y, cameraPos.z);
+        
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, textureId);
+        glUniform1i(glGetUniformLocation(wallShader.id(), "wallTexture"), 0);
+        
+        glBindVertexArray(vao);
+        glDrawElements(GL_TRIANGLES, numIndices, GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
     }
 
     bool checkCollision(const glm::vec3& position, float radius) {
@@ -1421,279 +1722,6 @@ private:
     size_t numIndices = 0;
 };
 
-class Pillar : public gl::GLObject {
-public:
-    struct PillarInstance {
-        glm::vec3 position;
-        float radius;
-        float height;
-    };
-
-    std::vector<PillarInstance> pillars;
-    GLuint vao = 0, vbo = 0, ebo = 0;
-    GLuint textureId = 0;
-    gl::ShaderProgram pillarShader;
-
-    Pillar() = default;
-    ~Pillar() {
-        if (vao != 0) glDeleteVertexArrays(1, &vao);
-        if (vbo != 0) glDeleteBuffers(1, &vbo);
-        if (ebo != 0) glDeleteBuffers(1, &ebo);
-    }
-
-    void load(gl::GLWindow *win) override {
-#ifndef __EMSCRIPTEN__
-        const char *vertexShader = R"(
-            #version 330 core
-            layout(location = 0) in vec3 aPos;
-            layout(location = 1) in vec2 aTexCoord;
-            layout(location = 2) in vec3 aNormal;
-            
-            out vec2 TexCoord;
-            out vec3 Normal;
-            out vec3 FragPos;
-            
-            uniform mat4 model;
-            uniform mat4 view;
-            uniform mat4 projection;
-            
-            void main() {
-                gl_Position = projection * view * model * vec4(aPos, 1.0);
-                FragPos = vec3(model * vec4(aPos, 1.0));
-                Normal = mat3(transpose(inverse(model))) * aNormal;
-                TexCoord = aTexCoord;
-            }
-        )";
-
-        const char *fragmentShader = R"(
-            #version 330 core
-            out vec4 FragColor;
-            
-            in vec2 TexCoord;
-            in vec3 Normal;
-            in vec3 FragPos;
-            
-            uniform sampler2D pillarTexture;
-            uniform vec3 lightPos;
-            uniform vec3 viewPos;
-            
-            void main() {
-                float ambientStrength = 0.3;
-                vec3 ambient = ambientStrength * vec3(1.0);
-                
-                vec3 norm = normalize(Normal);
-                vec3 lightDir = normalize(lightPos - FragPos);
-                float diff = max(dot(norm, lightDir), 0.0);
-                vec3 diffuse = diff * vec3(1.0);
-                
-                vec4 texColor = texture(pillarTexture, TexCoord);
-                vec3 result = (ambient + diffuse) * vec3(texColor);
-                FragColor = vec4(result, texColor.a);
-            }
-        )";
-#else
-        const char *vertexShader = R"(#version 300 es
-            precision highp float;
-            layout(location = 0) in vec3 aPos;
-            layout(location = 1) in vec2 aTexCoord;
-            layout(location = 2) in vec3 aNormal;
-            
-            out vec2 TexCoord;
-            out vec3 Normal;
-            out vec3 FragPos;
-            
-            uniform mat4 model;
-            uniform mat4 view;
-            uniform mat4 projection;
-            
-            void main() {
-                gl_Position = projection * view * model * vec4(aPos, 1.0);
-                FragPos = vec3(model * vec4(aPos, 1.0));
-                Normal = mat3(transpose(inverse(model))) * aNormal;
-                TexCoord = aTexCoord;
-            }
-        )";
-
-        const char *fragmentShader = R"(#version 300 es
-            precision highp float;
-            out vec4 FragColor;
-            
-            in vec2 TexCoord;
-            in vec3 Normal;
-            in vec3 FragPos;
-            
-            uniform sampler2D pillarTexture;
-            uniform vec3 lightPos;
-            uniform vec3 viewPos;
-            
-            void main() {
-                float ambientStrength = 0.3;
-                vec3 ambient = ambientStrength * vec3(1.0);
-                
-                vec3 norm = normalize(Normal);
-                vec3 lightDir = normalize(lightPos - FragPos);
-                float diff = max(dot(norm, lightDir), 0.0);
-                vec3 diffuse = diff * vec3(1.0);
-                
-                vec4 texColor = texture(pillarTexture, TexCoord);
-                vec3 result = (ambient + diffuse) * vec3(texColor);
-                FragColor = vec4(result, texColor.a);
-            }
-        )";
-#endif
-
-        if(!pillarShader.loadProgramFromText(vertexShader, fragmentShader)) {
-            throw mx::Exception("Failed to load pillar shader");
-        }
-
-        int segments = 16;
-        std::vector<float> vertices;
-        std::vector<unsigned int> indices;
-
-        for (int i = 0; i <= segments; ++i) {
-            float angle = (float)i / segments * 2.0f * M_PI;
-            float x = cos(angle);
-            float z = sin(angle);
-            float u = (float)i / segments;
-
-            vertices.insert(vertices.end(), {
-                x, 0.0f, z,           
-                u, 0.0f,              
-                x, 0.0f, z            
-            });
-
-            vertices.insert(vertices.end(), {
-                x, 1.0f, z,           
-                u, 1.0f,              
-                x, 0.0f, z            
-            });
-        }
-
-        for (int i = 0; i < segments; ++i) {
-            int current = i * 2;
-            int next = (i + 1) * 2;
-
-            indices.insert(indices.end(), {
-                (unsigned int)current, (unsigned int)(current + 1), (unsigned int)next,
-                (unsigned int)next, (unsigned int)(current + 1), (unsigned int)(next + 1)
-            });
-        }
-
-        glGenVertexArrays(1, &vao);
-        glGenBuffers(1, &vbo);
-        glGenBuffers(1, &ebo);
-        
-        glBindVertexArray(vao);
-        
-        glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
-        
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
-        
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-        glEnableVertexAttribArray(0);
-        
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-        glEnableVertexAttribArray(1);
-        
-        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float)));
-        glEnableVertexAttribArray(2);
-        
-        SDL_Surface* pillarSurface = png::LoadPNG(win->util.getFilePath("data/ground.png").c_str());
-        if(!pillarSurface) {
-            throw mx::Exception("Failed to load pillar texture");
-        }
-
-        glGenTextures(1, &textureId);
-        glBindTexture(GL_TEXTURE_2D, textureId);
-        
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, pillarSurface->w, pillarSurface->h,
-                    0, GL_RGBA, GL_UNSIGNED_BYTE, pillarSurface->pixels);
-        
-        SDL_FreeSurface(pillarSurface);
-
-        numIndices = indices.size();
-
-        std::random_device rd;
-        std::mt19937 gen(rd());
-        std::uniform_real_distribution<float> posX(-40.0f, 40.0f);
-        std::uniform_real_distribution<float> posZ(-40.0f, 40.0f);
-        std::uniform_real_distribution<float> radiusDist(0.5f, 1.5f);
-        std::uniform_real_distribution<float> heightDist(3.0f, 6.0f);
-
-        int numPillars = 15;
-        for (int i = 0; i < numPillars; ++i) {
-            PillarInstance pillar;
-            pillar.position = glm::vec3(posX(gen), 0.0f, posZ(gen));
-            pillar.radius = radiusDist(gen);
-            pillar.height = heightDist(gen);
-            pillars.push_back(pillar);
-        }
-
-        std::cout << "Generated " << numPillars << " pillars\n";
-    }
-
-    void draw(gl::GLWindow *win) override {
-    }
-
-    void event(gl::GLWindow *win, SDL_Event &e) override {
-    }
-
-    void draw(const glm::mat4& view, const glm::mat4& projection, const glm::vec3& cameraPos) {
-        pillarShader.useProgram();
-        
-        GLuint viewLoc = glGetUniformLocation(pillarShader.id(), "view");
-        GLuint projectionLoc = glGetUniformLocation(pillarShader.id(), "projection");
-        GLuint lightPosLoc = glGetUniformLocation(pillarShader.id(), "lightPos");
-        GLuint viewPosLoc = glGetUniformLocation(pillarShader.id(), "viewPos");
-        
-        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-        glUniform3f(lightPosLoc, 0.0f, 15.0f, 0.0f);
-        glUniform3f(viewPosLoc, cameraPos.x, cameraPos.y, cameraPos.z);
-        
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, textureId);
-        glUniform1i(glGetUniformLocation(pillarShader.id(), "pillarTexture"), 0);
-        
-        glBindVertexArray(vao);
-
-        for (const auto& pillar : pillars) {
-            glm::mat4 model = glm::mat4(1.0f);
-            model = glm::translate(model, pillar.position);
-            model = glm::scale(model, glm::vec3(pillar.radius, pillar.height, pillar.radius));
-            
-            GLuint modelLoc = glGetUniformLocation(pillarShader.id(), "model");
-            glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-            
-            glDrawElements(GL_TRIANGLES, numIndices, GL_UNSIGNED_INT, 0);
-        }
-
-        glBindVertexArray(0);
-    }
-
-    bool checkCollision(const glm::vec3& position, float playerRadius) {
-        for (const auto& pillar : pillars) {
-            glm::vec2 playerPos2D(position.x, position.z);
-            glm::vec2 pillarPos2D(pillar.position.x, pillar.position.z);
-            
-            float distance = glm::length(playerPos2D - pillarPos2D);
-            if (distance < (pillar.radius + playerRadius)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-private:
-    size_t numIndices = 0;
-};
 
 class Game : public gl::GLObject {
 public:
@@ -1817,7 +1845,7 @@ public:
         
         const float cameraSpeed = 0.1f;
         const float minHeight = 1.7f;
-        const float playerRadius = 0.5f;  
+        const float playerRadius = 0.5f;
         
         glm::vec3 horizontalFront = glm::normalize(glm::vec3(cameraFront.x, 0.0f, cameraFront.z));
         glm::vec3 cameraRight = glm::normalize(glm::cross(horizontalFront, glm::vec3(0.0f, 1.0f, 0.0f)));
@@ -1864,7 +1892,7 @@ public:
         game_floor.update(deltaTime);
         game_objects.update(deltaTime);
         projectiles.update(deltaTime, game_objects, explosion); 
-        explosion.update(deltaTime);
+        explosion.update(deltaTime, game_pillars); 
     }
     
 private:
