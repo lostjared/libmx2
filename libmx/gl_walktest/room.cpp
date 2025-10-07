@@ -1,6 +1,3 @@
-// TODO:
-// Still close , but when I view parts of the walls from
-// certain angles, it disappears. 
 
 
 #include"mx.hpp"
@@ -1055,7 +1052,7 @@ const char *fragmentShader = R"(#version 300 es
         throw mx::Exception("Failed to load floor shader program");
     }
 
-    const int N = 64;                // grid resolution
+    const int N = 64;                
     const float half = 50.0f;
     const float y = -0.01f;
     const float uvTiles = 20.0f;
@@ -1117,7 +1114,6 @@ const char *fragmentShader = R"(#version 300 es
     
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     
@@ -1701,7 +1697,7 @@ void update(float deltaTime, Objects& objects, Explosion& explosion, Pillar& pil
             bullet.trail.end()
         );
 
-         if (bullet.position.y <= 0.0f) {
+        if (bullet.position.y <= 0.0f) {
             glm::vec3 impactPos = glm::vec3(bullet.position.x, 0.0f, bullet.position.z);
             explosion.createExplosion(impactPos, 800, true); 
             bullet.active = false;
@@ -1730,7 +1726,7 @@ void update(float deltaTime, Objects& objects, Explosion& explosion, Pillar& pil
                 float distance = glm::length(glm::vec2(checkPos.x, checkPos.z) - glm::vec2(closestPoint.x, closestPoint.z));
                 
                 if (distance < 0.5f && checkPos.y >= 0.0f && checkPos.y <= wall.height) {
-                    explosion.createExplosion(checkPos, 300, true);
+                    explosion.createExplosion(checkPos, 600, true); 
                     bullet.active = false;
                     hitWall = true;
                     std::cout << "Bullet #" << &bullet - &bullets[0] << " hit wall at (" 
@@ -1755,7 +1751,7 @@ void update(float deltaTime, Objects& objects, Explosion& explosion, Pillar& pil
                 float distance = glm::length(bulletPos2D - pillarPos2D);
                 
                 if (distance < pillar.radius && checkPos.y > 0.0f && checkPos.y < pillar.height) {
-                    explosion.createExplosion(checkPos, 500, true);
+                    explosion.createExplosion(checkPos, 700, true); 
                     bullet.active = false;
                     hitPillar = true;
                     std::cout << "Bullet #" << &bullet - &bullets[0] << " hit pillar at (" 
