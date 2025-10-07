@@ -433,8 +433,8 @@ public:
             );
             
             float r = colorVariation(gen);
-            float g = colorVariation(gen) * 0.5f;
-            float b = 0.0f;
+            float g = colorVariation(gen) * 0.7f; 
+            float b = colorVariation(gen) * 0.2f; 
             particle.color = glm::vec4(r, g, b, 1.0f);
             
             particle.lifetime = 0.0f;
@@ -1602,7 +1602,7 @@ public:
 
         for (const auto& wall : walls) {
             glm::vec3 dir = glm::normalize(wall.end - wall.start);
-            glm::vec3 normal = glm::vec3(-dir.z, 0.0f, dir.x); 
+            glm::vec3 normal = glm::vec3(dir.z, 0.0f, -dir.x); 
             
             float length = glm::length(wall.end - wall.start);
             float texRepeat = length / 5.0f;
