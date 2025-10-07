@@ -209,7 +209,7 @@ public:
         auto lengthU = [&](const glm::vec3 &p0, const glm::vec3 &p1){
             return glm::length(p1 - p0) / tileScale;
         };
-         const float vRepeat = wallHeight / tileScale;
+          const float vRepeat = wallHeight / tileScale;
         const float topVRepeat = wallThickness / tileScale;
 
         addQuad(A, B, B2, A2, glm::vec3(0,0,-1), lengthU(A,B), vRepeat); 
@@ -223,10 +223,10 @@ public:
         addQuad(a, d, d2, a2, glm::vec3(1,0,0),  lengthU(d,a), vRepeat); 
 
         const glm::vec3 upNormal(0,1,0);
-        addQuad(A2, a2, b2, B2, upNormal, lengthU(A2,B2), topVRepeat); 
-        addQuad(B2, b2, c2, C2, upNormal, lengthU(B2,C2), topVRepeat); 
-        addQuad(C2, c2, d2, D2, upNormal, lengthU(C2,D2), topVRepeat); 
-        addQuad(D2, d2, a2, A2, upNormal, lengthU(D2,A2), topVRepeat); 
+        addQuad(a2, A2, B2, b2, upNormal, lengthU(A2,B2), topVRepeat); 
+        addQuad(b2, B2, C2, c2, upNormal, lengthU(B2,C2), topVRepeat); 
+        addQuad(c2, C2, D2, d2, upNormal, lengthU(C2,D2), topVRepeat); 
+        addQuad(d2, D2, A2, a2, upNormal, lengthU(D2,A2), topVRepeat); 
         
         glGenVertexArrays(1, &vao);
         glGenBuffers(1, &vbo);
@@ -557,7 +557,7 @@ public:
     void event(gl::GLWindow *win, SDL_Event &e) override {
     }
 
-    void draw(const glm::mat4& view, const glm::mat4& projection, const glm::vec3& cameraPos) {
+      void draw(const glm::mat4& view, const glm::mat4& projection, const glm::vec3& cameraPos) {
         pillarShader.useProgram();
         
         GLuint viewLoc = glGetUniformLocation(pillarShader.id(), "view");
