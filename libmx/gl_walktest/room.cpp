@@ -686,7 +686,7 @@ public:
     std::vector<Particle> particles;
     GLuint vao, vbo;
     gl::ShaderProgram explosionShader;
-    const size_t MAX_PARTICLES = 10000; 
+    const size_t MAX_PARTICLES = 60000; 
 
     Explosion() = default;
     ~Explosion() {
@@ -807,10 +807,10 @@ public:
 
         std::random_device rd;
         std::mt19937 gen(rd());
-        std::uniform_real_distribution<float> speed(2.0f, 10.0f);
+        std::uniform_real_distribution<float> speed(3.0f, 15.0f); 
         std::uniform_real_distribution<float> angle(0.0f, 2.0f * M_PI);
-        std::uniform_real_distribution<float> elevation(-M_PI/4.0f, M_PI/4.0f);
-        std::uniform_real_distribution<float> colorVariation(0.8f, 1.0f);
+        std::uniform_real_distribution<float> elevation(-M_PI/6.0f, M_PI/3.0f); 
+        std::uniform_real_distribution<float> colorVariation(0.7f, 1.0f);
 
         for (int i = 0; i < numParticles; ++i) {
             Particle particle;
@@ -828,7 +828,7 @@ public:
             
             if (isRed) {
                 float r = colorVariation(gen);
-                float g = colorVariation(gen) * 0.2f;
+                float g = colorVariation(gen) * 0.3f; 
                 float b = colorVariation(gen) * 0.1f;
                 particle.color = glm::vec4(r, g, b, 1.0f);
             } else {
@@ -839,8 +839,8 @@ public:
             }
             
             particle.lifetime = 0.0f;
-            particle.maxLifetime = 1.0f + speed(gen) * 0.2f;
-            particle.size = 10.0f + speed(gen) * 2.0f;
+            particle.maxLifetime = 1.5f + speed(gen) * 0.3f; 
+            particle.size = 12.0f + speed(gen) * 3.0f;
             particle.active = true;
             
             particles.push_back(particle);
@@ -1699,7 +1699,7 @@ void update(float deltaTime, Objects& objects, Explosion& explosion, Pillar& pil
 
         if (bullet.position.y <= 0.0f) {
             glm::vec3 impactPos = glm::vec3(bullet.position.x, 0.0f, bullet.position.z);
-            explosion.createExplosion(impactPos, 800, true); 
+            explosion.createExplosion(impactPos, 1500, true); 
             bullet.active = false;
             std::cout << "Bullet #" << &bullet - &bullets[0] << " hit floor at (" 
                       << impactPos.x << ", " << impactPos.y << ", " << impactPos.z << ")\n";
