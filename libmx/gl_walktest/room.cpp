@@ -311,6 +311,7 @@ public:
     std::vector<Particle> particles;
     GLuint vao, vbo;
     gl::ShaderProgram explosionShader;
+    const size_t MAX_PARTICLES = 10000; 
 
     Explosion() = default;
     ~Explosion() {
@@ -396,7 +397,7 @@ public:
         
         glBindVertexArray(vao);
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        glBufferData(GL_ARRAY_BUFFER, 1000 * 8 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, MAX_PARTICLES * 8 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
         
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
         glEnableVertexAttribArray(0);
@@ -408,9 +409,27 @@ public:
         glEnableVertexAttribArray(2);
         
         glBindVertexArray(0);
+        
+        particles.reserve(MAX_PARTICLES); 
     }
 
     void createExplosion(const glm::vec3& position, int numParticles, bool isRed = false) {
+        if (particles.size() + numParticles > MAX_PARTICLES) {
+            particles.erase(
+                std::remove_if(particles.begin(), particles.end(),
+                    [](const Particle& p) { return !p.active; }),
+                particles.end()
+            );
+            
+            int availableSpace = MAX_PARTICLES - particles.size();
+            if (availableSpace < numParticles) {
+                numParticles = availableSpace;
+                std::cout << "Warning: Particle limit reached, reducing explosion size\n";
+            }
+        }
+        
+        if (numParticles <= 0) return; 
+
         std::random_device rd;
         std::mt19937 gen(rd());
         std::uniform_real_distribution<float> speed(2.0f, 10.0f);
@@ -453,12 +472,16 @@ public:
         }
         
         std::cout << "Explosion created at (" << position.x << ", " << position.y << ", " << position.z 
-                  << ") with " << numParticles << " particles\n";
+                  << ") with " << numParticles << " particles (total: " << particles.size() << ")\n";
     }
 
     void update(float deltaTime, Pillar& pillars) {
+        int activeCount = 0;
+        
         for (auto& particle : particles) {
             if (!particle.active) continue;
+            
+            activeCount++;
 
             particle.position += particle.velocity * deltaTime;
             particle.velocity.y -= 9.8f * deltaTime;
@@ -502,11 +525,13 @@ public:
             }
         }
 
-        particles.erase(
-            std::remove_if(particles.begin(), particles.end(),
-                [](const Particle& p) { return !p.active; }),
-            particles.end()
-        );
+        if (particles.size() > MAX_PARTICLES * 0.8f) { 
+            particles.erase(
+                std::remove_if(particles.begin(), particles.end(),
+                    [](const Particle& p) { return !p.active; }),
+                particles.end()
+            );
+        }
     }
 
     void draw(const glm::mat4& view, const glm::mat4& projection) {
@@ -528,6 +553,9 @@ public:
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
         std::vector<float> vertexData;
+        vertexData.reserve(particles.size() * 8); 
+        
+        int drawCount = 0;
         for (const auto& particle : particles) {
             if (!particle.active) continue;
 
@@ -539,13 +567,14 @@ public:
             vertexData.push_back(particle.color.b);
             vertexData.push_back(particle.color.a);
             vertexData.push_back(particle.size);
+            drawCount++;
         }
 
         if (!vertexData.empty()) {
             glBindVertexArray(vao);
             glBindBuffer(GL_ARRAY_BUFFER, vbo);
             glBufferSubData(GL_ARRAY_BUFFER, 0, vertexData.size() * sizeof(float), vertexData.data());
-            glDrawArrays(GL_POINTS, 0, particles.size());
+            glDrawArrays(GL_POINTS, 0, drawCount);
             glBindVertexArray(0);
         }
 
