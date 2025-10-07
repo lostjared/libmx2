@@ -42,7 +42,7 @@ public:
     GLuint textureId = 0;
     gl::ShaderProgram wallShader;
 
-        void load(gl::GLWindow *win) override {
+    void load(gl::GLWindow *win) override {
 #ifndef __EMSCRIPTEN__
         const char *vertexShader = R"(
             #version 330 core
@@ -157,48 +157,47 @@ public:
 
         float size = 50.0f;
         float wallHeight = 5.0f;
-        float wallThickness = 0.2f;
+        float wallThickness = 0.5f; 
         
         walls.push_back({glm::vec3(-size, 0.0f, -size), glm::vec3(size, 0.0f, -size), wallHeight});  
-        walls.push_back({glm::vec3(-size, 0.0f, size), glm::vec3(size, 0.0f, size), wallHeight});    
-        walls.push_back({glm::vec3(-size, 0.0f, -size), glm::vec3(-size, 0.0f, size), wallHeight});  
         walls.push_back({glm::vec3(size, 0.0f, -size), glm::vec3(size, 0.0f, size), wallHeight});    
+        walls.push_back({glm::vec3(size, 0.0f, size), glm::vec3(-size, 0.0f, size), wallHeight});  
+        walls.push_back({glm::vec3(-size, 0.0f, size), glm::vec3(-size, 0.0f, -size), wallHeight});    
 
         std::vector<float> vertices;
         std::vector<unsigned int> indices;
         unsigned int indexOffset = 0;
 
-        const float tileScale = 5.0f;
+        const float tileScale = 5.0f; 
         const float outerMin = -size;
-        const float outerMax = size;
+        const float outerMax =  size;
         const float innerMin = outerMin + wallThickness;
         const float innerMax = outerMax - wallThickness;
 
-        glm::vec3 A(outerMin, 0.0f, outerMin);  
-        glm::vec3 B(outerMax, 0.0f, outerMin);  
-        glm::vec3 C(outerMax, 0.0f, outerMax);  
-        glm::vec3 D(outerMin, 0.0f, outerMax);  
+        glm::vec3 A(outerMin, 0.0f, outerMin); 
+        glm::vec3 B(outerMax, 0.0f, outerMin); 
+        glm::vec3 C(outerMax, 0.0f, outerMax); 
+        glm::vec3 D(outerMin, 0.0f, outerMax); 
 
-        glm::vec3 a(innerMin, 0.0f, innerMin);  
-        glm::vec3 b(innerMax, 0.0f, innerMin);  
-        glm::vec3 c(innerMax, 0.0f, innerMax);  
-        glm::vec3 d(innerMin, 0.0f, innerMax);  
+        glm::vec3 a(innerMin, 0.0f, innerMin); 
+        glm::vec3 b(innerMax, 0.0f, innerMin); 
+        glm::vec3 c(innerMax, 0.0f, innerMax); 
+        glm::vec3 d(innerMin, 0.0f, innerMax); 
 
-        auto topify = [wallHeight](const glm::vec3 &p) { 
-            return glm::vec3(p.x, wallHeight, p.z); 
-        };
-        glm::vec3 A2 = topify(A), B2 = topify(B), C2 = topify(C), D2 = topify(D);
-        glm::vec3 a2 = topify(a), b2 = topify(b), c2 = topify(c), d2 = topify(d);
+        auto top = [wallHeight](const glm::vec3 &p){ return glm::vec3(p.x, wallHeight, p.z); };
+        glm::vec3 A2 = top(A), B2 = top(B), C2 = top(C), D2 = top(D);
+        glm::vec3 a2 = top(a), b2 = top(b), c2 = top(c), d2 = top(d);
 
         auto addQuad = [&](const glm::vec3 &p0, const glm::vec3 &p1,
                            const glm::vec3 &p2, const glm::vec3 &p3,
-                           const glm::vec3 &normal, float uLen, float vLen)
+                           const glm::vec3 &normal,
+                           float uMax, float vMax)
         {
             vertices.insert(vertices.end(), {
-                p0.x, p0.y, p0.z,  0.0f, 0.0f,     normal.x, normal.y, normal.z,
-                p1.x, p1.y, p1.z,  uLen, 0.0f,     normal.x, normal.y, normal.z,
-                p2.x, p2.y, p2.z,  uLen, vLen,     normal.x, normal.y, normal.z,
-                p3.x, p3.y, p3.z,  0.0f, vLen,     normal.x, normal.y, normal.z
+                p0.x, p0.y, p0.z,  0.0f, 0.0f,  normal.x, normal.y, normal.z,
+                p1.x, p1.y, p1.z,  uMax, 0.0f,  normal.x, normal.y, normal.z,
+                p2.x, p2.y, p2.z,  uMax, vMax,  normal.x, normal.y, normal.z,
+                p3.x, p3.y, p3.z,  0.0f, vMax,  normal.x, normal.y, normal.z
             });
             indices.insert(indices.end(), {
                 indexOffset + 0, indexOffset + 1, indexOffset + 2,
@@ -207,27 +206,27 @@ public:
             indexOffset += 4;
         };
 
-        auto lengthU = [&](const glm::vec3 &p0, const glm::vec3 &p1) {
+        auto lengthU = [&](const glm::vec3 &p0, const glm::vec3 &p1){
             return glm::length(p1 - p0) / tileScale;
         };
-        const float vFull = 1.0f;
-        const float topV = wallThickness / tileScale;
+        const float vRepeat = wallHeight / tileScale;
+        const float topVRepeat = wallThickness / tileScale;
 
-        addQuad(A, B, B2, A2, glm::vec3(0,0,-1), lengthU(A,B), vFull);
-        addQuad(B, C, C2, B2, glm::vec3(1,0,0), lengthU(B,C), vFull);
-        addQuad(C, D, D2, C2, glm::vec3(0,0,1), lengthU(C,D), vFull);
-        addQuad(D, A, A2, D2, glm::vec3(-1,0,0), lengthU(D,A), vFull);
+        addQuad(A, B, B2, A2, glm::vec3(0,0,-1), lengthU(A,B), vRepeat); 
+        addQuad(B, C, C2, B2, glm::vec3(1,0,0),  lengthU(B,C), vRepeat); 
+        addQuad(C, D, D2, C2, glm::vec3(0,0,1),  lengthU(C,D), vRepeat); 
+        addQuad(D, A, A2, D2, glm::vec3(-1,0,0), lengthU(D,A), vRepeat); 
 
-        addQuad(a, a2, b2, b, glm::vec3(0,0,1), lengthU(a,b), vFull);
-        addQuad(b, b2, c2, c, glm::vec3(-1,0,0), lengthU(b,c), vFull);
-        addQuad(c, c2, d2, d, glm::vec3(0,0,-1), lengthU(c,d), vFull);
-        addQuad(d, d2, a2, a, glm::vec3(1,0,0), lengthU(d,a), vFull);
+        addQuad(b, a, a2, b2, glm::vec3(0,0,1),  lengthU(b,a), vRepeat); 
+        addQuad(c, b, b2, c2, glm::vec3(-1,0,0), lengthU(c,b), vRepeat); 
+        addQuad(d, c, c2, d2, glm::vec3(0,0,-1), lengthU(d,c), vRepeat); 
+        addQuad(a, d, d2, a2, glm::vec3(1,0,0),  lengthU(a,d), vRepeat); 
 
-        const glm::vec3 upN(0,1,0);
-        addQuad(A2, B2, b2, a2, upN, lengthU(A,B), topV);
-        addQuad(B2, C2, c2, b2, upN, lengthU(B,C), topV);
-        addQuad(C2, D2, d2, c2, upN, lengthU(C,D), topV);
-        addQuad(D2, A2, a2, d2, upN, lengthU(D,A), topV);
+        const glm::vec3 upNormal(0,1,0);
+        addQuad(a2, b2, B2, A2, upNormal, lengthU(a2,b2), topVRepeat); 
+        addQuad(b2, c2, C2, B2, upNormal, lengthU(b2,c2), topVRepeat); 
+        addQuad(c2, d2, D2, C2, upNormal, lengthU(c2,d2), topVRepeat); 
+        addQuad(d2, a2, A2, D2, upNormal, lengthU(d2,a2), topVRepeat); 
 
         glGenVertexArrays(1, &vao);
         glGenBuffers(1, &vbo);
@@ -267,8 +266,8 @@ public:
                     0, GL_RGBA, GL_UNSIGNED_BYTE, wallSurface->pixels);
         
         SDL_FreeSurface(wallSurface);
-        numIndices = indices.size();   
-        std::cout << "Thick perimeter wall mesh created with " << numIndices << " indices\n";
+
+        numIndices = indices.size();
     }
 
     void draw(gl::GLWindow *win) override {
@@ -1784,7 +1783,7 @@ void update(float deltaTime, Objects& objects, Explosion& explosion, Pillar& pil
             float fadeProgress = bullet.lifetime / bullet.maxLifetime;
             float alpha = 1.0f - fadeProgress;
 
-            glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+            glm::vec3 up = glm::vec3(0.0f,  1.0f, 0.0f);
             glm::vec3 right = glm::normalize(glm::cross(up, bullet.direction));
             if (glm::length(right) < 0.001f) {
                 right = glm::vec3(1.0f, 0.0f, 0.0f);
