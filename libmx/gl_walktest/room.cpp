@@ -217,10 +217,11 @@ public:
         addQuad(C, D, D2, C2, glm::vec3(0,0,1),  lengthU(C,D), vRepeat); 
         addQuad(D, A, A2, D2, glm::vec3(-1,0,0), lengthU(D,A), vRepeat); 
 
-        addQuad(b, a, a2, b2, glm::vec3(0,0,1),  lengthU(a,b), vRepeat); 
-        addQuad(c, b, b2, c2, glm::vec3(-1,0,0), lengthU(b,c), vRepeat); 
-        addQuad(d, c, c2, d2, glm::vec3(0,0,-1), lengthU(c,d), vRepeat); 
-        addQuad(a, d, d2, a2, glm::vec3(1,0,0),  lengthU(d,a), vRepeat); 
+        addQuad(a, b, b2, a2, glm::vec3(0,0,1),  lengthU(a,b), vRepeat);
+        addQuad(b, c, c2, b2, glm::vec3(-1,0,0), lengthU(b,c), vRepeat);
+        addQuad(c, d, d2, c2, glm::vec3(0,0,-1), lengthU(c,d), vRepeat);
+        addQuad(d, a, a2, d2, glm::vec3(1,0,0),  lengthU(d,a), vRepeat);
+
 
         const glm::vec3 upNormal(0,1,0);
         addQuad(a2, A2, B2, b2, upNormal, lengthU(A2,B2), topVRepeat); 
@@ -2031,9 +2032,10 @@ public:
                                 static_cast<float>(win->w) / static_cast<float>(win->h),
                                 0.1f, 100.0f);
 
+        
+        game_walls.draw(view, projection, game_floor.getCameraPosition());    
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
-        game_walls.draw(view, projection, game_floor.getCameraPosition());    
         game_pillars.draw(view, projection, game_floor.getCameraPosition());  
         glDisable(GL_CULL_FACE);
 
