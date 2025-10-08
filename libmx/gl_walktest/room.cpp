@@ -68,36 +68,40 @@ public:
             }
         )";
 
-        const char *fragmentShader = R"(
-            #version 330 core
-            out vec4 FragColor;
-            
-            in vec2 TexCoord;
-            in vec3 Normal;
-            in vec3 FragPos;
-            
-            uniform sampler2D wallTexture;
-            uniform vec3 lightPos;
-            uniform vec3 viewPos;
-            
-            void main() {
-                float ambientStrength = 0.5;
-                vec3 ambient = ambientStrength * vec3(1.0);
-                
-                vec3 norm = normalize(Normal);
-                vec3 lightDir = normalize(lightPos - FragPos);
-                float diff = max(dot(norm, lightDir), 0.0);
-                
-                float distance = length(lightPos - FragPos);
-                float attenuation = 1.0 / (1.0 + 0.005 * distance + 0.0001 * distance * distance);
-                
-                vec3 diffuse = diff * attenuation * vec3(1.0);
-                
-                vec4 texColor = texture(wallTexture, TexCoord);
-                vec3 result = (ambient + diffuse) * vec3(texColor);
-                FragColor = vec4(result, texColor.a);
-            }
-        )";
+        const char *fragmentShader = R"(#version 330 core
+
+in vec2 TexCoord;
+out vec4 color;
+uniform sampler2D wallTexture;
+uniform float time_f;
+uniform vec2 iResolution;
+void main() {
+    vec2 uv = TexCoord;
+    vec2 center = vec2(0.5, 0.5);
+    vec2 offset = uv - center;
+
+    float fractalFactor = sin(length(offset) * 10.0 + time_f * 2.0) * 0.1;
+    vec2 fractalUV = uv + fractalFactor * normalize(offset);
+    float grid = abs(sin(fractalUV.x * 50.0) * sin(fractalUV.y * 50.0));
+    grid = step(0.7, grid);
+    float angle = atan(offset.y, offset.x) + fractalFactor * sin(time_f);
+    float radius = length(offset);
+    vec2 swirlUV = center + radius * vec2(cos(angle), sin(angle));
+
+    vec2 combinedUV = mix(swirlUV, fractalUV, 0.5);
+    vec4 texColor = texture(wallTexture, combinedUV);
+    vec3 rainbow = vec3(0.5 + 0.5 * sin(time_f + texColor.r),
+                        0.5 + 0.5 * sin(time_f + texColor.g + 2.0),
+                        0.5 + 0.5 * sin(time_f + texColor.b + 4.0));
+
+    vec3 finalColor = mix(texColor.rgb * rainbow, vec3(grid), 0.3);
+
+    color = vec4(finalColor, texColor.a);
+}
+
+
+
+  )";
 #else
         const char *vertexShader = R"(#version 300 es
             precision highp float;
@@ -294,7 +298,7 @@ public:
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
         glUniform3f(lightPosLoc, 0.0f, 15.0f, 0.0f);
         glUniform3f(viewPosLoc, cameraPos.x, cameraPos.y, cameraPos.z);
-
+        glUniform1f(glGetUniformLocation(wallShader.id(), "time_f"), SDL_GetTicks() / 1000.0f);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, textureId);
         glUniform1i(glGetUniformLocation(wallShader.id(), "wallTexture"), 0);
@@ -380,32 +384,42 @@ public:
             }
         )";
 
-        const char *fragmentShader = R"(
-            #version 330 core
-            out vec4 FragColor;
-            
-            in vec2 TexCoord;
-            in vec3 Normal;
-            in vec3 FragPos;
-            
-            uniform sampler2D pillarTexture;
-            uniform vec3 lightPos;
-            uniform vec3 viewPos;
-            
-            void main() {
-                float ambientStrength = 0.3;
-                vec3 ambient = ambientStrength * vec3(1.0);
-                
-                vec3 norm = normalize(Normal);
-                vec3 lightDir = normalize(lightPos - FragPos);
-                float diff = max(dot(norm, lightDir), 0.0);
-                vec3 diffuse = diff * vec3(1.0);
-                
-                vec4 texColor = texture(pillarTexture, TexCoord);
-                vec3 result = (ambient + diffuse) * vec3(texColor);
-                FragColor = vec4(result, texColor.a);
-            }
-        )";
+     
+            const char *fragmentShader = R"(#version 330 core
+
+in vec2 TexCoord;
+out vec4 color;
+uniform sampler2D pillarTexture;
+uniform float time_f;
+uniform vec2 iResolution;
+void main() {
+    vec2 uv = TexCoord;
+    vec2 center = vec2(0.5, 0.5);
+    vec2 offset = uv - center;
+
+    float fractalFactor = sin(length(offset) * 10.0 + time_f * 2.0) * 0.1;
+    vec2 fractalUV = uv + fractalFactor * normalize(offset);
+    float grid = abs(sin(fractalUV.x * 50.0) * sin(fractalUV.y * 50.0));
+    grid = step(0.7, grid);
+    float angle = atan(offset.y, offset.x) + fractalFactor * sin(time_f);
+    float radius = length(offset);
+    vec2 swirlUV = center + radius * vec2(cos(angle), sin(angle));
+
+    vec2 combinedUV = mix(swirlUV, fractalUV, 0.5);
+    vec4 texColor = texture(pillarTexture, combinedUV);
+    vec3 rainbow = vec3(0.5 + 0.5 * sin(time_f + texColor.r),
+                        0.5 + 0.5 * sin(time_f + texColor.g + 2.0),
+                        0.5 + 0.5 * sin(time_f + texColor.b + 4.0));
+
+    vec3 finalColor = mix(texColor.rgb * rainbow, vec3(grid), 0.3);
+
+    color = vec4(finalColor, texColor.a);
+}
+
+
+
+  )";
+     
 #else
         const char *vertexShader = R"(#version 300 es
             precision highp float;
@@ -633,7 +647,7 @@ public:
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
         glUniform3f(lightPosLoc, 0.0f, 15.0f, 0.0f);
         glUniform3f(viewPosLoc, cameraPos.x, cameraPos.y, cameraPos.z);
-        
+        glUniform1f(glGetUniformLocation(pillarShader.id(), "time_f"), SDL_GetTicks() / 1000.0f);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, textureId);
         glUniform1i(glGetUniformLocation(pillarShader.id(), "pillarTexture"), 0);
@@ -1046,19 +1060,43 @@ public:
                 TexCoord = aTexCoord;
             }
         )";
+        
+        const char *fragmentShader = R"(#version 330 core
 
-        const char *fragmentShader = R"(
-            #version 330 core
-            out vec4 FragColor;
-            
-            in vec2 TexCoord;
-            
-            uniform sampler2D floorTexture;
-            
-            void main() {
-                FragColor = texture(floorTexture, TexCoord);
-            }
-        )";
+in vec2 TexCoord;
+out vec4 color;
+uniform sampler2D floorTexture;
+uniform float time_f;
+uniform vec2 iResolution;
+void main() {
+    vec2 uv = TexCoord;
+    vec2 center = vec2(0.5, 0.5);
+    vec2 offset = uv - center;
+
+    float fractalFactor = sin(length(offset) * 10.0 + time_f * 2.0) * 0.1;
+    vec2 fractalUV = uv + fractalFactor * normalize(offset);
+    float grid = abs(sin(fractalUV.x * 50.0) * sin(fractalUV.y * 50.0));
+    grid = step(0.7, grid);
+    float angle = atan(offset.y, offset.x) + fractalFactor * sin(time_f);
+    float radius = length(offset);
+    vec2 swirlUV = center + radius * vec2(cos(angle), sin(angle));
+
+    vec2 combinedUV = mix(swirlUV, fractalUV, 0.5);
+    vec4 texColor = texture(floorTexture, combinedUV);
+    vec3 rainbow = vec3(0.5 + 0.5 * sin(time_f + texColor.r),
+                        0.5 + 0.5 * sin(time_f + texColor.g + 2.0),
+                        0.5 + 0.5 * sin(time_f + texColor.b + 4.0));
+
+    vec3 finalColor = mix(texColor.rgb * rainbow, vec3(grid), 0.3);
+
+    color = vec4(finalColor, texColor.a);
+}
+
+
+
+  )";
+    
+
 #else
 const char *vertexShader = R"(#version 300 es
     precision highp float;
@@ -1177,6 +1215,9 @@ const char *fragmentShader = R"(#version 300 es
         glUniformMatrix4fv(glGetUniformLocation(floorShader.id(), "model"), 1, GL_FALSE, glm::value_ptr(model));
         glUniformMatrix4fv(glGetUniformLocation(floorShader.id(), "view"), 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(glGetUniformLocation(floorShader.id(), "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+        glUniform2f(glGetUniformLocation(floorShader.id(), "iResolution"), win->w, win->h);
+        float time_f = SDL_GetTicks() / 1000.0f;
+        floorShader.setUniform("time_f", time_f);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, textureId);
         glUniform1i(glGetUniformLocation(floorShader.id(), "floorTexture"), 0);
