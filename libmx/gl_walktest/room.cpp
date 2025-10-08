@@ -125,36 +125,42 @@ void main() {
             }
         )";
 
+        
         const char *fragmentShader = R"(#version 300 es
             precision highp float;
-            out vec4 FragColor;
-            
             in vec2 TexCoord;
-            in vec3 Normal;
-            in vec3 FragPos;
-            
+            out vec4 color;
             uniform sampler2D wallTexture;
-            uniform vec3 lightPos;
-            uniform vec3 viewPos;
-            
+            uniform float time_f;
+            uniform vec2 iResolution;
             void main() {
-                float ambientStrength = 0.5;
-                vec3 ambient = ambientStrength * vec3(1.0);
-                
-                vec3 norm = normalize(Normal);
-                vec3 lightDir = normalize(lightPos - FragPos);
-                float diff = max(dot(norm, lightDir), 0.0);
-                
-                float distance = length(lightPos - FragPos);
-                float attenuation = 1.0 / (1.0 + 0.005 * distance + 0.0001 * distance * distance);
-                
-                vec3 diffuse = diff * attenuation * vec3(1.0);
-                
-                vec4 texColor = texture(wallTexture, TexCoord);
-                vec3 result = (ambient + diffuse) * vec3(texColor);
-                FragColor = vec4(result, texColor.a);
+                vec2 uv = TexCoord;
+                vec2 center = vec2(0.5, 0.5);
+                vec2 offset = uv - center;
+
+                float fractalFactor = sin(length(offset) * 10.0 + time_f * 2.0) * 0.1;
+                vec2 fractalUV = uv + fractalFactor * normalize(offset);
+                float grid = abs(sin(fractalUV.x * 50.0) * sin(fractalUV.y * 50.0));
+                grid = step(0.7, grid);
+                float angle = atan(offset.y, offset.x) + fractalFactor * sin(time_f);
+                float radius = length(offset);
+                vec2 swirlUV = center + radius * vec2(cos(angle), sin(angle));
+
+                vec2 combinedUV = mix(swirlUV, fractalUV, 0.5);
+                vec4 texColor = texture(wallTexture, combinedUV);
+                vec3 rainbow = vec3(0.5 + 0.5 * sin(time_f + texColor.r),
+                                    0.5 + 0.5 * sin(time_f + texColor.g + 2.0),
+                                    0.5 + 0.5 * sin(time_f + texColor.b + 4.0));
+
+                vec3 finalColor = mix(texColor.rgb * rainbow, vec3(grid), 0.3);
+
+                color = vec4(finalColor, texColor.a);
             }
-        )";
+
+
+
+            )";
+
 #endif
 
         if(!wallShader.loadProgramFromText(vertexShader, fragmentShader)) {
@@ -387,38 +393,35 @@ public:
      
             const char *fragmentShader = R"(#version 330 core
 
-in vec2 TexCoord;
-out vec4 color;
-uniform sampler2D pillarTexture;
-uniform float time_f;
-uniform vec2 iResolution;
-void main() {
-    vec2 uv = TexCoord;
-    vec2 center = vec2(0.5, 0.5);
-    vec2 offset = uv - center;
+            in vec2 TexCoord;
+            out vec4 color;
+            uniform sampler2D pillarTexture;
+            uniform float time_f;
+            uniform vec2 iResolution;
+            void main() {
+                vec2 uv = TexCoord;
+                vec2 center = vec2(0.5, 0.5);
+                vec2 offset = uv - center;
 
-    float fractalFactor = sin(length(offset) * 10.0 + time_f * 2.0) * 0.1;
-    vec2 fractalUV = uv + fractalFactor * normalize(offset);
-    float grid = abs(sin(fractalUV.x * 50.0) * sin(fractalUV.y * 50.0));
-    grid = step(0.7, grid);
-    float angle = atan(offset.y, offset.x) + fractalFactor * sin(time_f);
-    float radius = length(offset);
-    vec2 swirlUV = center + radius * vec2(cos(angle), sin(angle));
+                float fractalFactor = sin(length(offset) * 10.0 + time_f * 2.0) * 0.1;
+                vec2 fractalUV = uv + fractalFactor * normalize(offset);
+                float grid = abs(sin(fractalUV.x * 50.0) * sin(fractalUV.y * 50.0));
+                grid = step(0.7, grid);
+                float angle = atan(offset.y, offset.x) + fractalFactor * sin(time_f);
+                float radius = length(offset);
+                vec2 swirlUV = center + radius * vec2(cos(angle), sin(angle));
 
-    vec2 combinedUV = mix(swirlUV, fractalUV, 0.5);
-    vec4 texColor = texture(pillarTexture, combinedUV);
-    vec3 rainbow = vec3(0.5 + 0.5 * sin(time_f + texColor.r),
-                        0.5 + 0.5 * sin(time_f + texColor.g + 2.0),
-                        0.5 + 0.5 * sin(time_f + texColor.b + 4.0));
+                vec2 combinedUV = mix(swirlUV, fractalUV, 0.5);
+                vec4 texColor = texture(pillarTexture, combinedUV);
+                vec3 rainbow = vec3(0.5 + 0.5 * sin(time_f + texColor.r),
+                                    0.5 + 0.5 * sin(time_f + texColor.g + 2.0),
+                                    0.5 + 0.5 * sin(time_f + texColor.b + 4.0));
 
-    vec3 finalColor = mix(texColor.rgb * rainbow, vec3(grid), 0.3);
+                vec3 finalColor = mix(texColor.rgb * rainbow, vec3(grid), 0.3);
 
-    color = vec4(finalColor, texColor.a);
-}
-
-
-
-  )";
+                color = vec4(finalColor, texColor.a);
+            }
+        )";
      
 #else
         const char *vertexShader = R"(#version 300 es
@@ -445,30 +448,38 @@ void main() {
 
         const char *fragmentShader = R"(#version 300 es
             precision highp float;
-            out vec4 FragColor;
-            
             in vec2 TexCoord;
-            in vec3 Normal;
-            in vec3 FragPos;
-            
+            out vec4 color;
             uniform sampler2D pillarTexture;
-            uniform vec3 lightPos;
-            uniform vec3 viewPos;
-            
+            uniform float time_f;
+            uniform vec2 iResolution;
             void main() {
-                float ambientStrength = 0.3;
-                vec3 ambient = ambientStrength * vec3(1.0);
-                
-                vec3 norm = normalize(Normal);
-                vec3 lightDir = normalize(lightPos - FragPos);
-                float diff = max(dot(norm, lightDir), 0.0);
-                vec3 diffuse = diff * vec3(1.0);
-                
-                vec4 texColor = texture(pillarTexture, TexCoord);
-                vec3 result = (ambient + diffuse) * vec3(texColor);
-                FragColor = vec4(result, texColor.a);
+                vec2 uv = TexCoord;
+                vec2 center = vec2(0.5, 0.5);
+                vec2 offset = uv - center;
+
+                float fractalFactor = sin(length(offset) * 10.0 + time_f * 2.0) * 0.1;
+                vec2 fractalUV = uv + fractalFactor * normalize(offset);
+                float grid = abs(sin(fractalUV.x * 50.0) * sin(fractalUV.y * 50.0));
+                grid = step(0.7, grid);
+                float angle = atan(offset.y, offset.x) + fractalFactor * sin(time_f);
+                float radius = length(offset);
+                vec2 swirlUV = center + radius * vec2(cos(angle), sin(angle));
+
+                vec2 combinedUV = mix(swirlUV, fractalUV, 0.5);
+                vec4 texColor = texture(pillarTexture, combinedUV);
+                vec3 rainbow = vec3(0.5 + 0.5 * sin(time_f + texColor.r),
+                                    0.5 + 0.5 * sin(time_f + texColor.g + 2.0),
+                                    0.5 + 0.5 * sin(time_f + texColor.b + 4.0));
+
+                vec3 finalColor = mix(texColor.rgb * rainbow, vec3(grid), 0.3);
+
+                color = vec4(finalColor, texColor.a);
             }
-        )";
+
+
+
+  )";
 #endif
 
         if(!pillarShader.loadProgramFromText(vertexShader, fragmentShader)) {
@@ -1063,64 +1074,84 @@ public:
         
         const char *fragmentShader = R"(#version 330 core
 
-in vec2 TexCoord;
-out vec4 color;
-uniform sampler2D floorTexture;
-uniform float time_f;
-uniform vec2 iResolution;
-void main() {
-    vec2 uv = TexCoord;
-    vec2 center = vec2(0.5, 0.5);
-    vec2 offset = uv - center;
+            in vec2 TexCoord;
+            out vec4 color;
+            uniform sampler2D floorTexture;
+            uniform float time_f;
+            uniform vec2 iResolution;
+            void main() {
+                vec2 uv = TexCoord;
+                vec2 center = vec2(0.5, 0.5);
+                vec2 offset = uv - center;
 
-    float fractalFactor = sin(length(offset) * 10.0 + time_f * 2.0) * 0.1;
-    vec2 fractalUV = uv + fractalFactor * normalize(offset);
-    float grid = abs(sin(fractalUV.x * 50.0) * sin(fractalUV.y * 50.0));
-    grid = step(0.7, grid);
-    float angle = atan(offset.y, offset.x) + fractalFactor * sin(time_f);
-    float radius = length(offset);
-    vec2 swirlUV = center + radius * vec2(cos(angle), sin(angle));
+                float fractalFactor = sin(length(offset) * 10.0 + time_f * 2.0) * 0.1;
+                vec2 fractalUV = uv + fractalFactor * normalize(offset);
+                float grid = abs(sin(fractalUV.x * 50.0) * sin(fractalUV.y * 50.0));
+                grid = step(0.7, grid);
+                float angle = atan(offset.y, offset.x) + fractalFactor * sin(time_f);
+                float radius = length(offset);
+                vec2 swirlUV = center + radius * vec2(cos(angle), sin(angle));
 
-    vec2 combinedUV = mix(swirlUV, fractalUV, 0.5);
-    vec4 texColor = texture(floorTexture, combinedUV);
-    vec3 rainbow = vec3(0.5 + 0.5 * sin(time_f + texColor.r),
-                        0.5 + 0.5 * sin(time_f + texColor.g + 2.0),
-                        0.5 + 0.5 * sin(time_f + texColor.b + 4.0));
+                vec2 combinedUV = mix(swirlUV, fractalUV, 0.5);
+                vec4 texColor = texture(floorTexture, combinedUV);
+                vec3 rainbow = vec3(0.5 + 0.5 * sin(time_f + texColor.r),
+                                    0.5 + 0.5 * sin(time_f + texColor.g + 2.0),
+                                    0.5 + 0.5 * sin(time_f + texColor.b + 4.0));
 
-    vec3 finalColor = mix(texColor.rgb * rainbow, vec3(grid), 0.3);
+                vec3 finalColor = mix(texColor.rgb * rainbow, vec3(grid), 0.3);
 
-    color = vec4(finalColor, texColor.a);
-}
-
-
-
+                color = vec4(finalColor, texColor.a);
+            }
   )";
     
 
 #else
-const char *vertexShader = R"(#version 300 es
-    precision highp float;
-    layout(location = 0) in vec3 aPos;
-    layout(location = 1) in vec2 aTexCoord;
-    out vec2 TexCoord;
-    uniform mat4 model;
-    uniform mat4 view;
-    uniform mat4 projection;
-    void main() {
-        gl_Position = projection * view * model * vec4(aPos, 1.0);
-        TexCoord = aTexCoord;
-    }
-)";
+    const char *vertexShader = R"(#version 300 es
+        precision highp float;
+        layout(location = 0) in vec3 aPos;
+        layout(location = 1) in vec2 aTexCoord;
+        out vec2 TexCoord;
+        uniform mat4 model;
+        uniform mat4 view;
+        uniform mat4 projection;
+        void main() {
+            gl_Position = projection * view * model * vec4(aPos, 1.0);
+            TexCoord = aTexCoord;
+        }
+    )";
 
-const char *fragmentShader = R"(#version 300 es
-    precision highp float;
-    out vec4 FragColor;
-    in vec2 TexCoord;
-    uniform sampler2D floorTexture;
-    void main() {
-        FragColor = texture(floorTexture, TexCoord);
-    }
-)";
+    const char *fragmentShader = R"(#version 300 es
+        precision highp float;
+            in vec2 TexCoord;
+            out vec4 color;
+            uniform sampler2D floorTexture;
+            uniform float time_f;
+            uniform vec2 iResolution;
+            void main() {
+                vec2 uv = TexCoord;
+                vec2 center = vec2(0.5, 0.5);
+                vec2 offset = uv - center;
+
+                float fractalFactor = sin(length(offset) * 10.0 + time_f * 2.0) * 0.1;
+                vec2 fractalUV = uv + fractalFactor * normalize(offset);
+                float grid = abs(sin(fractalUV.x * 50.0) * sin(fractalUV.y * 50.0));
+                grid = step(0.7, grid);
+                float angle = atan(offset.y, offset.x) + fractalFactor * sin(time_f);
+                float radius = length(offset);
+                vec2 swirlUV = center + radius * vec2(cos(angle), sin(angle));
+
+                vec2 combinedUV = mix(swirlUV, fractalUV, 0.5);
+                vec4 texColor = texture(floorTexture, combinedUV);
+                vec3 rainbow = vec3(0.5 + 0.5 * sin(time_f + texColor.r),
+                                    0.5 + 0.5 * sin(time_f + texColor.g + 2.0),
+                                    0.5 + 0.5 * sin(time_f + texColor.b + 4.0));
+
+                vec3 finalColor = mix(texColor.rgb * rainbow, vec3(grid), 0.3);
+
+                color = vec4(finalColor, texColor.a);
+            }
+  )";
+
 #endif
     if(floorShader.loadProgramFromText(vertexShader, fragmentShader) == false) {
         throw mx::Exception("Failed to load floor shader program");
