@@ -1949,7 +1949,7 @@ public:
             out vec4 FragColor;
             
             void main() {
-                FragColor = vec4(0.0, 1.0, 0.0, 0.8);
+                FragColor = vec4(0.0, 0.5, 0.0, 0.8);
             }
         )";
 #else
@@ -1967,7 +1967,7 @@ public:
             out vec4 FragColor;
             
             void main() {
-                FragColor = vec4(1.0, 1.0, 1.0, 0.8);
+                FragColor = vec4(0.0, 0.5, 0.0, 0.8);
             }
         )";
 #endif
@@ -1976,7 +1976,6 @@ public:
             throw mx::Exception("Failed to load crosshair shader");
         }
 
-        float size = 0.02f;
         float gap = 0.01f;
         float vertices[] = {
             -size - gap, 0.0f,
