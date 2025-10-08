@@ -1976,6 +1976,7 @@ public:
             throw mx::Exception("Failed to load crosshair shader");
         }
 
+        float size = 0.01f;
         float gap = 0.01f;
         float vertices[] = {
             -size - gap, 0.0f,
