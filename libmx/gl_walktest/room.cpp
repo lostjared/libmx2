@@ -2009,7 +2009,7 @@ public:
         
         crosshairShader.useProgram();
         glBindVertexArray(vao);
-        glLineWidth(2.0f);
+        glLineWidth(6.0f);
         glDrawArrays(GL_LINES, 0, 8);
         glBindVertexArray(0);
         
