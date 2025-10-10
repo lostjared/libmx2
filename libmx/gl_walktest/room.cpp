@@ -285,7 +285,7 @@ public:
     void event(gl::GLWindow *win, SDL_Event &e) override {
     }
 
-        void draw(const glm::mat4& view, const glm::mat4& projection, const glm::vec3& cameraPos) {
+    void draw(const glm::mat4& view, const glm::mat4& projection, const glm::vec3& cameraPos) {
         wallShader.useProgram();
 
         glm::mat4 model = glm::mat4(1.0f);
