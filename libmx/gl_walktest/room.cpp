@@ -703,7 +703,7 @@ public:
     std::vector<Particle> particles;
     GLuint vao, vbo;
     gl::ShaderProgram explosionShader;
-    const size_t MAX_PARTICLES = 300000; 
+    const size_t MAX_PARTICLES = 500000; 
 
     Explosion() = default;
     ~Explosion() {
@@ -1826,7 +1826,7 @@ void update(float deltaTime, Objects& objects, Explosion& explosion, Pillar& pil
                 float distance = glm::length(glm::vec2(checkPos.x, checkPos.z) - glm::vec2(closestPoint.x, closestPoint.z));
                 
                 if (distance < 0.5f && checkPos.y >= 0.0f && checkPos.y <= wall.height) {
-                    explosion.createExplosion(checkPos, 1000, true); 
+                    explosion.createExplosion(checkPos, 1500, true); 
                     bullet.active = false;
                     hitWall = true;
                     std::cout << "Bullet #" << &bullet - &bullets[0] << " hit wall at (" 
@@ -1851,7 +1851,7 @@ void update(float deltaTime, Objects& objects, Explosion& explosion, Pillar& pil
                 float distance = glm::length(bulletPos2D - pillarPos2D);
                 
                 if (distance < pillar.radius && checkPos.y > 0.0f && checkPos.y < pillar.height) {
-                    explosion.createExplosion(checkPos, 1000, true); 
+                    explosion.createExplosion(checkPos, 1500, true); 
                     bullet.active = false;
                     hitPillar = true;
                     std::cout << "Bullet #" << &bullet - &bullets[0] << " hit pillar at (" 
@@ -1872,7 +1872,7 @@ void update(float deltaTime, Objects& objects, Explosion& explosion, Pillar& pil
             
             float hitIndex = -1;
             if (objects.checkCollision(checkPos, hitIndex)) {
-                explosion.createExplosion(checkPos, 1000, false); 
+                explosion.createExplosion(checkPos, 1500, false); 
                 objects.removeObject(static_cast<int>(hitIndex));
                 bullet.active = false;
                 std::cout << "Bullet #" << &bullet - &bullets[0] << " hit object " 
