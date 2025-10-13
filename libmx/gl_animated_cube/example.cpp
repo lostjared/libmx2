@@ -303,7 +303,7 @@ int main(int argc, char **argv) {
     Argument<std::string> arg;
     std::string path;
     int value = 0;
-    int tw = 1280, th = 720;
+    int tw = 1920, th = 1080;
     try {
         while((value = parser.proc(arg)) != -1) {
             switch(value) {
