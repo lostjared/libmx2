@@ -1064,6 +1064,7 @@ public:
             }
         )";
         
+        
         const char *fragmentShader = R"(#version 330 core
 
             in vec2 TexCoord;
@@ -1095,7 +1096,26 @@ public:
                 color = vec4(finalColor, texColor.a);
             }
   )";
-    
+  
+/*
+  const char *fragmentShader = R"(#version 330 core
+in vec2 TexCoord;
+out vec4 color;
+uniform sampler2D texture1;
+uniform float alpha;
+
+void main(void) {
+    float time_f = alpha;
+    vec2 tc = TexCoord;
+    vec2 center = vec2(0.5, 0.5);
+    vec2 uv = tc - center;
+    float dist = length(uv);
+    float ripple = sin(10.0 * dist - time_f * 6.28318) * 0.1;
+    uv += uv * ripple;
+    uv += center;
+    color = texture(texture1, uv);
+})";
+*/    
 
 #else
     const char *vertexShader = R"(#version 300 es
@@ -1241,6 +1261,18 @@ public:
         glUniform2f(glGetUniformLocation(floorShader.id(), "iResolution"), win->w, win->h);
         float time_f = SDL_GetTicks() / 1000.0f;
         floorShader.setUniform("time_f", time_f);
+        static float alpha = 0.1f;
+        static int dir = 1;
+        if(dir == 1) {
+            alpha += 0.1f;
+            if(alpha > 100.0f)
+                dir = 0;
+        } else {
+            alpha -= 0.1f;
+            if(alpha <= 1.0)
+                dir = 1;
+        }
+        floorShader.setUniform("alpha", alpha);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, textureId);
         glUniform1i(glGetUniformLocation(floorShader.id(), "floorTexture"), 0);
