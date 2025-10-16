@@ -70,6 +70,8 @@ public:
             }
         )";
 
+        /*
+
         const char *fragmentShader = R"(#version 330 core
 
             in vec2 TexCoord;
@@ -100,7 +102,38 @@ public:
 
                 color = vec4(finalColor, texColor.a);
             }
-        )";
+        )"; */
+
+        const char *fragmentShader = R"(#version 330 core
+
+in vec2 TexCoord;
+out vec4 color;
+uniform sampler2D wallTexture;
+uniform float time_f;
+uniform float alpha;
+
+void main(void) {
+    vec2 tc = TexCoord;
+    float rippleSpeed = 5.0;
+    float rippleAmplitude = 0.03;
+    float rippleWavelength = 10.0;
+    float twistStrength = 1.0;
+    float radius = length(tc - vec2(0.5, 0.5));
+    float ripple = sin(tc.x * rippleWavelength + time_f * rippleSpeed) * rippleAmplitude;
+    ripple += sin(tc.y * rippleWavelength + time_f * rippleSpeed) * rippleAmplitude;
+    vec2 rippleTC = tc + vec2(ripple, ripple);
+    
+    float angle = twistStrength * (radius - 1.0) + time_f;
+    float cosA = cos(angle);
+    float sinA = sin(angle);
+    mat2 rotationMatrix = mat2(cosA, -sinA, sinA, cosA);
+    vec2 twistedTC = (rotationMatrix * (tc - vec2(0.5, 0.5))) + vec2(0.5, 0.5);
+    
+    vec4 originalColor = texture(wallTexture, tc);
+    vec4 twistedRippleColor = texture(wallTexture, mix(rippleTC, twistedTC, 0.5));
+    color = mix(originalColor, twistedRippleColor, 0.5);
+    color = twistedRippleColor;
+      })";
 #else
         const char *vertexShader = R"(#version 300 es
             precision highp float;
@@ -1315,18 +1348,6 @@ void main(void) {
         glUniform2f(glGetUniformLocation(floorShader.id(), "iResolution"), win->w, win->h);
         float time_f = SDL_GetTicks() / 1000.0f;
         floorShader.setUniform("time_f", time_f);
-        static float alpha = 0.1f;
-        static int dir = 1;
-        if(dir == 1) {
-            alpha += 0.1f;
-            if(alpha > 100.0f)
-                dir = 0;
-        } else {
-            alpha -= 0.1f;
-            if(alpha <= 1.0)
-                dir = 1;
-        }
-        floorShader.setUniform("alpha", alpha);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, textureId);
         glUniform1i(glGetUniformLocation(floorShader.id(), "floorTexture"), 0);
