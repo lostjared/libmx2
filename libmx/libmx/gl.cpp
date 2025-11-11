@@ -15,16 +15,17 @@
 namespace gl {
    
     GLWindow::~GLWindow() {
-   
-        if(object)
-            object.reset();
-
+        if(object) {
+            object.reset();  
+        }
         if (glContext) {
             SDL_GL_DeleteContext(glContext);
+            glContext = nullptr;
         }
-        if(window)
+        if(window) {
             SDL_DestroyWindow(window);
-
+            window = nullptr;
+        }
         TTF_Quit();
         SDL_Quit();
     }
@@ -251,15 +252,22 @@ namespace gl {
     }
 
     void ShaderProgram::release() {
-        if(vertex_shader) {
+        if (!SDL_GL_GetCurrentContext()) {
+            vertex_shader = 0;
+            fragment_shader = 0;
+            shader_id = 0;
+            return;
+        }
+
+        if(vertex_shader && glIsShader(vertex_shader)) {  
             glDeleteShader(vertex_shader);
             vertex_shader = 0;
         }
-        if(fragment_shader) {
+        if(fragment_shader && glIsShader(fragment_shader)) { 
             glDeleteShader(fragment_shader);
             fragment_shader = 0;
         }
-        if(shader_id) {
+        if(shader_id && glIsProgram(shader_id)) {  
             glDeleteProgram(shader_id);
             shader_id = 0;
         }
