@@ -73,7 +73,7 @@ namespace gl {
 #ifdef __EMSCRIPTEN__
     EmscriptenWebGLContextAttributes attrs;
     emscripten_webgl_init_context_attributes(&attrs);
-    attrs.majorVersion = 2; // WebGL 2.0
+    attrs.majorVersion = 2; 
     attrs.minorVersion = 0;
     EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context("#canvas", &attrs);
     if (context <= 0) {
@@ -239,46 +239,63 @@ namespace gl {
         }
     }
 
-    ShaderProgram::ShaderProgram() : shader_id{0} {
+    ShaderProgram::SharedState::~SharedState() {
         
-    }
-    
-    ShaderProgram::ShaderProgram(GLuint id) : shader_id{id} {
+        if (!SDL_GL_GetCurrentContext()) {
+            return;
+        }
         
+        if (vertex_shader && glIsShader(vertex_shader)) {
+            glDeleteShader(vertex_shader);
+        }
+        if (fragment_shader && glIsShader(fragment_shader)) {
+            glDeleteShader(fragment_shader);
+        }
+        if (shader_id && glIsProgram(shader_id)) {
+            glDeleteProgram(shader_id);
+        }
     }
-    
-    ShaderProgram::~ShaderProgram() {
-        release();
+
+    ShaderProgram::ShaderProgram() 
+        : state(std::make_shared<SharedState>()) {
+    }
+
+    ShaderProgram::ShaderProgram(GLuint id) 
+        : state(std::make_shared<SharedState>()) {
+        state->shader_id = id;
     }
 
     void ShaderProgram::release() {
-        if (!SDL_GL_GetCurrentContext()) {
-            vertex_shader = 0;
-            fragment_shader = 0;
-            shader_id = 0;
-            return;
-        }
+        
+        state = std::make_shared<SharedState>();
+    }
 
-        if(vertex_shader && glIsShader(vertex_shader)) {  
-            glDeleteShader(vertex_shader);
-            vertex_shader = 0;
-        }
-        if(fragment_shader && glIsShader(fragment_shader)) { 
-            glDeleteShader(fragment_shader);
-            fragment_shader = 0;
-        }
-        if(shader_id && glIsProgram(shader_id)) {  
-            glDeleteProgram(shader_id);
-            shader_id = 0;
+    GLuint ShaderProgram::id() const {
+        return state ? state->shader_id : 0;
+    }
+
+    bool ShaderProgram::loaded() const {
+        return state && state->shader_id != 0;
+    }
+
+    void ShaderProgram::setName(const std::string &n) {
+        if (state) {
+            state->name_ = n;
         }
     }
 
-    ShaderProgram &ShaderProgram::operator=(const ShaderProgram &p) {
-        shader_id = p.shader_id;
-        name_ = p.name_;
-        return *this;
+    void ShaderProgram::setSilent(bool s) {
+        if (state) {
+            state->silent_ = s;
+        }
     }
-    
+
+    void ShaderProgram::useProgram() {
+        if (state && state->shader_id) {
+            glUseProgram(state->shader_id);
+        }
+    }
+
     int ShaderProgram::printShaderLog(GLuint shader) {
         int len = 0;
         int ch = 0;
@@ -292,6 +309,7 @@ namespace gl {
         }
         return 0;
     }
+
     void ShaderProgram::printProgramLog(int p) {
         int len = 0;
         int ch = 0;
@@ -305,6 +323,7 @@ namespace gl {
             delete [] log;
         }
     }
+
     bool ShaderProgram::checkError() {
         bool e = false;
         int glErr = glGetError();
@@ -315,8 +334,10 @@ namespace gl {
         }
         return e;
     }
-    
+
     GLuint ShaderProgram::createProgram(const char *vshaderSource, const char *fshaderSource) {
+        if (!state) return 0;
+        
         GLint vertCompiled;
         GLint fragCompiled;
         GLint linked;
@@ -351,12 +372,14 @@ namespace gl {
             glDeleteShader(fShader);
             return 0;
         }
+        
         GLuint vfProgram = glCreateProgram();
         glAttachShader(vfProgram, vShader);
         glAttachShader(vfProgram, fShader);
         glLinkProgram(vfProgram);
         checkError();
         glGetProgramiv(vfProgram, GL_LINK_STATUS, &linked);
+        
         if(linked != GL_TRUE) {
             mx::system_err << "Linking failed...\n";
             mx::system_err.flush();
@@ -366,13 +389,14 @@ namespace gl {
             glDeleteProgram(vfProgram);
             return 0;
         }
-        vertex_shader = vShader;
-        fragment_shader = fShader;
+        
+        
+        state->vertex_shader = vShader;
+        state->fragment_shader = fShader;
+        
         return vfProgram;
     }
 
-    
-    
     GLuint ShaderProgram::createProgramFromFile(const std::string &vert, const std::string &frag) {
         std::fstream v,f;
         v.open(vert, std::ios::in);
@@ -380,46 +404,35 @@ namespace gl {
             mx::system_err << "Error could not open file: " << vert << "\n";
             mx::system_err.flush();
             exit(EXIT_FAILURE);
-            
         }
         f.open(frag, std::ios::in);
         if(!f.is_open()) {
             mx::system_err << "Error could not open file: " << frag << "\n";
             mx::system_err.flush();
             exit(EXIT_FAILURE);
-
         }
         std::ostringstream stream1, stream2;
         stream1 << v.rdbuf();
         stream2 << f.rdbuf();
         return createProgram(stream1.str().c_str(), stream2.str().c_str());
     }
-    
+
     bool ShaderProgram::loadProgram(const std::string &v, const std::string &f) {
-        shader_id = createProgramFromFile(v,f);
-        if(shader_id)
-            return true;
-        return false;
+        if (!state) return false;
+        state->shader_id = createProgramFromFile(v, f);
+        return state->shader_id != 0;
     }
 
     bool ShaderProgram::loadProgramFromText(const std::string &v, const std::string &f) {
-        shader_id = createProgram(v.c_str(), f.c_str());
-        if(shader_id)
-            return true;
-        return false;
-    }
-    
-    void ShaderProgram::setName(const std::string &n) {
-        name_ = n;
-    }
-    
-    void ShaderProgram::useProgram() {
-        glUseProgram(shader_id);
+        if (!state) return false;
+        state->shader_id = createProgram(v.c_str(), f.c_str());
+        return state->shader_id != 0;
     }
 
     void ShaderProgram::setUniform(const std::string &name, int value) {
-        GLint location = glGetUniformLocation(shader_id, name.c_str());
-        if (location == -1 && silent_ == false) {
+        if (!state || !state->shader_id) return;
+        GLint location = glGetUniformLocation(state->shader_id, name.c_str());
+        if (location == -1 && !state->silent_) {
             mx::system_err << "Uniform '" << name << "' not found or not used in shader.\n";
             return;
         }
@@ -427,8 +440,9 @@ namespace gl {
     }
 
     void ShaderProgram::setUniform(const std::string &name, float value) {
-        GLint location = glGetUniformLocation(shader_id, name.c_str());
-        if (location == -1 && silent_ == false) {
+        if (!state || !state->shader_id) return;
+        GLint location = glGetUniformLocation(state->shader_id, name.c_str());
+        if (location == -1 && !state->silent_) {
             mx::system_err << "Uniform '" << name << "' not found or not used in shader.\n";
             return;
         }
@@ -436,8 +450,9 @@ namespace gl {
     }
 
     void ShaderProgram::setUniform(const std::string &name, const glm::vec2 &value) {
-        GLint location = glGetUniformLocation(shader_id, name.c_str());
-        if (location == -1 && silent_ == false) {
+        if (!state || !state->shader_id) return;
+        GLint location = glGetUniformLocation(state->shader_id, name.c_str());
+        if (location == -1 && !state->silent_) {
             mx::system_err << "Uniform '" << name << "' not found or not used in shader.\n";
             return;
         }
@@ -445,8 +460,9 @@ namespace gl {
     }
 
     void ShaderProgram::setUniform(const std::string &name, const glm::vec3 &value) {
-        GLint location = glGetUniformLocation(shader_id, name.c_str());
-        if (location == -1 && silent_ == false) {
+        if (!state || !state->shader_id) return;
+        GLint location = glGetUniformLocation(state->shader_id, name.c_str());
+        if (location == -1 && !state->silent_) {
             mx::system_err << "Uniform '" << name << "' not found or not used in shader.\n";
             return;
         }
@@ -454,8 +470,9 @@ namespace gl {
     }
 
     void ShaderProgram::setUniform(const std::string &name, const glm::vec4 &value) {
-        GLint location = glGetUniformLocation(shader_id, name.c_str());
-        if (location == -1 && silent_ == false) {
+        if (!state || !state->shader_id) return;
+        GLint location = glGetUniformLocation(state->shader_id, name.c_str());
+        if (location == -1 && !state->silent_) {
             mx::system_err << "Uniform '" << name << "' not found or not used in shader.\n";
             return;
         }
@@ -463,8 +480,9 @@ namespace gl {
     }
 
     void ShaderProgram::setUniform(const std::string &name, const glm::mat4 &value) {
-        GLint location = glGetUniformLocation(shader_id, name.c_str());
-        if (location == -1 && silent_ == false) {
+        if (!state || !state->shader_id) return;
+        GLint location = glGetUniformLocation(state->shader_id, name.c_str());
+        if (location == -1 && !state->silent_) {
             mx::system_err << "Uniform '" << name << "' not found or not used in shader.\n";
             return;
         }
@@ -966,5 +984,4 @@ namespace gl {
         glEnable(GL_DEPTH_TEST);
     }
 }
-
 #endif
