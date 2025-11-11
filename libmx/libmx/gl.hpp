@@ -104,6 +104,7 @@ namespace gl {
     public:
         GLSprite();
         ~GLSprite();
+        void release();
         void initSize(float w, float h);
         void setName(const std::string &name);
         void setShader(ShaderProgram *program);

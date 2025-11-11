@@ -797,19 +797,25 @@ namespace gl {
         textureName = name;
     }
     
-    GLSprite::~GLSprite() {
-        if (texture != 0) {
-            glDeleteTextures(1, &texture);
-            texture = 0;
-        }
-        if (VBO != 0) {
-            glDeleteBuffers(1, &VBO);
+    void GLSprite::release() {
+        if (!SDL_GL_GetCurrentContext()) {
+            VAO = 0;
             VBO = 0;
+            return;
         }
-        if (VAO != 0) {
+        if (VAO && glIsVertexArray(VAO)) {
             glDeleteVertexArrays(1, &VAO);
             VAO = 0;
         }
+        if (VBO && glIsBuffer(VBO)) {
+            glDeleteBuffers(1, &VBO);
+            VBO = 0;
+        }
+    }
+
+
+    GLSprite::~GLSprite() {
+        release();
     }
 
     void GLSprite::initWithTexture(ShaderProgram *program, GLuint text, float x, float y, int textWidth, int textHeight) {

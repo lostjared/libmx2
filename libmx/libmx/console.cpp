@@ -874,11 +874,22 @@ namespace console {
 
     void GLConsole::release() {
         if (!SDL_GL_GetCurrentContext()) {
+            texture = 0;
+            sprite.reset();
+            shader.reset();
             return;
         }
-        if(texture) {
+        if(texture && glIsTexture(texture)) {
             glDeleteTextures(1, &texture);
             texture = 0;
+        }
+        if(sprite) {
+            sprite.reset();
+        }
+        
+        if(shader) {
+            shader->release();
+            shader.reset();
         }
     }
 
