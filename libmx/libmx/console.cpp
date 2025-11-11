@@ -872,6 +872,16 @@ namespace console {
         return inputStream;
     }
 
+    void GLConsole::release() {
+        if (!SDL_GL_GetCurrentContext()) {
+            return;
+        }
+        if(texture) {
+            glDeleteTextures(1, &texture);
+            texture = 0;
+        }
+    }
+
     std::ostringstream &Console::bufferData() {
         return data;
     }
@@ -1047,10 +1057,7 @@ namespace console {
     }
 
     GLConsole::~GLConsole() {
-        if(texture) {
-            glDeleteTextures(1, &texture);
-            texture = 0;
-        }
+        release();
     }
 
     void GLConsole::clearText() {

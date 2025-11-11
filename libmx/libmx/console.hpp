@@ -221,6 +221,7 @@ namespace console {
     public:
         GLConsole();
         ~GLConsole();
+        void release();
         friend class Console;
         void load(gl::GLWindow *win, const SDL_Rect &rc, const std::string &fnt, int size, const SDL_Color &col);
         void load(gl::GLWindow *win, const std::string &fnt, int size, const SDL_Color &col);
