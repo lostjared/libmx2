@@ -1,4 +1,4 @@
-size = 500.0
+size = 6.0
 h = size / 2.0
 
 verts = [
