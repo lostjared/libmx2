@@ -1,6 +1,6 @@
 import math
 
-size = 500.0  # radius of the skybox "sphere"
+size = 1.0  # radius of the skybox "sphere"
 
 base_verts = [
     (-0.5, -0.5,  0.5),
