@@ -1,6 +1,6 @@
 import math
 
-segments = 96
+segments = 696
 radius = 0.5
 half_h = 0.5
 
