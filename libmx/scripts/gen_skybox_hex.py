@@ -1,9 +1,10 @@
 import math
 
-def create_hexagon(filename):
-    # Configuration
-    radius = 50.0
-    height = 20.0  # Height of the prism
+def create_skybox_hexagon(filename):
+    # Configuration for a large skybox
+    # Large radius and height to ensure plenty of room for the camera
+    radius = 1000.0
+    height = 1000.0
     y_top = height / 2.0
     y_bottom = -height / 2.0
     
@@ -16,36 +17,37 @@ def create_hexagon(filename):
         tex_coords.append((u, v))
         normals.append((nx, ny, nz))
 
-    # --- Top Face (Fan) ---
+    # --- Top Face (Ceiling) ---
+    # Normal points DOWN (0, -1, 0) because we are inside looking up
     for i in range(6):
         theta1 = math.radians(i * 60)
         theta2 = math.radians((i + 1) * 60)
         
-        # Center
         cx, cy, cz = 0.0, y_top, 0.0
         
-        # Outer points
         x1 = math.cos(theta1) * radius
         z1 = math.sin(theta1) * radius
         x2 = math.cos(theta2) * radius
         z2 = math.sin(theta2) * radius
         
-        # Normal (Up)
-        nx, ny, nz = 0.0, 1.0, 0.0
+        nx, ny, nz = 0.0, -1.0, 0.0
         
-        # UVs
+        # UVs (Planar mapping)
         cu, cv = 0.5, 0.5
         u1 = (x1 / radius) * 0.5 + 0.5
         v1 = (z1 / radius) * 0.5 + 0.5
         u2 = (x2 / radius) * 0.5 + 0.5
         v2 = (z2 / radius) * 0.5 + 0.5
         
-        # CCW winding
+        # Winding: To face inward (down), we need Clockwise looking from top
+        # (which is CCW looking from inside).
+        # Order: Center -> P2 -> P1
         add_vertex(cx, cy, cz, cu, cv, nx, ny, nz)
-        add_vertex(x1, y_top, z1, u1, v1, nx, ny, nz)
         add_vertex(x2, y_top, z2, u2, v2, nx, ny, nz)
+        add_vertex(x1, y_top, z1, u1, v1, nx, ny, nz)
 
-    # --- Bottom Face (Fan) ---
+    # --- Bottom Face (Floor) ---
+    # Normal points UP (0, 1, 0) because we are inside looking down
     for i in range(6):
         theta1 = math.radians(i * 60)
         theta2 = math.radians((i + 1) * 60)
@@ -57,69 +59,63 @@ def create_hexagon(filename):
         x2 = math.cos(theta2) * radius
         z2 = math.sin(theta2) * radius
         
-        # Normal (Down)
-        nx, ny, nz = 0.0, -1.0, 0.0
+        nx, ny, nz = 0.0, 1.0, 0.0
         
-        # UVs (Same mapping)
         cu, cv = 0.5, 0.5
         u1 = (x1 / radius) * 0.5 + 0.5
         v1 = (z1 / radius) * 0.5 + 0.5
         u2 = (x2 / radius) * 0.5 + 0.5
         v2 = (z2 / radius) * 0.5 + 0.5
         
-        # CW winding for bottom face to point down (Center -> P2 -> P1)
+        # Winding: To face inward (up), we need CCW looking from top.
+        # Order: Center -> P1 -> P2
         add_vertex(cx, cy, cz, cu, cv, nx, ny, nz)
-        add_vertex(x2, y_bottom, z2, u2, v2, nx, ny, nz)
         add_vertex(x1, y_bottom, z1, u1, v1, nx, ny, nz)
+        add_vertex(x2, y_bottom, z2, u2, v2, nx, ny, nz)
 
-    # --- Side Faces (Quads -> 2 Triangles each) ---
+    # --- Side Faces (Walls) ---
+    # Normals point INWARD towards (0,0,0)
     for i in range(6):
         theta1 = math.radians(i * 60)
         theta2 = math.radians((i + 1) * 60)
         
-        # Calculate XZ coordinates for current segment
         x1 = math.cos(theta1) * radius
         z1 = math.sin(theta1) * radius
         x2 = math.cos(theta2) * radius
         z2 = math.sin(theta2) * radius
         
-        # Calculate face normal
-        # Vector along edge: (x2-x1, 0, z2-z1)
-        # Cross product with Up (0,1,0) gives normal pointing out
-        dx = x2 - x1
-        dz = z2 - z1
-        nx = -dz
+        # Normal calculation (Inward)
+        mid_x = (x1 + x2) / 2.0
+        mid_z = (z1 + z2) / 2.0
+        length = math.sqrt(mid_x*mid_x + mid_z*mid_z)
+        nx = -mid_x / length
         ny = 0.0
-        nz = dx
-        # Normalize
-        length = math.sqrt(nx*nx + nz*nz)
-        nx /= length
-        nz /= length
+        nz = -mid_z / length
         
-        # 4 corners of the quad
-        # Top-Left, Top-Right, Bottom-Right, Bottom-Left (looking from outside)
-        # P1_top (x1, y_top, z1)
-        # P2_top (x2, y_top, z2)
-        # P2_bot (x2, y_bottom, z2)
-        # P1_bot (x1, y_bottom, z1)
-        
-        # UVs for sides (simple wrap)
-        u_left = i / 6.0
-        u_right = (i + 1) / 6.0
+        # UVs (0-1 per face)
+        u_left = 0.0
+        u_right = 1.0
         v_top = 0.0
         v_bottom = 1.0
         
-        # Triangle 1: Top-Left -> Bottom-Left -> Top-Right
-        add_vertex(x1, y_top, z1, u_left, v_top, nx, ny, nz)
-        add_vertex(x1, y_bottom, z1, u_left, v_bottom, nx, ny, nz)
-        add_vertex(x2, y_top, z2, u_right, v_top, nx, ny, nz)
+        # Vertices for the quad
+        # TL: (x1, y_top, z1)
+        # TR: (x2, y_top, z2)
+        # BL: (x1, y_bottom, z1)
+        # BR: (x2, y_bottom, z2)
         
-        # Triangle 2: Top-Right -> Bottom-Left -> Bottom-Right
-        add_vertex(x2, y_top, z2, u_right, v_top, nx, ny, nz)
-        add_vertex(x1, y_bottom, z1, u_left, v_bottom, nx, ny, nz)
-        add_vertex(x2, y_bottom, z2, u_right, v_bottom, nx, ny, nz)
+        # Winding for inward facing (CCW from inside perspective):
+        # Triangle 1: Top-Left -> Top-Right -> Bottom-Left
+        add_vertex(x1, y_top, z1, u_left, v_top, nx, ny, nz)       # TL
+        add_vertex(x2, y_top, z2, u_right, v_top, nx, ny, nz)      # TR
+        add_vertex(x1, y_bottom, z1, u_left, v_bottom, nx, ny, nz) # BL
+        
+        # Triangle 2: Top-Right -> Bottom-Right -> Bottom-Left
+        add_vertex(x2, y_top, z2, u_right, v_top, nx, ny, nz)      # TR
+        add_vertex(x2, y_bottom, z2, u_right, v_bottom, nx, ny, nz)# BR
+        add_vertex(x1, y_bottom, z1, u_left, v_bottom, nx, ny, nz) # BL
 
-    # Write to file
+    # Write to MXMOD format
     count = len(positions)
     with open(filename, 'w') as f:
         f.write("tri 0 0\n")
@@ -137,7 +133,6 @@ def create_hexagon(filename):
         for n in normals:
             f.write(f"{n[0]:.6f} {n[1]:.6f} {n[2]:.6f}\n")
             
-    print(f"Generated {filename} with {count} vertices.")
-
+    
 if __name__ == "__main__":
-    create_hexagon("large_hexagon.mxmod")
+    create_skybox_hexagon("skybox_hex.mxmod")
