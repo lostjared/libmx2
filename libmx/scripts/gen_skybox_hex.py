@@ -18,7 +18,8 @@ def create_skybox_hexagon(filename):
         normals.append((nx, ny, nz))
 
     # --- Top Face (Ceiling) ---
-    # Normal points DOWN (0, -1, 0) because we are inside looking up
+    # Normal points DOWN (0, -1, 0)
+    # Winding: Center -> x1 -> x2 (CCW from inside looking up)
     for i in range(6):
         theta1 = math.radians(i * 60)
         theta2 = math.radians((i + 1) * 60)
@@ -32,22 +33,20 @@ def create_skybox_hexagon(filename):
         
         nx, ny, nz = 0.0, -1.0, 0.0
         
-        # UVs (Planar mapping)
+        # UVs
         cu, cv = 0.5, 0.5
         u1 = (x1 / radius) * 0.5 + 0.5
         v1 = (z1 / radius) * 0.5 + 0.5
         u2 = (x2 / radius) * 0.5 + 0.5
         v2 = (z2 / radius) * 0.5 + 0.5
         
-        # Winding: To face inward (down), we need Clockwise looking from top
-        # (which is CCW looking from inside).
-        # Order: Center -> P2 -> P1
         add_vertex(cx, cy, cz, cu, cv, nx, ny, nz)
-        add_vertex(x2, y_top, z2, u2, v2, nx, ny, nz)
         add_vertex(x1, y_top, z1, u1, v1, nx, ny, nz)
+        add_vertex(x2, y_top, z2, u2, v2, nx, ny, nz)
 
     # --- Bottom Face (Floor) ---
-    # Normal points UP (0, 1, 0) because we are inside looking down
+    # Normal points UP (0, 1, 0)
+    # Winding: Center -> x2 -> x1 (CCW from inside looking down)
     for i in range(6):
         theta1 = math.radians(i * 60)
         theta2 = math.radians((i + 1) * 60)
@@ -67,18 +66,17 @@ def create_skybox_hexagon(filename):
         u2 = (x2 / radius) * 0.5 + 0.5
         v2 = (z2 / radius) * 0.5 + 0.5
         
-        # Winding: To face inward (up), we need CCW looking from top.
-        # Order: Center -> P1 -> P2
         add_vertex(cx, cy, cz, cu, cv, nx, ny, nz)
-        add_vertex(x1, y_bottom, z1, u1, v1, nx, ny, nz)
         add_vertex(x2, y_bottom, z2, u2, v2, nx, ny, nz)
+        add_vertex(x1, y_bottom, z1, u1, v1, nx, ny, nz)
 
     # --- Side Faces (Walls) ---
-    # Normals point INWARD towards (0,0,0)
+    # Normals point INWARD
     for i in range(6):
         theta1 = math.radians(i * 60)
         theta2 = math.radians((i + 1) * 60)
         
+        # x1 is Right, x2 is Left (relative to inward view)
         x1 = math.cos(theta1) * radius
         z1 = math.sin(theta1) * radius
         x2 = math.cos(theta2) * radius
@@ -92,28 +90,26 @@ def create_skybox_hexagon(filename):
         ny = 0.0
         nz = -mid_z / length
         
-        # UVs (0-1 per face)
+        # UVs
         u_left = 0.0
         u_right = 1.0
         v_top = 0.0
         v_bottom = 1.0
         
-        # Vertices for the quad
-        # TL: (x1, y_top, z1)
-        # TR: (x2, y_top, z2)
-        # BL: (x1, y_bottom, z1)
-        # BR: (x2, y_bottom, z2)
+        # Winding for inward facing (CCW)
+        # Quad: TL(x2) -- TR(x1)
+        #       |         |
+        #       BL(x2) -- BR(x1)
         
-        # Winding for inward facing (CCW from inside perspective):
-        # Triangle 1: Top-Left -> Top-Right -> Bottom-Left
-        add_vertex(x1, y_top, z1, u_left, v_top, nx, ny, nz)       # TL
-        add_vertex(x2, y_top, z2, u_right, v_top, nx, ny, nz)      # TR
-        add_vertex(x1, y_bottom, z1, u_left, v_bottom, nx, ny, nz) # BL
+        # Triangle 1: TL -> TR -> BL
+        add_vertex(x2, y_top, z2, u_left, v_top, nx, ny, nz)       # TL
+        add_vertex(x1, y_top, z1, u_right, v_top, nx, ny, nz)      # TR
+        add_vertex(x2, y_bottom, z2, u_left, v_bottom, nx, ny, nz) # BL
         
-        # Triangle 2: Top-Right -> Bottom-Right -> Bottom-Left
-        add_vertex(x2, y_top, z2, u_right, v_top, nx, ny, nz)      # TR
-        add_vertex(x2, y_bottom, z2, u_right, v_bottom, nx, ny, nz)# BR
-        add_vertex(x1, y_bottom, z1, u_left, v_bottom, nx, ny, nz) # BL
+        # Triangle 2: TR -> BR -> BL
+        add_vertex(x1, y_top, z1, u_right, v_top, nx, ny, nz)      # TR
+        add_vertex(x1, y_bottom, z1, u_right, v_bottom, nx, ny, nz)# BR
+        add_vertex(x2, y_bottom, z2, u_left, v_bottom, nx, ny, nz) # BL
 
     # Write to MXMOD format
     count = len(positions)
