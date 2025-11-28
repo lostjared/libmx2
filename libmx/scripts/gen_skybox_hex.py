@@ -1,134 +1,169 @@
 import math
 
-def create_skybox_hexagon(filename):
-    # Configuration for a large skybox
-    # Large radius and height to ensure plenty of room for the camera
-    radius = 1000.0
-    height = 1000.0
-    y_top = height / 2.0
-    y_bottom = -height / 2.0
+def generate_hexagonal_prism_skybox(radius, height):
+    """
+    Generates the vertex, texture, and normal data for an inward-facing
+    hexagonal prism, suitable for a skybox in the MXMOD format.
+
+    The prism is centered at (0, 0, 0).
+
+    Args:
+        radius (float): The distance from the center to a vertex on the hexagon face.
+        height (float): The total height of the prism (from bottom to top face).
+
+    Returns:
+        tuple: (vert_data, tex_data, norm_data)
+    """
+    # 1. Define the 6 vertices of the top and bottom faces
+    # The hexagon starts at an angle of 30 degrees (pi/6) for a "pointy-top" look
+    # or 0 degrees for a "flat-top" look. We'll use 0 degrees for flat-top
+    # which aligns faces with the X, Y axes more nicely.
+    num_sides = 6
+    half_h = height / 2.0
+    vert_face = []
+
+    # Calculate the 6 vertices on the XY plane for a flat-top hexagon
+    for i in range(num_sides):
+        angle = 2 * math.pi * i / num_sides
+        x = radius * math.cos(angle)
+        y = radius * math.sin(angle)
+        vert_face.append((x, y))
+
+    # 2. Generate side faces (6 rectangles, 12 triangles)
+    vert_data = []
+    tex_data = []
+    norm_data = []
     
-    positions = []
-    tex_coords = []
-    normals = []
+    # 2.1 Side Faces (6 quads -> 12 triangles -> 36 vertices total for sides)
+    for i in range(num_sides):
+        # Current and next vertex indices on the face
+        v1_xy = vert_face[i]
+        v2_xy = vert_face[(i + 1) % num_sides]
+
+        # Vertices for the quad (bottom, top, top, bottom)
+        # Quad: v1_b, v2_b, v2_t, v1_t
+        v1_b = (v1_xy[0], v1_xy[1], -half_h) # 0
+        v2_b = (v2_xy[0], v2_xy[1], -half_h) # 1
+        v2_t = (v2_xy[0], v2_xy[1], half_h)  # 2
+        v1_t = (v1_xy[0], v1_xy[1], half_h)  # 3
+
+        # Inward-facing Normal calculation
+        # Vector from center (0,0) to midpoint of the face edge on the XY plane
+        mid_x = (v1_xy[0] + v2_xy[0]) / 2.0
+        mid_y = (v1_xy[1] + v2_xy[1]) / 2.0
+        # Normalize the vector pointing *towards* the center (inward)
+        length = math.sqrt(mid_x**2 + mid_y**2)
+        if length == 0:
+            nx, ny = 0.0, 0.0
+        else:
+            nx = -mid_x / length
+            ny = -mid_y / length
+
+        normal = (nx, ny, 0.0)
+
+        # Triangle 1 (T1): v1_b, v2_t, v1_t (Wound CCW from inside)
+        # This forms the first triangle (v1_b, v2_b, v2_t) of the quad, but reordered for inward face
+        tri1_verts = [v1_b, v2_t, v1_t]
+        tri1_texs = [(0.0, 0.0), (1.0, 1.0), (0.0, 1.0)]
+
+        # Triangle 2 (T2): v1_b, v2_b, v2_t (Wound CCW from inside)
+        # Tri 2: v1_b, v2_b, v2_t (This closes the quad: v1_t, v2_t, v1_b) - Let's stick to v1_b, v2_b, v2_t, then v1_b, v2_t, v1_t for a standard quad split
+        # To get the second triangle v1_b, v2_b, v2_t, let's use:
+        # T2: v1_b, v2_b, v2_t (Wound CCW from inside) -> This is wrong. It should be v1_t, v2_b, v1_b.
+        # Let's use the standard quad split and winding for inward normals:
+        # Quad (v1_b, v2_b, v2_t, v1_t)
+        
+        # Tri 1: v1_b, v2_b, v2_t (Bottom-Left, Bottom-Right, Top-Right)
+        vert_data.extend([v1_b, v2_b, v2_t])
+        tex_data.extend([(0.0, 0.0), (1.0, 0.0), (1.0, 1.0)])
+        norm_data.extend([normal, normal, normal])
+
+        # Tri 2: v1_b, v2_t, v1_t (Bottom-Left, Top-Right, Top-Left)
+        vert_data.extend([v1_b, v2_t, v1_t])
+        tex_data.extend([(0.0, 0.0), (1.0, 1.0), (0.0, 1.0)])
+        norm_data.extend([normal, normal, normal])
+
+
+    # 2.2 Top Face (4 triangles -> 12 vertices total for top)
+    # The center point of the top face
+    center_t = (0.0, 0.0, half_h)
+    # Inward normal for top face is (0, 0, -1)
+    norm_t = (0.0, 0.0, -1.0)
     
-    def add_vertex(x, y, z, u, v, nx, ny, nz):
-        positions.append((x, y, z))
-        tex_coords.append((u, v))
-        normals.append((nx, ny, nz))
+    # We use a fan starting from the center and going around the perimeter
+    # Since it's a hexagon, we can split it into 4 triangles for a cleaner mesh,
+    # or 6 triangles for a center-fan method. We will use the 6 triangle fan method.
+    for i in range(num_sides):
+        v_curr = (vert_face[i][0], vert_face[i][1], half_h)
+        v_next = (vert_face[(i + 1) % num_sides][0], vert_face[(i + 1) % num_sides][1], half_h)
+        
+        # Triangles are wound inward: Center, Next, Current
+        vert_data.extend([center_t, v_next, v_curr])
+        
+        # Texture coordinates for a fan: center is (0.5, 0.5), perimeter points
+        # are calculated based on their angle relative to the center.
+        tex_data.extend([(0.5, 0.5), (0.5 + 0.5 * math.cos(2 * math.pi * (i + 1) / num_sides), 0.5 + 0.5 * math.sin(2 * math.pi * (i + 1) / num_sides)), (0.5 + 0.5 * math.cos(2 * math.pi * i / num_sides), 0.5 + 0.5 * math.sin(2 * math.pi * i / num_sides))])
+        norm_data.extend([norm_t, norm_t, norm_t])
 
-    # --- Top Face (Ceiling) ---
-    # Normal points DOWN (0, -1, 0)
-    # Winding: Center -> x1 -> x2 (CCW from inside looking up)
-    for i in range(6):
-        theta1 = math.radians(i * 60)
-        theta2 = math.radians((i + 1) * 60)
-        
-        cx, cy, cz = 0.0, y_top, 0.0
-        
-        x1 = math.cos(theta1) * radius
-        z1 = math.sin(theta1) * radius
-        x2 = math.cos(theta2) * radius
-        z2 = math.sin(theta2) * radius
-        
-        nx, ny, nz = 0.0, -1.0, 0.0
-        
-        # UVs
-        cu, cv = 0.5, 0.5
-        u1 = (x1 / radius) * 0.5 + 0.5
-        v1 = (z1 / radius) * 0.5 + 0.5
-        u2 = (x2 / radius) * 0.5 + 0.5
-        v2 = (z2 / radius) * 0.5 + 0.5
-        
-        add_vertex(cx, cy, cz, cu, cv, nx, ny, nz)
-        add_vertex(x1, y_top, z1, u1, v1, nx, ny, nz)
-        add_vertex(x2, y_top, z2, u2, v2, nx, ny, nz)
+    # 2.3 Bottom Face (6 triangles -> 18 vertices total for bottom)
+    # The center point of the bottom face
+    center_b = (0.0, 0.0, -half_h)
+    # Inward normal for bottom face is (0, 0, 1)
+    norm_b = (0.0, 0.0, 1.0)
 
-    # --- Bottom Face (Floor) ---
-    # Normal points UP (0, 1, 0)
-    # Winding: Center -> x2 -> x1 (CCW from inside looking down)
-    for i in range(6):
-        theta1 = math.radians(i * 60)
-        theta2 = math.radians((i + 1) * 60)
+    # Fan starting from the center
+    for i in range(num_sides):
+        v_curr = (vert_face[i][0], vert_face[i][1], -half_h)
+        v_next = (vert_face[(i + 1) % num_sides][0], vert_face[(i + 1) % num_sides][1], -half_h)
         
-        cx, cy, cz = 0.0, y_bottom, 0.0
+        # Triangles are wound inward: Center, Current, Next (opposite of top)
+        vert_data.extend([center_b, v_curr, v_next])
         
-        x1 = math.cos(theta1) * radius
-        z1 = math.sin(theta1) * radius
-        x2 = math.cos(theta2) * radius
-        z2 = math.sin(theta2) * radius
+        # Texture coordinates for a fan
+        tex_data.extend([(0.5, 0.5), (0.5 + 0.5 * math.cos(2 * math.pi * i / num_sides), 0.5 + 0.5 * math.sin(2 * math.pi * i / num_sides)), (0.5 + 0.5 * math.cos(2 * math.pi * (i + 1) / num_sides), 0.5 + 0.5 * math.sin(2 * math.pi * (i + 1) / num_sides))])
+        norm_data.extend([norm_b, norm_b, norm_b])
         
-        nx, ny, nz = 0.0, 1.0, 0.0
-        
-        cu, cv = 0.5, 0.5
-        u1 = (x1 / radius) * 0.5 + 0.5
-        v1 = (z1 / radius) * 0.5 + 0.5
-        u2 = (x2 / radius) * 0.5 + 0.5
-        v2 = (z2 / radius) * 0.5 + 0.5
-        
-        add_vertex(cx, cy, cz, cu, cv, nx, ny, nz)
-        add_vertex(x2, y_bottom, z2, u2, v2, nx, ny, nz)
-        add_vertex(x1, y_bottom, z1, u1, v1, nx, ny, nz)
+    return vert_data, tex_data, norm_data
 
-    # --- Side Faces (Walls) ---
-    # Normals point INWARD
-    for i in range(6):
-        theta1 = math.radians(i * 60)
-        theta2 = math.radians((i + 1) * 60)
-        
-        # x1 is Right, x2 is Left (relative to inward view)
-        x1 = math.cos(theta1) * radius
-        z1 = math.sin(theta1) * radius
-        x2 = math.cos(theta2) * radius
-        z2 = math.sin(theta2) * radius
-        
-        # Normal calculation (Inward)
-        mid_x = (x1 + x2) / 2.0
-        mid_z = (z1 + z2) / 2.0
-        length = math.sqrt(mid_x*mid_x + mid_z*mid_z)
-        nx = -mid_x / length
-        ny = 0.0
-        nz = -mid_z / length
-        
-        # UVs
-        u_left = 0.0
-        u_right = 1.0
-        v_top = 0.0
-        v_bottom = 1.0
-        
-        # Winding for inward facing (CCW)
-        # Quad: TL(x2) -- TR(x1)
-        #       |         |
-        #       BL(x2) -- BR(x1)
-        
-        # Triangle 1: TL -> TR -> BL
-        add_vertex(x2, y_top, z2, u_left, v_top, nx, ny, nz)       # TL
-        add_vertex(x1, y_top, z1, u_right, v_top, nx, ny, nz)      # TR
-        add_vertex(x2, y_bottom, z2, u_left, v_bottom, nx, ny, nz) # BL
-        
-        # Triangle 2: TR -> BR -> BL
-        add_vertex(x1, y_top, z1, u_right, v_top, nx, ny, nz)      # TR
-        add_vertex(x1, y_bottom, z1, u_right, v_bottom, nx, ny, nz)# BR
-        add_vertex(x2, y_bottom, z2, u_left, v_bottom, nx, ny, nz) # BL
-
-    # Write to MXMOD format
-    count = len(positions)
-    with open(filename, 'w') as f:
-        f.write("tri 0 0\n")
-        f.write(f"vert {count}\n")
-        for p in positions:
-            f.write(f"{p[0]:.6f} {p[1]:.6f} {p[2]:.6f}\n")
-        f.write("\n")
-        
-        f.write(f"tex {count}\n")
-        for t in tex_coords:
-            f.write(f"{t[0]:.6f} {t[1]:.6f}\n")
-        f.write("\n")
-        
-        f.write(f"norm {count}\n")
-        for n in normals:
-            f.write(f"{n[0]:.6f} {n[1]:.6f} {n[2]:.6f}\n")
-            
+def format_mxmod(vert_data, tex_data, norm_data):
+    """
+    Formats the data into the MXMOD file layout.
+    """
+    total_verts = len(vert_data)
+    output = f"tri 0 0\nvert {total_verts}\n"
     
-if __name__ == "__main__":
-    create_skybox_hexagon("skybox_hex.mxmod")
+    # Vertices
+    for v in vert_data:
+        output += f"{v[0]:.4f} {v[1]:.4f} {v[2]:.4f}\n"
+        
+    # Texture Coordinates
+    output += f"\ntex {total_verts}\n"
+    for t in tex_data:
+        output += f"{t[0]:.4f} {t[1]:.4f}\n"
+        
+    # Normals
+    output += f"\nnorm {total_verts}\n"
+    for n in norm_data:
+        output += f"{n[0]:.4f} {n[1]:.4f} {n[2]:.4f}\n"
+        
+    return output.strip()
+
+# --- Configuration ---
+# Radius of the hexagonal face (distance from center to vertex)
+R = 100.0 
+# Total height of the prism
+H = 100.0
+
+# Generate the data
+V, T, N = generate_hexagonal_prism_skybox(radius=R, height=H)
+
+# Format the output
+mxmod_output = format_mxmod(V, T, N)
+
+# Print the result
+print(mxmod_output)
+
+# Total faces: 6 sides + 1 top + 1 bottom = 8 faces
+# Total triangles: (6 sides * 2 tris/side) + (2 ends * 6 tris/end) = 12 + 12 = 24 triangles
+# Total vertices: 24 triangles * 3 vertices/triangle = 72 vertices
+print(f"\n# Total Vertices Generated: {len(V)}")
