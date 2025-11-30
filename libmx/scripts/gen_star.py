@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import math
 
 def cross_product(a, b):
@@ -16,39 +15,39 @@ def normalize(v):
         return (0.0, 0.0, 0.0)
     return (v[0]/length, v[1]/length, v[2]/length)
 
-def generate_star_3d_mxmod_format(
+def generate_inverted_star_mxmod_format(
     num_points=5, 
     outer_radius=1.0, 
     inner_radius=0.5, 
     height=1.0
 ):
     """
-    Generate a '3D star' in an mxmod-like format.
-
-    :param num_points:  Number of major points in the star ring (must be >= 2).
+    Generate an INVERTED 3D star mesh (polyhedron) in mxmod format.
+    The inversion allows the camera to be inside the star and view the faces.
+    
+    :param num_points:  Number of major points in the star ring.
     :param outer_radius: Radius of outer 'spikes' in the XY plane.
     :param inner_radius: Radius of the inner vertices in the XY plane.
-    :param height:       Half the height of the star (top apex is +height, bottom apex is -height).
-    :return: A string containing the model data in mxmod-like format.
+    :param height:       Half the height of the star.
+    :return: A string containing the inverted model data in mxmod format.
     """
+    
     # 1) Generate star ring vertices in the XY plane
-    #    We'll alternate outer_radius and inner_radius.
     ring_vertices = []
-    angle_step = 2.0 * math.pi / (num_points * 2)  # total 2*num_points segments
+    angle_step = 2.0 * math.pi / (num_points * 2)
     for i in range(num_points * 2):
-        # Alternate between outer and inner radii
         r = outer_radius if i % 2 == 0 else inner_radius
         angle = angle_step * i
         x = r * math.cos(angle)
         y = r * math.sin(angle)
+        # We need the vertex definition to be exact here
         ring_vertices.append((x, y, 0.0))
 
     # 2) Define top and bottom apex
     top_apex = (0.0, 0.0, +height)
     bottom_apex = (0.0, 0.0, -height)
 
-    # 3) Build the triangles (each triangle is stored as a list of three vertices)
-    #    We'll connect each pair of consecutive ring vertices with both apexes.
+    # 3) Build the triangles
     triangles = []
     n = len(ring_vertices)
     for i in range(n):
@@ -56,34 +55,39 @@ def generate_star_3d_mxmod_format(
         v1 = ring_vertices[i]
         v2 = ring_vertices[j]
 
-        # Triangle with the top apex
-        triangles.append([v1, v2, top_apex])
+        # --- INVERSION LOGIC ---
+        # 1. Top Face: Connects v1, v2, top_apex. 
+        #    We reverse the winding order (v2, v1, top_apex) so the face is visible from the inside.
+        triangles.append([v2, v1, top_apex])
 
-        # Triangle with the bottom apex
-        triangles.append([v2, v1, bottom_apex])
+        # 2. Bottom Face: Connects v2, v1, bottom_apex.
+        #    We reverse the winding order (v1, v2, bottom_apex) so the face is visible from the inside.
+        triangles.append([v1, v2, bottom_apex])
 
-    # 4) Flatten out all triangles into a single list of vertices
-    #    For each triangle, we will assign a normal and texture coords.
+    # 4) Flatten out all triangles and compute INVERTED normals
     all_verts = []
     all_norms = []
     all_tex = []
 
     for tri in triangles:
-        # tri is [v1, v2, v3]
-        v1, v2, v3 = tri
+        # tri is [vA, vB, vC]
+        vA, vB, vC = tri
 
-        # Compute face normal
-        # We'll do a simplistic face-normal approach: (v2 - v1) x (v3 - v1)
-        v12 = (v2[0] - v1[0], v2[1] - v1[1], v2[2] - v1[2])
-        v13 = (v3[0] - v1[0], v3[1] - v1[1], v3[2] - v1[2])
-        face_norm = normalize(cross_product(v12, v13))
+        # Compute the normal for the OUTWARD face (using the reversed winding)
+        vAB = (vB[0] - vA[0], vB[1] - vA[1], vB[2] - vA[2])
+        vAC = (vC[0] - vA[0], vC[1] - vA[1], vC[2] - vA[2])
+        
+        outward_norm = normalize(cross_product(vAB, vAC))
+        
+        # INVERT the normal to point INTO the object
+        inward_norm = (-outward_norm[0], -outward_norm[1], -outward_norm[2])
 
-        # For each vertex in this triangle, store the same face normal
+        # Store vertices, texture coords, and the INVERTED normal
         for idx, v in enumerate(tri):
             all_verts.append(v)
+            all_norms.append(inward_norm)
 
-            # In a simple approach, let's place some basic UV coords:
-            # We'll just spread them (0,0), (1,0), (0.5,1.0) for each triangle
+            # Assign basic UV coords for texture mapping
             if idx == 0:
                 all_tex.append((0.0, 0.0))
             elif idx == 1:
@@ -91,21 +95,20 @@ def generate_star_3d_mxmod_format(
             else:  # idx == 2
                 all_tex.append((0.5, 1.0))
 
-            all_norms.append(face_norm)
-
-    # Convert to mxmod-like text
-    # tri 0 0 (some type of header line)
+    # 5) Convert to mxmod-like text
     output_lines = []
     output_lines.append("tri 0 0")
 
     # Vertices
     output_lines.append(f"vert {len(all_verts)}")
     for vx, vy, vz in all_verts:
-        output_lines.append(f"{vx:.4f} {vy:.4f} {vz:.4f}")
+        # Use high precision for large coordinates
+        output_lines.append(f"{vx:.6f} {vy:.6f} {vz:.6f}")
 
     # Texture coords
     output_lines.append(f"tex {len(all_tex)}")
     for u, v in all_tex:
+        # Texture coordinates remain standard (0.0 to 1.0)
         output_lines.append(f"{u:.4f} {v:.4f}")
 
     # Normals
@@ -116,16 +119,30 @@ def generate_star_3d_mxmod_format(
     return "\n".join(output_lines)
 
 def main():
-    # Generate the mxmod-like data for a 5-point star
-    mxmod_data = generate_star_3d_mxmod_format(
+    # --- SKYBOX SCALE PARAMETERS ---
+    # Using very large values to ensure the star encompasses the entire scene
+    # This creates a star with a width and height of 10,000 units!
+    SKYBOX_SCALE = 500.0
+    
+    # 5-pointed star
+    mxmod_data = generate_inverted_star_mxmod_format(
         num_points=5,
-        outer_radius=1.0,
-        inner_radius=0.5,
-        height=1.0
+        outer_radius=1.0 * SKYBOX_SCALE,  # Spikes out to 5000 units
+        inner_radius=0.5 * SKYBOX_SCALE,  # Inner points are at 2500 units
+        height=1.0 * SKYBOX_SCALE         # Height up to 5000 units
     )
 
-    # Print to stdout (you can also write to a file if desired)
-    print(mxmod_data)
+    OUTPUT_FILENAME = "inverted_star_skybox.mxmod"
+
+    print(f"Generating large, inverted 3D star mesh into {OUTPUT_FILENAME}...")
+    
+    try:
+        with open(OUTPUT_FILENAME, 'w') as f:
+            f.write(mxmod_data)
+        print(f"Successfully created {OUTPUT_FILENAME}.")
+        print("The file contains an inverted 5-pointed star mesh, ready to be used as an inner skybox.")
+    except IOError as e:
+        print(f"Error writing file: {e}")
 
 if __name__ == "__main__":
     main()
