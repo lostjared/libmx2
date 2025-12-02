@@ -288,7 +288,7 @@ def generate_mario64_star_mxmod_format(
 def main():
     # --- SKYBOX SCALE PARAMETERS ---
     # These values make the star incredibly large to act as a skybox
-    SKYBOX_SCALE = 20000.0 # Even larger scale for a truly encompassing feel
+    SKYBOX_SCALE = 500.0 # Even larger scale for a truly encompassing feel
     
     mxmod_data = generate_mario64_star_mxmod_format(
         scale=SKYBOX_SCALE,
