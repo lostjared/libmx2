@@ -783,6 +783,82 @@ void main(void) {
 }
 )";
 
+const char *szZoomMouse = R"(#version 300 es
+precision highp float;
+out vec4 color;
+in vec2 TexCoord;
+
+uniform sampler2D textTexture;
+uniform float time_f;
+uniform vec2 iResolution;
+uniform vec4 iMouse;
+
+mat3 rotX(float a){float s=sin(a),c=cos(a);return mat3(1,0,0, 0,c,-s, 0,s,c);}
+mat3 rotY(float a){float s=sin(a),c=cos(a);return mat3(c,0,s, 0,1,0, -s,0,c);}
+mat3 rotZ(float a){float s=sin(a),c=cos(a);return mat3(c,-s,0, s,c,0, 0,0,1);}
+
+void main(void){
+    vec2 tc = TexCoord;
+    float aspect=iResolution.x/iResolution.y;
+    vec2 ar=vec2(aspect,1.0);
+    vec2 m=(iMouse.z>0.5)?(iMouse.xy/iResolution):vec2(0.5);
+    vec2 p=(tc-m)*ar;
+    vec3 v=vec3(p,1.0);
+    float ax=0.25*sin(time_f*0.7);
+    float ay=0.25*cos(time_f*0.6);
+    float az=0.4*time_f;
+    mat3 R=rotZ(az)*rotY(ay)*rotX(ax);
+    vec3 r=R*v;
+    float persp=0.6;
+    float zf=1.0/(1.0+r.z*persp);
+    vec2 q=r.xy*zf;
+    float eps=1e-6;
+    float base=1.72;
+    float period=log(base);
+    float t=time_f*0.5;
+    float rad=length(q)+eps;
+    float ang=atan(q.y,q.x)+t*0.3;
+    float k=fract((log(rad)-t)/period);
+    float rw=exp(k*period);
+    vec2 qwrap=vec2(cos(ang),sin(ang))*rw;
+    float N=8.0;
+    float stepA=6.28318530718/N;
+    float a=atan(qwrap.y,qwrap.x)+time_f*0.05;
+    a=mod(a,stepA);
+    a=abs(a-stepA*0.5);
+    vec2 kdir=vec2(cos(a),sin(a));
+    vec2 kaleido=kdir*length(qwrap);
+    vec2 uv=kaleido/ar+m;
+    uv=fract(uv);
+    color=texture(textTexture,uv);
+}
+)";
+
+const char *szDrain = R"(#version 300 es
+precision highp float;
+out vec4 color;
+in vec2 TexCoord;
+uniform sampler2D textTexture;
+uniform vec2 iResolution;
+uniform float time_f;
+void main(void) {
+    vec2 tc = TexCoord;
+    float loopDuration = 25.0;
+    float currentTime = mod(time_f, loopDuration);
+    vec2 normCoord = (tc * 2.0 - 1.0) * vec2(iResolution.x / iResolution.y, 1.0);
+    normCoord.x = abs(normCoord.x);
+    float dist = length(normCoord);
+    float angle = atan(normCoord.y, normCoord.x);
+    float spiralSpeed = 5.0;
+    float inwardSpeed = currentTime / loopDuration;
+    angle += (1.0 - smoothstep(0.0, 8.0, dist)) * currentTime * spiralSpeed;
+    dist *= 1.0 - inwardSpeed;
+    vec2 spiralCoord = vec2(cos(angle), sin(angle)) * tan(dist);
+    spiralCoord = (spiralCoord / vec2(iResolution.x / iResolution.y, 1.0) + 1.0) / 2.0;
+    color = texture(textTexture, spiralCoord);
+})";
+
+
 class About : public gl::GLObject {
     GLuint texture = 0;
     gl::ShaderProgram shader;
@@ -799,17 +875,17 @@ public:
     }
 
     void load(gl::GLWindow *win) override {
-        texture = gl::loadTexture(win->util.getFilePath("data/jared.png"));
+        texture = gl::loadTexture(win->util.getFilePath("data/j.png"));
         if(texture == 0) {
             throw mx::Exception("Error loading texture");
         }
-        if(!shader.loadProgramFromText(gl::vSource, crystalBall)) {
+        if(!shader.loadProgramFromText(gl::vSource, szDrain)) {
             throw mx::Exception("Error loading texture");
         }
         shader.useProgram();
         shader.setUniform("alpha", 1.0f);
         shader.setUniform("iResolution", glm::vec2(win->w, win->h));
-        //shader.setUniform("iMouse", mouse);
+       // shader.setUniform("iMouse", mouse);
         sprite.initSize(win->w, win->h);
         sprite.initWithTexture(&shader, texture, 0, 0, win->w, win->h);
     }
@@ -824,7 +900,7 @@ public:
         animation += deltaTime;
         shader.useProgram();
         shader.setUniform("time_f", animation);
-        //shader.setUniform("iMouse", mouse);
+     //   shader.setUniform("iMouse", mouse);
         update(deltaTime);
         sprite.draw();
     }
@@ -838,7 +914,7 @@ public:
                 if(e.button.button == SDL_BUTTON_LEFT) {
                     mouseDown = true;
                     mouse.x = static_cast<float>(e.button.x);
-                    mouse.y = static_cast<float>(e.button.y);
+                    mouse.y = static_cast<float>(win->h - e.button.y);
                     mouse.z = 1.0f;  
                     mouse.w = 1.0f;  
                 }
@@ -852,7 +928,7 @@ public:
                 break;
             case SDL_MOUSEMOTION:
                 mouse.x = static_cast<float>(e.motion.x);
-                mouse.y = static_cast<float>(e.motion.y);
+                mouse.y = static_cast<float>(win->h - e.motion.y);
                 if(mouseDown) {
                     mouse.z = 1.0f;
                 }
