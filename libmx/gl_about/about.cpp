@@ -210,11 +210,78 @@ void main(void) {
 }
 )";
 
-
-const char *srcShader2 = R"(#version 300 es
+const char *srcShader4 = R"(#version 300 es
 precision highp float;
 out vec4 color;
 in vec2 TexCoord;
+
+uniform sampler2D textTexture;
+uniform float time_f;
+uniform vec2 iResolution;
+
+float pingPong(float x, float length) {
+    float modVal = mod(x, length * 2.0);
+    return modVal <= length ? modVal : length * 2.0 - modVal;
+}
+
+void main(void) {
+    vec2 tc = TexCoord;
+    vec2 uv = tc;
+    float time_t =  pingPong(time_f, 10.0);
+    float scrambleAmount = sin(time_f * 10.0) * 0.5 + 0.5;
+    scrambleAmount = cos(scrambleAmount * time_t);
+    uv.x += sin(uv.y * 50.0 + time_f * 10.0) * scrambleAmount * 0.05;
+    uv.y += cos(uv.x * 50.0 + time_f * 10.0) * scrambleAmount * 0.05;
+    color = texture(textTexture, tan(uv * time_t));
+})";
+
+const char *srcShader5 = R"(#version 300 es
+precision highp float;
+out vec4 color;
+in vec2 TexCoord;
+
+uniform sampler2D textTexture;
+uniform float time_f;
+uniform vec2 iResolution;
+uniform float alpha;
+
+
+float pingPong(float x, float length) {
+    float modVal = mod(x, length * 2.0);
+    return modVal <= length ? modVal : length * 2.0 - modVal;
+}
+
+float smoothNoise(vec2 uv) {
+    return sin(uv.x * 12.0 + uv.y * 14.0 + time_f * 0.8) * 0.5 + 0.5;
+}
+
+void main(void) {
+    vec2 tc = TexCoord;
+    vec2 uv = (tc * iResolution - 0.5 * iResolution) / iResolution.y;
+    float radius = length(uv);
+    float angle = atan(uv.y, uv.x);
+    float swirl = sin(time_f * 0.4) * 2.0;
+    angle += swirl * radius * 1.5;
+    float modRadius = pingPong(radius + time_f * 0.3, 0.8);
+    float wave = sin(radius * 12.0 - time_f * 3.0) * 0.5 + 0.5;
+    float cloudNoise = smoothNoise(uv * 3.0 + vec2(modRadius, angle * 0.5));
+    cloudNoise += smoothNoise(uv * 6.0 - vec2(time_f * 0.2, time_f * 0.1));
+    cloudNoise = pow(cloudNoise, 1.5);
+    float r = sin(angle * 3.0 + modRadius * 8.0 + wave * 2.0) * cloudNoise;
+    float g = sin(angle * 5.0 - modRadius * 6.0 + wave * 4.0) * cloudNoise;
+    float b = sin(angle * 7.0 + modRadius * 10.0 - wave * 3.0) * cloudNoise;
+    vec3 col = vec3(r, g, b) * 0.5 + 0.5;
+    vec3 texColor = texture(textTexture, tc).rgb;
+    col = mix(col, texColor, 0.25);
+    color = vec4(sin(col * pingPong(time_f * 1.5, 6.0) + 1.5), alpha);
+
+}
+)";
+ 
+
+const char *srcShader2 = R"(#version 300 es
+precision highp float;
+out vec4 color;in vec2 TexCoord;
 uniform sampler2D textTexture;
 uniform vec2 iResolution;
 uniform float time_f;
@@ -383,6 +450,185 @@ void main(void) {
 }
 )";
 
+const char *szShader = R"(#version 300 es
+precision highp float;
+in vec2 TexCoord;
+out vec4 color;
+uniform float time_f;
+uniform sampler2D textTexture;
+uniform vec2 iResolution;
+
+const float PI = 3.1415926535897932384626433832795;
+
+float pingPong(float x, float length) {
+    float m = mod(x, length * 2.0);
+    return m <= length ? m : length * 2.0 - m;
+}
+
+
+void main(void) {
+    vec2 tc = TexCoord;
+    vec2 uv = tc;
+
+    vec2 reflectedUV = vec2(1.0 - uv.x, uv.y);
+    float noise = sin(reflectedUV.y * 50.0 + time_f * 5.0) * 0.01;
+    noise = sin(noise * pingPong(time_f * PI, 6.0));
+    float distortionX = noise;
+    float distortionY = cos(reflectedUV.x * 50.0 + time_f * 5.0) * 0.01;
+    vec2 distortion = vec2(distortionX, distortionY);
+    float r = texture(textTexture, reflectedUV + distortion * 1.2).r;
+    float g = texture(textTexture, reflectedUV + distortion * 0.8).g;
+    float b = texture(textTexture, reflectedUV + distortion * 0.4).b;
+    color = vec4(r, g, b, 1.0);
+}
+)";
+
+const char *szShader2 = R"(#version 300 es
+precision highp float;
+in vec2 TexCoord;
+out vec4 color;
+
+uniform float time_f;
+uniform sampler2D textTexture;
+uniform vec2 iResolution;
+uniform vec4 iMouse;
+
+float rand(vec2 co) {
+    return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
+void main(void) {
+    vec2 tc = TexCoord;
+    vec2 uv = tc;
+    float rollSpeed = 0.2;
+    uv.y = mod(uv.y + time_f * rollSpeed, 1.0);
+    float bendAmplitude = 0.02;
+    float bendFrequency = 10.0;
+    uv.x += sin(uv.y * 3.1415 * bendFrequency + time_f * 2.0) * bendAmplitude;
+    float jitterChance = rand(vec2(time_f, uv.y));
+    if(jitterChance > 0.95) {
+        float jitterAmount = (rand(vec2(time_f * 2.0, uv.y * 3.0)) - 0.5) * 0.1;
+        uv.x += jitterAmount;
+    }
+    float chromaShift = 0.005;
+    float r = texture(textTexture, uv + vec2(chromaShift, 0.0)).r;
+    float g = texture(textTexture, uv).g;
+    float b = texture(textTexture, uv - vec2(chromaShift, 0.0)).b;
+    color = vec4(r, g, b, 1.0);
+}
+)";
+
+const char *szTwist = R"(#version 300 es
+precision highp float;
+in vec2 TexCoord;
+out vec4 color;
+uniform sampler2D textTexture;
+uniform float time_f;
+
+void main(void) {
+    vec2 tc = TexCoord;
+    float rippleSpeed = 5.0;
+    float rippleAmplitude = 0.03;
+    float rippleWavelength = 10.0;
+    float twistStrength = 1.0;
+    float radius = length(tc - vec2(0.5, 0.5));
+    float ripple = sin(tc.x * rippleWavelength + time_f * rippleSpeed) * rippleAmplitude;
+    ripple += sin(tc.y * rippleWavelength + time_f * rippleSpeed) * rippleAmplitude;
+    vec2 rippleTC = tc + vec2(ripple, ripple);
+    
+    float angle = twistStrength * (radius - 1.0) + time_f;
+    float cosA = cos(angle);
+    float sinA = sin(angle);
+    mat2 rotationMatrix = mat2(cosA, -sinA, sinA, cosA);
+    vec2 twistedTC = (rotationMatrix * (tc - vec2(0.5, 0.5))) + vec2(0.5, 0.5);
+    
+    vec4 originalColor = texture(textTexture, tc);
+    vec4 twistedRippleColor = texture(textTexture, mix(rippleTC, twistedTC, 0.5));
+//    color = mix(originalColor, twistedRippleColor, 0.5);
+    color = twistedRippleColor;
+}
+)";
+
+const char *szTime = R"(#version 300 es
+precision highp float;
+out vec4 color;
+in vec2 TexCoord;
+
+uniform sampler2D textTexture;
+uniform float time_f;
+uniform vec2 iResolution;
+
+float pingPong(float x, float length) {
+    float m = mod(x, length * 2.0);
+    return m <= length ? m : length * 2.0 - m;
+}
+
+float h1(float n){ return fract(sin(n)*43758.5453123); }
+vec2 h2(float n){ return fract(sin(vec2(n, n+1.0))*vec2(43758.5453,22578.1459)); }
+
+void main(void){
+    vec2 tc = TexCoord;
+    float rate = 0.6;
+    float t = time_f * rate;
+    float t0 = floor(t);
+    float a = fract(t);
+    float w = a*a*(3.0-2.0*a);
+    vec2 p0 = vec2(0.15) + h2(t0)*0.7;
+    vec2 p1 = vec2(0.15) + h2(t0+1.0)*0.7;
+    vec2 center = mix(p0, p1, w);
+
+    vec2 p = tc - center;
+    float r = length(p);
+    float ang = atan(p.y, p.x);
+
+    float swirl = 2.2 + 0.8*sin(time_f*0.35);
+    float spin = 0.6*sin(time_f*0.2);
+    ang += swirl * r + spin;
+
+    float bend = 0.35;
+    float rp = r + bend * r * r;
+
+    vec2 uv = center + vec2(cos(ang), sin(ang)) * rp;
+
+    uv += 0.02 * vec2(sin((tc.y+time_f)*4.0), cos((tc.x-time_f)*3.5));
+
+    uv = vec2(pingPong(uv.x, 1.0), pingPong(uv.y, 1.0));
+
+    color = texture(textTexture, uv);
+})";
+
+const char *szBend = R"(#version 300 es
+precision highp float;
+out vec4 color;
+in vec2 TexCoord;
+
+uniform sampler2D textTexture;
+uniform float time_f;
+uniform vec2 iResolution;
+
+float pingPong(float x, float length) {
+    float modVal = mod(x, length * 2.0);
+    return modVal <= length ? modVal : length * 2.0 - modVal;
+}
+
+void main(void) {
+    vec2 tc = TexCoord;
+    vec2 uv = tc;
+    float t = mod(time_f, 10.0) * 0.1;
+    float angle = sin(t * 3.14159265) * -0.5;
+    vec2 center = vec2(0.5, 0.5);
+    uv -= center;
+    float dist = length(uv);
+    float bend = sin(dist * 6.0 + t * 2.0 * 3.14159265) * 0.05;
+    uv = mat2(cos(angle), -sin(angle), sin(angle), cos(angle)) * uv;
+    uv += center;
+    float time_t = pingPong(time_f, 10.0);
+    uv -= sin(bend * uv * time_t);
+    color = texture(textTexture, uv);
+}
+)";
+
+
 class About : public gl::GLObject {
     GLuint texture = 0;
     gl::ShaderProgram shader;
@@ -399,16 +645,17 @@ public:
     }
 
     void load(gl::GLWindow *win) override {
-        texture = gl::loadTexture(win->util.getFilePath("data/coma.png"));
+        texture = gl::loadTexture(win->util.getFilePath("data/eye.png"));
         if(texture == 0) {
             throw mx::Exception("Error loading texture");
         }
-        if(!shader.loadProgramFromText(gl::vSource, srcShader3)) {
+        if(!shader.loadProgramFromText(gl::vSource, szBend)) {
             throw mx::Exception("Error loading texture");
         }
         shader.useProgram();
+        shader.setUniform("alpha", 1.0f);
         shader.setUniform("iResolution", glm::vec2(win->w, win->h));
-        shader.setUniform("iMouse", mouse);
+        //shader.setUniform("iMouse", mouse);
         sprite.initSize(win->w, win->h);
         sprite.initWithTexture(&shader, texture, 0, 0, win->w, win->h);
     }
@@ -423,7 +670,7 @@ public:
         animation += deltaTime;
         shader.useProgram();
         shader.setUniform("time_f", animation);
-        shader.setUniform("iMouse", mouse);
+        //shader.setUniform("iMouse", mouse);
         update(deltaTime);
         sprite.draw();
     }
