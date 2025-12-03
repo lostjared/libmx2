@@ -628,6 +628,62 @@ void main(void) {
 }
 )";
 
+const char *szPong = R"(#version 300 es
+precision highp float;
+out vec4 color;
+in vec2 TexCoord;
+
+uniform sampler2D textTexture;
+uniform float time_f;
+uniform vec2 iResolution;
+
+float pingPong(float x, float len){
+    float m = mod(x, len*2.0);
+    return m <= len ? m : len*2.0 - m;
+}
+
+void main(void){
+    vec2 tc = TexCoord;
+    float aspect = iResolution.x / iResolution.y;
+    vec2 ar = vec2(aspect, 1.0);
+    vec2 p = (tc - 0.5) * ar;
+    float base = 1.65;
+    float period = log(base);
+    float t = time_f * 0.45;
+    float r = length(p) + 1e-6;
+    float a = atan(p.y, p.x);
+    float k = fract((log(r) - t) / period);
+    float rw = exp(k * period);
+    a += t * 0.4;
+    vec2 z = vec2(cos(a), sin(a)) * rw;
+    float swirl = sin(time_f * 0.6 + r * 5.0) * 0.1;
+    z += swirl * normalize(p);
+    vec2 uv = z / ar + 0.5;
+    uv = fract(uv);
+    vec4 tex = texture(textTexture, uv);
+    color = tex;
+}
+)";
+
+const char *psychWave = R"(#version 300 es
+precision highp float;
+in vec2 TexCoord;
+out vec4 color;
+uniform float time_f;
+uniform sampler2D textTexture;
+uniform vec2 iResolution;
+void main(void)
+{
+    vec2 tc = TexCoord;
+    vec2 normCoord = ((gl_FragCoord.xy / iResolution.xy) * 2.0 - 1.0) * vec2(iResolution.x / iResolution.y, 1.0);
+    float distanceFromCenter = length(normCoord);
+    float wave = sin(distanceFromCenter * 12.0 - time_f * 4.0);
+    vec2 tcAdjusted = tc + (normCoord * 0.301 * wave);
+    vec4 textureColor = texture(textTexture, tcAdjusted);
+    color = textureColor;
+}
+)";
+
 
 class About : public gl::GLObject {
     GLuint texture = 0;
@@ -645,11 +701,11 @@ public:
     }
 
     void load(gl::GLWindow *win) override {
-        texture = gl::loadTexture(win->util.getFilePath("data/eye.png"));
+        texture = gl::loadTexture(win->util.getFilePath("data/dreamer.png"));
         if(texture == 0) {
             throw mx::Exception("Error loading texture");
         }
-        if(!shader.loadProgramFromText(gl::vSource, szBend)) {
+        if(!shader.loadProgramFromText(gl::vSource, psychWave)) {
             throw mx::Exception("Error loading texture");
         }
         shader.useProgram();
