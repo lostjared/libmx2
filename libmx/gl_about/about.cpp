@@ -858,6 +858,47 @@ void main(void) {
     color = texture(textTexture, spiralCoord);
 })";
 
+const char *szUfo = R"(#version 300 es
+precision highp float;
+out vec4 color;
+in vec2 TexCoord;
+
+uniform sampler2D textTexture;
+uniform vec2 iResolution;
+uniform float time_f;
+uniform vec4 iMouse;
+
+mat3 rotX(float a){float s=sin(a),c=cos(a);return mat3(1,0,0, 0,c,-s, 0,s,c);}
+mat3 rotY(float a){float s=sin(a),c=cos(a);return mat3(c,0,s, 0,1,0, -s,0,c);}
+mat3 rotZ(float a){float s=sin(a),c=cos(a);return mat3(c,-s,0, s,c,0, 0,0,1);}
+
+void main(void) {
+    vec2 tc = TexCoord;
+    float aspect = iResolution.x / iResolution.y;
+    vec2 ar = vec2(aspect, 1.0);
+    vec2 m = (iMouse.z > 0.5) ? (iMouse.xy / iResolution) : vec2(0.5);
+
+    vec2 p2 = (tc - m) * ar;
+    float ax = 0.25 * sin(time_f * 0.7);
+    float ay = 0.25 * cos(time_f * 0.6);
+    float az = time_f * 0.5;
+
+    vec3 p3 = vec3(p2, 1.0);
+    mat3 R = rotZ(az) * rotY(ay) * rotX(ax);
+    vec3 r = R * p3;
+
+    float k = 0.6;
+    float zf = 1.0 / (1.0 + r.z * k);
+    vec2 q = r.xy * zf;
+
+    float dist = length(p2);
+    float scale = 1.0 + 0.2 * sin(dist * 15.0 - time_f * 2.0);
+    q *= scale;
+
+    vec2 uv = q / ar + m;
+    uv = clamp(uv, 0.0, 1.0);
+    color = texture(textTexture, uv);
+})";
 
 class About : public gl::GLObject {
     GLuint texture = 0;
@@ -879,13 +920,13 @@ public:
         if(texture == 0) {
             throw mx::Exception("Error loading texture");
         }
-        if(!shader.loadProgramFromText(gl::vSource, szDrain)) {
+        if(!shader.loadProgramFromText(gl::vSource, szUfo)) {
             throw mx::Exception("Error loading texture");
         }
         shader.useProgram();
         shader.setUniform("alpha", 1.0f);
         shader.setUniform("iResolution", glm::vec2(win->w, win->h));
-       // shader.setUniform("iMouse", mouse);
+        shader.setUniform("iMouse", mouse);
         sprite.initSize(win->w, win->h);
         sprite.initWithTexture(&shader, texture, 0, 0, win->w, win->h);
     }
@@ -900,7 +941,7 @@ public:
         animation += deltaTime;
         shader.useProgram();
         shader.setUniform("time_f", animation);
-     //   shader.setUniform("iMouse", mouse);
+        shader.setUniform("iMouse", mouse);
         update(deltaTime);
         sprite.draw();
     }
