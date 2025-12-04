@@ -920,6 +920,125 @@ void main(void) {
     color = texture(textTexture, waveAdjusted);
 })";
 
+const char *szUfoWarp = R"(#version 300 es
+precision highp float;
+out vec4 color;
+in vec2 TexCoord;
+
+uniform sampler2D textTexture;
+uniform vec2 iResolution;
+uniform float time_f;
+uniform vec4 iMouse;
+
+mat3 rotX(float a){float s=sin(a),c=cos(a);return mat3(1,0,0, 0,c,-s, 0,s,c);}
+mat3 rotY(float a){float s=sin(a),c=cos(a);return mat3(c,0,s, 0,1,0, -s,0,c);}
+mat3 rotZ(float a){float s=sin(a),c=cos(a);return mat3(c,-s,0, s,c,0, 0,0,1);}
+
+void main(void) {
+    vec2 tc = TexCoord;
+    float aspect = iResolution.x / iResolution.y;
+    vec2 ar = vec2(aspect, 1.0);
+    vec2 m = (iMouse.z > 0.5) ? (iMouse.xy / iResolution) : vec2(0.5);
+    vec2 uv = 1.0 - abs(1.0 - 2.0 * tc);
+    uv = uv - floor(uv);     
+    vec2 p2 = (uv - m) * ar;
+    float ax = 0.25 * sin(time_f * 0.7);
+    float ay = 0.25 * cos(time_f * 0.6);
+    float az = time_f * 0.5;
+    vec3 p3 = vec3(p2, 1.0);
+    mat3 R = rotZ(az) * rotY(ay) * rotX(ax);
+    vec3 r = R * p3;
+    float k = 0.6;
+    float zf = 1.0 / (1.0 + r.z * k);
+    vec2 q = r.xy * zf;
+    float dist = length(p2);
+    float scale = 1.0 + 0.2 * sin(dist * 15.0 - time_f * 2.0);
+    q *= scale;
+    vec2 uvx = q / ar + m;
+    uv = clamp(uvx, 0.0, 1.0);
+    color = texture(textTexture, uvx);
+})";
+
+const char *szByMouse = R"(#version 300 es
+precision highp float;
+out vec4 color;
+in vec2 TexCoord;
+
+uniform sampler2D textTexture;
+uniform float time_f;
+uniform vec2 iResolution;
+uniform vec4 iMouse;
+
+float pingPong(float x, float length) {
+    float modVal = mod(x, length * 2.0);
+    return modVal <= length ? modVal : length * 2.0 - modVal;
+}
+
+mat3 rotX(float a){float s=sin(a),c=cos(a);return mat3(1,0,0, 0,c,-s, 0,s,c);}
+mat3 rotY(float a){float s=sin(a),c=cos(a);return mat3(c,0,s, 0,1,0, -s,0,c);}
+mat3 rotZ(float a){float s=sin(a),c=cos(a);return mat3(c,-s,0, s,c,0, 0,0,1);}
+
+vec4 color_main(void) {
+    vec2 tc = TexCoord;
+    float aspect = iResolution.x / iResolution.y;
+    vec2 ar = vec2(aspect, 1.0);
+    vec2 m = (iMouse.z > 0.5) ? (iMouse.xy / iResolution) : vec2(0.5);
+    vec2 uv = 1.0 - abs(1.0 - 2.0 * tc);
+    uv = uv - floor(uv);     
+    vec2 p2 = (uv - m) * ar;
+    float ax = 0.25 * sin(time_f * 0.7);
+    float ay = 0.25 * cos(time_f * 0.6);
+    float az = time_f * 0.5;
+    vec3 p3 = vec3(p2, 1.0);
+    mat3 R = rotZ(az) * rotY(ay) * rotX(ax);
+    vec3 r = R * p3;
+    float k = 0.6;
+    float zf = 1.0 / (1.0 + r.z * k);
+    vec2 q = r.xy * zf;
+    float dist = length(p2);
+    float scale = 1.0 + 0.2 * sin(dist * 15.0 - time_f * 2.0);
+    q *= scale;
+    vec2 uvx = q / ar + m;
+    uv = clamp(uvx, 0.0, 1.0);
+    color = texture(textTexture, uvx);
+    return color;
+}
+
+void main(void) {
+    vec2 tc = TexCoord;
+    vec2 uv = tc;
+    vec2 m = (iMouse.z > 0.5) ? (iMouse.xy / iResolution) : vec2(0.5);
+    vec2 d = uv - m;
+    float dist = length(d);
+    float r = 0.35;
+    float w = 1.0 - smoothstep(0.0, r, dist);
+    vec2 warp = normalize(d + 1e-5) * sin(dist * 24.0 - time_f * 4.0) * 0.25 * w;
+    vec2 warpedCoords = uv + warp;
+    warpedCoords.x = pingPong(warpedCoords.x + time_f * 0.05, 1.0);
+    warpedCoords.y = pingPong(warpedCoords.y + time_f * 0.05, 1.0);
+    color = mix(texture(textTexture, warpedCoords), color_main(), 0.5);
+})";
+
+const char *szDeform = R"(#version 300 es
+precision highp float;
+out vec4 color;
+in vec2 TexCoord;
+uniform sampler2D textTexture;
+uniform vec2 iResolution;
+uniform float time_f;
+void main(void) {
+    vec2 tc = TexCoord;
+    vec2 normCoord = tc;
+    float warpAmount = sin(time_f);
+    vec2 warp = vec2(
+        sin(normCoord.y * 10.0 + time_f) * warpAmount,
+        cos(normCoord.x * 10.0 + time_f) * warpAmount
+    );
+    vec2 warpedCoord = normCoord + warp;
+    color = texture(textTexture, warpedCoord);
+})";
+
+
 
 class About : public gl::GLObject {
     GLuint texture = 0;
@@ -937,17 +1056,17 @@ public:
     }
 
     void load(gl::GLWindow *win) override {
-        texture = gl::loadTexture(win->util.getFilePath("data/micro.png"));
+        texture = gl::loadTexture(win->util.getFilePath("data/jaredkale.png"));
         if(texture == 0) {
             throw mx::Exception("Error loading texture");
         }
-        if(!shader.loadProgramFromText(gl::vSource, szWave)) {
+        if(!shader.loadProgramFromText(gl::vSource, szDeform)) {
             throw mx::Exception("Error loading texture");
         }
         shader.useProgram();
         shader.setUniform("alpha", 1.0f);
         shader.setUniform("iResolution", glm::vec2(win->w, win->h));
-        //shader.setUniform("iMouse", mouse);
+        shader.setUniform("iMouse", mouse);
         sprite.initSize(win->w, win->h);
         sprite.initWithTexture(&shader, texture, 0, 0, win->w, win->h);
     }
@@ -957,12 +1076,12 @@ public:
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         Uint32 currentTime = SDL_GetTicks();
-        float deltaTime = (currentTime - lastUpdateTime) / 1000.0f; // Convert to seconds
+        float deltaTime = (currentTime - lastUpdateTime) / 1000.0f;
         lastUpdateTime = currentTime;
         animation += deltaTime;
         shader.useProgram();
         shader.setUniform("time_f", animation);
-        //shader.setUniform("iMouse", mouse);
+        shader.setUniform("iMouse", mouse);
         update(deltaTime);
         sprite.draw();
     }
