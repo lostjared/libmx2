@@ -900,6 +900,27 @@ void main(void) {
     color = texture(textTexture, uv);
 })";
 
+const char *szWave = R"(#version 300 es
+precision highp float;
+in vec2 TexCoord;
+out vec4 color;
+uniform float time_f;
+uniform sampler2D textTexture;
+uniform vec2 iResolution;
+
+void main(void) {
+    vec2 tc = TexCoord;
+    vec2 normCoord = gl_FragCoord.xy / iResolution.xy;
+    float diagonalDistance = (normCoord.x + normCoord.y - 1.0) * sqrt(2.0);
+    float antiDiagonalDistance = (normCoord.x - normCoord.y) * sqrt(2.0);
+    float diagonalWave = sin((diagonalDistance + time_f) * 5.0); // Wave frequency and speed
+    float antiDiagonalWave = cos((antiDiagonalDistance + time_f) * 5.0);
+    float combinedWave = (diagonalWave + antiDiagonalWave) * 0.5;
+    vec2 waveAdjusted = vec2(tc.x + combinedWave * 0.202, tc.y + combinedWave * 0.202);
+    color = texture(textTexture, waveAdjusted);
+})";
+
+
 class About : public gl::GLObject {
     GLuint texture = 0;
     gl::ShaderProgram shader;
@@ -916,17 +937,17 @@ public:
     }
 
     void load(gl::GLWindow *win) override {
-        texture = gl::loadTexture(win->util.getFilePath("data/j.png"));
+        texture = gl::loadTexture(win->util.getFilePath("data/micro.png"));
         if(texture == 0) {
             throw mx::Exception("Error loading texture");
         }
-        if(!shader.loadProgramFromText(gl::vSource, szUfo)) {
+        if(!shader.loadProgramFromText(gl::vSource, szWave)) {
             throw mx::Exception("Error loading texture");
         }
         shader.useProgram();
         shader.setUniform("alpha", 1.0f);
         shader.setUniform("iResolution", glm::vec2(win->w, win->h));
-        shader.setUniform("iMouse", mouse);
+        //shader.setUniform("iMouse", mouse);
         sprite.initSize(win->w, win->h);
         sprite.initWithTexture(&shader, texture, 0, 0, win->w, win->h);
     }
@@ -941,7 +962,7 @@ public:
         animation += deltaTime;
         shader.useProgram();
         shader.setUniform("time_f", animation);
-        shader.setUniform("iMouse", mouse);
+        //shader.setUniform("iMouse", mouse);
         update(deltaTime);
         sprite.draw();
     }
