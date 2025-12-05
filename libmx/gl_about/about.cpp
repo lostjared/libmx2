@@ -1252,6 +1252,29 @@ void main(void){
     color=texture(textTexture,uv);
 })";
 
+const char *szDrum = R"(#version 300 es
+precision highp float;
+out vec4 color;
+in vec2 TexCoord;
+uniform sampler2D textTexture;
+uniform float time_f;
+uniform vec2 iResolution;
+uniform vec4 iMouse;
+
+void main(void) {
+    vec2 tc = TexCoord;
+    vec2 m = (iMouse.z > 0.5) ? (iMouse.xy / iResolution) : vec2(0.5);
+    vec2 d = tc - m;
+    float r = length(d);
+    vec2 dir = d / max(r, 1e-6);
+    float waveLength = 0.05;
+    float amplitude = 0.02;
+    float speed = 2.0;
+    float ripple = sin((r / waveLength - time_f * speed) * 6.2831853);
+    vec2 uv = tc + dir * ripple * amplitude;
+    color = texture(textTexture, uv);
+})";
+
 
 class About : public gl::GLObject {
     GLuint texture = 0;
@@ -1273,7 +1296,7 @@ public:
         if(texture == 0) {
             throw mx::Exception("Error loading texture");
         }
-        if(!shader.loadProgramFromText(gl::vSource, szkMouse)) {
+        if(!shader.loadProgramFromText(gl::vSource, szDrum)) {
             throw mx::Exception("Error loading texture");
         }
         shader.useProgram();
