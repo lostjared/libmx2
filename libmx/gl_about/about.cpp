@@ -1575,7 +1575,7 @@ private:
 
 class MainWindow : public gl::GLWindow {
 public:
-    MainWindow(std::string path, int tw, int th) : gl::GLWindow("About", tw, th) {
+    MainWindow(std::string path, int tw, int th) : gl::GLWindow("MX2 - Graphics Demo", tw, th) {
         setPath(path);
         setObject(new About());
         object->load(this);
