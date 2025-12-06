@@ -1364,6 +1364,132 @@ void main(void){
     color=texture(textTexture,uv);
 })";
 
+
+const char *szRev2 = R"(#version 300 es
+precision highp float;
+in vec2 TexCoord;
+uniform sampler2D textTexture;
+uniform float time_f;
+uniform vec2 iResolution;
+out vec4 color;
+
+const float PI = 3.1415926535897932384626433832795;
+
+float pingPong(float x, float length) {
+    float m = mod(x, length * 2.0);
+    return m <= length ? m : length * 2.0 - m;
+}
+
+void main() {
+    vec2 tc = TexCoord;
+    vec2 uv = 1.0 - abs(1.0 - 2.0 * tc);
+    uv = uv - floor(uv);  
+    vec2 centeredUV = uv * 2.0 - 1.0;
+    float angle = atan(centeredUV.y, centeredUV.x);
+    float radius = length(centeredUV);
+    float spin = time_f * 0.5;
+    angle += floor(mod(angle + 3.14159, 3.14159 / 4.0)) * spin;
+    angle = angle * pingPong(sin(time_f), 30.0);
+    vec2 rotatedUV = vec2(cos(angle), sin(angle)) * radius;
+    rotatedUV = abs(mod(rotatedUV, 2.0) - 1.0);
+    vec4 texColor = texture(textTexture, rotatedUV * 0.5 + 0.5);
+    vec3 gradientEffect = vec3(
+        0.5 + 0.5 * sin(time_f + uv.x * 15.0),
+        0.5 + 0.5 * cos(time_f + uv.y * 15.0),
+        0.5 + 0.5 * sin(time_f + (uv.x + uv.y) * 15.0)
+    );
+    vec3 finalColor = mix(texColor.rgb, gradientEffect, 0.3);
+    color = vec4(finalColor, texColor.a);
+})";
+
+const char *szFish = R"(#version 300 es
+precision highp float;
+in vec2 TexCoord;
+out vec4 color;
+uniform sampler2D textTexture;
+uniform float time_f;
+uniform vec2 iResolution;
+uniform vec4 iMouse;
+
+float pingPong(float x, float length){
+    float m = mod(x, length * 2.0);
+    return m <= length ? m : (length * 2.0 - m);
+}
+float h1(float n){ return fract(sin(n)*43758.5453123); }
+vec2 h2(float n){ return fract(sin(vec2(n,n+1.0))*vec2(43758.5453,22578.1459)); }
+
+void main(void){
+    vec2 tc = TexCoord;
+    float time_t = pingPong(time_f, 10.0) + 2.0;
+    vec2 m = iMouse.xy / iResolution;
+    bool hasMouse = iMouse.z > 0.5 || iMouse.w > 0.5;
+    float rate = 0.8;
+    float t = time_f * rate;
+    float t0 = floor(t);
+    float a = fract(t);
+    float w = a*a*(3.0-2.0*a);
+    vec2 p0 = vec2(0.15) + h2(t0) * 0.7;
+    vec2 p1 = vec2(0.15) + h2(t0 + 1.0) * 0.7;
+    vec2 autoCenter = mix(p0, p1, w);
+    vec2 center = hasMouse ? m : autoCenter;
+    vec2 uv = 1.0 - abs(1.0 - 2.0 * tc);
+    uv = uv - floor(uv);    
+			uv = uv - center;
+    float lenv = length(uv);
+    float factor = sqrt(lenv) * 0.5;
+    float s = 1.0 + sin(factor * time_t);
+    uv *= s;
+    color = texture(textTexture, uv + center);
+}
+)";
+
+const char *szRipplePrism = R"(#version 300 es
+precision highp float;
+in vec2 TexCoord;
+out vec4 color;
+uniform float time_f;
+uniform vec2 iResolution;
+uniform vec4 iMouse;
+uniform float amp;
+uniform float uamp;
+uniform sampler2D textTexture;
+
+float pingPong(float x,float length){
+    float m=mod(x,length*2.0);
+    return m<=length?m:length*2.0-m;
+}
+
+void main(void){
+    vec2 tc = TexCoord;
+    float A=clamp(amp,0.0,1.0);
+    float U=clamp(uamp,0.0,1.0);
+    float time_z=pingPong(time_f,4.0)+0.5;
+
+    vec2 uv=tc;
+    vec2 center=(iMouse.z>0.5||iMouse.w>0.5)?(iMouse.xy/iResolution):vec2(0.5);
+    vec2 normPos=(uv-center)*vec2(iResolution.x/iResolution.y,1.0);
+
+    float dist=length(normPos);
+    float phase=sin(dist*10.0-time_f*4.0);
+    float phaseGain=mix(0.6,1.4,A);
+    vec2 tcAdjusted=uv+(normPos*0.305*phase*phaseGain);
+
+    float dispersionScale=0.02*(0.5+U);
+    vec2 dispersionOffset=normPos*dist*dispersionScale;
+
+    vec2 tcAdjustedR=tcAdjusted-dispersionOffset;
+    vec2 tcAdjustedG=tcAdjusted;
+    vec2 tcAdjustedB=tcAdjusted+dispersionOffset;
+
+    float r=texture(textTexture,tcAdjustedR).r;
+    float g=texture(textTexture,tcAdjustedG).g;
+    float b=texture(textTexture,tcAdjustedB).b;
+
+    color=vec4(r,g,b,1.0);
+})";
+
+
+
 class About : public gl::GLObject {
     GLuint texture = 0;
     gl::ShaderProgram shader;
@@ -1380,11 +1506,11 @@ public:
     }
 
     void load(gl::GLWindow *win) override {
-        texture = gl::loadTexture(win->util.getFilePath("data/meditation.png"));
+        texture = gl::loadTexture(win->util.getFilePath("data/splash.png"));
         if(texture == 0) {
             throw mx::Exception("Error loading texture");
         }
-        if(!shader.loadProgramFromText(gl::vSource, szMouseZoom)) {
+        if(!shader.loadProgramFromText(gl::vSource, szRipplePrism)) {
             throw mx::Exception("Error loading texture");
         }
         shader.useProgram();
