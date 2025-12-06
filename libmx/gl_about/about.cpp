@@ -1552,37 +1552,224 @@ void main() {
     color.a = 1.0;
 })";
 
+const char *szFracMouse = R"(#version 300 es
+precision highp float;
+out vec4 color;
+in vec2 TexCoord;
+
+uniform sampler2D textTexture;
+uniform vec2 iResolution;
+uniform float time_f;
+uniform vec4 iMouse;
+
+float pingPong(float x, float length){
+    float m = mod(x, length*2.0);
+    return m <= length ? m : length*2.0 - m;
+}
+
+vec2 rotateUV(vec2 uv, float angle, vec2 c, float aspect){
+    float s = sin(angle), cc = cos(angle);
+    vec2 p = uv - c;
+    p.x *= aspect;
+    p = mat2(cc, -s, s, cc) * p;
+    p.x /= aspect;
+    return p + c;
+}
+
+vec2 reflectUV(vec2 uv, float segments, vec2 c, float aspect){
+    vec2 p = uv - c;
+    p.x *= aspect;
+    float ang = atan(p.y, p.x);
+    float rad = length(p);
+    float stepA = 6.28318530718 / segments;
+    ang = mod(ang, stepA);
+    ang = abs(ang - stepA * 0.5);
+    vec2 r = vec2(cos(ang), sin(ang)) * rad;
+    r.x /= aspect;
+    return r + c;
+}
+
+vec2 fractalFold(vec2 uv, float zoom, float t, vec2 c, float aspect){
+    vec2 p = uv;
+    for(int i=0;i<6;i++){
+        p = abs((p - c) * (zoom + 0.15*sin(t*0.35+float(i)))) - 0.5 + c;
+        p = rotateUV(p, t*0.12 + float(i)*0.07, c, aspect);
+    }
+    return p;
+}
+
+vec3 hsv2rgb(vec3 c){
+    vec4 K = vec4(1.0, 2.0/3.0, 1.0/3.0, 3.0);
+    vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+    return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+}
+
+void main(){
+    vec2 tc = TexCoord;
+    float aspect = iResolution.x / iResolution.y;
+    vec2 ar = vec2(aspect, 1.0);
+    vec2 m = (iMouse.z > 0.5) ? (iMouse.xy / iResolution) : vec2(0.5);
+			vec2 uv = 1.0 - abs(1.0 - 2.0 * tc);
+    uv = uv - floor(uv);     
+    vec4 originalTexture = texture(textTexture, tc);
+    float seg = 6.0 + 2.0*sin(time_f*0.33);
+    vec2 kUV = reflectUV(uv, seg, m, aspect);
+    float foldZoom = 1.45 + 0.55 * sin(time_f * 0.42);
+    kUV = fractalFold(kUV, foldZoom, time_f, m, aspect);
+    kUV = rotateUV(kUV, time_f * 0.23, m, aspect);
+    vec2 p = (kUV - m) * ar;
+    float base = 1.82 + 0.18*sin(time_f*0.2);
+    float period = log(base);
+    float tz = time_f * 0.65;
+    float r = length(p) + 1e-6;
+    float ang = atan(p.y, p.x) + tz * 0.35 + 0.35*sin(r*9.0 + time_f*0.8);
+    float k = fract((log(r) - tz) / period);
+    float rw = exp(k * period);
+    vec2 pwrap = vec2(cos(ang), sin(ang)) * rw;
+    vec2 u0 = fract(pwrap / ar + m);
+    vec2 u1 = fract((pwrap*1.045) / ar + m);
+    vec2 u2 = fract((pwrap*0.955) / ar + m);
+    vec2 dir = normalize(pwrap + 1e-6);
+    vec2 off = dir * (0.0015 + 0.001 * sin(time_f*1.3)) * vec2(1.0, 1.0/aspect);
+    float hue = fract(ang*0.15 + time_f*0.08 + k*0.5);
+    float sat = 0.8 - 0.2*cos(time_f*0.7 + r*6.0);
+    float val = 0.8 + 0.2*sin(time_f*0.9 + k*6.28318530718);
+    vec3 tint = hsv2rgb(vec3(hue, sat, val));
+    float ring = smoothstep(0.0, 0.7, sin(log(r+1e-3)*8.0 + time_f*1.2));
+    float pulse = 0.5 + 0.5*sin(time_f*2.0 + r*18.0 + k*12.0);
+    float vign = 1.0 - smoothstep(0.75, 1.2, length((tc - m)*ar));
+    vign = mix(0.85, 1.2, vign);
+    float blendFactor = 0.58;
+    float rC = texture(textTexture, u0 + off).r;
+    float gC = texture(textTexture, u1).g;
+    float bC = texture(textTexture, u2 - off).b;
+    vec3 kaleidoRGB = vec3(rC, gC, bC);
+    vec4 kaleidoColor = vec4(kaleidoRGB, 1.0) * vec4(tint, 1.0);
+    vec4 merged = mix(kaleidoColor, originalTexture, blendFactor);
+    merged.rgb *= (0.75 + 0.25*ring) * (0.85 + 0.15*pulse) * vign;
+    vec3 bloom = merged.rgb * merged.rgb * 0.18 + pow(max(merged.rgb-0.6,0.0), vec3(2.0))*0.12;
+    vec3 outCol = merged.rgb + bloom;
+    float wob = 0.9 + 0.1*sin(time_f + r*12.0 + k*9.0);
+    outCol *= wob;
+    vec4 t = texture(textTexture, tc);
+    outCol = mix(outCol, outCol*t.rgb, 0.8);
+    outCol = sin(outCol * (0.5 + 0.5*pingPong(time_f, 12.0)));
+    outCol = clamp(outCol, vec3(0.08), vec3(0.96));
+    color = vec4(outCol, 1.0);
+})";
+
+const char *szCats = R"(#version 300 es
+precision highp float;
+in vec2 TexCoord;
+out vec4 color;
+uniform float time_f;
+uniform sampler2D textTexture;
+uniform vec2 iResolution;
+
+vec4 xor_RGB(vec4 icolor, vec4 isourcex) {
+    ivec4 isource = ivec4(isourcex.rgba * 255.0);
+    ivec3 int_color;
+    for(int i = 0; i < 3; ++i) {
+        int_color[i] = int(255.0 * icolor[i]);
+        int_color[i] ^= isource[i];
+        if(int_color[i] > 255)
+            int_color[i] %= 255;
+        icolor[i] = float(int_color[i]) / 255.0;
+    }
+    icolor.a = 1.0;
+    return icolor;
+}
+
+float hash(float n) {
+    return fract(sin(n) * 43758.5453123);
+}
+
+vec2 random2(vec2 st) {
+    st = vec2(dot(st, vec2(127.1, 311.7)), dot(st, vec2(269.5, 183.3)));
+    return -1.0 + 2.0 * fract(sin(st) * 43758.5453123);
+}
+
+vec2 smoothRandom2(float t) {
+    float t0 = floor(t);
+    float t1 = t0 + 1.0;
+    vec2 rand0 = random2(vec2(t0));
+    vec2 rand1 = random2(vec2(t1));
+    float mix_factor = fract(t);
+    return mix(rand0, rand1, smoothstep(0.0, 1.0, mix_factor));
+}
+
+vec3 rainbow(float t) {
+    t = fract(t);
+    float r = abs(t * 6.0 - 3.0) - 1.0;
+    float g = 2.0 - abs(t * 6.0 - 2.0);
+    float b = 2.0 - abs(t * 6.0 - 4.0);
+    return clamp(vec3(r, g, b), 0.0, 1.0);
+}
+
+void main(void) {
+    vec2 tc = TexCoord;
+    vec2 normPos = (gl_FragCoord.xy / iResolution.xy) * 2.0 - 1.0;
+    float dist = length(normPos);
+    float phase = sin(dist * 10.0 - time_f * 4.0);
+    vec2 tcAdjusted = tc + (normPos * 0.305 * phase);
+    vec4 texColor = texture(textTexture, tcAdjusted);
+    vec2 uv = (tc - 0.5) * 2.0;
+    uv.x *= iResolution.x / iResolution.y;
+    float time = time_f * 0.5;
+    float sine1 = sin(uv.x * 10.0 + time) * cos(uv.y * 10.0 + time);
+    float sine2 = sin(uv.y * 15.0 - time) * cos(uv.x * 15.0 - time);
+    float sine3 = sin(sqrt(uv.x * uv.x + uv.y * uv.y) * 20.0 + time);
+    float pattern = sine1 + sine2 + sine3;
+    float colorIntensity = pattern * 0.5 + 0.5;
+    vec3 psychedelicColor = vec3(
+        sin(colorIntensity * 6.28318 + 0.0) * 0.5 + 0.5,
+        sin(colorIntensity * 6.28318 + 2.09439) * 0.5 + 0.5,
+        sin(colorIntensity * 6.28318 + 4.18879) * 0.5 + 0.5
+    );
+    vec4 finalColor = vec4(psychedelicColor, 1.0);
+    vec4 xorColor = xor_RGB(finalColor, texColor);
+    vec2 uv2 = tc * 2.0 - 1.0;
+    uv2.y *= iResolution.y / iResolution.x;
+    float wave = sin(uv2.x * 10.0 + time_f * 2.0) * 0.1;
+    vec2 random_direction = smoothRandom2(time_f) * 0.5;
+    float expand = 0.5 + 0.5 * sin(time_f * 2.0);
+    vec2 spiral_uv = uv2 * expand + random_direction;
+    float angle = atan(spiral_uv.y + wave, spiral_uv.x) + time_f * 2.0;
+    vec3 rainbow_color = rainbow(angle / (2.0 * 3.14159));
+    vec4 original_color = texture(textTexture, tc);
+    vec3 blended_color = mix(original_color.rgb, rainbow_color, 0.5);
+    float time_t = mod(time_f, 30.0);
+    vec4 finalBlendedColor = vec4(sin(blended_color * time_t), original_color.a);   
+    color = mix(xorColor, finalBlendedColor, 0.5);
+})";
+
+
 class About : public gl::GLObject {
     GLuint texture = 0;
     gl::ShaderProgram shader;
     float animation = 0.0f;
 public:
-    
-
     About() = default;
     virtual ~About() override {
-
         if(texture != 0) {
             glDeleteTextures(1, &texture);
         }
     }
-
     void load(gl::GLWindow *win) override {
-        texture = gl::loadTexture(win->util.getFilePath("data/splash.png"));
+        texture = gl::loadTexture(win->util.getFilePath("data/cats.png"));
         if(texture == 0) {
             throw mx::Exception("Error loading texture");
         }
-        if(!shader.loadProgramFromText(gl::vSource, szMirrorMouse)) {
+        if(!shader.loadProgramFromText(gl::vSource, szCats)) {
             throw mx::Exception("Error loading texture");
         }
         shader.useProgram();
         shader.setUniform("alpha", 1.0f);
         shader.setUniform("iResolution", glm::vec2(win->w, win->h));
-        shader.setUniform("iMouse", mouse);
+        //shader.setUniform("iMouse", mouse);
         sprite.initSize(win->w, win->h);
         sprite.initWithTexture(&shader, texture, 0, 0, win->w, win->h);
     }
-
     void draw(gl::GLWindow *win) override {
         glDisable(GL_DEPTH_TEST);
         glEnable(GL_BLEND);
@@ -1593,7 +1780,7 @@ public:
         animation += deltaTime;
         shader.useProgram();
         shader.setUniform("time_f", animation);
-        shader.setUniform("iMouse", mouse);
+        //shader.setUniform("iMouse", mouse);
         update(deltaTime);
         sprite.draw();
     }
