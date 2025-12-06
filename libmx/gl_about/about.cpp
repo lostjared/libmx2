@@ -1743,6 +1743,112 @@ void main(void) {
     color = mix(xorColor, finalBlendedColor, 0.5);
 })";
 
+const char *szColorMouse = R"(#version 300 es
+precision highp float;
+out vec4 color;
+in vec2 TexCoord;
+uniform sampler2D textTexture;
+uniform float time_f;
+uniform vec2 iResolution;
+uniform float alpha;
+uniform vec4 iMouse;
+
+float pingPong(float x, float length) {
+    float modVal = mod(x, length * 2.0);
+    return modVal <= length ? modVal : length * 2.0 - modVal;
+}
+
+float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+}
+
+float noise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    return mix(mix(hash(i + vec2(0.0, 0.0)), hash(i + vec2(1.0, 0.0)), u.x),
+               mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
+}
+
+void main(void) {
+    vec2 tc = TexCoord;
+    vec2 m = (iMouse.z > 0.5) ? (iMouse.xy / iResolution) : vec2(0.5);
+    vec2 uv = (tc - m) * vec2(iResolution.x / iResolution.y, 1.0);
+    float t = time_f * 0.7;
+    float beat = abs(sin(time_f * 3.14159)) * 0.2 + 0.8;
+    float radius = length(uv);
+    float angle = atan(uv.y, uv.x);
+    angle += t * 0.5;
+    float radMod = pingPong(radius + t * 0.3, 0.5);
+    float wave = sin(radius * 10.0 - t * 6.0) * 0.5 + 0.5;
+    float distortion = sin((radius + t * 0.5) * 8.0) * beat * 0.1;
+    vec2 dir = vec2(cos(angle), sin(angle));
+    vec2 tcSample = tc + dir * distortion;
+    vec3 texColor = texture(textTexture, tcSample).rgb;
+    float noiseEffect = noise(uv * 10.0 + t * 0.5) * 0.2;
+    float r = sin(angle * 3.0 + radMod * 8.0 + wave * 6.2831 + noiseEffect);
+    float g = sin(angle * 4.0 - radMod * 6.0 + wave * 4.1230 + noiseEffect);
+    float b = sin(angle * 5.0 + radMod * 10.0 - wave * 3.4560 - noiseEffect);
+    vec3 col = vec3(r, g, b) * 0.5 + 0.5;
+    col = mix(col, texColor, 0.6);
+    vec3 lightDir = normalize(vec3(0.5, 0.5, 1.0));
+    float d = dot(uv, uv);
+    float z = sqrt(max(0.0, 1.0 - d));
+    vec3 norm = normalize(vec3(uv, z));
+    float light = dot(norm, lightDir) * 0.5 + 0.5;
+    col *= light * 1.2;
+    col *= beat;
+    color = vec4(col, alpha);
+})";
+
+const char *szTwistFull = R"(#version 300 es
+precision highp float;
+in vec2 TexCoord;
+out vec4 color;
+
+uniform sampler2D textTexture;
+uniform float time_f;
+uniform vec2 iResolution;
+uniform vec4 iMouse;
+uniform float amp;
+uniform float uamp;
+
+float pp(float x, float l){float m=mod(x,l*2.0);return abs(m-l);}
+float s2(float x){return x*x*(3.0-2.0*x);}
+
+void main(void){
+    vec2 tc = TexCoord;
+    vec2 uv = tc;
+    float a = clamp(amp,0.0,1.0);
+    float ua = clamp(uamp,0.0,1.0);
+    vec2 c;
+    if(iMouse.z>0.5) c = iMouse.xy / iResolution;
+    else{
+        float t = time_f*0.3;
+        c = vec2(0.5) + 0.25*vec2(cos(t*0.9), sin(t*1.1))*0.6;
+    }
+    float r = length(uv - c);
+    float rippleSpeed = mix(4.0,10.0,ua);
+    float rippleAmp = mix(0.01,0.06,a);
+    float rippleWave = mix(8.0,18.0,ua);
+    float ripple = sin(uv.x*rippleWave + time_f*rippleSpeed) * rippleAmp;
+    ripple += sin(uv.y*rippleWave*0.9 + time_f*rippleSpeed*1.07) * rippleAmp;
+    vec2 uv_rip = uv + vec2(ripple);
+    float twist = mix(0.8,2.2,a) * (r - 0.8) + time_f*(0.3+ua*0.7);
+    float ca = cos(twist), sa = sin(twist);
+    mat2 rot = mat2(ca,-sa,sa,ca);
+    vec2 uv_twist = (rot*(uv - c)) + c;
+    float w = s2(clamp(1.0 - r*2.0, 0.0, 1.0));
+    float k = mix(0.35,0.75,ua);
+    vec2 uv_mix = mix(uv_rip, uv_twist, k*w + (1.0-k)*0.5);
+    float zoom = 1.0 + 0.02*sin(time_f*0.8 + ua*2.0);
+    vec2 zc = (uv_mix - c)/zoom + c;
+    vec4 col0 = texture(textTexture, uv);
+    vec4 col1 = texture(textTexture, zc);
+    color = col1;
+})";
+
+
 
 class About : public gl::GLObject {
     GLuint texture = 0;
@@ -1756,17 +1862,17 @@ public:
         }
     }
     void load(gl::GLWindow *win) override {
-        texture = gl::loadTexture(win->util.getFilePath("data/cats.png"));
+        texture = gl::loadTexture(win->util.getFilePath("data/jared.png"));
         if(texture == 0) {
             throw mx::Exception("Error loading texture");
         }
-        if(!shader.loadProgramFromText(gl::vSource, szCats)) {
+        if(!shader.loadProgramFromText(gl::vSource, szTwistFull)) {
             throw mx::Exception("Error loading texture");
         }
         shader.useProgram();
         shader.setUniform("alpha", 1.0f);
         shader.setUniform("iResolution", glm::vec2(win->w, win->h));
-        //shader.setUniform("iMouse", mouse);
+        shader.setUniform("iMouse", mouse);
         sprite.initSize(win->w, win->h);
         sprite.initWithTexture(&shader, texture, 0, 0, win->w, win->h);
     }
@@ -1780,7 +1886,7 @@ public:
         animation += deltaTime;
         shader.useProgram();
         shader.setUniform("time_f", animation);
-        //shader.setUniform("iMouse", mouse);
+        shader.setUniform("iMouse", mouse);
         update(deltaTime);
         sprite.draw();
     }
@@ -1856,7 +1962,7 @@ void eventProc() {
 int main(int argc, char **argv) {
 #ifdef __EMSCRIPTEN__
     try {
-    MainWindow main_window("/", 960, 720);
+    MainWindow main_window("/", 1920, 1080);
     main_w =&main_window;
     emscripten_set_main_loop(eventProc, 0, 1);
     } catch (mx::Exception &e) {
