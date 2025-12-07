@@ -1997,6 +1997,11 @@ class About : public gl::GLObject {
     float animation = 0.0f;
     std::vector<std::unique_ptr<gl::ShaderProgram>> shaders;
     size_t currentShaderIndex = 0;
+    Uint32 firstTapTime = 0;
+    bool firstTapRegistered = false;
+    static const Uint32 DOUBLE_TAP_MIN_TIME = 80;   
+    static const Uint32 DOUBLE_TAP_MAX_TIME = 400;  
+    Uint32 lastUpdateTime = 0;
 public:
     About() = default;
     virtual ~About() override {
@@ -2023,6 +2028,7 @@ public:
             throw mx::Exception("No shaders loaded successfully");
         }
         sprite.initSize(win->w, win->h);
+        lastUpdateTime = SDL_GetTicks();
         switchShader(0, win);
     }
 
@@ -2081,6 +2087,40 @@ public:
 
     void event(gl::GLWindow *win, SDL_Event &e) override {
         switch(e.type) {
+            case SDL_FINGERDOWN: {
+                Uint32 currentTime = SDL_GetTicks();
+                if(firstTapRegistered) {
+                    Uint32 timeSinceFirstTap = currentTime - firstTapTime;
+                    if(timeSinceFirstTap >= DOUBLE_TAP_MIN_TIME && 
+                       timeSinceFirstTap <= DOUBLE_TAP_MAX_TIME) {
+                        nextShader(win);
+                        firstTapRegistered = false;
+                        firstTapTime = 0;
+                    } else if(timeSinceFirstTap > DOUBLE_TAP_MAX_TIME) {
+                        firstTapTime = currentTime;
+                        firstTapRegistered = true;
+                    }
+                } else {
+                    firstTapTime = currentTime;
+                    firstTapRegistered = true;
+                }
+                mouse.x = e.tfinger.x * static_cast<float>(win->w);
+                mouse.y = (1.0f - e.tfinger.y) * static_cast<float>(win->h);
+                mouse.z = 1.0f;
+                mouse.w = 1.0f;
+                break;
+            }
+            case SDL_FINGERUP: {
+                mouse.z = 0.0f;
+                mouse.w = 0.0f;
+                break;
+            }
+            case SDL_FINGERMOTION: {
+                mouse.x = e.tfinger.x * win->w;
+                mouse.y = (1.0f - e.tfinger.y) * win->h;
+                mouse.z = 1.0f;
+                break;
+            }
             case SDL_MOUSEBUTTONDOWN:
                 if(e.button.button == SDL_BUTTON_LEFT) {
                     mouseDown = true;
@@ -2114,10 +2154,17 @@ public:
             break;
         }
     }
-    void update(float deltaTime) {}
+    void update(float deltaTime) {
+        if(firstTapRegistered) {
+            Uint32 currentTime = SDL_GetTicks();
+            if((currentTime - firstTapTime) > DOUBLE_TAP_MAX_TIME) {
+                firstTapRegistered = false;
+                firstTapTime = 0;
+            }
+        }
+    }
     
 private:
-    Uint32 lastUpdateTime = SDL_GetTicks();
     gl::GLSprite sprite;
 };
 
