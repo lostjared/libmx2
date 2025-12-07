@@ -9,6 +9,7 @@
 #include"gl.hpp"
 #include"loadpng.hpp"
 #include<iostream>
+#include<vector>
 #define CHECK_GL_ERROR() \
 { GLenum err = glGetError(); \
 if (err != GL_NO_ERROR) \
@@ -1944,11 +1945,58 @@ void main(void) {
     color = texture(textTexture, distortedUV);
 })";
 
+struct ShaderInfo {
+    const char* name;
+    const char* source;
+};
+
+static const std::vector<ShaderInfo> shaderSources = {
+    {"Bubble", srcShader1},
+    {"Kaleidoscope", srcShader2},
+    {"KaleidoscopeAlt", srcShader3},
+    {"Scramble", srcShader4},
+    {"Swirl", srcShader5},
+    {"Mirror", szShader},
+    {"VHS", szShader2},
+    {"Twist", szTwist},
+    {"Time", szTime},
+    {"Bend", szBend},
+    {"Pong", szPong},
+    {"PsychWave", psychWave},
+    {"CrystalBall", crystalBall},
+    {"ZoomMouse", szZoomMouse},
+    {"Drain", szDrain},
+    {"Ufo", szUfo},
+    {"Wave", szWave},
+    {"UfoWarp", szUfoWarp},
+    {"ByMouse", szByMouse},
+    {"Deform", szDeform},
+    {"Geo", szGeo},
+    {"Smooth", szSmooth},
+    {"Hue", szHue},
+    {"kMouse", szkMouse},
+    {"Drum", szDrum},
+    {"ColorSwirl", szColorSwirl},
+    {"MouseZoom", szMouseZoom},
+    {"Rev2", szRev2},
+    {"Fish", szFish},
+    {"RipplePrism", szRipplePrism},
+    {"MirrorMouse", szMirrorMouse},
+    {"FracMouse", szFracMouse},
+    {"Cats", szCats},
+    {"ColorMouse", szColorMouse},
+    {"TwistFull", szTwistFull},
+    {"BowlByTime", szBowlByTime},
+    {"Pebble", szPebble},
+    {"MirrorPutty", szMirrorPutty}
+};
 
 class About : public gl::GLObject {
     GLuint texture = 0;
     gl::ShaderProgram shader;
     float animation = 0.0f;
+    std::vector<std::unique_ptr<gl::ShaderProgram>> shaders;
+    size_t currentShaderIndex = 0;
 public:
     About() = default;
     virtual ~About() override {
@@ -1957,20 +2005,55 @@ public:
         }
     }
     void load(gl::GLWindow *win) override {
-        texture = gl::loadTexture(win->util.getFilePath("data/jaredmirror.png"));
+        texture = gl::loadTexture(win->util.getFilePath("data/logo.png"));
         if(texture == 0) {
             throw mx::Exception("Error loading texture");
         }
-        if(!shader.loadProgramFromText(gl::vSource, szMirrorPutty)) {
-            throw mx::Exception("Error loading texture");
+         for(const auto& info : shaderSources) {
+            auto shader = std::make_unique<gl::ShaderProgram>();
+            if(!shader->loadProgramFromText(gl::vSource, info.source)) {
+                mx::system_err << "Failed to load shader: " << info.name << "\n";
+                continue;
+            }
+            shader->setSilent(true);
+            shaders.push_back(std::move(shader));
         }
-        shader.useProgram();
-        shader.setUniform("alpha", 1.0f);
-        shader.setUniform("iResolution", glm::vec2(win->w, win->h));
-        //shader.setUniform("iMouse", mouse);
+        
+        if(shaders.empty()) {
+            throw mx::Exception("No shaders loaded successfully");
+        }
         sprite.initSize(win->w, win->h);
-        sprite.initWithTexture(&shader, texture, 0, 0, win->w, win->h);
+        switchShader(0, win);
     }
+
+    void switchShader(size_t index, gl::GLWindow *win) {
+        if(index < shaders.size()) {
+            currentShaderIndex = index;
+            shaders[currentShaderIndex]->useProgram();
+            shaders[currentShaderIndex]->setUniform("time_f", animation);
+            shaders[currentShaderIndex]->setUniform("iResolution", glm::vec2(win->w, win->h));
+            shaders[currentShaderIndex]->setUniform("iMouse", mouse);
+            shaders[currentShaderIndex]->setUniform("alpha", 1.0f);
+            shaders[currentShaderIndex]->setUniform("amp", 0.5f);
+            shaders[currentShaderIndex]->setUniform("uamp", 0.5f);
+            shaders[currentShaderIndex]->setUniform("textTexture", 0);
+            sprite.initSize(win->w, win->h);
+            sprite.initWithTexture(shaders[currentShaderIndex].get(), texture, 0, 0, win->w, win->h);
+        }
+    }
+
+    void nextShader(gl::GLWindow *win) {
+        currentShaderIndex = (currentShaderIndex + 1) % shaders.size();
+        switchShader(currentShaderIndex, win);
+        mx::system_out << "Switched to shader: " << shaderSources[currentShaderIndex].name << "\n";
+    }
+    
+    void prevShader(gl::GLWindow *win) {
+        currentShaderIndex = (currentShaderIndex == 0) ? shaders.size() - 1 : currentShaderIndex - 1;
+        switchShader(currentShaderIndex, win);
+        mx::system_out << "Switched to shader: " << shaderSources[currentShaderIndex].name << "\n";
+    }
+
     void draw(gl::GLWindow *win) override {
         glDisable(GL_DEPTH_TEST);
         glEnable(GL_BLEND);
@@ -1979,9 +2062,16 @@ public:
         float deltaTime = (currentTime - lastUpdateTime) / 1000.0f;
         lastUpdateTime = currentTime;
         animation += deltaTime;
-        shader.useProgram();
-        shader.setUniform("time_f", animation);
-        //shader.setUniform("iMouse", mouse);
+        shaders[currentShaderIndex]->useProgram();
+        shaders[currentShaderIndex]->setUniform("time_f", animation);
+        shaders[currentShaderIndex]->setUniform("iResolution", glm::vec2(win->w, win->h));
+        shaders[currentShaderIndex]->setUniform("iMouse", mouse);
+        shaders[currentShaderIndex]->setUniform("alpha", 1.0f);
+        shaders[currentShaderIndex]->setUniform("amp", 0.5f);
+        shaders[currentShaderIndex]->setUniform("uamp", 0.5f);
+        shaders[currentShaderIndex]->setUniform("textTexture", 0);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texture);
         update(deltaTime);
         sprite.draw();
     }
@@ -2014,6 +2104,14 @@ public:
                     mouse.z = 1.0f;
                 }
                 break;
+        case SDL_KEYDOWN:
+            if(e.key.keysym.sym == SDLK_DOWN || e.key.keysym.sym == SDLK_SPACE) {
+                nextShader(win);
+            }
+            else if(e.key.keysym.sym == SDLK_UP || e.key.keysym.sym == SDLK_BACKSPACE) {
+                prevShader(win);
+            }
+            break;
         }
     }
     void update(float deltaTime) {}
@@ -2057,7 +2155,7 @@ void eventProc() {
 int main(int argc, char **argv) {
 #ifdef __EMSCRIPTEN__
     try {
-    MainWindow main_window("/", 1920, 1080);
+    MainWindow main_window("/", 1280, 720);
     main_w =&main_window;
     emscripten_set_main_loop(eventProc, 0, 1);
     } catch (mx::Exception &e) {
