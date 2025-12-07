@@ -1,10 +1,8 @@
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Demo Shader</title>
+    <title>MX2 - Graphics Demo</title>
     <style>
         body {
             display: flex;
@@ -24,24 +22,89 @@
             align-items: center;
             justify-content: center;
             width: 100%;
-            height: 100%;
-            background-color: black; /* Black bars will be visible here */
+            height: calc(100% - 60px);
+            background-color: black;
+            position: relative;
         }
 
         #canvas {
-            background-color: black; /* Fallback in case WebGL doesn't cover the entire canvas */
+            background-color: black;
+        }
+
+        #controls {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 8px;
+        }
+
+        #controls button {
+            padding: 8px 16px;
+            font-size: 14px;
+            cursor: pointer;
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        #controls button:hover {
+            background: #555;
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        #file-label {
+            padding: 8px 16px;
+            font-size: 14px;
+            cursor: pointer;
+            background: #2196F3;
+            color: #fff;
+            border: 1px solid #1976D2;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        #file-label:hover {
+            background: #1976D2;
+        }
+
+        #shader-info {
+            color: #aaa;
+            font-size: 12px;
+            margin-left: 10px;
         }
     </style>
 </head>
 <body>
     <div id="canvas-container">
-        <canvas id="canvas" width="1920" height="1080"></canvas>
+        <canvas id="canvas" width="1280" height="720"></canvas>
     </div>
-    <script src="MX_app.js?v=1.0"></script>
+    <div id="controls">
+        <button id="prev-shader">◀ Prev</button>
+        <button id="next-shader">Next ▶</button>
+        <label id="file-label" for="file-input">Load Image</label>
+        <input type="file" id="file-input" accept=".png,.jpg,.jpeg">
+        <span id="shader-info">Use buttons to change shaders/mouse for effects</span>
+    </div>
+    <script src="MX_app.js?v=2.1"></script>
     <script>
         const canvas = document.getElementById('canvas');
         const gl = canvas.getContext('webgl2');
         const canvasContainer = document.getElementById('canvas-container');
+        const fileInput = document.getElementById('file-input');
+        const prevButton = document.getElementById('prev-shader');
+        const nextButton = document.getElementById('next-shader');
 
         function resizeCanvas() {
             const aspectRatio = 16 / 9;
@@ -51,31 +114,114 @@
             let canvasWidth = containerWidth;
             let canvasHeight = containerWidth / aspectRatio;
 
-            // If the calculated height exceeds the container height, adjust based on height
             if (canvasHeight > containerHeight) {
                 canvasHeight = containerHeight;
                 canvasWidth = containerHeight * aspectRatio;
             }
 
-            // Set the canvas size
             canvas.width = canvasWidth;
             canvas.height = canvasHeight;
 
-            // Center the canvas within the container
             canvas.style.width = `${canvasWidth}px`;
             canvas.style.height = `${canvasHeight}px`;
             canvas.style.position = 'absolute';
             canvas.style.left = `${(containerWidth - canvasWidth) / 2}px`;
             canvas.style.top = `${(containerHeight - canvasHeight) / 2}px`;
 
-            // Update WebGL viewport
             if (gl) {
                 gl.viewport(0, 0, canvasWidth, canvasHeight);
             }
         }
 
         window.addEventListener('resize', resizeCanvas);
-        resizeCanvas(); // Initial call to set the correct size
+        resizeCanvas();
+
+        prevButton.addEventListener('click', () => {
+            if (typeof Module !== 'undefined' && Module.prevShaderWeb) {
+                Module.prevShaderWeb();
+            } else {
+                console.warn("prevShaderWeb not available yet");
+            }
+        });
+
+        nextButton.addEventListener('click', () => {
+            if (typeof Module !== 'undefined' && Module.nextShaderWeb) {
+                Module.nextShaderWeb();
+            } else {
+                console.warn("nextShaderWeb not available yet");
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
+                if (typeof Module !== 'undefined' && Module.prevShaderWeb) {
+                    Module.prevShaderWeb();
+                }
+            } else if (event.key === 'ArrowDown' || event.key === 'ArrowRight' || event.key === ' ') {
+                if (typeof Module !== 'undefined' && Module.nextShaderWeb) {
+                    Module.nextShaderWeb();
+                }
+            }
+        });
+
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) {
+                console.log("No file selected.");
+                return;
+            }
+            console.log(`Selected file: ${file.name}`);
+            const fileName = file.name.toLowerCase();
+            const isPNG = fileName.endsWith('.png');
+            const isJPG = fileName.endsWith(".jpg");
+            const isJPEG = fileName.endsWith(".jpeg");
+            
+
+            if (!isPNG && !isJPG && !isJPEG) {
+                alert("Unsupported file format. Please select a PNG file.");
+                return;
+            }
+
+            const reader = new FileReader();
+
+            reader.onload = (e) => {
+                const arrayBuffer = e.target.result;
+                const byteArray = new Uint8Array(arrayBuffer);
+                console.log(`File size: ${byteArray.length} bytes`);
+                if (typeof Module === 'undefined' || !Module.VectorU8) {
+                    console.error("Module not ready yet. Please wait for the app to load.");
+                    alert("Please wait for the application to fully load before loading images.");
+                    return;
+                }
+
+                const dataVector = new Module['VectorU8']();
+                for (let i = 0; i < byteArray.length; i++) {
+                    dataVector.push_back(byteArray[i]);
+                }
+
+                try {
+                    if (isPNG) {
+                        Module.loadImagePNG(dataVector);
+                    } else if (isJPG) {
+                        Module.loadImageJPG(dataVector);
+                    }
+                    console.log("Image loaded successfully!");
+                } catch (error) {
+                    console.error("Error loading image:", error);
+                    alert("Failed to load image. Please try another file.");
+                }
+
+                dataVector.delete();
+            };
+
+            reader.onerror = (e) => {
+                console.error("Error reading file:", e);
+                alert("Failed to read file.");
+            };
+
+            reader.readAsArrayBuffer(file);
+            fileInput.value = '';
+        });
     </script>
 </body>
 </html>

@@ -3,13 +3,18 @@
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
+#include <emscripten/bind.h>
 #include <GLES3/gl3.h>
 #endif
+
+#include<SDL2/SDL_image.h>
 
 #include"gl.hpp"
 #include"loadpng.hpp"
 #include<iostream>
 #include<vector>
+#include<cstdint>
+
 #define CHECK_GL_ERROR() \
 { GLenum err = glGetError(); \
 if (err != GL_NO_ERROR) \
@@ -2002,6 +2007,7 @@ class About : public gl::GLObject {
     static const Uint32 DOUBLE_TAP_MIN_TIME = 80;   
     static const Uint32 DOUBLE_TAP_MAX_TIME = 400;  
     Uint32 lastUpdateTime = 0;
+    int texWidth = 0, texHeight = 0;
 public:
     About() = default;
     virtual ~About() override {
@@ -2009,6 +2015,19 @@ public:
             glDeleteTextures(1, &texture);
         }
     }
+
+    void loadNewTexture(SDL_Surface *surface, gl::GLWindow *win) {
+        if(texture != 0) {
+            glDeleteTextures(1, &texture);
+            texture = 0;
+        }
+        texture = gl::createTexture(surface, true);
+        texWidth = surface->w;
+        texHeight = surface->h;
+        sprite.initSize(win->w, win->h);
+        switchShader(currentShaderIndex, win);
+    }
+
     void load(gl::GLWindow *win) override {
         texture = gl::loadTexture(win->util.getFilePath("data/logo.png"));
         if(texture == 0) {
@@ -2170,7 +2189,7 @@ private:
 
 class MainWindow : public gl::GLWindow {
 public:
-    MainWindow(std::string path, int tw, int th) : gl::GLWindow("MX2 - Graphics Demo", tw, th) {
+    MainWindow(std::string path, int tw, int th) : gl::GLWindow("MX2 - Interactive Graphics Demo", tw, th) {
         setPath(path);
         setObject(new About());
         object->load(this);
@@ -2194,6 +2213,80 @@ public:
 };
 
 MainWindow *main_w = nullptr;
+About *about_ptr = nullptr;
+
+#ifdef __EMSCRIPTEN__
+    void nextShaderWeb() {
+        if(about_ptr) {
+            about_ptr->nextShader(main_w);
+        }
+    }
+
+    void prevShaderWeb() {
+        if(about_ptr) {
+            about_ptr->prevShader(main_w);
+        }
+    }
+
+    void loadImagePNG(const std::vector<uint8_t>& imageData) {
+        std::ofstream outFile("image.png", std::ios::binary);
+        outFile.write(reinterpret_cast<const char*>(imageData.data()), imageData.size());
+        outFile.close();
+        
+        SDL_Surface *surface = png::LoadPNG("image.png");
+        if(!surface) {
+            mx::system_err << "Failed to load PNG image\n";
+            return;
+        }
+        
+        SDL_Surface *converted = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_RGBA32, 0);
+        SDL_FreeSurface(surface);
+        
+        if(converted && main_w && main_w->object) {
+            About *about = dynamic_cast<About*>(main_w->object.get());
+            if(about) {
+                about->loadNewTexture(converted, main_w);
+            }
+        }
+        if(converted) {
+            SDL_FreeSurface(converted);
+        }
+    }
+
+    void loadImageJPG(const std::vector<uint8_t>& imageData) {
+        std::ofstream outFile("image.jpg", std::ios::binary);
+        outFile.write(reinterpret_cast<const char*>(imageData.data()), imageData.size());
+        outFile.close();
+        
+        SDL_Surface *surface = IMG_Load("image.jpg");
+        if(!surface) {
+            mx::system_err << "Failed to load JPG image: " << IMG_GetError() << "\n";
+            return;
+        }
+        
+        SDL_Surface *converted = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_RGBA32, 0);
+        SDL_FreeSurface(surface);
+        
+        if(converted && main_w && main_w->object) {
+            About *about = dynamic_cast<About*>(main_w->object.get());
+            if(about) {
+                about->loadNewTexture(converted, main_w);
+            }
+        }
+        if(converted) {
+            SDL_FreeSurface(converted);
+        }
+    }
+
+    EMSCRIPTEN_BINDINGS(image_loader) {
+        emscripten::function("nextShaderWeb", &nextShaderWeb);
+        emscripten::function("prevShaderWeb", &prevShaderWeb);
+        emscripten::register_vector<uint8_t>("VectorU8");
+        emscripten::function("loadImagePNG", &loadImagePNG);
+        emscripten::function("loadImageJPG", &loadImageJPG);
+    };
+
+#endif
 
 void eventProc() {
     main_w->proc();
@@ -2202,9 +2295,10 @@ void eventProc() {
 int main(int argc, char **argv) {
 #ifdef __EMSCRIPTEN__
     try {
-    MainWindow main_window("/", 1280, 720);
-    main_w =&main_window;
-    emscripten_set_main_loop(eventProc, 0, 1);
+        MainWindow main_window("/", 1280, 720);
+        main_w =&main_window;
+        about_ptr = dynamic_cast<About *>(main_w->object.get());
+        emscripten_set_main_loop(eventProc, 0, 1);
     } catch (mx::Exception &e) {
         std::cerr << e.text() << "\n";
         return EXIT_FAILURE;
