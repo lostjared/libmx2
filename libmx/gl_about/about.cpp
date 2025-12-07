@@ -1890,6 +1890,60 @@ void main(void){
     color = texture(textTexture, uv);
 })";
 
+const char *szPebble = R"(#version 300 es
+precision highp float;
+out vec4 color;
+in vec2 TexCoord;
+uniform sampler2D textTexture;
+uniform vec2 iResolution;
+uniform float time_f;
+float pingPong(float x, float length) {
+    float modVal = mod(x, length * 2.0);
+    return modVal <= length ? modVal : length * 2.0 - modVal;
+}
+void main(void) {
+    vec2 tc = TexCoord;
+	vec2 uv = 1.0 - abs(1.0 - 2.0 * tc);
+    uv = uv - floor(uv);    
+    vec2 normCoord = (uv * 2.0 - 1.0) * vec2(iResolution.x / iResolution.y, 1.0);
+    float dist = length(normCoord);
+    float maxRippleRadius = pingPong(time_f, 25.0);
+    float rippleSpeed = 2.0 * pingPong(time_f, 10.0);
+    float phase = mod(time_f * rippleSpeed, maxRippleRadius);
+    float ripple = sin((dist - phase) * 10.0) * exp(-dist * 3.0);
+    vec2 displacedCoord = vec2(tc.x, tc.y + pingPong(sin(ripple * time_f), 10.0) * sin(pingPong(time_f, 10.0)));
+    color = texture(textTexture, displacedCoord);
+})";
+
+const char *szMirrorPutty = R"(#version 300 es
+precision highp float;
+out vec4 color;
+in vec2 TexCoord;
+uniform sampler2D textTexture;
+uniform float time_f;
+uniform vec2 iResolution;
+float pingPong(float x, float length) {
+    float modVal = mod(x, length * 2.0);
+    return modVal <= length ? modVal : length * 2.0 - modVal;
+}
+void main(void) {
+    vec2 tc = TexCoord;
+    vec2 uv = 1.0 - abs(1.0 - 2.0 * tc);
+    uv = uv - floor(uv);  
+    float timeVar = time_f * 0.5;
+    vec2 noise = vec2(
+        pingPong(uv.x + timeVar, 1.0),
+        pingPong(uv.y + timeVar, 1.0)
+    );
+    float stretchFactorX = 1.0 + 0.3 * sin(time_f + uv.y * 10.0);
+    float stretchFactorY = 1.0 + 0.3 * cos(time_f + uv.x * 10.0);
+    vec2 distortedUV = vec2(
+        uv.x * stretchFactorX + noise.x * 0.1,
+        uv.y * stretchFactorY + noise.y * 0.1
+    );
+    color = texture(textTexture, distortedUV);
+})";
+
 
 class About : public gl::GLObject {
     GLuint texture = 0;
@@ -1903,11 +1957,11 @@ public:
         }
     }
     void load(gl::GLWindow *win) override {
-        texture = gl::loadTexture(win->util.getFilePath("data/outside.png"));
+        texture = gl::loadTexture(win->util.getFilePath("data/jaredmirror.png"));
         if(texture == 0) {
             throw mx::Exception("Error loading texture");
         }
-        if(!shader.loadProgramFromText(gl::vSource, szBowlByTime)) {
+        if(!shader.loadProgramFromText(gl::vSource, szMirrorPutty)) {
             throw mx::Exception("Error loading texture");
         }
         shader.useProgram();
