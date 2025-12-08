@@ -2216,6 +2216,7 @@ MainWindow *main_w = nullptr;
 About *about_ptr = nullptr;
 
 #ifdef __EMSCRIPTEN__
+ 
     void nextShaderWeb() {
         if(about_ptr) {
             about_ptr->nextShader(main_w);
@@ -2285,7 +2286,6 @@ About *about_ptr = nullptr;
         emscripten::function("loadImagePNG", &loadImagePNG);
         emscripten::function("loadImageJPG", &loadImageJPG);
     };
-
 #endif
 
 void eventProc() {
