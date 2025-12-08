@@ -2104,6 +2104,10 @@ public:
     bool mouseDown = false;
     glm::vec4 mouse = glm::vec4(0.0f);
 
+    void reset() {
+        animation = 0.0f;
+    }
+
     void event(gl::GLWindow *win, SDL_Event &e) override {
         switch(e.type) {
             case SDL_FINGERDOWN: {
@@ -2364,6 +2368,12 @@ About *about_ptr = nullptr;
         }
     }
 
+    void reset_time() {
+        if(about_ptr && main_w) {
+            about_ptr->reset();
+        }
+    }
+
     EMSCRIPTEN_BINDINGS(image_loader) {
         emscripten::function("nextShaderWeb", &nextShaderWeb);
         emscripten::function("prevShaderWeb", &prevShaderWeb);
@@ -2372,6 +2382,7 @@ About *about_ptr = nullptr;
         emscripten::register_vector<uint8_t>("VectorU8");
         emscripten::function("loadImagePNG", &loadImagePNG);
         emscripten::function("loadImageJPG", &loadImageJPG);
+        emscripten::function("reset_time", &reset_time);
     };
 
 #endif

@@ -322,6 +322,7 @@
     <div id="controls">
         <button id="prev-shader">◀ Prev</button>
         <button id="next-shader">Next ▶</button>
+        <button id="reset-btn">⟲ Reset</button>
         <label id="file-label" for="file-input">🖼️ Load Image</label>
         <input type="file" id="file-input" accept=".png,.jpg,.jpeg">
         <button id="save-image">💾 Save Image</button>
@@ -337,7 +338,7 @@
             </div>
             <div id="shader-editor-body">
                 <div>
-                    <label id="shader-code-label">Fragment Shader Code (GLSL ES 3.0):</label>
+                    <label id="shader-code-label">Fragment Shader Code (GLSL ES 3.0):</label><br>
                     <div id="shader-templates">
                         <button id="template-basic">Basic Template</button>
                         <button id="template-ripple">Ripple Effect</button>
@@ -357,7 +358,7 @@
         </div>
     </div>
 
-    <script src="MX_app.js?v=2.6"></script>
+    <script src="MX_app.js?v=2.60"></script>
     <script>
         const canvas = document.getElementById('canvas');
         const canvasContainer = document.getElementById('canvas-container');
@@ -365,6 +366,7 @@
         const prevButton = document.getElementById('prev-shader');
         const nextButton = document.getElementById('next-shader');
         const saveButton = document.getElementById('save-image');
+        const resetButton = document.getElementById('reset-btn');
         const shaderEditorBtn = document.getElementById('shader-editor-btn');
         const shaderEditorModal = document.getElementById('shader-editor-modal');
         const closeEditorBtn = document.getElementById('close-editor-btn');
@@ -615,6 +617,12 @@ void main(void) {
             }
         });
         
+        resetButton.addEventListener('click', () => {
+             if (typeof Module !== 'undefined' && Module.reset_time) {
+                Module.reset_time();
+            }
+        });
+
         resetShaderBtn.addEventListener('click', () => {
             if (typeof Module !== 'undefined' && Module.resetToDefaultShader) {
                 Module.resetToDefaultShader();
@@ -623,7 +631,6 @@ void main(void) {
             }
         });
 
-        // File input handler
         fileInput.addEventListener('change', (event) => {
             const file = event.target.files[0];
             if (!file) {
@@ -685,9 +692,7 @@ void main(void) {
             fileInput.value = '';
         });
 
-        // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
-            // Don't capture keys when typing in textarea
             if (e.target === shaderCodeTextarea) return;
             
             if (e.key === 'Escape' && shaderEditorModal.classList.contains('visible')) {
