@@ -207,7 +207,7 @@
 
         #shader-log-textarea {
             width: 100%;
-            height: 100px;
+            height: 120px;
             background: #1a1a1a;
             color: #ff6b6b;
             border: 1px solid #444;
@@ -218,6 +218,8 @@
             resize: vertical;
             line-height: 1.4;
             box-sizing: border-box;
+            white-space: pre-wrap;
+            overflow-y: auto;
         }
 
         #shader-log-textarea.success {
@@ -355,7 +357,7 @@
         </div>
     </div>
 
-    <script src="MX_app.js?v=2.5"></script>
+    <script src="MX_app.js?v=2.6"></script>
     <script>
         const canvas = document.getElementById('canvas');
         const canvasContainer = document.getElementById('canvas-container');
@@ -577,28 +579,42 @@ void main(void) {
             shaderCodeTextarea.value = colorShiftTemplate;
         });
 
-        // Compile button
         compileShaderBtn.addEventListener('click', () => {
             const shaderCode = shaderCodeTextarea.value;
             
-            if (typeof Module === 'undefined' || !Module.compileCustomShader) {
-                shaderLogTextarea.value = "Error: Module not ready. Please wait for the app to load.";
+            console.log('Compiling shader...');
+            
+            if (typeof Module === 'undefined') {
+                shaderLogTextarea.value = "Error: Module not defined. Please wait for the app to load.";
                 shaderLogTextarea.classList.remove('success');
                 return;
             }
-
-            const result = Module.compileCustomShader(shaderCode);
             
-            if (result.startsWith("SUCCESS")) {
+            if (!Module.compileCustomShader) {
+                shaderLogTextarea.value = "Error: compileCustomShader not available. Make sure the app is fully loaded.";
+                shaderLogTextarea.classList.remove('success');
+                console.log('Available Module functions:', Object.keys(Module).filter(k => typeof Module[k] === 'function'));
+                return;
+            }
+
+            try {
+                const result = Module.compileCustomShader(shaderCode);
+                console.log('Compilation result:', result);
+                
                 shaderLogTextarea.value = result;
-                shaderLogTextarea.classList.add('success');
-            } else {
-                shaderLogTextarea.value = result;
+                
+                if (result.startsWith("SUCCESS")) {
+                    shaderLogTextarea.classList.add('success');
+                } else {
+                    shaderLogTextarea.classList.remove('success');
+                }
+            } catch (error) {
+                console.error('Exception during compilation:', error);
+                shaderLogTextarea.value = `Exception: ${error.message || error}`;
                 shaderLogTextarea.classList.remove('success');
             }
         });
-
-        // Reset button
+        
         resetShaderBtn.addEventListener('click', () => {
             if (typeof Module !== 'undefined' && Module.resetToDefaultShader) {
                 Module.resetToDefaultShader();

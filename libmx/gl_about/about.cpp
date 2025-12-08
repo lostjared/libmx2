@@ -2183,10 +2183,58 @@ public:
         }
     }
 
+
     std::string compileCustomShader(const std::string &fragmentSource, gl::GLWindow *win) {
+        GLuint fragShader = glCreateShader(GL_FRAGMENT_SHADER);
+        const char *src = fragmentSource.c_str();
+        glShaderSource(fragShader, 1, &src, nullptr);
+        glCompileShader(fragShader);
+        
+        GLint success;
+        glGetShaderiv(fragShader, GL_COMPILE_STATUS, &success);
+        
+        if (!success) {
+            GLchar infoLog[1024];
+            glGetShaderInfoLog(fragShader, 1024, nullptr, infoLog);
+            glDeleteShader(fragShader);
+            return std::string("ERROR: Fragment shader compilation failed:\n") + infoLog;
+        }
+        
+        GLuint vertShader = glCreateShader(GL_VERTEX_SHADER);
+        glShaderSource(vertShader, 1, &gl::vSource, nullptr);
+        glCompileShader(vertShader);
+        
+        glGetShaderiv(vertShader, GL_COMPILE_STATUS, &success);
+        if (!success) {
+            GLchar infoLog[1024];
+            glGetShaderInfoLog(vertShader, 1024, nullptr, infoLog);
+            glDeleteShader(fragShader);
+            glDeleteShader(vertShader);
+            return std::string("ERROR: Vertex shader compilation failed:\n") + infoLog;
+        }
+        
+        GLuint program = glCreateProgram();
+        glAttachShader(program, vertShader);
+        glAttachShader(program, fragShader);
+        glLinkProgram(program);
+        
+        glGetProgramiv(program, GL_LINK_STATUS, &success);
+        if (!success) {
+            GLchar infoLog[1024];
+            glGetProgramInfoLog(program, 1024, nullptr, infoLog);
+            glDeleteShader(fragShader);
+            glDeleteShader(vertShader);
+            glDeleteProgram(program);
+            return std::string("ERROR: Shader program linking failed:\n") + infoLog;
+        }
+        
+        glDeleteShader(fragShader);
+        glDeleteShader(vertShader);
+        glDeleteProgram(program);
+        
         auto customShader = std::make_unique<gl::ShaderProgram>();
-        if(!customShader->loadProgramFromText(gl::vSource, fragmentSource)) {
-            return "ERROR: Shader compilation failed. Check your GLSL syntax.";
+        if(!customShader->loadProgramFromText(gl::vSource, fragmentSource.c_str())) {
+            return "ERROR: Failed to create shader program.";
         }
         customShader->setSilent(true);
         
@@ -2196,13 +2244,11 @@ public:
         } else {
             shaders.push_back(std::move(customShader));
             hasCustomShader = true;
-        }
-        
+        }   
         currentShaderIndex = shaders.size() - 1;
         switchShader(currentShaderIndex, win);
         return "SUCCESS: Shader compiled and applied successfully!";
     }
-    
     void resetToDefaultShader(gl::GLWindow *win) {
         if(!shaders.empty()) {
             currentShaderIndex = 0;
