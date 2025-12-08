@@ -2182,6 +2182,33 @@ public:
             }
         }
     }
+
+    std::string compileCustomShader(const std::string &fragmentSource, gl::GLWindow *win) {
+        auto customShader = std::make_unique<gl::ShaderProgram>();
+        if(!customShader->loadProgramFromText(gl::vSource, fragmentSource)) {
+            return "ERROR: Shader compilation failed. Check your GLSL syntax.";
+        }
+        customShader->setSilent(true);
+        
+        static bool hasCustomShader = false;
+        if(hasCustomShader && !shaders.empty()) {
+            shaders.back() = std::move(customShader);
+        } else {
+            shaders.push_back(std::move(customShader));
+            hasCustomShader = true;
+        }
+        
+        currentShaderIndex = shaders.size() - 1;
+        switchShader(currentShaderIndex, win);
+        return "SUCCESS: Shader compiled and applied successfully!";
+    }
+    
+    void resetToDefaultShader(gl::GLWindow *win) {
+        if(!shaders.empty()) {
+            currentShaderIndex = 0;
+            switchShader(0, win);
+        }
+    }
     
 private:
     gl::GLSprite sprite;
@@ -2258,13 +2285,12 @@ About *about_ptr = nullptr;
         std::ofstream outFile("image.jpg", std::ios::binary);
         outFile.write(reinterpret_cast<const char*>(imageData.data()), imageData.size());
         outFile.close();
-        
         SDL_Surface *surface = IMG_Load("image.jpg");
         if(!surface) {
             mx::system_err << "Failed to load JPG image: " << IMG_GetError() << "\n";
             return;
         }
-        
+    
         SDL_Surface *converted = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_RGBA32, 0);
         SDL_FreeSurface(surface);
         
@@ -2279,13 +2305,29 @@ About *about_ptr = nullptr;
         }
     }
 
+     std::string compileCustomShaderWeb(const std::string &fragmentSource) {
+        if(about_ptr && main_w) {
+            return about_ptr->compileCustomShader(fragmentSource, main_w);
+        }
+        return "ERROR: Application not initialized";
+    }
+
+    void resetToDefaultShaderWeb() {
+        if(about_ptr && main_w) {
+            about_ptr->resetToDefaultShader(main_w);
+        }
+    }
+
     EMSCRIPTEN_BINDINGS(image_loader) {
         emscripten::function("nextShaderWeb", &nextShaderWeb);
         emscripten::function("prevShaderWeb", &prevShaderWeb);
+        emscripten::function("compileCustomShader", &compileCustomShaderWeb);
+        emscripten::function("resetToDefaultShader", &resetToDefaultShaderWeb);
         emscripten::register_vector<uint8_t>("VectorU8");
         emscripten::function("loadImagePNG", &loadImagePNG);
         emscripten::function("loadImageJPG", &loadImageJPG);
     };
+
 #endif
 
 void eventProc() {

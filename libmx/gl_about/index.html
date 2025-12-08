@@ -43,6 +43,8 @@
             background: rgba(0, 0, 0, 0.7);
             padding: 10px 20px;
             border-radius: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
         }
 
         #controls button {
@@ -79,10 +81,235 @@
             background: #1976D2;
         }
 
+        #save-image {
+            background: #4CAF50 !important;
+            border: 1px solid #388E3C !important;
+        }
+
+        #save-image:hover {
+            background: #388E3C !important;
+        }
+
+        #shader-editor-btn {
+            background: #9C27B0 !important;
+            border: 1px solid #7B1FA2 !important;
+        }
+
+        #shader-editor-btn:hover {
+            background: #7B1FA2 !important;
+        }
+
         #shader-info {
             color: #aaa;
             font-size: 12px;
             margin-left: 10px;
+        }
+
+        /* Shader Editor Modal */
+        #shader-editor-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #shader-editor-modal.visible {
+            display: flex;
+        }
+
+        #shader-editor-container {
+            background: #1e1e1e;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 900px;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        #shader-editor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background: #2d2d2d;
+            border-radius: 8px 8px 0 0;
+            border-bottom: 1px solid #444;
+        }
+
+        #shader-editor-header h2 {
+            margin: 0;
+            font-size: 18px;
+            color: #fff;
+        }
+
+        #close-editor-btn {
+            background: #f44336;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        #close-editor-btn:hover {
+            background: #d32f2f;
+        }
+
+        #shader-editor-body {
+            padding: 20px;
+            flex: 1;
+            overflow: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        #shader-code-label {
+            font-size: 14px;
+            color: #aaa;
+            margin-bottom: 5px;
+        }
+
+        #shader-code-textarea {
+            width: 100%;
+            height: 350px;
+            background: #0d0d0d;
+            color: #00ff00;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            resize: vertical;
+            line-height: 1.4;
+            box-sizing: border-box;
+        }
+
+        #shader-code-textarea:focus {
+            outline: none;
+            border-color: #9C27B0;
+        }
+
+        #shader-log-label {
+            font-size: 14px;
+            color: #aaa;
+            margin-bottom: 5px;
+        }
+
+        #shader-log-textarea {
+            width: 100%;
+            height: 100px;
+            background: #1a1a1a;
+            color: #ff6b6b;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            resize: vertical;
+            line-height: 1.4;
+            box-sizing: border-box;
+        }
+
+        #shader-log-textarea.success {
+            color: #4caf50;
+        }
+
+        #shader-editor-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            padding: 15px 20px;
+            background: #2d2d2d;
+            border-radius: 0 0 8px 8px;
+            border-top: 1px solid #444;
+        }
+
+        #compile-shader-btn {
+            background: #4caf50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        #compile-shader-btn:hover {
+            background: #388e3c;
+        }
+
+        #reset-shader-btn {
+            background: #ff9800;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        #reset-shader-btn:hover {
+            background: #f57c00;
+        }
+
+        #shader-templates {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        #shader-templates button {
+            background: #555;
+            color: #fff;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        #shader-templates button:hover {
+            background: #777;
+        }
+
+        #shader-editor-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 9999;  
+            justify-content: center;
+            align-items: center;
+        }
+
+        #shader-code-textarea {
+            width: 100%;
+            height: 350px;
+            background: #0d0d0d;
+            color: #00ff00;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            resize: vertical;
+            line-height: 1.4;
+            box-sizing: border-box;
+            z-index: 10000;  
+            position: relative;
         }
     </style>
 </head>
@@ -93,18 +320,163 @@
     <div id="controls">
         <button id="prev-shader">◀ Prev</button>
         <button id="next-shader">Next ▶</button>
-        <label id="file-label" for="file-input">Load Image</label>
+        <label id="file-label" for="file-input">🖼️ Load Image</label>
         <input type="file" id="file-input" accept=".png,.jpg,.jpeg">
-        <span id="shader-info">Use buttons to change shaders/mouse for effects</span>
+        <button id="save-image">💾 Save Image</button>
+        <button id="shader-editor-btn">✏️ Custom Shader</button>
+        <span id="shader-info">Double-tap to cycle shaders</span>
     </div>
-    <script src="MX_app.js?v=2.1"></script>
+
+    <div id="shader-editor-modal">
+        <div id="shader-editor-container">
+            <div id="shader-editor-header">
+                <h2>Custom Fragment Shader Editor</h2>
+                <button id="close-editor-btn">✕ Close</button>
+            </div>
+            <div id="shader-editor-body">
+                <div>
+                    <label id="shader-code-label">Fragment Shader Code (GLSL ES 3.0):</label>
+                    <div id="shader-templates">
+                        <button id="template-basic">Basic Template</button>
+                        <button id="template-ripple">Ripple Effect</button>
+                        <button id="template-color">Color Shift</button>
+                    </div>
+                </div>
+                <textarea id="shader-code-textarea" spellcheck="false"></textarea>
+                <div>
+                    <label id="shader-log-label">Compilation Log:</label>
+                    <textarea id="shader-log-textarea" readonly></textarea>
+                </div>
+            </div>
+            <div id="shader-editor-footer">
+                <button id="reset-shader-btn">Reset to Default</button>
+                <button id="compile-shader-btn">▶ Compile & Apply</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="MX_app.js?v=2.5"></script>
     <script>
         const canvas = document.getElementById('canvas');
-        const gl = canvas.getContext('webgl2');
         const canvasContainer = document.getElementById('canvas-container');
         const fileInput = document.getElementById('file-input');
         const prevButton = document.getElementById('prev-shader');
         const nextButton = document.getElementById('next-shader');
+        const saveButton = document.getElementById('save-image');
+        const shaderEditorBtn = document.getElementById('shader-editor-btn');
+        const shaderEditorModal = document.getElementById('shader-editor-modal');
+        const closeEditorBtn = document.getElementById('close-editor-btn');
+        const shaderCodeTextarea = document.getElementById('shader-code-textarea');
+        const shaderLogTextarea = document.getElementById('shader-log-textarea');
+        const compileShaderBtn = document.getElementById('compile-shader-btn');
+        const resetShaderBtn = document.getElementById('reset-shader-btn');
+        shaderCodeTextarea.addEventListener('focus', () => {
+            if (typeof Module !== 'undefined') {
+                if (Module.SDL && Module.SDL.keyboardState) {
+                    Module.SDL.keyboardState = null;
+                }
+                canvas.style.pointerEvents = 'none';
+            }
+            console.log('Textarea focused - keyboard capture disabled');
+        });
+
+        shaderCodeTextarea.addEventListener('blur', () => {
+            if (typeof Module !== 'undefined') {
+                canvas.style.pointerEvents = 'auto';
+            }
+            console.log('Textarea blurred - keyboard capture restored');
+        });
+
+        shaderCodeTextarea.addEventListener('keydown', (e) => {
+            e.stopPropagation();
+        });
+
+        shaderCodeTextarea.addEventListener('keyup', (e) => {
+            e.stopPropagation();
+        });
+
+        shaderCodeTextarea.addEventListener('keypress', (e) => {
+            e.stopPropagation();
+        });
+
+        
+        shaderEditorBtn.addEventListener('click', () => {
+            shaderEditorModal.classList.add('visible');
+            setTimeout(() => {
+                shaderCodeTextarea.focus();
+            }, 100);
+        });
+
+        closeEditorBtn.addEventListener('click', () => {
+            shaderEditorModal.classList.remove('visible');
+            canvas.focus();
+        });
+
+        shaderEditorModal.addEventListener('click', (e) => {
+            if (e.target === shaderEditorModal) {
+                shaderEditorModal.classList.remove('visible');
+                canvas.focus();
+            }
+        });
+
+        // Shader templates
+        const basicTemplate = `#version 300 es
+precision highp float;
+out vec4 color;
+in vec2 TexCoord;
+
+uniform sampler2D textTexture;
+uniform float time_f;
+uniform vec2 iResolution;
+uniform vec4 iMouse;
+
+void main(void) {
+    vec2 tc = TexCoord;
+    vec4 texColor = texture(textTexture, tc);
+    color = texColor;
+}`;
+
+        const rippleTemplate = `#version 300 es
+precision highp float;
+out vec4 color;
+in vec2 TexCoord;
+
+uniform sampler2D textTexture;
+uniform float time_f;
+uniform vec2 iResolution;
+uniform vec4 iMouse;
+
+void main(void) {
+    vec2 tc = TexCoord;
+    vec2 center = vec2(0.5, 0.5);
+    vec2 uv = tc - center;
+    float dist = length(uv);
+    float ripple = sin(dist * 30.0 - time_f * 5.0) * 0.02;
+    vec2 displaced = tc + normalize(uv + 0.001) * ripple;
+    color = texture(textTexture, displaced);
+}`;
+
+        const colorShiftTemplate = `#version 300 es
+precision highp float;
+out vec4 color;
+in vec2 TexCoord;
+
+uniform sampler2D textTexture;
+uniform float time_f;
+uniform vec2 iResolution;
+uniform vec4 iMouse;
+
+void main(void) {
+    vec2 tc = TexCoord;
+    float offset = 0.005 * sin(time_f * 2.0);
+    float r = texture(textTexture, tc + vec2(offset, 0.0)).r;
+    float g = texture(textTexture, tc).g;
+    float b = texture(textTexture, tc - vec2(offset, 0.0)).b;
+    color = vec4(r, g, b, 1.0);
+}`;
+
+        // Initialize with basic template
+        shaderCodeTextarea.value = basicTemplate;
 
         function resizeCanvas() {
             const aspectRatio = 16 / 9;
@@ -127,10 +499,6 @@
             canvas.style.position = 'absolute';
             canvas.style.left = `${(containerWidth - canvasWidth) / 2}px`;
             canvas.style.top = `${(containerHeight - canvasHeight) / 2}px`;
-
-            if (gl) {
-                gl.viewport(0, 0, canvasWidth, canvasHeight);
-            }
         }
 
         window.addEventListener('resize', resizeCanvas);
@@ -139,46 +507,122 @@
         prevButton.addEventListener('click', () => {
             if (typeof Module !== 'undefined' && Module.prevShaderWeb) {
                 Module.prevShaderWeb();
-            } else {
-                console.warn("prevShaderWeb not available yet");
             }
         });
 
         nextButton.addEventListener('click', () => {
             if (typeof Module !== 'undefined' && Module.nextShaderWeb) {
                 Module.nextShaderWeb();
+            }
+        });
+
+        saveButton.addEventListener('click', () => {
+            try {
+                let gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+                
+                if (gl) {
+                    gl.finish();
+                }
+                
+                requestAnimationFrame(() => {
+                    const now = new Date();
+                    const timestamp = now.getFullYear() + 
+                                    String(now.getMonth() + 1).padStart(2, '0') + 
+                                    String(now.getDate()).padStart(2, '0') + '_' +
+                                    String(now.getHours()).padStart(2, '0') + 
+                                    String(now.getMinutes()).padStart(2, '0') + 
+                                    String(now.getSeconds()).padStart(2, '0');
+                    
+                    const imageData = canvas.toDataURL('image/png');
+                    const link = document.createElement('a');
+                    link.href = imageData;
+                    link.download = `mx2_shader_${timestamp}.png`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    
+                    console.log('Image saved successfully');
+                });
+            } catch (error) {
+                console.error('Error saving image:', error);
+                alert('Failed to save image. Please try again.');
+            }
+        });
+
+        // Shader editor modal controls
+        shaderEditorBtn.addEventListener('click', () => {
+            shaderEditorModal.classList.add('visible');
+        });
+
+        closeEditorBtn.addEventListener('click', () => {
+            shaderEditorModal.classList.remove('visible');
+        });
+
+        shaderEditorModal.addEventListener('click', (e) => {
+            if (e.target === shaderEditorModal) {
+                shaderEditorModal.classList.remove('visible');
+            }
+        });
+
+        // Template buttons
+        document.getElementById('template-basic').addEventListener('click', () => {
+            shaderCodeTextarea.value = basicTemplate;
+        });
+
+        document.getElementById('template-ripple').addEventListener('click', () => {
+            shaderCodeTextarea.value = rippleTemplate;
+        });
+
+        document.getElementById('template-color').addEventListener('click', () => {
+            shaderCodeTextarea.value = colorShiftTemplate;
+        });
+
+        // Compile button
+        compileShaderBtn.addEventListener('click', () => {
+            const shaderCode = shaderCodeTextarea.value;
+            
+            if (typeof Module === 'undefined' || !Module.compileCustomShader) {
+                shaderLogTextarea.value = "Error: Module not ready. Please wait for the app to load.";
+                shaderLogTextarea.classList.remove('success');
+                return;
+            }
+
+            const result = Module.compileCustomShader(shaderCode);
+            
+            if (result.startsWith("SUCCESS")) {
+                shaderLogTextarea.value = result;
+                shaderLogTextarea.classList.add('success');
             } else {
-                console.warn("nextShaderWeb not available yet");
+                shaderLogTextarea.value = result;
+                shaderLogTextarea.classList.remove('success');
             }
         });
 
-        document.addEventListener('keydown', (event) => {
-            if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
-                if (typeof Module !== 'undefined' && Module.prevShaderWeb) {
-                    Module.prevShaderWeb();
-                }
-            } else if (event.key === 'ArrowDown' || event.key === 'ArrowRight' || event.key === ' ') {
-                if (typeof Module !== 'undefined' && Module.nextShaderWeb) {
-                    Module.nextShaderWeb();
-                }
+        // Reset button
+        resetShaderBtn.addEventListener('click', () => {
+            if (typeof Module !== 'undefined' && Module.resetToDefaultShader) {
+                Module.resetToDefaultShader();
+                shaderLogTextarea.value = "Reset to default shader.";
+                shaderLogTextarea.classList.add('success');
             }
         });
 
+        // File input handler
         fileInput.addEventListener('change', (event) => {
             const file = event.target.files[0];
             if (!file) {
                 console.log("No file selected.");
                 return;
             }
+
             console.log(`Selected file: ${file.name}`);
+
             const fileName = file.name.toLowerCase();
             const isPNG = fileName.endsWith('.png');
-            const isJPG = fileName.endsWith(".jpg");
-            const isJPEG = fileName.endsWith(".jpeg");
-            
+            const isJPG = fileName.endsWith('.jpg') || fileName.endsWith('.jpeg');
 
-            if (!isPNG && !isJPG && !isJPEG) {
-                alert("Unsupported file format. Please select a PNG file.");
+            if (!isPNG && !isJPG) {
+                alert("Unsupported file format. Please select a PNG or JPG file.");
                 return;
             }
 
@@ -187,7 +631,9 @@
             reader.onload = (e) => {
                 const arrayBuffer = e.target.result;
                 const byteArray = new Uint8Array(arrayBuffer);
+
                 console.log(`File size: ${byteArray.length} bytes`);
+
                 if (typeof Module === 'undefined' || !Module.VectorU8) {
                     console.error("Module not ready yet. Please wait for the app to load.");
                     alert("Please wait for the application to fully load before loading images.");
@@ -221,6 +667,26 @@
 
             reader.readAsArrayBuffer(file);
             fileInput.value = '';
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            // Don't capture keys when typing in textarea
+            if (e.target === shaderCodeTextarea) return;
+            
+            if (e.key === 'Escape' && shaderEditorModal.classList.contains('visible')) {
+                shaderEditorModal.classList.remove('visible');
+            } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+                if (typeof Module !== 'undefined' && Module.prevShaderWeb) {
+                    Module.prevShaderWeb();
+                }
+            } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === ' ') {
+                if (typeof Module !== 'undefined' && Module.nextShaderWeb) {
+                    Module.nextShaderWeb();
+                }
+            } else if (e.key === 's' || e.key === 'S') {
+                saveButton.click();
+            }
         });
     </script>
 </body>
