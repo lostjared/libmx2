@@ -51,6 +51,16 @@ namespace gl {
         SDL_SetWindowIcon(window, ico);
     }
 
+     void GLWindow::restoreContext() {
+        if (webglContext > 0) {
+            emscripten_webgl_make_context_current(webglContext);
+            glViewport(0, 0, w, h);
+            if (object) {
+                object->resize(this, w, h);
+            }
+        }
+    }
+
     void GLWindow::initGL(const std::string &title, int width, int height, bool resize_) {
         mx::redirect();
         if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER | SDL_INIT_AUDIO) < 0) {
@@ -78,12 +88,22 @@ namespace gl {
     emscripten_webgl_init_context_attributes(&attrs);
     attrs.majorVersion = 2; 
     attrs.minorVersion = 0;
+    attrs.alpha = true;
+    attrs.depth = true;
+    attrs.stencil = true;
+    attrs.antialias = true;
+    attrs.premultipliedAlpha = true;
+    attrs.preserveDrawingBuffer = true;  
+    attrs.powerPreference = EM_WEBGL_POWER_PREFERENCE_HIGH_PERFORMANCE;
+    attrs.failIfMajorPerformanceCaveat = false;
+    attrs.enableExtensionsByDefault = true;
     EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context("#canvas", &attrs);
     if (context <= 0) {
         std::cerr << "Failed to create WebGL 2.0 context" << std::endl;
         exit(EXIT_FAILURE);
     }
     emscripten_webgl_make_context_current(context);
+    webglContext = context;
 #else
     glContext = SDL_GL_CreateContext(window);
     if (!glContext) {
@@ -961,6 +981,8 @@ namespace gl {
         this->shader->useProgram();
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, this->texture);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glBindVertexArray(VAO);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
         glBindVertexArray(0);

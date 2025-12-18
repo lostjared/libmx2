@@ -128,6 +128,12 @@ namespace gl {
    
     class GLWindow {
     public:
+
+#ifdef __EMSCRIPTEN__
+        EMSCRIPTEN_WEBGL_CONTEXT_HANDLE webglContext = 0;    
+        void restoreContext();
+#endif
+
         GLWindow(const std::string &text, int width, int height, bool resize_ = true) : glContext{nullptr}, window{nullptr} { 
             initGL(text, width, height, resize_);
         }
