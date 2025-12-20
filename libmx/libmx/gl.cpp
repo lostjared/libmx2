@@ -51,6 +51,7 @@ namespace gl {
         SDL_SetWindowIcon(window, ico);
     }
 
+#ifdef __EMSCRIPTEN__
      void GLWindow::restoreContext() {
         if (webglContext > 0) {
             emscripten_webgl_make_context_current(webglContext);
@@ -60,6 +61,7 @@ namespace gl {
             }
         }
     }
+#endf
 
     void GLWindow::initGL(const std::string &title, int width, int height, bool resize_) {
         mx::redirect();
