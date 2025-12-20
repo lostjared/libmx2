@@ -61,7 +61,7 @@ namespace gl {
             }
         }
     }
-#endf
+#endif
 
     void GLWindow::initGL(const std::string &title, int width, int height, bool resize_) {
         mx::redirect();
