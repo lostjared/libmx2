@@ -1,0 +1,81 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Holiday Demo</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: #000;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #canvas-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            background-color: black; /* Black bars will be visible here */
+        }
+
+        #canvas {
+            background-color: black; /* Fallback in case WebGL doesn't cover the entire canvas */
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container">
+        <canvas id="canvas" width="1440" height="1080"></canvas>
+    </div>
+    <script src="Snow.js?v=1.0"></script>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const gl = canvas.getContext('webgl2');
+        const canvasContainer = document.getElementById('canvas-container');
+
+        function resizeCanvas() {
+            const aspectRatio = 16 / 9;
+            const containerWidth = canvasContainer.clientWidth;
+            const containerHeight = canvasContainer.clientHeight;
+
+            let canvasWidth = containerWidth;
+            let canvasHeight = containerWidth / aspectRatio;
+
+            // If the calculated height exceeds the container height, adjust based on height
+            if (canvasHeight > containerHeight) {
+                canvasHeight = containerHeight;
+                canvasWidth = containerHeight * aspectRatio;
+            }
+
+            // Set the canvas size
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+
+            // Center the canvas within the container
+            canvas.style.width = `${canvasWidth}px`;
+            canvas.style.height = `${canvasHeight}px`;
+            canvas.style.position = 'absolute';
+            canvas.style.left = `${(containerWidth - canvasWidth) / 2}px`;
+            canvas.style.top = `${(containerHeight - canvasHeight) / 2}px`;
+
+            // Update WebGL viewport
+            if (gl) {
+                gl.viewport(0, 0, canvasWidth, canvasHeight);
+            }
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas(); 
+    </script>
+</body>
+</html>

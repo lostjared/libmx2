@@ -138,6 +138,9 @@ public:
     }
 
     void draw(gl::GLWindow *win) {
+        if (win->w <= 0 || win->h <= 0) {
+            return;
+        }
         
         glm::mat4 projection = glm::perspective(glm::radians(45.0f), 
                                               (float)win->w / (float)win->h, 
