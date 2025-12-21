@@ -83,6 +83,7 @@ namespace gl {
         int printShaderLog(GLuint shader);
         void printProgramLog(int p);
         bool checkError();
+        
     };
     
     class GLText {

@@ -83,6 +83,26 @@ namespace mx {
         return buffer;
     }
 
+    std::string readFileToString(const std::string& filename) {
+        std::ifstream file(filename, std::ios::in);
+        if (!file.is_open()) {
+            throw Exception("Failed to open file: " + filename);
+        }
+        file.seekg(0, std::ios::end);
+        size_t fileSize = (size_t)file.tellg();
+        if(fileSize == 0) {
+            return "";
+        }
+        char *buffer = new char [fileSize+1];
+        file.seekg(0);
+        file.read(buffer, fileSize);
+        buffer[fileSize] = 0;
+        file.close();
+        std::string temp = buffer;
+        delete [] buffer;
+        return temp;
+    }
+
     std::string mxUtil::getFilePath(const std::string &filename) {
         std::ostringstream stream;
         stream << path << "/" << filename;
