@@ -217,7 +217,7 @@ public:
     void load(gl::GLWindow *win) override {
         font.loadFont(win->util.getFilePath("data/font.ttf"), 36);
         snowEmitter.initPointSprites(win);
-        if(!bg_shader.loadProgramFromText(gl::vSource, gl::fSource)) {
+        if(!bg_shader.loadProgram(win->util.getFilePath("data/vert.glsl"), win->util.getFilePath("data/frag.glsl"))) {
             throw mx::Exception("Failed to load background shader");
         }
         background.initSize(win->w, win->h);
@@ -228,9 +228,11 @@ public:
 
         glDisable(GL_DEPTH_TEST);
         bg_shader.useProgram();
+        bg_shader.setUniform("time_f", SDL_GetTicks()/1000.0f);
+        glUniform2f(glGetUniformLocation(bg_shader.id(), "iResolution"), win->w, win->h);
+        bg_shader.setUniform("textTexture", 0);
         background.draw();
         glEnable(GL_DEPTH_TEST);
-
         Uint32 currentTime = SDL_GetTicks();
         float deltaTime = (currentTime - lastUpdateTime) / 1000.0f; 
         lastUpdateTime = currentTime;
