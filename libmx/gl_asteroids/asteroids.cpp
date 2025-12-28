@@ -2099,8 +2099,6 @@ public:
             child.velocity = directionFromParent * generateRandomFloat(2.0f, 5.0f);
         }
     }
-
-private:
     static std::unique_ptr<mx::Model> models[3];
     static std::unique_ptr<gl::ShaderProgram> shader;
 };
@@ -2125,7 +2123,16 @@ class Game : public gl::GLObject {
 public:
     Game() = default;
     virtual ~Game() override {
-        if(texture)
+        planets.clear();
+        for (int i = 0; i < 3; ++i) {
+            if (Planet::models[i]) {
+                Planet::models[i].reset();
+            }
+        }
+        if (Planet::shader) {
+            Planet::shader.reset();
+        }
+        if (texture)
             glDeleteTextures(1, &texture);
     }
     void load(gl::GLWindow *win) override {
