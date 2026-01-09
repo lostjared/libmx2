@@ -66,16 +66,24 @@ namespace gl {
     void GLWindow::initGL(const std::string &title, int width, int height, bool resize_) {
         mx::redirect();
         if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER | SDL_INIT_AUDIO) < 0) {
-            mx::system_err << "Error initalizing SDL.\n";
+            mx::system_err << "Error initalizing SDL: " << SDL_GetError() << "\n";
             mx::system_err.flush();
             exit(EXIT_FAILURE);
         }
 #ifndef __EMSCRIPTEN__
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-	    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-	    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-        SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
-        SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+        if(gl_mode == GLMode::DESKTOP) {
+            SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+	        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+	        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+            SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+            SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+        } else {
+            SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+	        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+	        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+            SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+            SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+        }
 #endif
         if(resize_) {
             window = SDL_CreateWindow(title.c_str(),SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,width,height,SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);

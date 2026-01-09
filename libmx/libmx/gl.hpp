@@ -125,9 +125,12 @@ namespace gl {
         std::string textureName;
     };
 
+    enum class GLMode  { DESKTOP, ES };
+
     class GLObject;
    
     class GLWindow {
+        GLMode gl_mode;
     public:
 
 #ifdef __EMSCRIPTEN__
@@ -135,9 +138,10 @@ namespace gl {
         void restoreContext();
 #endif
 
-        GLWindow(const std::string &text, int width, int height, bool resize_ = true) : glContext{nullptr}, window{nullptr} { 
+        GLWindow(const std::string &text, int width, int height, bool resize_ = true, GLMode mode = GLMode::ES) : gl_mode(mode), glContext{nullptr}, window{nullptr} { 
             initGL(text, width, height, resize_);
         }
+
         virtual ~GLWindow();
         void initGL(const std::string &title, int width, int height, bool resize_ = true);
         void updateViewport();
