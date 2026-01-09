@@ -1321,8 +1321,10 @@ namespace console {
             console.clearText();
             return true;
         } else if (cmd.size() > 0 && cmd[0] == "exit") {
-            print("Exiting console...\n");
-            exit(0);
+            print("Exiting...\n");
+            if (console.window) {
+                console.window->quit();
+            }
             return true;
         } else if(cmd.size() == 5 && cmd[0] == "settext") {
                 int size = std::stoi(cmd[1]);
