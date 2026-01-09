@@ -360,7 +360,7 @@ class Game : public gl::GLObject {
         shader_source << file.rdbuf();
         file.close();
         if(program.loadProgramFromText(vSource, shader_source.str())) {
-            program.silent(true);
+            program.setSilent(true);
             program.useProgram();
             program.setUniform("textTexture", 0);
             program.setUniform("time_f", 0.0f);
@@ -384,7 +384,7 @@ class Game : public gl::GLObject {
         file.close();
 
         if(program.loadProgramFromText(vSource, shader_source.str())) {
-            program.silent(true);
+            program.setSilent(true);
             program.useProgram();
             program.setUniform("textTexture", 0);
             program.setUniform("time_f", 0.0f);
