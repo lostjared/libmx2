@@ -138,7 +138,7 @@ namespace gl {
         void restoreContext();
 #endif
 
-        GLWindow(const std::string &text, int width, int height, bool resize_ = true, GLMode mode = GLMode::ES) : gl_mode(mode), glContext{nullptr}, window{nullptr} { 
+        GLWindow(const std::string &text, int width, int height, bool resize_ = true, GLMode mode = GLMode::DESKTOP) : gl_mode(mode), glContext{nullptr}, window{nullptr} { 
             initGL(text, width, height, resize_);
         }
 
