@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
             MainWindow window("", 960, 720);
             window.initVulkan();
             window.loop();   
-            window.clenaup();
+            window.cleanup();
         } catch (mx::Exception &e) {
             SDL_Log("mx: Exception: %s\n", e.text().c_str());
         }

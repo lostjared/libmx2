@@ -53,6 +53,11 @@ namespace mx {
         std::vector<VkPresentModeKHR> presentModes;
     };
 
+    struct UniformBufferObject {
+        float time;
+        alignas(16) glm::vec3 color; 
+    };
+
     class VKWindow {
     public:
         VKWindow() = default;
@@ -85,7 +90,9 @@ namespace mx {
         VkFormat swapChainImageFormat;
         VkExtent2D swapChainExtent;
         std::vector<VkImageView> swapChainImageViews;
-
+        std::vector<VkBuffer> uniformBuffers;
+        std::vector<VkDeviceMemory> uniformBuffersMemory;
+        std::vector<void*> uniformBuffersMapped;
 
         VkRenderPass renderPass = VK_NULL_HANDLE;
         VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
@@ -120,6 +127,7 @@ namespace mx {
         void createSurface();
         void pickPhysicalDevice();
         void createLogicalDevice();
+        void createUniformBuffers();
         virtual void createSwapChain();
         void createImageViews();
         void createRenderPass();
