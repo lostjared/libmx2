@@ -296,13 +296,16 @@ namespace mx {
         vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
         for (const auto& deviceCandidate : devices) {
             if (isDeviceSuitable(deviceCandidate)) {
-                physicalDevice = deviceCandidate;
+                physicalDevice = deviceCandidate;            
                 break;
             }
         }
         if (physicalDevice == VK_NULL_HANDLE) {
             throw mx::Exception("Failed to find a suitable GPU!");
         }
+        VkPhysicalDeviceProperties deviceProperties;
+        vkGetPhysicalDeviceProperties(physicalDevice, &deviceProperties);
+        std::cout << "Device Name: " << deviceProperties.deviceName << std::endl;
     }
 
     void VKWindow::createLogicalDevice() {
