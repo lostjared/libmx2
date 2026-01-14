@@ -363,6 +363,9 @@ public:
                     } catch(const scan::ScanExcept &e) {
                         window->console.thread_safe_print("Scanner Exception: " + e.why() + "\n");
                         window->console.process_message_queue();
+                    } catch(const cmd::AstFailure  &e) {
+                        window->console.thread_safe_print("Failure: " + std::string(e.what()) + "\n");
+                        window->console.process_message_queue();
                     } catch(const cmd::Exit_Exception &e) {
                            if(e.getCode() == 100) {
                             window->console.thread_safe_print("Execution interrupted\n");
@@ -381,9 +384,6 @@ public:
                         window->console.process_message_queue();
                     } catch (const state::StateException &e) {
                         window->console.thread_safe_print("State Exception: " + std::string(e.what()) + "\n");
-                        window->console.process_message_queue();
-                    } catch(const cmd::AstFailure  &e) {
-                        window->console.thread_safe_print("Failure: " + std::string(e.what()) + "\n");
                         window->console.process_message_queue();
                     } catch(...) {
                         window->console.thread_safe_print("Unknown Error: Command execution failed\n");
