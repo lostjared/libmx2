@@ -572,9 +572,6 @@ endif()
 
 add_subdirectory(mxmod_compress)
 
-# ==============================================================================
-# Configuration Summary
-# ==============================================================================
 message(STATUS "")
 message(STATUS "=== Configuration Summary ===")
 message(STATUS "Project: ${PROJECT_NAME} ${PROJECT_VERSION}")
