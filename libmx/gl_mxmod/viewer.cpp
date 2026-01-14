@@ -36,7 +36,6 @@ public:
     float cameraPitch = 0.0f;
     const float cameraRotationSpeed = 5.0f;
     
-    // Bounding box and auto-camera
     glm::vec3 modelMin = glm::vec3(std::numeric_limits<float>::max());
     glm::vec3 modelMax = glm::vec3(std::numeric_limits<float>::lowest());
     glm::vec3 modelCenter = glm::vec3(0.0f);
@@ -53,7 +52,6 @@ public:
     }
 
     float zoom = 75.0f;
-
     virtual void load(gl::GLWindow *win) override {
         if(texture_path.empty()) {
             texture_path = win->util.getFilePath("data");
@@ -65,7 +63,6 @@ public:
         }
         mx::system_out << "mx: Loaded Meshes:  " << obj_model.meshes.size() << "\n";
         
-        // Calculate bounding box from all mesh vertices
         for (const auto &mesh : obj_model.meshes) {
             for (size_t i = 0; i < mesh.vert.size(); i += 3) {
                 float x = mesh.vert[i];
@@ -80,16 +77,14 @@ public:
             }
         }
         
-        // Calculate model center and radius
+        
         modelCenter = (modelMin + modelMax) * 0.5f;
         glm::vec3 extent = modelMax - modelMin;
         modelRadius = glm::length(extent) * 0.5f;
         
-        // Set camera distance based on model size (2.5x radius for good view)
         baseCameraDistance = modelRadius * 2.5f;
         outsideCameraPos = glm::vec3(modelCenter.x, modelCenter.y, modelCenter.z + baseCameraDistance);
         
-        // Set zoom limits based on model size
         zoom = 45.0f;
         outsideFOV = zoom;
         
@@ -97,7 +92,6 @@ public:
                        << modelMax.x << ", " << modelMax.y << ", " << modelMax.z << ")\n";
         mx::system_out << "mx: Model center: (" << modelCenter.x << ", " << modelCenter.y << ", " << modelCenter.z << ")\n";
         mx::system_out << "mx: Model radius: " << modelRadius << ", Camera distance: " << baseCameraDistance << "\n";
-
 
         if (!shaderProgram.loadProgram(win->util.getFilePath("data/tri.vert"), win->util.getFilePath("data/tri.frag"))) {
             throw mx::Exception("Failed to load shader program");
@@ -394,6 +388,12 @@ int main(int argc, char **argv) {
     } catch (const ArgException<std::string>& e) {
         mx::system_err << e.text() << "\n";
     }
+
+    if(parser.count() == 0) {
+        parser.help(mx::system_out);
+        exit(EXIT_SUCCESS);
+    }
+
     if(path.empty()) {
         mx::system_out << "mx: No path provided trying default current directory.\n";
         path = ".";
