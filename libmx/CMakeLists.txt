@@ -296,13 +296,31 @@ if(OPENGL)
   message(STATUS "  GL LIB: ${GL_LIB}")
   
   if(ES3)
+    message(STATUS "")
+    message(STATUS "=== Checking OpenGL ES3 ===")
     message(STATUS "OpenGL ES3 Support Enabled.")
-    # Check for GLES3 headers on relevant platforms
-    if(NOT APPLE AND NOT WIN32)
-      check_include_file(GLES3/gl3.h HAVE_GLES3_H)
-      if(NOT HAVE_GLES3_H)
-        message(WARNING "GLES3/gl3.h not found. ES3 support may be limited.")
-      endif()
+    # Check for GLES3 headers
+    check_include_file(GLES3/gl3.h HAVE_GLES3_GL3_H)
+    check_include_file(GLES3/gl3platform.h HAVE_GLES3_PLATFORM_H)
+    check_include_file(GLES3/gl32.h HAVE_GLES3_GL32_H)
+    check_include_file(GLES3/gl31.h HAVE_GLES3_GL31_H)
+    if(NOT HAVE_GLES3_GL3_H)
+      message(FATAL_ERROR "GLES3/gl3.h header not found. OpenGL ES3 support requires GLES3 headers.\n"
+                          "  Ubuntu/Debian: sudo apt install libgles2-mesa-dev\n"
+                          "  Fedora: sudo dnf install mesa-libGLES-devel\n"
+                          "  Arch: sudo pacman -S mesa\n"
+                          "  Or disable ES3 with: -DES3=OFF")
+    endif()
+    
+    message(STATUS "  GLES3/gl3.h: Found")
+    if(HAVE_GLES3_PLATFORM_H)
+      message(STATUS "  GLES3/gl3platform.h: Found")
+    endif()
+    if(HAVE_GLES3_GL31_H)
+      message(STATUS "  GLES3/gl31.h: Found")
+    endif()
+    if(HAVE_GLES3_GL32_H)
+      message(STATUS "  GLES3/gl32.h: Found")
     endif()
   endif()
 else()
@@ -591,6 +609,12 @@ if(OPENGL)
   set(WITH_OPENGL_VAL 1)
 else()
   set(WITH_OPENGL_VAL 0)
+endif()
+
+if(ES3) 
+  set(WITH_OPENGL_ES3 1)
+else()
+  set(WITH_OPENGL_ES3 0)
 endif()
 
 if(VULKAN)
