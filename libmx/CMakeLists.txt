@@ -7,6 +7,15 @@ set(OpenGL_GL_PREFERENCE "GLVND")
 set(CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_PREFIX}/lib)
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON) 
+
+# Include necessary modules for checking headers and functions
+include(CheckIncludeFile)
+include(CheckIncludeFileCXX)
+include(CheckFunctionExists)
+include(CheckLibraryExists)
+include(CheckSymbolExists)
+include(CheckCXXSourceCompiles)
+
 option(DEBUG_MODE "Debug mode" OFF)
 if(DEBUG_MODE)
   add_compile_definitions(DEBUG_MODE)
@@ -25,12 +34,170 @@ if(UNIX AND NOT APPLE)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
 endif()
 
-add_compile_options(-Wall) 
+add_compile_options(-Wall)
 
+# ==============================================================================
+# System Header Checks
+# ==============================================================================
+message(STATUS "")
+message(STATUS "=== Checking System Headers ===")
+
+# Standard C++ headers
+check_include_file_cxx(iostream HAVE_IOSTREAM)
+check_include_file_cxx(string HAVE_STRING)
+check_include_file_cxx(vector HAVE_VECTOR)
+check_include_file_cxx(memory HAVE_MEMORY)
+check_include_file_cxx(fstream HAVE_FSTREAM)
+check_include_file_cxx(sstream HAVE_SSTREAM)
+check_include_file_cxx(optional HAVE_OPTIONAL)
+check_include_file_cxx(thread HAVE_THREAD)
+check_include_file_cxx(mutex HAVE_MUTEX)
+check_include_file_cxx(atomic HAVE_ATOMIC)
+check_include_file_cxx(functional HAVE_FUNCTIONAL)
+check_include_file_cxx(unordered_map HAVE_UNORDERED_MAP)
+check_include_file_cxx(queue HAVE_QUEUE)
+check_include_file_cxx(condition_variable HAVE_CONDITION_VARIABLE)
+check_include_file_cxx(set HAVE_SET)
+check_include_file_cxx(array HAVE_ARRAY)
+check_include_file_cxx(algorithm HAVE_ALGORITHM)
+check_include_file_cxx(stdexcept HAVE_STDEXCEPT)
+
+set(MISSING_STD_HEADERS "")
+if(NOT HAVE_IOSTREAM)
+  list(APPEND MISSING_STD_HEADERS "iostream")
+endif()
+if(NOT HAVE_STRING)
+  list(APPEND MISSING_STD_HEADERS "string")
+endif()
+if(NOT HAVE_VECTOR)
+  list(APPEND MISSING_STD_HEADERS "vector")
+endif()
+if(NOT HAVE_MEMORY)
+  list(APPEND MISSING_STD_HEADERS "memory")
+endif()
+if(NOT HAVE_FSTREAM)
+  list(APPEND MISSING_STD_HEADERS "fstream")
+endif()
+if(NOT HAVE_OPTIONAL)
+  list(APPEND MISSING_STD_HEADERS "optional (C++17 required)")
+endif()
+if(NOT HAVE_THREAD)
+  list(APPEND MISSING_STD_HEADERS "thread")
+endif()
+if(NOT HAVE_MUTEX)
+  list(APPEND MISSING_STD_HEADERS "mutex")
+endif()
+
+if(MISSING_STD_HEADERS)
+  message(FATAL_ERROR "Missing required C++ standard headers: ${MISSING_STD_HEADERS}. "
+                      "Please ensure you have a C++20 compliant compiler installed.")
+endif()
+message(STATUS "All required C++ standard headers found.")
+
+# Standard C headers  
+check_include_file(stdlib.h HAVE_STDLIB_H)
+check_include_file(stdio.h HAVE_STDIO_H)
+check_include_file(stdint.h HAVE_STDINT_H)
+check_include_file(string.h HAVE_STRING_H)
+
+if(NOT HAVE_STDLIB_H OR NOT HAVE_STDIO_H OR NOT HAVE_STDINT_H)
+  message(FATAL_ERROR "Missing required C standard headers (stdlib.h, stdio.h, stdint.h)")
+endif()
+message(STATUS "All required C standard headers found.")
+
+# ==============================================================================
+# C++20 Feature Check
+# ==============================================================================
+message(STATUS "")
+message(STATUS "=== Checking C++20 Compatibility ===")
+
+check_cxx_source_compiles("
+#include <version>
+#if __cplusplus < 202002L
+#error C++20 required
+#endif
+int main() { return 0; }
+" HAVE_CXX20)
+
+if(NOT HAVE_CXX20)
+  message(WARNING "C++20 support may not be fully available. Some features might not compile correctly.")
+else()
+  message(STATUS "C++20 support confirmed.")
+endif()
+
+# ==============================================================================
+# Required Dependencies - SDL2, SDL2_ttf, ZLIB, PNG
+# ==============================================================================
+message(STATUS "")
+message(STATUS "=== Checking Required Dependencies ===")
+
+# SDL2
 find_package(SDL2 REQUIRED)
+if(SDL2_FOUND)
+  message(STATUS "SDL2 found: ${SDL2_VERSION}")
+  message(STATUS "  Include dirs: ${SDL2_INCLUDE_DIRS}")
+  message(STATUS "  Libraries: ${SDL2_LIBRARIES}")
+else()
+  message(FATAL_ERROR "SDL2 not found. Please install SDL2 development package.\n"
+                      "  Ubuntu/Debian: sudo apt install libsdl2-dev\n"
+                      "  Fedora: sudo dnf install SDL2-devel\n"
+                      "  Arch: sudo pacman -S sdl2\n"
+                      "  macOS: brew install sdl2")
+endif()
+
+# Check for required SDL2 headers
+set(CMAKE_REQUIRED_INCLUDES ${SDL2_INCLUDE_DIRS})
+check_include_file(SDL.h HAVE_SDL_H)
+check_include_file(SDL2/SDL.h HAVE_SDL2_SDL_H)
+if(NOT HAVE_SDL_H AND NOT HAVE_SDL2_SDL_H)
+  message(FATAL_ERROR "SDL.h header not found. Please install SDL2 development package.")
+endif()
+
+# SDL2_ttf
 find_package(SDL2_ttf REQUIRED)
+message(STATUS "SDL2_ttf found")
+
+# ZLIB
 find_package(ZLIB REQUIRED)
+if(ZLIB_FOUND)
+  message(STATUS "ZLIB found: ${ZLIB_VERSION_STRING}")
+  message(STATUS "  Include dirs: ${ZLIB_INCLUDE_DIRS}")
+  message(STATUS "  Libraries: ${ZLIB_LIBRARIES}")
+else()
+  message(FATAL_ERROR "ZLIB not found. Please install zlib development package.\n"
+                      "  Ubuntu/Debian: sudo apt install zlib1g-dev\n"
+                      "  Fedora: sudo dnf install zlib-devel\n"
+                      "  Arch: sudo pacman -S zlib\n"
+                      "  macOS: brew install zlib")
+endif()
+
+# Check ZLIB headers
+set(CMAKE_REQUIRED_INCLUDES ${ZLIB_INCLUDE_DIRS})
+check_include_file(zlib.h HAVE_ZLIB_H)
+if(NOT HAVE_ZLIB_H)
+  message(FATAL_ERROR "zlib.h header not found.")
+endif()
+
+# PNG
 find_package(PNG REQUIRED)
+if(PNG_FOUND)
+  message(STATUS "PNG found: ${PNG_VERSION_STRING}")
+  message(STATUS "  Include dirs: ${PNG_INCLUDE_DIRS}")
+  message(STATUS "  Libraries: ${PNG_LIBRARIES}")
+else()
+  message(FATAL_ERROR "libpng not found. Please install libpng development package.\n"
+                      "  Ubuntu/Debian: sudo apt install libpng-dev\n"
+                      "  Fedora: sudo dnf install libpng-devel\n"
+                      "  Arch: sudo pacman -S libpng\n"
+                      "  macOS: brew install libpng")
+endif()
+
+# Check PNG headers
+set(CMAKE_REQUIRED_INCLUDES ${PNG_INCLUDE_DIRS})
+check_include_file(png.h HAVE_PNG_H)
+if(NOT HAVE_PNG_H)
+  message(FATAL_ERROR "png.h header not found.")
+endif()
 
 set(PNG_LIBS ${PNG_LIBRARIES} ${ZLIB_LIBRARIES})
 set(PNG_DIRS ${ZLIB_INCLUDE_DIRS} ${PNG_INCLUDE_DIRS})
@@ -40,6 +207,12 @@ set(SDL2_TTF_LIBRARIES SDL2_ttf::SDL2_ttf)
 include(GNUInstallDirs)
 set(INSTALL_INCLUDE_DIR ${CMAKE_INSTALL_INCLUDEDIR}/mx2)
 set(INSTALL_LIB_DIR ${CMAKE_INSTALL_LIBDIR})
+
+# ==============================================================================
+# Optional Feature Flags
+# ==============================================================================
+message(STATUS "")
+message(STATUS "=== Optional Features Configuration ===")
 
 option(EXAMPLES "Build Example Projects" ON)
 option(JPEG "Build with JPEG Support" OFF)        
@@ -57,80 +230,211 @@ else()
 message(STATUS "libcmd: Disabled")
 endif()
 
+# ==============================================================================
+# SDL2_mixer (Optional - for Sound Support)
+# ==============================================================================
 if(MIXER)
+  message(STATUS "")
+  message(STATUS "=== Checking SDL2_mixer ===")
   find_package(SDL2_mixer REQUIRED)
+  message(STATUS "SDL2_mixer found")
+  
+  # Check for SDL_mixer.h header
+  set(CMAKE_REQUIRED_INCLUDES ${SDL2_MIXER_INCLUDE_DIRS})
+  check_include_file(SDL_mixer.h HAVE_SDL_MIXER_H)
+  check_include_file(SDL2/SDL_mixer.h HAVE_SDL2_SDL_MIXER_H)
+  if(NOT HAVE_SDL_MIXER_H AND NOT HAVE_SDL2_SDL_MIXER_H)
+    message(WARNING "SDL_mixer.h header not found in standard paths - continuing anyway.")
+  endif()
+  
   set(MIXER_INCLUDE ${SDL2_MIXER_INCLUDE_DIRS})
   set(MIXER_LIB SDL2_mixer::SDL2_mixer)
   message(STATUS "Added SDL_mixer support")
-  message(STATUS "MIXER_INCLUDE: ${MIXER_INCLUDE}")
-  message(STATUS "MIXER_LIB: ${MIXER_LIB}")
-  # add_compile_definitions(WITH_MIXER)
+  message(STATUS "  MIXER_INCLUDE: ${MIXER_INCLUDE}")
+  message(STATUS "  MIXER_LIB: ${MIXER_LIB}")
 else()
   message(STATUS "SDL_mixer disabled.")
 endif()
 
+# ==============================================================================
+# OpenGL and GLM (Optional - for OpenGL Support)
+# ==============================================================================
 if(OPENGL)
+  message(STATUS "")
+  message(STATUS "=== Checking OpenGL and GLM ===")
+  
   find_package(OpenGL REQUIRED)
+  message(STATUS "OpenGL found")
+  message(STATUS "  OpenGL include dirs: ${OPENGL_INCLUDE_DIR}")
+  message(STATUS "  OpenGL libraries: ${OPENGL_gl_LIBRARY}")
+  
   find_package(glm REQUIRED)
+  message(STATUS "GLM found")
+  
+  # Check for GLM headers
+  check_include_file_cxx(glm/glm.hpp HAVE_GLM_HPP)
+  if(NOT HAVE_GLM_HPP)
+    set(CMAKE_REQUIRED_INCLUDES ${GLM_INCLUDE_DIRS})
+    check_include_file_cxx(glm/glm.hpp HAVE_GLM_HPP_WITH_PATH)
+    if(NOT HAVE_GLM_HPP_WITH_PATH)
+      message(WARNING "glm/glm.hpp header check failed - continuing anyway.")
+    endif()
+  endif()
+  
+  # Check for GLAD (bundled with project)
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libmx/src/glad.c")
+    message(STATUS "GLAD source found (bundled)")
+  else()
+    message(WARNING "GLAD source (glad.c) not found in libmx/src/. OpenGL may not work correctly.")
+  endif()
+  
   set(GL_INCLUDE ${OpenGL_INCLUDE_DIRS} ${GLM_INCLUDE_DIRS})
   set(GL_LIB ${OPENGL_gl_LIBRARY})
   set(GL_SRC src/glad.c console.cpp)
   message(STATUS "Added OpenGL/GLM Support")
-  message(STATUS "GL INCLUDE: ${GL_INCLUDE}")
-  message(STATUS "GL LIB: ${GL_LIB}")
-  # add_compile_definitions(WITH_GL)
+  message(STATUS "  GL INCLUDE: ${GL_INCLUDE}")
+  message(STATUS "  GL LIB: ${GL_LIB}")
+  
   if(ES3)
-  message(STATUS "OpenGL ES3 Support Enabled.")
+    message(STATUS "OpenGL ES3 Support Enabled.")
+    # Check for GLES3 headers on relevant platforms
+    if(NOT APPLE AND NOT WIN32)
+      check_include_file(GLES3/gl3.h HAVE_GLES3_H)
+      if(NOT HAVE_GLES3_H)
+        message(WARNING "GLES3/gl3.h not found. ES3 support may be limited.")
+      endif()
+    endif()
   endif()
 else()
   message(STATUS "OpenGL Support Disabled.")
 endif()
 
+# ==============================================================================
+# Vulkan (Optional - for Vulkan Support)
+# ==============================================================================
 if(VULKAN)
+  message(STATUS "")
+  message(STATUS "=== Checking Vulkan ===")
+  
   if(MOLTEN)
-  message(FATAL_ERROR "Its either Vulkan or MoltenVK")
+    message(FATAL_ERROR "Cannot enable both VULKAN and MOLTEN. Choose one:\n"
+                        "  -DVULKAN=ON -DMOLTEN=OFF  (for standard Vulkan)\n"
+                        "  -DVULKAN=OFF -DMOLTEN=ON  (for MoltenVK on macOS)")
   endif()
+  
   set(CMAKE_PREFIX_PATH "$ENV{VULKAN_SDK}")
   find_package(Vulkan REQUIRED)
+  message(STATUS "Vulkan found")
+  message(STATUS "  Vulkan include dirs: ${Vulkan_INCLUDE_DIRS}")
+  message(STATUS "  Vulkan libraries: ${Vulkan_LIBRARIES}")
+  
+  # Check for Vulkan headers
+  set(CMAKE_REQUIRED_INCLUDES ${Vulkan_INCLUDE_DIRS})
+  check_include_file(vulkan/vulkan.h HAVE_VULKAN_H)
+  if(NOT HAVE_VULKAN_H)
+    message(WARNING "vulkan/vulkan.h header check failed - continuing anyway.")
+  endif()
+  
+  # Check for SDL2_vulkan
+  set(CMAKE_REQUIRED_INCLUDES ${SDL2_INCLUDE_DIRS})
+  check_include_file(SDL2/SDL_vulkan.h HAVE_SDL_VULKAN_H)
+  check_include_file(SDL_vulkan.h HAVE_SDL_VULKAN_H_ALT)
+  if(NOT HAVE_SDL_VULKAN_H AND NOT HAVE_SDL_VULKAN_H_ALT)
+    message(WARNING "SDL_vulkan.h header check failed - continuing anyway.")
+  endif()
+  
+  # Check for volk (bundled Vulkan loader)
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libmx/volk.c" OR EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libmx/src/volk.c")
+    message(STATUS "Volk source found (bundled)")
+  else()
+    message(WARNING "volk.c not found. Vulkan loading may not work correctly.")
+  endif()
+  
   find_package(glm REQUIRED)
+  
   set(VK_INCLUDE ${Vulkan_INCLUDE_DIRS} ${GLM_INCLUDE_DIRS})
   if(UNIX AND NOT APPLE)
-  set(VK_LIB Vulkan::Vulkan)
+    set(VK_LIB Vulkan::Vulkan)
   else()
-  set(VK_LIB "")
+    set(VK_LIB "")
   endif()
   set(VK_SRC vk.cpp volk.c)
-  message(STATUS "Vulkan Include: ${VK_INCLUDE}")
-  message(STATUS "Vulkan Lib: ${VK_LIB}")
+  message(STATUS "  Vulkan Include: ${VK_INCLUDE}")
+  message(STATUS "  Vulkan Lib: ${VK_LIB}")
 else()
   message(STATUS "Vulkan Support Disabled.")
 endif()
 
+# ==============================================================================
+# MoltenVK (Optional - for Vulkan on macOS)
+# ==============================================================================
 if(MOLTEN)
+  message(STATUS "")
+  message(STATUS "=== Checking MoltenVK ===")
+  
   if(VULKAN)
-  message(FATAL_ERROR "Its ethier Vulkan or MoltenVK")
+    message(FATAL_ERROR "Cannot enable both VULKAN and MOLTEN. Choose one:\n"
+                        "  -DVULKAN=ON -DMOLTEN=OFF  (for standard Vulkan)\n"
+                        "  -DVULKAN=OFF -DMOLTEN=ON  (for MoltenVK on macOS)")
   endif()
+  
   if(NOT MOLTEN_PATH)
-  set(MOLTEN_PATH /usr/local/opt/molten-vk)
+    set(MOLTEN_PATH /usr/local/opt/molten-vk)
   endif()
+  
+  # Check if MoltenVK exists at the specified path
+  if(NOT EXISTS "${MOLTEN_PATH}")
+    message(FATAL_ERROR "MoltenVK not found at ${MOLTEN_PATH}.\n"
+                        "  Please install MoltenVK or set MOLTEN_PATH:\n"
+                        "  macOS: brew install molten-vk\n"
+                        "  Or: cmake -DMOLTEN_PATH=/path/to/molten-vk ..\n"
+                        "  Or disable with: -DMOLTEN=OFF")
+  endif()
+  
+  # Check for MoltenVK headers
+  if(NOT EXISTS "${MOLTEN_PATH}/include/vulkan/vulkan.h")
+    message(FATAL_ERROR "MoltenVK vulkan.h not found at ${MOLTEN_PATH}/include/vulkan/")
+  endif()
+  
+  # Check for MoltenVK library
+  if(NOT EXISTS "${MOLTEN_PATH}/lib/libMoltenVK.dylib")
+    message(FATAL_ERROR "libMoltenVK.dylib not found at ${MOLTEN_PATH}/lib/")
+  endif()
+  
   find_package(glm REQUIRED)
+  
   set(VK_INCLUDE ${MOLTEN_PATH}/include ${GLM_INCLUDE_DIRS})
   set(VK_SRC vk.cpp)
   set(VK_LIB "${MOLTEN_PATH}/lib/libMoltenVK.dylib")
-  message(STATUS "MoltenVK Include: ${VK_INCLUDE}")
-  message(STATUS "MoltenVK LIB: ${VK_LIB}")
+  message(STATUS "MoltenVK found at ${MOLTEN_PATH}")
+  message(STATUS "  MoltenVK Include: ${VK_INCLUDE}")
+  message(STATUS "  MoltenVK LIB: ${VK_LIB}")
 else()
   message(STATUS "MoltenVK Disabled.")
 endif()
 
+# ==============================================================================
+# JPEG (Optional - for JPEG Image Support)
+# ==============================================================================
 if(JPEG)
+  message(STATUS "")
+  message(STATUS "=== Checking JPEG ===")
+  
   find_package(JPEG REQUIRED)
-  message(STATUS "Added JPEG Support")
-  message(STATUS "JPEG Libraries: ${JPEG_LIBRARIES}")
-  message(STATUS "JPEG Include Dirs: ${JPEG_INCLUDE_DIRS}")
-  # add_compile_definitions(WITH_JPEG)
+  message(STATUS "JPEG found: ${JPEG_VERSION}")
+  message(STATUS "  JPEG Libraries: ${JPEG_LIBRARIES}")
+  message(STATUS "  JPEG Include Dirs: ${JPEG_INCLUDE_DIRS}")
+  
+  # Check for JPEG headers
+  set(CMAKE_REQUIRED_INCLUDES ${JPEG_INCLUDE_DIRS})
+  check_include_file(jpeglib.h HAVE_JPEGLIB_H)
+  if(NOT HAVE_JPEGLIB_H)
+    message(WARNING "jpeglib.h header check failed - continuing anyway.")
+  endif()
+  
   set(IMG_INCLUDE ${JPEG_INCLUDE_DIRS} ${ZLIB_INCLUDE_DIRS} ${PNG_INCLUDE_DIRS})
   set(IMG_LIB ${JPEG_LIBRARIES} ${PNG_LIBRARIES} ${ZLIB_LIBRARIES})
+  message(STATUS "Added JPEG Support")
 else()
   message(STATUS "JPEG Disabled")
   set(IMG_LIB ${PNG_LIBRARIES} ${ZLIB_LIBRARIES})
@@ -249,6 +553,33 @@ else()
 endif()
 
 add_subdirectory(mxmod_compress)
+
+# ==============================================================================
+# Configuration Summary
+# ==============================================================================
+message(STATUS "")
+message(STATUS "=== Configuration Summary ===")
+message(STATUS "Project: ${PROJECT_NAME} ${PROJECT_VERSION}")
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+message(STATUS "C++ Standard: ${CMAKE_CXX_STANDARD}")
+message(STATUS "Install prefix: ${CMAKE_INSTALL_PREFIX}")
+message(STATUS "")
+message(STATUS "Required Dependencies:")
+message(STATUS "  SDL2:     Found (${SDL2_VERSION})")
+message(STATUS "  SDL2_ttf: Found")
+message(STATUS "  ZLIB:     Found (${ZLIB_VERSION_STRING})")
+message(STATUS "  PNG:      Found (${PNG_VERSION_STRING})")
+message(STATUS "")
+message(STATUS "Optional Features:")
+message(STATUS "  OpenGL:   ${OPENGL}")
+message(STATUS "  OpenGL ES3: ${ES3}")
+message(STATUS "  Vulkan:   ${VULKAN}")
+message(STATUS "  MoltenVK: ${MOLTEN}")
+message(STATUS "  Mixer:    ${MIXER}")
+message(STATUS "  JPEG:     ${JPEG}")
+message(STATUS "  libcmd:   ${CMD}")
+message(STATUS "  Examples: ${EXAMPLES}")
+message(STATUS "")
 
 if(MIXER)
   set(WITH_MIXER_VAL 1)
