@@ -10,6 +10,8 @@
 #include"loadpng.hpp"
 #include"model.hpp"
 #include<tuple>
+#include<limits>
+#include<cmath>
 
 #define CHECK_GL_ERROR() \
     { GLenum err = glGetError(); \
@@ -33,6 +35,13 @@ public:
     float cameraYaw = 0.0f;
     float cameraPitch = 0.0f;
     const float cameraRotationSpeed = 5.0f;
+    
+    // Bounding box and auto-camera
+    glm::vec3 modelMin = glm::vec3(std::numeric_limits<float>::max());
+    glm::vec3 modelMax = glm::vec3(std::numeric_limits<float>::lowest());
+    glm::vec3 modelCenter = glm::vec3(0.0f);
+    float modelRadius = 1.0f;
+    float baseCameraDistance = 50.0f;
 
     ModelViewer(const std::string &filename, const std::string &text, std::string text_path) : rot_x{1.0f, true}, rot_y{1.0f, true}, rot_z{0.0f, false}, light(0.0, 10.0, 5.0) {
         this->filename = filename;
@@ -43,7 +52,7 @@ public:
         glDeleteTextures(1, &texture);
     }
 
-    float zoom = 45.0f;
+    float zoom = 75.0f;
 
     virtual void load(gl::GLWindow *win) override {
         if(texture_path.empty()) {
@@ -55,6 +64,39 @@ public:
             throw mx::Exception("Error loading model...");
         }
         mx::system_out << "mx: Loaded Meshes:  " << obj_model.meshes.size() << "\n";
+        
+        // Calculate bounding box from all mesh vertices
+        for (const auto &mesh : obj_model.meshes) {
+            for (size_t i = 0; i < mesh.vert.size(); i += 3) {
+                float x = mesh.vert[i];
+                float y = mesh.vert[i + 1];
+                float z = mesh.vert[i + 2];
+                modelMin.x = std::min(modelMin.x, x);
+                modelMin.y = std::min(modelMin.y, y);
+                modelMin.z = std::min(modelMin.z, z);
+                modelMax.x = std::max(modelMax.x, x);
+                modelMax.y = std::max(modelMax.y, y);
+                modelMax.z = std::max(modelMax.z, z);
+            }
+        }
+        
+        // Calculate model center and radius
+        modelCenter = (modelMin + modelMax) * 0.5f;
+        glm::vec3 extent = modelMax - modelMin;
+        modelRadius = glm::length(extent) * 0.5f;
+        
+        // Set camera distance based on model size (2.5x radius for good view)
+        baseCameraDistance = modelRadius * 2.5f;
+        outsideCameraPos = glm::vec3(modelCenter.x, modelCenter.y, modelCenter.z + baseCameraDistance);
+        
+        // Set zoom limits based on model size
+        zoom = 45.0f;
+        outsideFOV = zoom;
+        
+        mx::system_out << "mx: Model bounds: (" << modelMin.x << ", " << modelMin.y << ", " << modelMin.z << ") to ("
+                       << modelMax.x << ", " << modelMax.y << ", " << modelMax.z << ")\n";
+        mx::system_out << "mx: Model center: (" << modelCenter.x << ", " << modelCenter.y << ", " << modelCenter.z << ")\n";
+        mx::system_out << "mx: Model radius: " << modelRadius << ", Camera distance: " << baseCameraDistance << "\n";
 
 
         if (!shaderProgram.loadProgram(win->util.getFilePath("data/tri.vert"), win->util.getFilePath("data/tri.frag"))) {
@@ -72,7 +114,7 @@ public:
             glm::vec3(0.0f, 1.0f, 0.0f)   
         );
 
-        glm::mat4 projection = glm::perspective(glm::radians(zoom), (float)win->w / win->h, 0.1f, 100.0f);
+        glm::mat4 projection = glm::perspective(glm::radians(zoom), (float)win->w / win->h, 0.1f, 10000.0f);
         shaderProgram.setUniform("model", model);
         shaderProgram.setUniform("view", view);
         shaderProgram.setUniform("projection", projection);
@@ -97,13 +139,12 @@ public:
             lookDirection.z = cos(glm::radians(cameraPitch)) * sin(glm::radians(cameraYaw));
             lookDirection = glm::normalize(lookDirection);
             cameraPos = glm::vec3(0.0f, 0.0f, 0.0f);
-            fovDegrees = 120.0f;  
+            fovDegrees = 200.0f;  
         } else {
-            lookDirection = glm::vec3(0.0f, 0.0f, -1.0f);  
             cameraPos = outsideCameraPos;
             fovDegrees = outsideFOV;
         }
-        glm::vec3 cameraTarget = cameraPos + lookDirection;
+        glm::vec3 cameraTarget = insideCube ? cameraPos + lookDirection : modelCenter;
         glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 
         glm::mat4 viewMatrix = glm::lookAt(cameraPos, cameraTarget, cameraUp);
@@ -111,7 +152,7 @@ public:
             glm::radians(fovDegrees),
             static_cast<float>(win->w) / static_cast<float>(win->h),
             insideCube ? 0.01f : 0.1f,  
-            10.0f
+            100000.0f
         );
         if (insideCube) {
             glFrontFace(GL_CW);
@@ -205,15 +246,15 @@ public:
                     case SDLK_UP:
                         toggle(rot_y);
                     break;
-                    case SDLK_a:
-                       zoom -= 1.0f;
-                       if (zoom < 10.0f) zoom = 10.0f; 
-                       outsideFOV = zoom;
+                    case SDLK_a: // Zoom in
+                       outsideCameraPos.z -= modelRadius * 0.1f;
+                       if (outsideCameraPos.z < modelCenter.z + modelRadius * 0.5f) 
+                           outsideCameraPos.z = modelCenter.z + modelRadius * 0.5f;
                     break;
-                    case SDLK_s:
-                       zoom += 1.0f;
-                        if (zoom > 90.0f) zoom = 90.0f; 
-                        outsideFOV = zoom;
+                    case SDLK_s: // Zoom out
+                       outsideCameraPos.z += modelRadius * 0.1f;
+                       if (outsideCameraPos.z > modelCenter.z + modelRadius * 10.0f) 
+                           outsideCameraPos.z = modelCenter.z + modelRadius * 10.0f;
                     break;
                     case SDLK_k:
                         std::get<0>(light) += stepSize; 
@@ -250,8 +291,8 @@ public:
     }
 private:
     bool insideCube = false;
-    glm::vec3 outsideCameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
-    float outsideFOV = zoom;
+    glm::vec3 outsideCameraPos = glm::vec3(0.0f, 0.0f, 50.0f);
+    float outsideFOV = 45.0f;
 };
 
 class MainWindow : public gl::GLWindow {
