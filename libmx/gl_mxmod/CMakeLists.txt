@@ -5,3 +5,5 @@ target_include_directories(gl_mxmod PRIVATE
     ${SDL2_TTF_INCLUDE_DIRS}
 )
 target_link_libraries(gl_mxmod PRIVATE mx ${SDL2_LIBRARIES} ${SDL2_TTF_LIBRARIES})
+install(TARGETS gl_mxmod
+        RUNTIME DESTINATION bin)
