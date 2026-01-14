@@ -3,14 +3,11 @@
 #define PROJECT_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
 #define PROJECT_VERSION_MINOR @PROJECT_VERSION_MINOR@
 #if @WITH_OPENGL_VAL@
-
 #ifndef WITH_GL
 #define WITH_GL
 #endif
-
 #endif
 #if @WITH_MIXER_VAL@
-
 #ifndef WITH_MIXER
 #define WITH_MIXER
 #endif
@@ -20,21 +17,22 @@
 #ifndef WITH_JPEG
 #define WITH_JPEG
 #endif
-
 #endif
 
 #if @WITH_VK_VAL@
-
 #ifndef WITH_VK
 #define WITH_VK
 #endif
-
 #endif
 
 #if @WITH_MOLTEN_VAL@
-
 #ifndef WITH_MOLTEN
 #define WITH_MOLTEN
 #endif
+#endif
 
+#if @WITH_OPENGL_ES3@
+#ifndef WITH_OPENGL_ES3
+#define WITH_OPENGL_ES3
+#endif
 #endif
