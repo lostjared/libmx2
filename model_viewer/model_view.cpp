@@ -1,3 +1,7 @@
+/*
+    Coded by Jared Bruni
+    (C) 2026 GPL v3
+*/
 #include "model_view.hpp"
 #include <QCoreApplication>
 #include <QDateTime>
