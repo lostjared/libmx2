@@ -18,7 +18,6 @@ printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
 #define M_PI 3.14159265358979323846
 #endif
 
-
 class Game : public gl::GLObject {
 public:
     Game() = default;
