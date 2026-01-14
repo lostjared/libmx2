@@ -31,6 +31,7 @@ namespace mx {
         std::vector<SDL_Joystick *> stick;
     };
     std::vector<char> readFile(const std::string &filename);
+    std::string readFileToString(const std::string &filename);
     std::string decompressString(void *data, uLong size_);
     std::unique_ptr<char[]> compressString(const std::string &text, uLong &len);
     float generateRandomFloat(float min, float max);
