@@ -20,8 +20,10 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_PREFIX}/lib)
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(OpenGL_GL_PREFERENCE "GLVND")
 
 message(STATUS "Checking C++20 compiler support...")
+
 
 check_cxx_source_compiles("
 #include <version>
