@@ -1,0 +1,12 @@
+OpenGL Version: [3.3.0 NVIDIA 590.44.01]
+Viewer: Loading files in path: /home/jared/gpu/libmx2/model_viewer/build/data
+mx: Model Loaded: /home/jared/Downloads/models.2025.12.08/models/3dstar.mxmod
+mx: Compressing Indices
+mx: Uncompressed Mesh: V: 90 T: 60 N: 90
+mx: Compressed Mesh: V: 90 T: 60 N: 90
+mx: Mesh Indices: 30
+mx: Loaded Meshes:  1
+mx: Model bounds: (-0.809017, -0.951057, -0.75) to (1, 0.951057, 0.75)
+mx: Model center: (0.0954915, 0, 0)
+mx: Model radius: 1.51167, Camera distance: 3.77917
+mx: Loaded Texture: 1 -> /home/jared/gpu/libmx2/libmx/models/tex/bird.png
