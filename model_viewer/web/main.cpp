@@ -219,7 +219,7 @@ public:
             cameraPos = outsideCameraPos;
             fovDegrees = outsideFOV;
         }
-        glm::vec3 cameraTarget = insideCube ? cameraPos + lookDirection : modelCenter;
+        glm::vec3 cameraTarget = insideCube ? cameraPos + lookDirection : glm::vec3(0.0f, 0.0f, 0.0f);
         glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
         glm::mat4 viewMatrix = glm::lookAt(cameraPos, cameraTarget, cameraUp);
         
@@ -263,6 +263,7 @@ public:
             }
         }
         glm::mat4 modelMatrix = glm::mat4(1.0f);
+        modelMatrix = glm::translate(modelMatrix, -modelCenter);
         modelMatrix = glm::rotate(modelMatrix, glm::radians(std::get<0>(rot_x)), glm::vec3(1.0f, 0.0f, 0.0f));
         modelMatrix = glm::rotate(modelMatrix, glm::radians(std::get<0>(rot_y)), glm::vec3(0.0f, 1.0f, 0.0f));
         modelMatrix = glm::rotate(modelMatrix, glm::radians(std::get<0>(rot_z)), glm::vec3(0.0f, 0.0f, 1.0f));
@@ -278,9 +279,7 @@ public:
         glBindVertexArray(0);
     }
     
-    void event(gl::GLWindow *win, SDL_Event &e) override {
-        
-    }
+    void event(gl::GLWindow *win, SDL_Event &e) override {}
 
     void update(float deltaTime) {}
     
@@ -303,15 +302,15 @@ public:
     }
     
     void setLightX(float x) {
-        std::get<0>(light) = x;
+        std::get<0>(light) = modelCenter.x + x;
     }
     
     void setLightY(float y) {
-        std::get<1>(light) = y;
+        std::get<1>(light) = modelCenter.y + y;
     }
     
     void setLightZ(float z) {
-        std::get<2>(light) = z;
+        std::get<2>(light) = modelCenter.z + z;
     }
     
     void setCameraX(float x) {
@@ -440,6 +439,11 @@ public:
             viewer->setCameraY(y);
         }
     }
+    
+    virtual void resize(int width, int height) override {
+        w = width;
+        h = height;
+    }
 };
 
 MainWindow *main_w = nullptr;
@@ -533,6 +537,13 @@ extern "C" {
     void setCameraY(float y) {
         if (main_w) {
             main_w->setCameraY(y);
+        }
+    }
+    
+    EMSCRIPTEN_KEEPALIVE
+    void resizeCanvas(int width, int height) {
+        if (main_w) {
+            main_w->resize(width, height);
         }
     }
 }
