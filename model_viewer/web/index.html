@@ -1,0 +1,1134 @@
+
+
+<!DOCTYPE html>
+<!--- HTML/JavaScript done with Opus 4.5 - Web Assembly / C++ Jared Bruni -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MX Model Viewer</title>
+    <style>
+        :root {
+            --bg-primary: #1a1a2e;
+            --bg-secondary: #16213e;
+            --bg-tertiary: #0f3460;
+            --accent: #e94560;
+            --accent-hover: #ff6b6b;
+            --text-primary: #eaeaea;
+            --text-secondary: #b8b8b8;
+            --border-color: #2a2a4a;
+            --success: #4ade80;
+            --warning: #fbbf24;
+            --error: #ef4444;
+            --info: #60a5fa;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--accent);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .logo-text {
+            font-size: 1.5rem;
+            font-weight: 600;
+            background: linear-gradient(90deg, var(--text-primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        /* Main Content */
+        .main-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 320px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .sidebar-section {
+            padding: 1.25rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .section-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* File Upload */
+        .file-upload-zone {
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .file-upload-zone:hover,
+        .file-upload-zone.dragover {
+            border-color: var(--accent);
+            background: rgba(233, 69, 96, 0.1);
+        }
+
+        .file-upload-zone svg {
+            width: 48px;
+            height: 48px;
+            color: var(--text-secondary);
+            margin-bottom: 0.75rem;
+        }
+
+        .file-upload-zone p {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .file-upload-zone .supported {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            opacity: 0.7;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        /* File List */
+        .file-list {
+            margin-top: 1rem;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+        }
+
+        .file-item-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            overflow: hidden;
+        }
+
+        .file-item-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .file-item-name {
+            font-size: 0.875rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-item-remove {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .file-item-remove:hover {
+            color: var(--error);
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(233, 69, 96, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border-color);
+        }
+
+        .btn-full {
+            width: 100%;
+        }
+
+        /* Controls */
+        .control-group {
+            margin-bottom: 1rem;
+        }
+
+        .control-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .toggle-group {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .toggle-btn {
+            flex: 1;
+            padding: 0.625rem;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .toggle-btn.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        .toggle-btn:hover:not(.active) {
+            border-color: var(--accent);
+            color: var(--text-primary);
+        }
+
+        /* Canvas Container */
+        .canvas-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #0a0a14;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #canvas {
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(10, 10, 20, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .loading-overlay.hidden {
+            display: none;
+        }
+
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            margin-top: 1rem;
+            color: var(--text-secondary);
+        }
+
+        /* Log Console */
+        .log-console {
+            height: 180px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .log-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.5rem 1rem;
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .log-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .log-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .log-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            transition: all 0.2s;
+        }
+
+        .log-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+        }
+
+        .log-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.75rem 1rem;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.8rem;
+            line-height: 1.6;
+        }
+
+        .log-entry {
+            margin-bottom: 2px;
+            padding: 2px 0;
+        }
+
+        .log-entry.info { color: var(--info); }
+        .log-entry.success { color: var(--success); }
+        .log-entry.warning { color: var(--warning); }
+        .log-entry.error { color: var(--error); }
+        .log-entry.fatal { color: var(--error); font-weight: bold; }
+
+        .log-timestamp {
+            color: var(--text-secondary);
+            opacity: 0.6;
+            margin-right: 8px;
+        }
+
+        /* Keyboard Shortcuts */
+        .shortcuts-list {
+            font-size: 0.8rem;
+        }
+
+        .shortcut-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .shortcut-item:last-child {
+            border-bottom: none;
+        }
+
+        .shortcut-key {
+            background: var(--bg-primary);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.75rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                max-height: 300px;
+            }
+
+            .header {
+                padding: 0.75rem 1rem;
+            }
+
+            .logo-text {
+                font-size: 1.25rem;
+            }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--bg-tertiary);
+        }
+
+        /* Status indicator */
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+        }
+
+        .status-dot.loading {
+            background: var(--warning);
+            animation: pulse 1s infinite;
+        }
+
+        .status-dot.error {
+            background: var(--error);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="logo">
+            <div class="logo-icon">MX</div>
+            <span class="logo-text">Model Viewer</span>
+        </div>
+        <div class="header-controls">
+            <div class="status-indicator">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">Ready</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <aside class="sidebar">
+            <div class="sidebar-section">
+                <h3 class="section-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    Load Model
+                </h3>
+                
+                <div class="control-group">
+                    <label class="control-label">Model File (.mxmod)</label>
+                    <div class="file-upload-zone" id="modelUploadZone">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <line x1="12" y1="18" x2="12" y2="12"/>
+                            <line x1="9" y1="15" x2="15" y2="15"/>
+                        </svg>
+                        <p>Drop model file here or click to browse</p>
+                        <span class="supported">Supports: .mxmod</span>
+                        <input type="file" class="file-input" id="modelFileInput" accept=".mxmod">
+                    </div>
+                    <div class="file-list" id="modelFileList"></div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Texture Definition File (.tex)</label>
+                    <div class="file-upload-zone" id="textureUploadZone">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                        </svg>
+                        <p>Drop .tex file here or click to browse</p>
+                        <span class="supported">Text file listing texture paths</span>
+                        <input type="file" class="file-input" id="textureFileInput" accept=".tex">
+                    </div>
+                    <div class="file-list" id="textureFileList"></div>
+                    <div class="required-textures" id="requiredTextures" style="display:none;">
+                        <label class="control-label" style="margin-top:0.75rem; color: var(--warning);">Required texture images:</label>
+                        <ul id="requiredTexturesList" style="font-size:0.75rem; color:var(--text-secondary); padding-left:1.25rem; margin:0.5rem 0;"></ul>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Texture Images (.png)</label>
+                    <div class="file-upload-zone" id="imageUploadZone">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            <circle cx="8.5" cy="8.5" r="1.5"/>
+                            <polyline points="21 15 16 10 5 21"/>
+                        </svg>
+                        <p>Drop PNG files here or click to browse</p>
+                        <span class="supported">Select all images referenced in .tex file</span>
+                        <input type="file" class="file-input" id="imageFileInput" accept=".png" multiple>
+                    </div>
+                    <div class="file-list" id="imageFileList"></div>
+                </div>
+
+                <button class="btn btn-primary btn-full" id="loadModelBtn" disabled>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="16 16 12 12 8 16"/>
+                        <line x1="12" y1="12" x2="12" y2="21"/>
+                        <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+                    </svg>
+                    Load Model
+                </button>
+            </div>
+
+            <div class="sidebar-section">
+                <h3 class="section-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                    Controls
+                </h3>
+                
+                <div class="control-group">
+                    <label class="control-label">Rotation Axis</label>
+                    <div class="toggle-group">
+                        <button class="toggle-btn active" id="rotXBtn" data-axis="x">X</button>
+                        <button class="toggle-btn active" id="rotYBtn" data-axis="y">Y</button>
+                        <button class="toggle-btn" id="rotZBtn" data-axis="z">Z</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3 class="section-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                    Keyboard Shortcuts
+                </h3>
+                <div class="shortcuts-list">
+                    <div class="shortcut-item">
+                        <span>Toggle X rotation</span>
+                        <span class="shortcut-key">← →</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>Toggle Y rotation</span>
+                        <span class="shortcut-key">↑</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>Toggle Z rotation</span>
+                        <span class="shortcut-key">↓</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>Zoom In</span>
+                        <span class="shortcut-key">A</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>Zoom Out</span>
+                        <span class="shortcut-key">S</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>Toggle View Mode</span>
+                        <span class="shortcut-key">Enter</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <div class="canvas-container">
+            <div class="loading-overlay" id="loadingOverlay">
+                <div class="spinner"></div>
+                <p class="loading-text">Initializing WebGL...</p>
+            </div>
+            <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
+        </div>
+    </main>
+
+    <div class="log-console">
+        <div class="log-header">
+            <span class="log-title">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="4 17 10 11 4 5"/>
+                    <line x1="12" y1="19" x2="20" y2="19"/>
+                </svg>
+                Console Output
+            </span>
+            <div class="log-actions">
+                <button class="log-btn" id="clearLogBtn">Clear</button>
+                <button class="log-btn" id="copyLogBtn">Copy</button>
+            </div>
+        </div>
+        <div class="log-content" id="logContent">
+            <div class="log-entry info">
+                <span class="log-timestamp">[--:--:--]</span>
+                Welcome to MX Model Viewer
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State management
+        const state = {
+            modelFile: null,
+            textureFile: null,
+            textureContent: null,  // parsed .tex file content
+            requiredTextures: [],  // list of required texture paths from .tex
+            imageFiles: [],        // uploaded image files
+            isModuleReady: false,
+            rotation: { x: true, y: true, z: false }
+        };
+
+        // Logging system
+        function getTimestamp() {
+            const now = new Date();
+            return now.toTimeString().split(' ')[0];
+        }
+
+        function addLogMessage(message) {
+            const logContent = document.getElementById('logContent');
+            if (!logContent) return;
+            
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            
+            // Determine log level from message
+            let level = 'info';
+            if (message.includes('[ERROR]')) level = 'error';
+            else if (message.includes('[SUCCESS]')) level = 'success';
+            else if (message.includes('[WARNING]')) level = 'warning';
+            else if (message.includes('[FATAL]')) level = 'fatal';
+            else if (message.includes('[INFO]')) level = 'info';
+            
+            entry.classList.add(level);
+            
+            const timestamp = document.createElement('span');
+            timestamp.className = 'log-timestamp';
+            timestamp.textContent = `[${getTimestamp()}]`;
+            
+            entry.appendChild(timestamp);
+            entry.appendChild(document.createTextNode(message.replace(/\[(INFO|ERROR|SUCCESS|WARNING|FATAL)\]\s*/g, '')));
+            
+            logContent.appendChild(entry);
+            logContent.scrollTop = logContent.scrollHeight;
+        }
+
+        // Expose to global scope for C++ callback
+        window.addLogMessage = addLogMessage;
+
+        // Status management
+        function setStatus(status, text) {
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            if (!statusDot || !statusText) return;
+            
+            statusDot.className = 'status-dot';
+            if (status === 'loading') {
+                statusDot.classList.add('loading');
+            } else if (status === 'error') {
+                statusDot.classList.add('error');
+            }
+            statusText.textContent = text;
+        }
+
+        function updateLoadButton() {
+            const btn = document.getElementById('loadModelBtn');
+            if (btn) {
+                // Check if all required textures are uploaded
+                const hasAllTextures = state.requiredTextures.length === 0 || 
+                    state.requiredTextures.every(reqTex => {
+                        const reqName = reqTex.split('/').pop();
+                        return state.imageFiles.some(f => f.name === reqName);
+                    });
+                btn.disabled = !(state.modelFile && state.textureFile && state.isModuleReady && hasAllTextures);
+            }
+        }
+
+        // Module configuration - MUST be defined before loading mxMod_Web.js
+        var Module = {
+            canvas: (function() { return document.getElementById('canvas'); })(),
+            onRuntimeInitialized: function() {
+                state.isModuleReady = true;
+                const overlay = document.getElementById('loadingOverlay');
+                if (overlay) overlay.classList.add('hidden');
+                setStatus('ready', 'Ready');
+                updateLoadButton();
+                addLogMessage('[SUCCESS] WebAssembly module initialized');
+            },
+            print: function(text) {
+                addLogMessage(text);
+            },
+            printErr: function(text) {
+                addLogMessage('[ERROR] ' + text);
+            },
+            setStatus: function(text) {
+                if (text) {
+                    addLogMessage('[INFO] ' + text);
+                }
+            }
+        };
+    </script>
+    <script src="mxMod_Web.js"></script>
+    <script>
+        // DOM Elements - initialized after DOM is ready
+        let elements = {};
+        
+        // File handling
+        function setupFileUpload(zone, input, type) {
+            zone.addEventListener('click', () => input.click());
+            
+            zone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                zone.classList.add('dragover');
+            });
+            
+            zone.addEventListener('dragleave', () => {
+                zone.classList.remove('dragover');
+            });
+            
+            zone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                zone.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    if (type === 'image') {
+                        handleImageFilesSelect(Array.from(files));
+                    } else {
+                        handleFileSelect(files[0], type);
+                    }
+                }
+            });
+            
+            input.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    if (type === 'image') {
+                        handleImageFilesSelect(Array.from(e.target.files));
+                    } else {
+                        handleFileSelect(e.target.files[0], type);
+                    }
+                }
+            });
+        }
+
+        async function handleFileSelect(file, type) {
+            const listElement = type === 'model' ? elements.modelFileList : elements.textureFileList;
+            
+            if (type === 'model') {
+                state.modelFile = file;
+            } else {
+                state.textureFile = file;
+                // Parse .tex file to get required textures
+                try {
+                    const content = await readFileAsText(file);
+                    state.textureContent = content;
+                    state.requiredTextures = content.split('\n')
+                        .map(line => line.trim())
+                        .filter(line => line.length > 0 && !line.startsWith('#'));
+                    
+                    // Show required textures
+                    const reqDiv = document.getElementById('requiredTextures');
+                    const reqList = document.getElementById('requiredTexturesList');
+                    if (state.requiredTextures.length > 0) {
+                        reqList.innerHTML = state.requiredTextures.map(t => `<li>${t}</li>`).join('');
+                        reqDiv.style.display = 'block';
+                        addLogMessage(`[INFO] .tex file requires ${state.requiredTextures.length} texture(s):`);
+                        state.requiredTextures.forEach(t => addLogMessage(`[INFO]   - ${t}`));
+                    } else {
+                        reqDiv.style.display = 'none';
+                    }
+                } catch (e) {
+                    addLogMessage(`[ERROR] Failed to parse .tex file: ${e.message}`);
+                }
+            }
+            
+            // Update file list display
+            listElement.innerHTML = `
+                <div class="file-item">
+                    <div class="file-item-info">
+                        <div class="file-item-icon">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                            </svg>
+                        </div>
+                        <span class="file-item-name" title="${file.name}">${file.name}</span>
+                    </div>
+                    <button class="file-item-remove" data-type="${type}">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </button>
+                </div>
+            `;
+            
+            // Add remove handler
+            listElement.querySelector('.file-item-remove').addEventListener('click', () => {
+                if (type === 'model') {
+                    state.modelFile = null;
+                    elements.modelFileInput.value = '';
+                } else {
+                    state.textureFile = null;
+                    state.textureContent = null;
+                    state.requiredTextures = [];
+                    elements.textureFileInput.value = '';
+                    document.getElementById('requiredTextures').style.display = 'none';
+                }
+                listElement.innerHTML = '';
+                updateLoadButton();
+            });
+            
+            addLogMessage(`[INFO] Selected ${type}: ${file.name}`);
+            updateLoadButton();
+        }
+
+        function handleImageFilesSelect(files) {
+            // Add new files to existing list (avoid duplicates)
+            files.forEach(file => {
+                if (!state.imageFiles.some(f => f.name === file.name)) {
+                    state.imageFiles.push(file);
+                }
+            });
+            
+            // Update display
+            const listElement = elements.imageFileList;
+            listElement.innerHTML = state.imageFiles.map((file, index) => `
+                <div class="file-item">
+                    <div class="file-item-info">
+                        <div class="file-item-icon">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                <circle cx="8.5" cy="8.5" r="1.5"/>
+                                <polyline points="21 15 16 10 5 21"/>
+                            </svg>
+                        </div>
+                        <span class="file-item-name" title="${file.name}">${file.name}</span>
+                    </div>
+                    <button class="file-item-remove" data-index="${index}">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </button>
+                </div>
+            `).join('');
+            
+            // Add remove handlers
+            listElement.querySelectorAll('.file-item-remove').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const index = parseInt(btn.dataset.index);
+                    state.imageFiles.splice(index, 1);
+                    handleImageFilesSelect([]); // Re-render
+                });
+            });
+            
+            addLogMessage(`[INFO] ${state.imageFiles.length} image file(s) selected`);
+            updateLoadButton();
+        }
+
+        function readFileAsText(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(new Error('Failed to read file'));
+                reader.readAsText(file);
+            });
+        }
+
+        // Load model into WebAssembly
+        async function loadModel() {
+            if (!state.modelFile || !state.textureFile) {
+                addLogMessage('[ERROR] Please select both a model and texture file');
+                return;
+            }
+            
+            setStatus('loading', 'Loading model...');
+            addLogMessage('[INFO] Preparing files for upload...');
+            
+            try {
+                // Read model file
+                const modelData = await readFileAsArrayBuffer(state.modelFile);
+                const textureData = await readFileAsArrayBuffer(state.textureFile);
+                
+                // Create paths in virtual filesystem
+                const modelPath = '/uploaded/' + state.modelFile.name;
+                const texturePath = '/uploaded/' + state.textureFile.name;
+                
+                // Ensure directories exist
+                try {
+                    Module.FS.mkdir('/uploaded');
+                } catch (e) {
+                    // Directory may already exist
+                }
+                
+                // Create subdirectories for texture paths
+                const dirs = new Set();
+                state.requiredTextures.forEach(texPath => {
+                    const parts = texPath.split('/');
+                    if (parts.length > 1) {
+                        let dir = '/uploaded';
+                        for (let i = 0; i < parts.length - 1; i++) {
+                            dir += '/' + parts[i];
+                            dirs.add(dir);
+                        }
+                    }
+                });
+                dirs.forEach(dir => {
+                    try {
+                        Module.FS.mkdir(dir);
+                        addLogMessage(`[INFO] Created directory: ${dir}`);
+                    } catch (e) {
+                        // May already exist
+                    }
+                });
+                
+                // Write model and .tex file
+                Module.FS.writeFile(modelPath, new Uint8Array(modelData));
+                Module.FS.writeFile(texturePath, new Uint8Array(textureData));
+                addLogMessage('[INFO] Model and .tex file uploaded');
+                
+                // Upload all image files to their correct paths
+                for (const imgFile of state.imageFiles) {
+                    const imgData = await readFileAsArrayBuffer(imgFile);
+                    // Find matching path from requiredTextures
+                    const matchingPath = state.requiredTextures.find(t => t.endsWith(imgFile.name));
+                    const imgPath = matchingPath ? '/uploaded/' + matchingPath : '/uploaded/' + imgFile.name;
+                    Module.FS.writeFile(imgPath, new Uint8Array(imgData));
+                    addLogMessage(`[INFO] Uploaded texture: ${imgPath}`);
+                }
+                
+                // Call the C++ function
+                Module.ccall(
+                    'loadModelFromJS',
+                    null,
+                    ['string', 'string', 'string'],
+                    [modelPath, texturePath, '/uploaded']
+                );
+                
+                setStatus('ready', 'Model loaded');
+                
+            } catch (error) {
+                addLogMessage(`[ERROR] Failed to load model: ${error.message}`);
+                setStatus('error', 'Load failed');
+            }
+        }
+
+        function readFileAsArrayBuffer(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(new Error('Failed to read file'));
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        // Initialize UI after DOM is ready
+        function init() {
+            // Initialize DOM element references
+            elements = {
+                canvas: document.getElementById('canvas'),
+                loadingOverlay: document.getElementById('loadingOverlay'),
+                logContent: document.getElementById('logContent'),
+                statusDot: document.getElementById('statusDot'),
+                statusText: document.getElementById('statusText'),
+                loadModelBtn: document.getElementById('loadModelBtn'),
+                modelUploadZone: document.getElementById('modelUploadZone'),
+                textureUploadZone: document.getElementById('textureUploadZone'),
+                imageUploadZone: document.getElementById('imageUploadZone'),
+                modelFileInput: document.getElementById('modelFileInput'),
+                textureFileInput: document.getElementById('textureFileInput'),
+                imageFileInput: document.getElementById('imageFileInput'),
+                modelFileList: document.getElementById('modelFileList'),
+                textureFileList: document.getElementById('textureFileList'),
+                imageFileList: document.getElementById('imageFileList'),
+                rotXBtn: document.getElementById('rotXBtn'),
+                rotYBtn: document.getElementById('rotYBtn'),
+                rotZBtn: document.getElementById('rotZBtn'),
+                clearLogBtn: document.getElementById('clearLogBtn'),
+                copyLogBtn: document.getElementById('copyLogBtn')
+            };
+            
+            // Setup file uploads
+            setupFileUpload(elements.modelUploadZone, elements.modelFileInput, 'model');
+            setupFileUpload(elements.textureUploadZone, elements.textureFileInput, 'texture');
+            setupFileUpload(elements.imageUploadZone, elements.imageFileInput, 'image');
+            
+            // Load model button
+            elements.loadModelBtn.addEventListener('click', loadModel);
+            
+            // Rotation toggles
+            [elements.rotXBtn, elements.rotYBtn, elements.rotZBtn].forEach(btn => {
+                btn.addEventListener('click', () => {
+                    btn.classList.toggle('active');
+                    const axis = btn.dataset.axis;
+                    state.rotation[axis] = btn.classList.contains('active');
+                    
+                    if (state.isModuleReady) {
+                        const funcName = `setRotation${axis.toUpperCase()}`;
+                        try {
+                            Module.ccall(funcName, null, ['boolean'], [state.rotation[axis]]);
+                        } catch (e) {
+                            // Function may not be available
+                        }
+                    }
+                });
+            });
+            
+            // Log controls
+            elements.clearLogBtn.addEventListener('click', () => {
+                elements.logContent.innerHTML = '';
+                addLogMessage('[INFO] Log cleared');
+            });
+            
+            elements.copyLogBtn.addEventListener('click', () => {
+                const logText = Array.from(elements.logContent.querySelectorAll('.log-entry'))
+                    .map(entry => entry.textContent)
+                    .join('\n');
+                navigator.clipboard.writeText(logText).then(() => {
+                    addLogMessage('[INFO] Log copied to clipboard');
+                });
+            });
+            
+            addLogMessage('[INFO] Interface initialized');
+        }
+
+        // Handle errors
+        window.onerror = function(message, source, lineno, colno, error) {
+            addLogMessage(`[ERROR] ${message}`);
+            setStatus('error', 'Error occurred');
+            return false;
+        };
+
+        // Start initialization when DOM is ready
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
