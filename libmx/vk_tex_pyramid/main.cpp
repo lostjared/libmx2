@@ -12,7 +12,7 @@ struct Vertex {
 
 class MainWindow : public mx::VKWindow {
 public:
-    MainWindow(const std::string& path, int wx, int wy) : mx::VKWindow("-[ Cube with Vulkan ]-", wx, wy) {
+    MainWindow(const std::string& path, int wx, int wy) : mx::VKWindow("-[ Pyramid/Light with Vulkan ]-", wx, wy) {
         setPath(path);
     }
     virtual ~MainWindow() {

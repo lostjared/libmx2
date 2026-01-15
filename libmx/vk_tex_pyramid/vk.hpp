@@ -37,6 +37,7 @@ namespace mx {
     struct Vertex {
         float pos[3];
         float texCoord[2];
+        float normal[3];
     };
 
     struct QueueFamilyIndices {
@@ -55,7 +56,10 @@ namespace mx {
 
     struct UniformBufferObject {
         float time;
-        alignas(16) glm::vec3 color; 
+        alignas(16) glm::vec3 color;
+        alignas(16) glm::vec3 lightPos;
+        alignas(16) glm::vec3 lightColor;
+        alignas(16) glm::vec3 viewPos;
     };
 
     class VKWindow {

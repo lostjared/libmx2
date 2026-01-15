@@ -632,30 +632,30 @@ namespace mx {
     void VKWindow::createVertexBuffer() {
         std::vector<Vertex> vertices = {
             // Base (square on bottom, y = -0.5)
-            { { -0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f } }, // 0: back-left
-            { {  0.5f, -0.5f, -0.5f }, { 1.0f, 1.0f } }, // 1: back-right
-            { {  0.5f, -0.5f,  0.5f }, { 1.0f, 0.0f } }, // 2: front-right
-            { { -0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f } }, // 3: front-left
+            { { -0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f }, { 0.0f, -1.0f, 0.0f } }, // 0: back-left
+            { {  0.5f, -0.5f, -0.5f }, { 1.0f, 1.0f }, { 0.0f, -1.0f, 0.0f } }, // 1: back-right
+            { {  0.5f, -0.5f,  0.5f }, { 1.0f, 0.0f }, { 0.0f, -1.0f, 0.0f } }, // 2: front-right
+            { { -0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f } }, // 3: front-left
 
             // Front face (separate vertices with proper texture coords)
-            { { -0.5f, -0.5f,  0.5f }, { 0.0f, 1.0f } }, // 4: base-left
-            { {  0.5f, -0.5f,  0.5f }, { 1.0f, 1.0f } }, // 5: base-right
-            { {  0.0f,  0.5f,  0.0f }, { 0.5f, 0.0f } }, // 6: apex
+            { { -0.5f, -0.5f,  0.5f }, { 0.0f, 1.0f }, { 0.0f, 0.707f, 0.707f } }, // 4: base-left
+            { {  0.5f, -0.5f,  0.5f }, { 1.0f, 1.0f }, { 0.0f, 0.707f, 0.707f } }, // 5: base-right
+            { {  0.0f,  0.5f,  0.0f }, { 0.5f, 0.0f }, { 0.0f, 0.707f, 0.707f } }, // 6: apex
 
             // Right face (separate vertices with proper texture coords)
-            { {  0.5f, -0.5f,  0.5f }, { 0.0f, 1.0f } }, // 7: base-left
-            { {  0.5f, -0.5f, -0.5f }, { 1.0f, 1.0f } }, // 8: base-right
-            { {  0.0f,  0.5f,  0.0f }, { 0.5f, 0.0f } }, // 9: apex
+            { {  0.5f, -0.5f,  0.5f }, { 0.0f, 1.0f }, { 0.707f, 0.707f, 0.0f } }, // 7: base-left
+            { {  0.5f, -0.5f, -0.5f }, { 1.0f, 1.0f }, { 0.707f, 0.707f, 0.0f } }, // 8: base-right
+            { {  0.0f,  0.5f,  0.0f }, { 0.5f, 0.0f }, { 0.707f, 0.707f, 0.0f } }, // 9: apex
 
             // Back face (separate vertices with proper texture coords)
-            { {  0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f } }, // 10: base-left
-            { { -0.5f, -0.5f, -0.5f }, { 1.0f, 1.0f } }, // 11: base-right
-            { {  0.0f,  0.5f,  0.0f }, { 0.5f, 0.0f } }, // 12: apex
+            { {  0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f }, { 0.0f, 0.707f, -0.707f } }, // 10: base-left
+            { { -0.5f, -0.5f, -0.5f }, { 1.0f, 1.0f }, { 0.0f, 0.707f, -0.707f } }, // 11: base-right
+            { {  0.0f,  0.5f,  0.0f }, { 0.5f, 0.0f }, { 0.0f, 0.707f, -0.707f } }, // 12: apex
 
             // Left face (separate vertices with proper texture coords)
-            { { -0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f } }, // 13: base-left
-            { { -0.5f, -0.5f,  0.5f }, { 1.0f, 1.0f } }, // 14: base-right
-            { {  0.0f,  0.5f,  0.0f }, { 0.5f, 0.0f } }  // 15: apex
+            { { -0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f }, { -0.707f, 0.707f, 0.0f } }, // 13: base-left
+            { { -0.5f, -0.5f,  0.5f }, { 1.0f, 1.0f }, { -0.707f, 0.707f, 0.0f } }, // 14: base-right
+            { {  0.0f,  0.5f,  0.0f }, { 0.5f, 0.0f }, { -0.707f, 0.707f, 0.0f } }  // 15: apex
         };
 
         std::vector<uint16_t> indices = {
@@ -1191,7 +1191,7 @@ namespace mx {
             bindingDescription.stride = sizeof(Vertex);
             bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-            std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
+            std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
             attributeDescriptions[0].binding = 0;
             attributeDescriptions[0].location = 0;
             attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
@@ -1201,6 +1201,11 @@ namespace mx {
             attributeDescriptions[1].location = 1;
             attributeDescriptions[1].format = VK_FORMAT_R32G32_SFLOAT;
             attributeDescriptions[1].offset = offsetof(Vertex, texCoord);
+
+            attributeDescriptions[2].binding = 0;
+            attributeDescriptions[2].location = 2;
+            attributeDescriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
+            attributeDescriptions[2].offset = offsetof(Vertex, normal);
 
             VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
             vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -1347,7 +1352,9 @@ namespace mx {
         UniformBufferObject ubo{};
         ubo.time = 1.0f;
         ubo.color = glm::vec3(1.0f, 0.5f, 0.3f);
-        
+        ubo.lightPos = glm::vec3(0.0f, 2.0f, 0.0f);
+        ubo.lightColor = glm::vec3(1.0f, 1.0f, 1.0f);
+        ubo.viewPos = glm::vec3(0.0f, 0.0f, 2.0f); 
         
         if (uniformBuffersMapped.size() > imageIndex && uniformBuffersMapped[imageIndex] != nullptr) {
             memcpy(uniformBuffersMapped[imageIndex], &ubo, sizeof(ubo));
