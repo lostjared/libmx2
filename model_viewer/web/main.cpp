@@ -133,7 +133,6 @@ public:
             throw mx::Exception("Could not load model file: " + filename);
         }
         
-        // Reset bounds before calculating for new model
         modelMin = glm::vec3(std::numeric_limits<float>::max());
         modelMax = glm::vec3(std::numeric_limits<float>::lowest());
         
@@ -155,11 +154,9 @@ public:
         glm::vec3 extent = modelMax - modelMin;
         modelRadius = glm::length(extent) * 0.5f;
         
-        // Ensure minimum radius to prevent division issues
         if (modelRadius < 0.001f) {
             modelRadius = 1.0f;
         }
-        
         
         float fovRadians = glm::radians(45.0f);
         baseCameraDistance = (modelRadius / std::tan(fovRadians / 2.0f)) * 1.5f;
@@ -226,7 +223,6 @@ public:
         glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
         glm::mat4 viewMatrix = glm::lookAt(cameraPos, cameraTarget, cameraUp);
         
-        // Calculate dynamic near/far planes based on model size
         float nearPlane = insideCube ? 0.01f : std::max(0.001f, modelRadius * 0.01f);
         float farPlane = baseCameraDistance * 20.0f;
         
@@ -283,61 +279,7 @@ public:
     }
     
     void event(gl::GLWindow *win, SDL_Event &e) override {
-            switch(e.type) {
-            case SDL_KEYUP:
-                switch(e.key.keysym.sym) {
-                    case SDLK_RETURN:
-                        insideCube = !insideCube;
-                        viewRotationActive = insideCube ? false : true;
-                        break;
-                }
-                break;
-        }
-        float stepSize = 1.0;
-           switch(e.type) {
-            case SDL_KEYDOWN: {
-                switch(e.key.keysym.sym) {
-                    case SDLK_LEFT:
-                        setRotX(false);
-                    break;
-                    case SDLK_RIGHT:
-                        setRotX(true);
-                    break;
-                    case SDLK_DOWN:
-                        setRotZ(false);
-                    break;
-                    case SDLK_UP:
-                        setRotZ(true);
-                    break;
-                    case SDLK_a:
-                       outsideCameraPos.z -= modelRadius * 0.1f;
-                       if (outsideCameraPos.z < modelCenter.z + modelRadius * 0.5f) 
-                           outsideCameraPos.z = modelCenter.z + modelRadius * 0.5f;
-                    break;
-                    case SDLK_s:
-                       outsideCameraPos.z += modelRadius * 0.1f;
-                       if (outsideCameraPos.z > modelCenter.z + modelRadius * 10.0f) 
-                           outsideCameraPos.z = modelCenter.z + modelRadius * 10.0f;
-                    break;
-                    case SDLK_k:
-                        std::get<0>(light) += stepSize; 
-                        break;
-                    case SDLK_l:
-                        std::get<0>(light) -= stepSize;
-                        break;
-                    case SDLK_i:
-                        std::get<1>(light) += stepSize;
-                        break;
-                    case SDLK_o:
-                        std::get<1>(light) -= stepSize; 
-                        break;
-                    case SDLK_SPACE:
-                        mx::system_out << "X: " << std::get<0>(rot_x) << " Y: " << std::get<0>(rot_y) << "\n";
-                    break;
-                }
-            }
-            break;
-        }
+        
     }
 
     void update(float deltaTime) {}
@@ -355,6 +297,31 @@ public:
         if (!enabled) std::get<0>(rot_z) = 0.0f;
     }
     
+    void setZoom(float zoomFactor) {
+        float clampedZoom = glm::max(0.1f, glm::min(5.0f, zoomFactor));
+        outsideCameraPos.z = modelCenter.z + baseCameraDistance * clampedZoom;
+    }
+    
+    void setLightX(float x) {
+        std::get<0>(light) = x;
+    }
+    
+    void setLightY(float y) {
+        std::get<1>(light) = y;
+    }
+    
+    void setLightZ(float z) {
+        std::get<2>(light) = z;
+    }
+    
+    void setCameraX(float x) {
+        outsideCameraPos.x = modelCenter.x + x;
+    }
+    
+    void setCameraY(float y) {
+        outsideCameraPos.y = modelCenter.y + y;
+    }
+    
 private:
     Uint32 lastUpdateTime = SDL_GetTicks();
     std::unique_ptr<mx::Model> obj;
@@ -362,7 +329,7 @@ private:
     std::tuple<float, bool> rot_x = {0.0f, true};
     std::tuple<float, bool> rot_y = {0.0f, true};
     std::tuple<float, bool> rot_z = {0.0f, false};
-    std::tuple<float, float, float> light;    
+    std::tuple<float, float, float> light = {0.0f, 50.0f, 50.0f};    
     glm::vec3 lookDirection = glm::vec3(0.0f, 0.0f, -1.0f);
     bool viewRotationActive = false;
     float cameraYaw = 0.0f;
@@ -431,6 +398,48 @@ public:
             viewer->setRotZ(enabled);
         }
     }
+    
+    void setZoom(float zoomFactor) {
+        ModelViewer *viewer = dynamic_cast<ModelViewer*>(object.get());
+        if (viewer) {
+            viewer->setZoom(zoomFactor);
+        }
+    }
+    
+    void setLightX(float x) {
+        ModelViewer *viewer = dynamic_cast<ModelViewer*>(object.get());
+        if (viewer) {
+            viewer->setLightX(x);
+        }
+    }
+    
+    void setLightY(float y) {
+        ModelViewer *viewer = dynamic_cast<ModelViewer*>(object.get());
+        if (viewer) {
+            viewer->setLightY(y);
+        }
+    }
+    
+    void setLightZ(float z) {
+        ModelViewer *viewer = dynamic_cast<ModelViewer*>(object.get());
+        if (viewer) {
+            viewer->setLightZ(z);
+        }
+    }
+    
+    void setCameraX(float x) {
+        ModelViewer *viewer = dynamic_cast<ModelViewer*>(object.get());
+        if (viewer) {
+            viewer->setCameraX(x);
+        }
+    }
+    
+    void setCameraY(float y) {
+        ModelViewer *viewer = dynamic_cast<ModelViewer*>(object.get());
+        if (viewer) {
+            viewer->setCameraY(y);
+        }
+    }
 };
 
 MainWindow *main_w = nullptr;
@@ -439,7 +448,6 @@ void eventProc() {
     main_w->proc();
 }
 
-// Exported functions for JavaScript
 extern "C" {
     EMSCRIPTEN_KEEPALIVE
     void loadModelFromJS(const char* modelPath, const char* texturePath, const char* textureDir) {
@@ -485,6 +493,48 @@ extern "C" {
     void logMessage(const char* msg) {
         jsLogStream << msg << "\n";
     }
+    
+    EMSCRIPTEN_KEEPALIVE
+    void setZoom(float zoomFactor) {
+        if (main_w) {
+            main_w->setZoom(zoomFactor);
+        }
+    }
+    
+    EMSCRIPTEN_KEEPALIVE
+    void setLightX(float x) {
+        if (main_w) {
+            main_w->setLightX(x);
+        }
+    }
+    
+    EMSCRIPTEN_KEEPALIVE
+    void setLightY(float y) {
+        if (main_w) {
+            main_w->setLightY(y);
+        }
+    }
+    
+    EMSCRIPTEN_KEEPALIVE
+    void setLightZ(float z) {
+        if (main_w) {
+            main_w->setLightZ(z);
+        }
+    }
+    
+    EMSCRIPTEN_KEEPALIVE
+    void setCameraX(float x) {
+        if (main_w) {
+            main_w->setCameraX(x);
+        }
+    }
+    
+    EMSCRIPTEN_KEEPALIVE
+    void setCameraY(float y) {
+        if (main_w) {
+            main_w->setCameraY(y);
+        }
+    }
 }
 
 int main(int argc, char **argv) {
@@ -495,7 +545,7 @@ int main(int argc, char **argv) {
         main_w = &main_window;
         jsLogStream << "[INFO] WebGL context created successfully\n";
         jsLogStream << "[INFO] Default model loaded\n";
-        jsLogStream << "[INFO] Use arrow keys to toggle rotation, A/S to zoom\n";
+        jsLogStream << "[INFO] Use the control panel to adjust view settings\n";
         emscripten_set_main_loop(eventProc, 0, 1);
     } catch (mx::Exception &e) {
         jsLogStream << "[FATAL] " << e.text() << "\n";

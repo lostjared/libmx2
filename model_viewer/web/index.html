@@ -429,28 +429,71 @@
             margin-right: 8px;
         }
 
-        /* Keyboard Shortcuts */
-        .shortcuts-list {
-            font-size: 0.8rem;
+        /* Slider Controls */
+        .slider-control {
+            margin-bottom: 1rem;
         }
 
-        .shortcut-item {
+        .slider-header {
             display: flex;
             justify-content: space-between;
-            padding: 0.5rem 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            align-items: center;
+            margin-bottom: 0.5rem;
         }
 
-        .shortcut-item:last-child {
-            border-bottom: none;
+        .slider-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
         }
 
-        .shortcut-key {
+        .slider-value {
+            font-size: 0.75rem;
+            color: var(--accent);
+            font-family: monospace;
             background: var(--bg-primary);
             padding: 2px 8px;
             border-radius: 4px;
-            font-family: monospace;
-            font-size: 0.75rem;
+        }
+
+        .slider-input {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--bg-primary);
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        .slider-input::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .slider-input::-webkit-slider-thumb:hover {
+            background: var(--accent-hover);
+            transform: scale(1.1);
+        }
+
+        .slider-input::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            border: none;
+        }
+
+        .slider-input::-moz-range-track {
+            background: var(--bg-primary);
+            height: 6px;
+            border-radius: 3px;
         }
 
         /* Responsive */
@@ -630,36 +673,79 @@
             <div class="sidebar-section">
                 <h3 class="section-title">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        <circle cx="11" cy="11" r="8"/>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
                     </svg>
-                    Keyboard Shortcuts
+                    Zoom
                 </h3>
-                <div class="shortcuts-list">
-                    <div class="shortcut-item">
-                        <span>Toggle X rotation</span>
-                        <span class="shortcut-key">← →</span>
+                <div class="slider-control">
+                    <div class="slider-header">
+                        <span class="slider-label">Camera Distance</span>
+                        <span class="slider-value" id="zoomValue">1.0x</span>
                     </div>
-                    <div class="shortcut-item">
-                        <span>Toggle Y rotation</span>
-                        <span class="shortcut-key">↑</span>
+                    <input type="range" class="slider-input" id="zoomSlider" min="0.1" max="5" step="0.05" value="1">
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3 class="section-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                        <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                    Camera Position
+                </h3>
+                <div class="slider-control">
+                    <div class="slider-header">
+                        <span class="slider-label">Camera X</span>
+                        <span class="slider-value" id="cameraXValue">0</span>
                     </div>
-                    <div class="shortcut-item">
-                        <span>Toggle Z rotation</span>
-                        <span class="shortcut-key">↓</span>
+                    <input type="range" class="slider-input" id="cameraXSlider" min="-500" max="500" step="1" value="0">
+                </div>
+                <div class="slider-control">
+                    <div class="slider-header">
+                        <span class="slider-label">Camera Y</span>
+                        <span class="slider-value" id="cameraYValue">0</span>
                     </div>
-                    <div class="shortcut-item">
-                        <span>Zoom In</span>
-                        <span class="shortcut-key">A</span>
+                    <input type="range" class="slider-input" id="cameraYSlider" min="-500" max="500" step="1" value="0">
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3 class="section-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="5"/>
+                        <line x1="12" y1="1" x2="12" y2="3"/>
+                        <line x1="12" y1="21" x2="12" y2="23"/>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                        <line x1="1" y1="12" x2="3" y2="12"/>
+                        <line x1="21" y1="12" x2="23" y2="12"/>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                    </svg>
+                    Light Position
+                </h3>
+                <div class="slider-control">
+                    <div class="slider-header">
+                        <span class="slider-label">Light X</span>
+                        <span class="slider-value" id="lightXValue">0</span>
                     </div>
-                    <div class="shortcut-item">
-                        <span>Zoom Out</span>
-                        <span class="shortcut-key">S</span>
+                    <input type="range" class="slider-input" id="lightXSlider" min="-300" max="300" step="1" value="0">
+                </div>
+                <div class="slider-control">
+                    <div class="slider-header">
+                        <span class="slider-label">Light Y</span>
+                        <span class="slider-value" id="lightYValue">50</span>
                     </div>
-                    <div class="shortcut-item">
-                        <span>Toggle View Mode</span>
-                        <span class="shortcut-key">Enter</span>
+                    <input type="range" class="slider-input" id="lightYSlider" min="-300" max="300" step="1" value="50">
+                </div>
+                <div class="slider-control">
+                    <div class="slider-header">
+                        <span class="slider-label">Light Z</span>
+                        <span class="slider-value" id="lightZValue">50</span>
                     </div>
+                    <input type="range" class="slider-input" id="lightZSlider" min="-300" max="300" step="1" value="50">
                 </div>
             </div>
         </aside>
@@ -964,6 +1050,54 @@
         }
 
         // Load model into WebAssembly
+        function resetControls() {
+            // Reset all sliders to their default values
+            elements.zoomSlider.value = 1;
+            elements.zoomValue.textContent = '1.0x';
+            
+            elements.cameraXSlider.value = 0;
+            elements.cameraXValue.textContent = '0';
+            
+            elements.cameraYSlider.value = 0;
+            elements.cameraYValue.textContent = '0';
+            
+            elements.lightXSlider.value = 0;
+            elements.lightXValue.textContent = '0';
+            
+            elements.lightYSlider.value = 50;
+            elements.lightYValue.textContent = '50';
+            
+            elements.lightZSlider.value = 50;
+            elements.lightZValue.textContent = '50';
+            
+            // Reset rotation toggles to default state (X and Y on, Z off)
+            elements.rotXBtn.classList.add('active');
+            elements.rotYBtn.classList.add('active');
+            elements.rotZBtn.classList.remove('active');
+            state.rotation.x = true;
+            state.rotation.y = true;
+            state.rotation.z = false;
+            
+            // Apply the defaults to the C++ side
+            if (state.isModuleReady) {
+                try {
+                    Module.ccall('setZoom', null, ['number'], [1]);
+                    Module.ccall('setCameraX', null, ['number'], [0]);
+                    Module.ccall('setCameraY', null, ['number'], [0]);
+                    Module.ccall('setLightX', null, ['number'], [0]);
+                    Module.ccall('setLightY', null, ['number'], [50]);
+                    Module.ccall('setLightZ', null, ['number'], [50]);
+                    Module.ccall('setRotationX', null, ['boolean'], [true]);
+                    Module.ccall('setRotationY', null, ['boolean'], [true]);
+                    Module.ccall('setRotationZ', null, ['boolean'], [false]);
+                } catch (e) {
+                    // Function may not be available
+                }
+            }
+            
+            addLogMessage('[INFO] Controls reset to defaults');
+        }
+
         async function loadModel() {
             if (!state.modelFile || !state.textureFile) {
                 addLogMessage('[ERROR] Please select both a model and texture file');
@@ -1033,6 +1167,9 @@
                     [modelPath, texturePath, '/uploaded']
                 );
                 
+                // Reset all controls to defaults after successful load
+                resetControls();
+                
                 setStatus('ready', 'Model loaded');
                 
             } catch (error) {
@@ -1073,7 +1210,20 @@
                 rotYBtn: document.getElementById('rotYBtn'),
                 rotZBtn: document.getElementById('rotZBtn'),
                 clearLogBtn: document.getElementById('clearLogBtn'),
-                copyLogBtn: document.getElementById('copyLogBtn')
+                copyLogBtn: document.getElementById('copyLogBtn'),
+                // Slider elements
+                zoomSlider: document.getElementById('zoomSlider'),
+                zoomValue: document.getElementById('zoomValue'),
+                cameraXSlider: document.getElementById('cameraXSlider'),
+                cameraXValue: document.getElementById('cameraXValue'),
+                cameraYSlider: document.getElementById('cameraYSlider'),
+                cameraYValue: document.getElementById('cameraYValue'),
+                lightXSlider: document.getElementById('lightXSlider'),
+                lightXValue: document.getElementById('lightXValue'),
+                lightYSlider: document.getElementById('lightYSlider'),
+                lightYValue: document.getElementById('lightYValue'),
+                lightZSlider: document.getElementById('lightZSlider'),
+                lightZValue: document.getElementById('lightZValue')
             };
             
             // Setup file uploads
@@ -1100,6 +1250,84 @@
                         }
                     }
                 });
+            });
+            
+            // Zoom slider
+            elements.zoomSlider.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                elements.zoomValue.textContent = value.toFixed(1) + 'x';
+                if (state.isModuleReady) {
+                    try {
+                        Module.ccall('setZoom', null, ['number'], [value]);
+                    } catch (e) {
+                        // Function may not be available
+                    }
+                }
+            });
+            
+            // Camera X slider
+            elements.cameraXSlider.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                elements.cameraXValue.textContent = value.toFixed(0);
+                if (state.isModuleReady) {
+                    try {
+                        Module.ccall('setCameraX', null, ['number'], [value]);
+                    } catch (e) {
+                        // Function may not be available
+                    }
+                }
+            });
+            
+            // Camera Y slider
+            elements.cameraYSlider.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                elements.cameraYValue.textContent = value.toFixed(0);
+                if (state.isModuleReady) {
+                    try {
+                        Module.ccall('setCameraY', null, ['number'], [value]);
+                    } catch (e) {
+                        // Function may not be available
+                    }
+                }
+            });
+            
+            // Light X slider
+            elements.lightXSlider.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                elements.lightXValue.textContent = value.toFixed(0);
+                if (state.isModuleReady) {
+                    try {
+                        Module.ccall('setLightX', null, ['number'], [value]);
+                    } catch (e) {
+                        // Function may not be available
+                    }
+                }
+            });
+            
+            // Light Y slider
+            elements.lightYSlider.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                elements.lightYValue.textContent = value.toFixed(0);
+                if (state.isModuleReady) {
+                    try {
+                        Module.ccall('setLightY', null, ['number'], [value]);
+                    } catch (e) {
+                        // Function may not be available
+                    }
+                }
+            });
+            
+            // Light Z slider
+            elements.lightZSlider.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                elements.lightZValue.textContent = value.toFixed(0);
+                if (state.isModuleReady) {
+                    try {
+                        Module.ccall('setLightZ', null, ['number'], [value]);
+                    } catch (e) {
+                        // Function may not be available
+                    }
+                }
             });
             
             // Log controls
