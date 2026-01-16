@@ -284,7 +284,6 @@ namespace mx {
         return details;
     }
 
-
     void VKWindow::pickPhysicalDevice() {
         uint32_t deviceCount = 0;
         vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
@@ -327,7 +326,6 @@ namespace mx {
         VkPhysicalDeviceFeatures deviceFeatures{};
         deviceFeatures.samplerAnisotropy = VK_TRUE;
     
-        
         const std::vector<const char*> deviceExtensions = {
             VK_KHR_SWAPCHAIN_EXTENSION_NAME
         };
@@ -337,8 +335,7 @@ namespace mx {
         createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
         createInfo.pQueueCreateInfos = queueCreateInfos.data();
         createInfo.pEnabledFeatures = &deviceFeatures;
-        
-        
+            
         createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
         createInfo.ppEnabledExtensionNames = deviceExtensions.data();
         
@@ -1042,21 +1039,16 @@ namespace mx {
     void VKWindow::createDescriptorSets() {
         try {
             std::cout << ">> [DescriptorSets] Starting descriptor set creation...\n";
-
-            // ... [Keep your existing validation checks here] ...
             if (instance == VK_NULL_HANDLE) throw mx::Exception("Vulkan instance is null!");
             if (device == VK_NULL_HANDLE) throw mx::Exception("Vulkan device is null!");
             if (descriptorSetLayout == VK_NULL_HANDLE) throw mx::Exception("Descriptor set layout is null!");
             if (descriptorPool == VK_NULL_HANDLE) throw mx::Exception("Descriptor pool is null!");
-
-            // 1. Allocate the Sets
             std::vector<VkDescriptorSetLayout> layouts(swapChainImages.size(), descriptorSetLayout);
             VkDescriptorSetAllocateInfo allocInfo = {};
             allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
             allocInfo.descriptorPool = descriptorPool;
             allocInfo.descriptorSetCount = static_cast<uint32_t>(swapChainImages.size());
             allocInfo.pSetLayouts = layouts.data();
-
             descriptorSets.resize(swapChainImages.size());
             VkResult result = vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data());
 
@@ -1319,7 +1311,6 @@ namespace mx {
         }
 
         vkResetCommandBuffer(commandBuffers[imageIndex], 0);
-
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         if (vkBeginCommandBuffer(commandBuffers[imageIndex], &beginInfo) != VK_SUCCESS) {
@@ -1361,9 +1352,9 @@ namespace mx {
         }
 
         float time = SDL_GetTicks() / 1000.0f;
-        glm::mat4 model = glm::rotate(glm::mat4(1.0f), time, glm::vec3(1.0f, 0.0f, 0.0f));
+        
         glm::mat4 view = glm::lookAt(
-            glm::vec3(0.0f, 0.0f, 2.0f),
+            glm::vec3(0.0f, 0.0f, 2.5f),
             glm::vec3(0.0f, 0.0f, 0.0f),
             glm::vec3(0.0f, 1.0f, 0.0f)
         );
@@ -1373,8 +1364,8 @@ namespace mx {
             0.1f,
             10.0f
         );
-        proj[1][1] *= -1; 
-        glm::mat4 mvp = proj * view * model; 
+        proj[1][1] *= -1;
+        
         if (!descriptorSets.empty()) {
             vkCmdBindDescriptorSets(
                 commandBuffers[imageIndex],
@@ -1388,18 +1379,35 @@ namespace mx {
             );
         }
 
-        if (pipelineLayout != VK_NULL_HANDLE) {
-            vkCmdPushConstants(
-                commandBuffers[imageIndex],
-                pipelineLayout,
-                VK_SHADER_STAGE_VERTEX_BIT,
-                0,
-                sizeof(glm::mat4),
-                &mvp 
-            );
+        
+        for (int i = 0; i < 3; ++i) {
+            glm::vec3 position = glm::vec3((i - 1.0f) * 0.8f, 0.0f, 0.0f);
+            glm::vec3 rotationAxis;
+            if (i == 0) {
+                rotationAxis = glm::vec3(1.0f, 0.0f, 0.0f);
+            } else if (i == 1) {
+                rotationAxis = glm::vec3(0.0f, 1.0f, 0.0f);
+            } else {
+                rotationAxis = glm::vec3(0.0f, 0.0f, 1.0f);
+            }
+            
+            glm::mat4 model = glm::translate(glm::mat4(1.0f), position);
+            model = glm::rotate(model, time * (1.0f + i * 0.3f), rotationAxis);
+            
+            glm::mat4 mvp = proj * view * model;
+            
+            if (pipelineLayout != VK_NULL_HANDLE) {
+                vkCmdPushConstants(
+                    commandBuffers[imageIndex],
+                    pipelineLayout,
+                    VK_SHADER_STAGE_VERTEX_BIT,
+                    0,
+                    sizeof(glm::mat4),
+                    &mvp 
+                );
+            }
+            vkCmdDrawIndexed(commandBuffers[imageIndex], indexCount, 1, 0, 0, 0);
         }
-
-        vkCmdDrawIndexed(commandBuffers[imageIndex], indexCount, 1, 0, 0, 0);
         vkCmdEndRenderPass(commandBuffers[imageIndex]);
 
         if (vkEndCommandBuffer(commandBuffers[imageIndex]) != VK_SUCCESS) {
