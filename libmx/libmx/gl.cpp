@@ -63,6 +63,63 @@ namespace gl {
     }
 #endif
 
+    GLWindow::GLWindow(int width, int height, GLMode mode) : gl_mode(mode), glContext{nullptr}, window{nullptr} {
+        initGL(width, height);
+    }
+
+    void GLWindow::initGL(int width, int height) {
+        mx::redirect();
+        if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER | SDL_INIT_AUDIO) < 0) {
+            mx::system_err << "Error initalizing SDL: " << SDL_GetError() << "\n";
+            mx::system_err.flush();
+            exit(EXIT_FAILURE);
+        }
+#ifndef __EMSCRIPTEN__
+        if(gl_mode == GLMode::DESKTOP) {
+            SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+            SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+            SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+            SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+            SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+        } else {
+            SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+            SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+            SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+            SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+            SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+        }
+#endif
+        window = SDL_CreateWindow("", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 
+                                  width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN);
+        if (!window) {
+            throw std::runtime_error("Failed to create SDL window: " + std::string(SDL_GetError()));
+        }
+#ifndef __EMSCRIPTEN__
+        glContext = SDL_GL_CreateContext(window);
+        if (!glContext) {
+            throw std::runtime_error("Failed to create OpenGL context: " + std::string(SDL_GetError()));
+        }
+        if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress)) {
+            SDL_GL_DeleteContext(glContext);
+            SDL_DestroyWindow(window);
+            SDL_Quit();
+            exit(EXIT_FAILURE);
+        }
+        mx::system_out << "OpenGL Version: [" << glGetString(GL_VERSION) << "]\n";
+#endif
+        w = width;
+        h = height;
+        if (TTF_Init() < 0) {
+            mx::system_err << "Failed to initialize SDL_ttf: " << TTF_GetError() << std::endl;
+            mx::system_err.flush();
+            exit(EXIT_FAILURE);
+        }
+        text.init(w, h);
+        console.resize(this, w, h);
+        glViewport(0, 0, w, h);
+        SDL_GL_SetSwapInterval(0); 
+    }
+
     void GLWindow::initGL(const std::string &title, int width, int height, bool resize_) {
         mx::redirect();
         if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER | SDL_INIT_AUDIO) < 0) {
