@@ -374,11 +374,10 @@ public:
 			}
 		}
 	}
-
+	const size_t count() const { return index; }
 protected:
 	ArgumentData<String> arg_data;
 	std::unordered_map<int, Argument<String>> arg_info;
-
 private:
 	int index = 0, cindex = 1;
 };
@@ -439,7 +438,6 @@ inline Arguments proc_args(int &argc, char **argv) {
         }
     } catch (const ArgException<std::string>& e) {
         std::cerr << "mx: Argument Exception" << e.text() << std::endl;
-		// defaults
 		args.width = 1280;
 		args.height = 720;
 		args.path = ".";

@@ -137,13 +137,13 @@ namespace gl {
         EMSCRIPTEN_WEBGL_CONTEXT_HANDLE webglContext = 0;    
         void restoreContext();
 #endif
-
         GLWindow(const std::string &text, int width, int height, bool resize_ = true, GLMode mode = GLMode::DESKTOP) : gl_mode(mode), glContext{nullptr}, window{nullptr} { 
             initGL(text, width, height, resize_);
         }
-
+        GLWindow(int width, int height, GLMode mode);
         virtual ~GLWindow();
         void initGL(const std::string &title, int width, int height, bool resize_ = true);
+        void initGL(int width, int height);
         void updateViewport();
         void swap();
 
