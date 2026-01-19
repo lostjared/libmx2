@@ -31,18 +31,32 @@ namespace mx {
         createFramebuffers();
         createCommandPool();
         createVertexBuffer();
-        SDL_Surface* surface = png::LoadPNG(util.getFilePath("bg.png").c_str());
-        if (!surface) throw mx::Exception("Failed to load texture image!");
-        createTextureImage(surface);
+        surface_img = png::LoadPNG(util.getFilePath("bg.png").c_str());
+        if (!surface_img) throw mx::Exception("Failed to load!");
+        setupTextureImage(surface_img->w, surface_img->h);
+        {
+            VkDeviceSize imageSize = surface_img->w * surface_img->h * 4;
+            VkBuffer stagingBuffer; VkDeviceMemory stagingMem;
+            createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingMem);
+            
+            void* data;
+            vkMapMemory(device, stagingMem, 0, imageSize, 0, &data);
+            memcpy(data, surface_img->pixels, imageSize);
+            vkUnmapMemory(device, stagingMem);
+            
+            copyBufferToImage(stagingBuffer, textureImage, width, height);
+            transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+            
+            vkDestroyBuffer(device, stagingBuffer, nullptr);
+            vkFreeMemory(device, stagingMem, nullptr);
+        }
         createTextureImageView();
         createTextureSampler();
         createDescriptorPool();
         createUniformBuffers();
         createDescriptorSets();
-        SDL_FreeSurface(surface);
         createCommandBuffers();
         createSyncObjects();
-
     }
     
     void VKWindow::createDescriptorSetLayout() {
@@ -737,34 +751,30 @@ namespace mx {
         vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
     }
 
-    void VKWindow::createTextureImage(SDL_Surface* surface) {
-        if (!surface) {
+    void VKWindow::createTextureImage(SDL_Surface* surfacex) {
+        if (!surfacex) {
             throw mx::Exception("SDL_Surface is null!");
         }
 
-        VkDeviceSize imageSize = surface->w * surface->h * 4; 
-        width = surface->w;
-        height = surface->h;
-
+        VkDeviceSize imageSize = surfacex->w * surfacex->h * 4; 
+        width = surfacex->w;
+        height = surfacex->h;
         VkBuffer stagingBuffer;
         VkDeviceMemory stagingBufferMemory;
         createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
             stagingBuffer, stagingBufferMemory);
-
         VkFormat textureFormat = VK_FORMAT_R8G8B8A8_UNORM;
         void* data;
         vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
-        memcpy(data, surface->pixels, static_cast<size_t>(imageSize));
+        memcpy(data, surfacex->pixels, static_cast<size_t>(imageSize));
         vkUnmapMemory(device, stagingBufferMemory);
-
         createImage(width, height, textureFormat, VK_IMAGE_TILING_OPTIMAL,
             VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
         transitionImageLayout(textureImage, textureFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
         copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
         transitionImageLayout(textureImage, textureFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
         vkDestroyBuffer(device, stagingBuffer, nullptr);
         vkFreeMemory(device, stagingBufferMemory, nullptr);
     }
@@ -828,21 +838,23 @@ namespace mx {
         if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
             barrier.srcAccessMask = 0;
             barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-
             sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
             destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
         }
         else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
             barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
             barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
             sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
             destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
         }
-        else {
-            throw mx::Exception("Unsupported layout transition!");
+        else if (oldLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+            barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+            barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            sourceStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+            destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        } else {
+            throw mx::Exception ("Transition");
         }
-
         vkCmdPipelineBarrier(
             commandBuffer,
             sourceStage, destinationStage,
@@ -853,6 +865,35 @@ namespace mx {
         );
 
         endSingleTimeCommands(commandBuffer);
+    }
+
+    void VKWindow::setupTextureImage(uint32_t w, uint32_t h) {
+        width = w;
+        height = h;
+        VkFormat textureFormat = VK_FORMAT_R8G8B8A8_UNORM;
+        createImage(width, height, textureFormat, VK_IMAGE_TILING_OPTIMAL,
+            VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
+
+        transitionImageLayout(textureImage, textureFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    }
+
+    void VKWindow::updateTexture(void* pixels, VkDeviceSize imageSize) {
+        VkBuffer stagingBuffer;
+        VkDeviceMemory stagingBufferMemory;
+        createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            stagingBuffer, stagingBufferMemory);
+        void* data;
+        vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
+        memcpy(data, pixels, static_cast<size_t>(imageSize));
+        vkUnmapMemory(device, stagingBufferMemory);
+        VkFormat textureFormat = VK_FORMAT_R8G8B8A8_UNORM;
+        transitionImageLayout(textureImage, textureFormat, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+        transitionImageLayout(textureImage, textureFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        vkDestroyBuffer(device, stagingBuffer, nullptr);
+        vkFreeMemory(device, stagingBufferMemory, nullptr);
     }
 
     void VKWindow::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
@@ -968,16 +1009,17 @@ namespace mx {
     }
 
     void VKWindow::createDescriptorPool() {
-        VkDescriptorPoolSize poolSize{};
-        poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        poolSize.descriptorCount = static_cast<uint32_t>(swapChainImages.size());
+        std::array<VkDescriptorPoolSize, 2> poolSizes{};
+        poolSizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        poolSizes[0].descriptorCount = static_cast<uint32_t>(swapChainImages.size());
+        poolSizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        poolSizes[1].descriptorCount = static_cast<uint32_t>(swapChainImages.size());
 
         VkDescriptorPoolCreateInfo poolInfo{};
         poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        poolInfo.poolSizeCount = 1;
-        poolInfo.pPoolSizes = &poolSize;
+        poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size()); 
+        poolInfo.pPoolSizes = poolSizes.data();
         poolInfo.maxSets = static_cast<uint32_t>(swapChainImages.size());
-
         std::cout << ">> [DescriptorPool] Number of swap chain images: "
             << swapChainImages.size() << "\n";
         std::cout << ">> [DescriptorPool] Device address: " << device << "\n";
@@ -1294,12 +1336,25 @@ namespace mx {
         UniformBufferObject ubo{};
         ubo.time = SDL_GetTicks() / 1000.0f;
         ubo.color = glm::vec3(1.0f, 0.5f, 0.3f);
-        
-        
+        uint32_t* pixels = (uint32_t*)surface_img->pixels;
+        for (unsigned int y = 0; y < height; ++y) {
+            for (unsigned int x = 0; x < width; ++x) {
+                int i = (y * width) + x;
+                uint8_t r = x % 255; 
+                uint8_t g = y % 255;
+                uint8_t b = x + y % 255;
+                uint8_t a = 255;
+                unsigned char *buf = (unsigned char*)&pixels[i];
+                buf[0] += r;
+                buf[1] += g;
+                buf[2] += b;
+                buf[3] = a;
+            }
+        }
+        updateTexture(surface_img->pixels, width * height * 4);
         if (uniformBuffersMapped.size() > imageIndex && uniformBuffersMapped[imageIndex] != nullptr) {
             memcpy(uniformBuffersMapped[imageIndex], &ubo, sizeof(ubo));
         }
-
         glm::mat4 mvp = glm::mat4(1.0f); 
         if (!descriptorSets.empty()) {
             vkCmdBindDescriptorSets(
