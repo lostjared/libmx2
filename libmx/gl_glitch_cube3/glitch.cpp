@@ -200,9 +200,19 @@ public:
     }
 
     float twistAngle = 1.0f;
-    float twistSpeed = 120.0f;
+    float twistSpeed = 0.1f;
     bool twistX = false, twistY = false, twistZ = false;
     bool morphT = false;
+    float uvScrollU = 0.0f;
+    float uvScrollV = 0.0f;
+    float hueShift = 0.0f;
+    float saturation = 1.0f;
+    float brightness = 1.0f;
+    glm::vec3 colorGradingShift = glm::vec3(0.0f);
+    bool enableUVScroll = false;
+    bool enableColorGrading = false;
+    bool enableHSV = false;
+    float scrollIntensity = 0.3f;
     virtual void draw(gl::GLWindow *win) override {
         shaderProgram.useProgram();
         CHECK_GL_ERROR();
@@ -243,8 +253,31 @@ public:
                     static_cast<float>(currentTime) / 1000.0f);
         CHECK_GL_ERROR();
         glDisable(GL_BLEND);
-        twistAngle += 1.0f;
+        twistAngle += twistSpeed;
         cube.resetToOriginal();
+        if (enableUVScroll) {
+            static float scrollTime = 0.0f;
+            scrollTime += deltaTime;
+            float uOffset = sin(scrollTime * 0.5f) * scrollIntensity;
+            float vOffset = cos(scrollTime * 0.3f) * scrollIntensity;
+            cube.uvScroll(uOffset * deltaTime, vOffset * deltaTime);
+        }
+        
+        if (enableColorGrading) {
+            static float colorTime = 0.0f;
+            colorTime += deltaTime;
+            float colorCycle = sin(colorTime * 0.2f);
+            colorGradingShift = glm::vec3(colorCycle * 0.3f, colorCycle * 0.2f, -colorCycle * 0.25f);
+            cube.applyColorGrading(colorGradingShift);
+        }
+        
+        if (enableHSV) {
+            static float hsvTime = 0.0f;
+            hsvTime += deltaTime;
+            float satCycle = 0.5f + sin(hsvTime * 0.1f) * 0.5f;  
+            cube.applyHSV(hueShift, satCycle, brightness);
+        }
+        
         if(twistY) cube.twist(mx::DeformAxis::Y, twistAngle);
         if(twistZ) cube.twist(mx::DeformAxis::Z, twistAngle);
         if(twistX) cube.twist(mx::DeformAxis::X, twistAngle);
@@ -256,6 +289,8 @@ public:
         win->text.setColor({255, 255, 255, 255});
         win->text.printText_Solid(font, 25.0f, 25.0f, "Press Arrow keys / Page Up Down to move light source Enter to reset");
         win->text.printText_Solid(font, 25.0f, 60.0f, "Press Space to rotate cube");
+        win->text.printText_Solid(font, 25.0f, 95.0f, "U: UV Scroll  C: Color Grade  H: HSV  -/+: Adjust Intensity");
+        win->text.printText_Solid(font, 25.0f, 130.0f, "X/Y/Z: Twist  T: Bend");
     }
   
     void event(gl::GLWindow *win, SDL_Event &e) override {
@@ -292,11 +327,40 @@ public:
                 case SDLK_t:
                     morphT = !morphT;
                     break;
+                case SDLK_v:
+                    twistSpeed += 0.1f;
+                    std::cout << "Twist Increase: " << twistSpeed << std::endl;
+                    break;
+                case SDLK_b:
+                    if(twistSpeed > 0.1f)
+                        twistSpeed -= 0.1f;
+                    std::cout << "Twist Decrease: " << twistSpeed << std::endl;
+
                 case SDLK_RETURN:
                     lightPos = glm::vec3(0.0f, 5.0f, 0.0f);
                     break;
                 case SDLK_SPACE:
                     if(rot_x >  0) rot_x = 0; else rot_x = 1.0f;
+                    break;
+                case SDLK_u:  
+                    enableUVScroll = !enableUVScroll;
+                    mx::system_out << "UV Scroll: " << (enableUVScroll ? "ON" : "OFF") << "\n";
+                    break;
+                case SDLK_c:  
+                    enableColorGrading = !enableColorGrading;
+                    mx::system_out << "Color Grading: " << (enableColorGrading ? "ON" : "OFF") << "\n";
+                    break;
+                case SDLK_h:  
+                    enableHSV = !enableHSV;
+                    mx::system_out << "HSV Adjustments: " << (enableHSV ? "ON" : "OFF") << "\n";
+                    break;
+                case SDLK_MINUS:
+                    scrollIntensity = glm::max(0.0f, scrollIntensity - 0.01f);
+                    mx::system_out << "Scroll Intensity: " << scrollIntensity << "\n";
+                    break;
+                case SDLK_EQUALS:
+                    scrollIntensity += 0.01f;
+                    mx::system_out << "Scroll Intensity: " << scrollIntensity << "\n";
                     break;
             }
             std::cout << "Light Position: " << lightPos.x << ", " << lightPos.y << ", " << lightPos.z << "\n";
