@@ -11,6 +11,9 @@
 #include<unordered_map>
 #include<functional>
 #include<cstddef>
+#include<cmath>
+#include<random>
+#include<algorithm>
 
 namespace mx {
 
@@ -57,6 +60,9 @@ namespace mx {
         : vert(std::move(m.vert)),
           tex(std::move(m.tex)),
           norm(std::move(m.norm)),
+          originalVert(std::move(m.originalVert)),
+          originalNorm(std::move(m.originalNorm)),
+          hasOriginal(m.hasOriginal),
           shape_type(m.shape_type),
           texture{m.texture},
           VAO(m.VAO),
@@ -70,6 +76,7 @@ namespace mx {
           m.vertIndex = m.texIndex = m.normIndex = 0;
           m.shape_type = 0;
           m.texture = 0;
+          m.hasOriginal = false;
     }
 
     Mesh &Mesh::operator=(Mesh &&m) noexcept {
@@ -77,6 +84,9 @@ namespace mx {
             vert = std::move(m.vert);
             tex = std::move(m.tex);
             norm = std::move(m.norm);
+            originalVert = std::move(m.originalVert);
+            originalNorm = std::move(m.originalNorm);
+            hasOriginal = m.hasOriginal;
             VAO = m.VAO;
             positionVBO = m.positionVBO;
             normalVBO = m.normalVBO;
@@ -94,6 +104,7 @@ namespace mx {
             m.vertIndex = 0;
             m.texIndex = 0;
             m.normIndex = 0;
+            m.hasOriginal = false;
         }
         return *this;
     }
@@ -269,6 +280,284 @@ namespace mx {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         shader.setUniform(texture_name, 0);
     }
+
+    // ============== Deformation Functions ==============
+
+    void Mesh::saveOriginal() {
+        originalVert = vert;
+        originalNorm = norm;
+        hasOriginal = true;
+    }
+
+    void Mesh::resetToOriginal() {
+        if (hasOriginal) {
+            vert = originalVert;
+            norm = originalNorm;
+            updateBuffers();
+        }
+    }
+
+    void Mesh::updateBuffers() {
+        if (VAO == 0) return;
+        
+        glBindVertexArray(VAO);
+        
+        if (positionVBO && !vert.empty()) {
+            glBindBuffer(GL_ARRAY_BUFFER, positionVBO);
+            glBufferSubData(GL_ARRAY_BUFFER, 0, vert.size() * sizeof(GLfloat), vert.data());
+        }
+        
+        if (normalVBO && !norm.empty()) {
+            glBindBuffer(GL_ARRAY_BUFFER, normalVBO);
+            glBufferSubData(GL_ARRAY_BUFFER, 0, norm.size() * sizeof(GLfloat), norm.data());
+        }
+        
+        glBindVertexArray(0);
+    }
+
+    void Mesh::recalculateNormals() {
+        if (vert.empty()) return;
+        
+        size_t numVerts = vert.size() / 3;
+        std::vector<GLfloat> newNormals(numVerts * 3, 0.0f);
+        
+        // Calculate face normals and accumulate to vertices
+        if (!indices.empty()) {
+            for (size_t i = 0; i + 2 < indices.size(); i += 3) {
+                GLuint i0 = indices[i];
+                GLuint i1 = indices[i + 1];
+                GLuint i2 = indices[i + 2];
+                
+                float v0[3] = { vert[i0 * 3], vert[i0 * 3 + 1], vert[i0 * 3 + 2] };
+                float v1[3] = { vert[i1 * 3], vert[i1 * 3 + 1], vert[i1 * 3 + 2] };
+                float v2[3] = { vert[i2 * 3], vert[i2 * 3 + 1], vert[i2 * 3 + 2] };
+                
+                float edge1[3] = { v1[0] - v0[0], v1[1] - v0[1], v1[2] - v0[2] };
+                float edge2[3] = { v2[0] - v0[0], v2[1] - v0[1], v2[2] - v0[2] };
+                
+                float nx = edge1[1] * edge2[2] - edge1[2] * edge2[1];
+                float ny = edge1[2] * edge2[0] - edge1[0] * edge2[2];
+                float nz = edge1[0] * edge2[1] - edge1[1] * edge2[0];
+                
+                for (GLuint idx : {i0, i1, i2}) {
+                    newNormals[idx * 3] += nx;
+                    newNormals[idx * 3 + 1] += ny;
+                    newNormals[idx * 3 + 2] += nz;
+                }
+            }
+        } else {
+            for (size_t i = 0; i + 8 < vert.size(); i += 9) {
+                float v0[3] = { vert[i], vert[i + 1], vert[i + 2] };
+                float v1[3] = { vert[i + 3], vert[i + 4], vert[i + 5] };
+                float v2[3] = { vert[i + 6], vert[i + 7], vert[i + 8] };
+                
+                float edge1[3] = { v1[0] - v0[0], v1[1] - v0[1], v1[2] - v0[2] };
+                float edge2[3] = { v2[0] - v0[0], v2[1] - v0[1], v2[2] - v0[2] };
+                
+                float nx = edge1[1] * edge2[2] - edge1[2] * edge2[1];
+                float ny = edge1[2] * edge2[0] - edge1[0] * edge2[2];
+                float nz = edge1[0] * edge2[1] - edge1[1] * edge2[0];
+                
+                for (size_t j = 0; j < 3; ++j) {
+                    size_t idx = (i / 3) + j;
+                    newNormals[idx * 3] = nx;
+                    newNormals[idx * 3 + 1] = ny;
+                    newNormals[idx * 3 + 2] = nz;
+                }
+            }
+        }
+        
+        // Normalize
+        for (size_t i = 0; i < numVerts; ++i) {
+            float nx = newNormals[i * 3];
+            float ny = newNormals[i * 3 + 1];
+            float nz = newNormals[i * 3 + 2];
+            float len = std::sqrt(nx * nx + ny * ny + nz * nz);
+            if (len > 0.0001f) {
+                newNormals[i * 3] = nx / len;
+                newNormals[i * 3 + 1] = ny / len;
+                newNormals[i * 3 + 2] = nz / len;
+            }
+        }
+        
+        norm = std::move(newNormals);
+    }
+
+    void Mesh::scale(float factor) {
+        scale(factor, factor, factor);
+    }
+
+    void Mesh::scale(float sx, float sy, float sz) {
+        for (size_t i = 0; i < vert.size(); i += 3) {
+            vert[i] *= sx;
+            vert[i + 1] *= sy;
+            vert[i + 2] *= sz;
+        }
+    }
+
+    void Mesh::bend(DeformAxis axis, float angle, float center, float range) {
+        int axisIdx = static_cast<int>(axis);
+        int bendIdx1 = (axisIdx + 1) % 3;
+        int bendIdx2 = (axisIdx + 2) % 3;
+        
+        for (size_t i = 0; i < vert.size(); i += 3) {
+            float pos = vert[i + axisIdx];
+            float t = (pos - center) / range;
+            t = std::clamp(t, -1.0f, 1.0f);
+            
+            float bendAngle = angle * t;
+            float cosA = std::cos(bendAngle);
+            float sinA = std::sin(bendAngle);
+            
+            float v1 = vert[i + bendIdx1];
+            float v2 = vert[i + bendIdx2];
+            
+            vert[i + bendIdx1] = v1 * cosA - v2 * sinA;
+            vert[i + bendIdx2] = v1 * sinA + v2 * cosA;
+        }
+    }
+
+    void Mesh::twist(DeformAxis axis, float angle, float center) {
+        int axisIdx = static_cast<int>(axis);
+        int rotIdx1 = (axisIdx + 1) % 3;
+        int rotIdx2 = (axisIdx + 2) % 3;
+        
+        for (size_t i = 0; i < vert.size(); i += 3) {
+            float pos = vert[i + axisIdx];
+            float twistAngle = angle * (pos - center);
+            float cosA = std::cos(twistAngle);
+            float sinA = std::sin(twistAngle);
+            
+            float v1 = vert[i + rotIdx1];
+            float v2 = vert[i + rotIdx2];
+            
+            vert[i + rotIdx1] = v1 * cosA - v2 * sinA;
+            vert[i + rotIdx2] = v1 * sinA + v2 * cosA;
+        }
+    }
+
+    void Mesh::wave(DeformAxis axis, float amplitude, float frequency, float phase) {
+        int axisIdx = static_cast<int>(axis);
+        int displaceIdx = (axisIdx + 1) % 3;
+        
+        for (size_t i = 0; i < vert.size(); i += 3) {
+            float pos = vert[i + axisIdx];
+            float displacement = amplitude * std::sin(frequency * pos + phase);
+            vert[i + displaceIdx] += displacement;
+        }
+    }
+
+    void Mesh::ripple(float amplitude, float frequency, float phase, float cx, float cy, float cz) {
+        for (size_t i = 0; i < vert.size(); i += 3) {
+            float dx = vert[i] - cx;
+            float dy = vert[i + 1] - cy;
+            float dz = vert[i + 2] - cz;
+            float dist = std::sqrt(dx * dx + dy * dy + dz * dz);
+            
+            float displacement = amplitude * std::sin(frequency * dist + phase);
+            
+            if (dist > 0.0001f) {
+                vert[i] += (dx / dist) * displacement;
+                vert[i + 1] += (dy / dist) * displacement;
+                vert[i + 2] += (dz / dist) * displacement;
+            }
+        }
+    }
+
+    void Mesh::noise(float amplitude, unsigned int seed) {
+        std::mt19937 gen(seed);
+        std::uniform_real_distribution<float> dist(-amplitude, amplitude);
+        
+        for (size_t i = 0; i < vert.size(); ++i) {
+            vert[i] += dist(gen);
+        }
+    }
+
+    void Mesh::taper(DeformAxis axis, float factor, float center) {
+        int axisIdx = static_cast<int>(axis);
+        int scaleIdx1 = (axisIdx + 1) % 3;
+        int scaleIdx2 = (axisIdx + 2) % 3;
+        
+        for (size_t i = 0; i < vert.size(); i += 3) {
+            float pos = vert[i + axisIdx];
+            float scaleFactor = 1.0f + factor * (pos - center);
+            scaleFactor = std::max(0.0f, scaleFactor);
+            
+            vert[i + scaleIdx1] *= scaleFactor;
+            vert[i + scaleIdx2] *= scaleFactor;
+        }
+    }
+
+    void Mesh::bulge(float factor, float cx, float cy, float cz, float radius) {
+        for (size_t i = 0; i < vert.size(); i += 3) {
+            float dx = vert[i] - cx;
+            float dy = vert[i + 1] - cy;
+            float dz = vert[i + 2] - cz;
+            float dist = std::sqrt(dx * dx + dy * dy + dz * dz);
+            
+            if (dist < radius && dist > 0.0001f) {
+                float t = dist / radius;
+                float bulgeFactor = 1.0f + factor * (1.0f - t * t);
+                
+                vert[i] = cx + dx * bulgeFactor;
+                vert[i + 1] = cy + dy * bulgeFactor;
+                vert[i + 2] = cz + dz * bulgeFactor;
+            }
+        }
+    }
+
+    void Mesh::morph(float t) {
+        if (!hasOriginal) return;
+        
+        t = std::clamp(t, 0.0f, 1.0f);
+        
+        std::vector<GLfloat> targetVert = vert;
+        std::vector<GLfloat> targetNorm = norm;
+        
+        for (size_t i = 0; i < vert.size(); ++i) {
+            vert[i] = originalVert[i] + t * (targetVert[i] - originalVert[i]);
+        }
+        
+        for (size_t i = 0; i < norm.size(); ++i) {
+            norm[i] = originalNorm[i] + t * (targetNorm[i] - originalNorm[i]);
+        }
+    }
+
+    void Mesh::translate(float tx, float ty, float tz) {
+        for (size_t i = 0; i < vert.size(); i += 3) {
+            vert[i] += tx;
+            vert[i + 1] += ty;
+            vert[i + 2] += tz;
+        }
+    }
+
+    void Mesh::rotate(DeformAxis axis, float angle) {
+        int axisIdx = static_cast<int>(axis);
+        int rotIdx1 = (axisIdx + 1) % 3;
+        int rotIdx2 = (axisIdx + 2) % 3;
+        
+        float cosA = std::cos(angle);
+        float sinA = std::sin(angle);
+        
+        for (size_t i = 0; i < vert.size(); i += 3) {
+            float v1 = vert[i + rotIdx1];
+            float v2 = vert[i + rotIdx2];
+            
+            vert[i + rotIdx1] = v1 * cosA - v2 * sinA;
+            vert[i + rotIdx2] = v1 * sinA + v2 * cosA;
+        }
+        
+        // Also rotate normals
+        for (size_t i = 0; i < norm.size(); i += 3) {
+            float n1 = norm[i + rotIdx1];
+            float n2 = norm[i + rotIdx2];
+            
+            norm[i + rotIdx1] = n1 * cosA - n2 * sinA;
+            norm[i + rotIdx2] = n1 * sinA + n2 * cosA;
+        }
+    }
+
+    // ============== End Deformation Functions ==============
 
     Model::Model(Model &&m) : meshes{std::move(m.meshes)} {}
 
@@ -535,5 +824,103 @@ namespace mx {
         file.close();
         setTextures(text);
     }
+
+    void Model::saveOriginal() {
+        for (auto &mesh : meshes) {
+            mesh.saveOriginal();
+        }
+    }
+
+    void Model::resetToOriginal() {
+        for (auto &mesh : meshes) {
+            mesh.resetToOriginal();
+        }
+    }
+
+    void Model::updateBuffers() {
+        for (auto &mesh : meshes) {
+            mesh.updateBuffers();
+        }
+    }
+
+    void Model::recalculateNormals() {
+        for (auto &mesh : meshes) {
+            mesh.recalculateNormals();
+        }
+    }
+
+    void Model::scale(float factor) {
+        for (auto &mesh : meshes) {
+            mesh.scale(factor);
+        }
+    }
+
+    void Model::scale(float sx, float sy, float sz) {
+        for (auto &mesh : meshes) {
+            mesh.scale(sx, sy, sz);
+        }
+    }
+
+    void Model::bend(DeformAxis axis, float angle, float center, float range) {
+        for (auto &mesh : meshes) {
+            mesh.bend(axis, angle, center, range);
+        }
+    }
+
+    void Model::twist(DeformAxis axis, float angle, float center) {
+        for (auto &mesh : meshes) {
+            mesh.twist(axis, angle, center);
+        }
+    }
+
+    void Model::wave(DeformAxis axis, float amplitude, float frequency, float phase) {
+        for (auto &mesh : meshes) {
+            mesh.wave(axis, amplitude, frequency, phase);
+        }
+    }
+
+    void Model::ripple(float amplitude, float frequency, float phase, float cx, float cy, float cz) {
+        for (auto &mesh : meshes) {
+            mesh.ripple(amplitude, frequency, phase, cx, cy, cz);
+        }
+    }
+
+    void Model::noise(float amplitude, unsigned int seed) {
+        for (auto &mesh : meshes) {
+            mesh.noise(amplitude, seed);
+        }
+    }
+
+    void Model::taper(DeformAxis axis, float factor, float center) {
+        for (auto &mesh : meshes) {
+            mesh.taper(axis, factor, center);
+        }
+    }
+
+    void Model::bulge(float factor, float cx, float cy, float cz, float radius) {
+        for (auto &mesh : meshes) {
+            mesh.bulge(factor, cx, cy, cz, radius);
+        }
+    }
+
+    void Model::morph(float t) {
+        for (auto &mesh : meshes) {
+            mesh.morph(t);
+        }
+    }
+
+    void Model::translate(float tx, float ty, float tz) {
+        for (auto &mesh : meshes) {
+            mesh.translate(tx, ty, tz);
+        }
+    }
+
+    void Model::rotate(DeformAxis axis, float angle) {
+        for (auto &mesh : meshes) {
+            mesh.rotate(axis, angle);
+        }
+    }
+
+    // ============== End Model-Level Deformation Functions ==============
 }
 #endif

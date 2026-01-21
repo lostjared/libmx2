@@ -320,6 +320,7 @@ public:
         if(!cube.openModel(win->util.getFilePath("data/cube.mxmod.z"))) {
             throw mx::Exception("Failed to load model");
         }
+        cube.saveOriginal();  
         cube.setShaderProgram(&shader_program, "texture1");
         shader_program.useProgram();
         matrix.load(win);
@@ -348,17 +349,27 @@ public:
         
         update(deltaTime);
         
+        
+        deformTime += deltaTime;
+        wavePhase += deltaTime * 4.0f;  
+        ripplePhase += deltaTime * 5.0f;  
+
+        pulseScale = 1.0f + 0.35f * std::sin(deformTime * 2.0f);  
+        cube.resetToOriginal();
+        cube.scale(pulseScale);
+        cube.wave(mx::DeformAxis::Y, 0.4f * std::sin(deformTime * 1.2f), 3.0f, wavePhase);
+        cube.wave(mx::DeformAxis::X, 0.3f * std::cos(deformTime * 0.9f), 2.5f, wavePhase * 0.7f);
+        cube.twist(mx::DeformAxis::Y, 0.8f * std::sin(deformTime * 0.6f), 0.0f);
+        cube.ripple(0.25f * std::sin(deformTime * 1.5f), 2.0f, ripplePhase);
+        cube.bulge(0.3f * std::sin(deformTime * 1.8f), 0.0f, 0.0f, 0.0f, 2.0f);
+        cube.recalculateNormals();
+        cube.updateBuffers();
         SDL_Surface *matrix_surface = matrix.createMatrixRain(matrix.the_font.wrapper().unwrap(), 1440, 1080);
         mx::Texture::flipSurface(matrix_surface);
         glBindTexture(GL_TEXTURE_2D, texture);
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, matrix_surface->w, matrix_surface->h, GL_RGBA, GL_UNSIGNED_BYTE, matrix_surface->pixels);
         glGenerateMipmap(GL_TEXTURE_2D);
-
-        
-
         SDL_FreeSurface(matrix_surface);
-        
-        
         if (!insideCube) {
             rotation_x += deltaTime * 15.0f; 
             rotation_y += deltaTime * 20.0f;
@@ -395,7 +406,6 @@ public:
                 glm::vec3(0.0f, 1.0f, 0.0f)
             );
         }
-        
         float aspectRatio = static_cast<float>(win->w) / static_cast<float>(win->h);
         glm::mat4 projection = glm::perspective(
             glm::radians(insideCube ? 90.0f : 45.0f), 
@@ -543,6 +553,12 @@ private:
     const int DOUBLE_TAP_TIME = 300; 
     const int DOUBLE_TAP_DISTANCE = 30; 
     bool menu_shown = true;
+    
+    // Deformation state
+    float deformTime = 0.0f;
+    float wavePhase = 0.0f;
+    float ripplePhase = 0.0f;
+    float pulseScale = 1.0f;
 };
 
 class MainWindow : public gl::GLWindow {
