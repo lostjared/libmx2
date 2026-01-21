@@ -8,68 +8,19 @@
 
 #include"gl.hpp"
 #include"loadpng.hpp"
+#include"model.hpp"
 
 #define CHECK_GL_ERROR() \
     { GLenum err = glGetError(); \
       if (err != GL_NO_ERROR) \
         printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
 
-
-GLfloat vertices[] = { -1.0f, -1.0f, 1.0f, // front face
-    1.0f, 1.0f, 1.0f,
-    -1.0f, 1.0f, 1.0f,
-    
-    -1.0f, -1.0f, 1.0f,
-    1.0f, -1.0f, 1.0f,
-    1.0f, 1.0f, 1.0f,
-    
-    -1.0f, -1.0f, -1.0f, // left side
-    -1.0f, -1.0f, 1.0f,
-    -1.0f, 1.0f, -1.0f,
-    
-    -1.0f, 1.0f, -1.0f,
-    -1.0f, -1.0f, 1.0f,
-    -1.0f, 1.0f, 1.0f,
-    
-    -1.0f, 1.0f, -1.0f, // top
-    -1.0f, 1.0f, 1.0f,
-    1.0f, 1.0f, 1.0f,
-    
-    1.0f, 1.0f, 1.0f,
-    1.0f, 1.0f, -1.0f,
-    -1.0f, 1.0f, -1.0f,
-    
-    -1.0f, -1.0f, -1.0f, // bottom
-    -1.0f, -1.0f, 1.0f,
-    1.0f, -1.0f, 1.0f,
-    
-    1.0f, -1.0f, 1.0f,
-    1.0f, -1.0f, -1.0f,
-    -1.0f, -1.0f, -1.0f,
-    
-    1.0f, -1.0f, -1.0f, // right
-    1.0f, -1.0f, 1.0f,
-    1.0f, 1.0f, -1.0f,
-    
-    1.0f, 1.0f, -1.0f,
-    1.0f, -1.0f, 1.0f,
-    1.0f, 1.0f, 1.0f,
-    
-    -1.0f, -1.0f, -1.0f, // back face
-    1.0f, 1.0f, -1.0f,
-    -1.0f, 1.0f, -1.0f,
-    
-    -1.0f, -1.0f, -1.0f,
-    1.0f, -1.0f, -1.0f,
-    1.0f, 1.0f, -1.0f,
-    
-};
-
 class Cube : public gl::GLObject {
 public:
     gl::ShaderProgram shaderProgram;
-    GLuint VAO, VBO;
     GLuint texture;
+    mx::Model cubeModel;
+    
     float yaw = 0.0f;
     float pitch = 0.0f;
     bool mouseControl = false;
@@ -79,42 +30,40 @@ public:
     bool touchActive = false;
     float lastTouchX = 0.0f;
     float lastTouchY = 0.0f;
+    
+    
+    float twistAngle = 0.0f;
+    float wavePhase = 0.0f;
+    float expandScale = 1.0f;
+    bool expanding = true;
+    float twistSpeed = 45.0f;
+    float waveSpeed = 2.0f;       
+    float expandSpeed = 0.3f;     
+    float minScale = 0.8f;
+    float maxScale = 50.5f;
+    float waveAmplitude = 0.3f;
+    float waveFrequency = 3.0f;
             
     Cube() = default;
     virtual ~Cube() override {
-        glDeleteVertexArrays(1, &VAO);
-        glDeleteBuffers(1, &VBO);
         glDeleteTextures(1, &texture);
     }
 
-    std::vector<GLfloat> cubeData;
-
     virtual void load(gl::GLWindow *win) override {     
         font.loadFont(win->util.getFilePath("data/font.ttf"), 24);
-        size_t vertexCount = sizeof(vertices) / (3 * sizeof(GLfloat));      
-        cubeData.resize(vertexCount * 3);   
-
-        for (size_t i = 0; i < vertexCount; ++i) {
-            cubeData[i * 3] = vertices[i * 3];         // Position X
-            cubeData[i * 3 + 1] = vertices[i * 3 + 1]; // Position Y
-            cubeData[i * 3 + 2] = vertices[i * 3 + 2]; // Position Z
+        if (!cubeModel.openModel(win->util.getFilePath("data/cube.mxmod.z"), true)) {
+            throw mx::Exception("Failed to load cube.mxmod model");
         }
-
-        glGenVertexArrays(1, &VAO);
-        glGenBuffers(1, &VBO);
-        glBindVertexArray(VAO);
-        glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        glBufferData(GL_ARRAY_BUFFER, cubeData.size() * sizeof(GLfloat), cubeData.data(), GL_STATIC_DRAW);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-        glEnableVertexAttribArray(0);
-
-        glBindVertexArray(0);
+        cubeModel.saveOriginal();  
+        mx::system_out << "mx: Loaded cube model with " << cubeModel.meshes.size() << " meshes\n";
         if (!shaderProgram.loadProgram(win->util.getFilePath("data/cube.vert"), win->util.getFilePath("data/cube.frag"))) {
-            throw mx::Exception("Failed to load shader program");
+            throw mx::Exception("Failed to load skybox shader program");
         }
         shaderProgram.useProgram();
         shaderProgram.setUniform("cubemapTexture", 0);
+        cubeModel.setShaderProgram(&shaderProgram, "cubemapTexture");
         glUniform2f(glGetUniformLocation(shaderProgram.id(), "iResolution"), win->w, win->h);
+        
         glm::mat4 model = glm::mat4(1.0f); 
         glm::mat4 view = glm::lookAt(
             glm::vec3(0.0f, 0.0f, 5.0f),  
@@ -125,6 +74,7 @@ public:
         shaderProgram.setUniform("model", model);
         shaderProgram.setUniform("view", view);
         shaderProgram.setUniform("projection", projection);
+        
         glGenTextures(1, &texture);
         glBindTexture(GL_TEXTURE_CUBE_MAP, texture);
         std::vector<std::string> faces = {
@@ -192,51 +142,52 @@ public:
                                               0.1f, 100.0f);
         
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        shaderProgram.useProgram();
+        
+        twistAngle += twistSpeed * deltaTime;
+        wavePhase += waveSpeed * deltaTime * 2.0f * 3.14159f;
+        
+        if (expanding) {
+            expandScale += expandSpeed * deltaTime;
+            if (expandScale >= maxScale) {
+                expandScale = maxScale;
+                expanding = false;
+            }
+        } else {
+            expandScale -= expandSpeed * deltaTime;
+            if (expandScale <= minScale) {
+                expandScale = minScale;
+                expanding = true;
+            }
+        }
+        
+        
+        cubeModel.resetToOriginal();
+        cubeModel.twist(mx::DeformAxis::Y, glm::radians(twistAngle), 0.0f);
+        //cubeModel.wave(mx::DeformAxis::X, waveAmplitude, waveFrequency, wavePhase);
+        //cubeModel.wave(mx::DeformAxis::Z, waveAmplitude * 0.5f, waveFrequency * 1.5f, wavePhase * 0.7f);
+        cubeModel.scale(expandScale);
+        cubeModel.recalculateNormals();
+        cubeModel.updateBuffers();
         
         static float rotation = 0.0f;
         rotation += deltaTime * 50.0f; 
 
+        shaderProgram.useProgram();
         glm::mat4 model = glm::rotate(glm::mat4(1.0f), glm::radians(rotation), glm::vec3(0.0f, 1.0f, 1.0f));
-        model = glm::scale(model, glm::vec3(20.0f, 20.0f, 20.0f));
+        model = glm::scale(model, glm::vec3(500.0f, 500.0f, 500.0f));
         shaderProgram.setUniform("model", model);
         shaderProgram.setUniform("view", view);
         shaderProgram.setUniform("projection", projection);
         shaderProgram.setUniform("time_f", time_f);
         
-        Sint32 mouseX = 0, mouseY = 0;
-        GLint iMouseLoc = glGetUniformLocation(shaderProgram.id(), "iMouse");
-        static bool isDragging = false;
-        static Sint32 clickStartX = 0, clickStartY = 0;
-        Uint32 mouseState = SDL_GetMouseState(&mouseX, &mouseY);
-        float currentY = static_cast<float>(win->h - mouseY);
-        float currentX = static_cast<float>(mouseX);
-        if (mouseState & SDL_BUTTON(SDL_BUTTON_LEFT)) {
-            if (!isDragging) {
-                clickStartX = currentX;
-                clickStartY = currentY;
-                isDragging = true;
-            }
-        } else {
-            isDragging = false;
-        }
-        if (isDragging) {
-            glUniform4f(iMouseLoc, currentX, currentY, clickStartX, clickStartY);
-        } else {
-            glUniform4f(iMouseLoc, currentX, currentY, 0.0f, 0.0f);
-        }
+        glDisable(GL_CULL_FACE);
         glDepthFunc(GL_LEQUAL);
         glDepthMask(GL_FALSE);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, texture);
-        glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, cubeData.size() / 3);
+        cubeModel.drawArraysWithCubemap(texture, "cubemapTexture");
         CHECK_GL_ERROR();
-        glDepthFunc(GL_LESS);
-        glDepthMask(GL_TRUE);
-       
         
-
+        glDepthMask(GL_TRUE);
+        glDepthFunc(GL_LESS);
     }
 
     virtual void event(gl::GLWindow *window, SDL_Event &e) override {
