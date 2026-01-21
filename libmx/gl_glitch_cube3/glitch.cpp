@@ -190,12 +190,18 @@ public:
         if(cube.openModel(win->util.getFilePath("data/cube.mxmod.z")) == false) {
             throw mx::Exception("Error loading model");
         }
+        cube.saveOriginal();  
+     
         if (!shaderProgram.loadProgramFromText(g_vSource, g_fSource)) {
             throw mx::Exception("Failed to load shader program");
         }
         shaderProgram.useProgram();
         cube.setTextures(win, win->util.getFilePath("data/cube.tex"), win->util.getFilePath("data"));
     }
+
+    float twistAngle = 1.0f;
+    float twistSpeed = 120.0f;
+    bool twistX = false, twistY = false, twistZ = false;
 
     virtual void draw(gl::GLWindow *win) override {
         shaderProgram.useProgram();
@@ -237,6 +243,13 @@ public:
                     static_cast<float>(currentTime) / 1000.0f);
         CHECK_GL_ERROR();
         glDisable(GL_BLEND);
+        twistAngle += 1.0f;
+        cube.resetToOriginal();
+        if(twistY) cube.twist(mx::DeformAxis::Y, twistAngle);
+        if(twistZ) cube.twist(mx::DeformAxis::Z, twistAngle);
+        if(twistX) cube.twist(mx::DeformAxis::X, twistAngle);
+        cube.updateBuffers();
+        cube.recalculateNormals();
         cube.drawArrays();
         win->text.setColor({255, 255, 255, 255});
         win->text.printText_Solid(font, 25.0f, 25.0f, "Press Arrow keys / Page Up Down to move light source Enter to reset");
@@ -264,6 +277,15 @@ public:
                     break;
                 case SDLK_PAGEDOWN:
                     lightPos.y -= moveSpeed;
+                    break;
+                case SDLK_x:
+                    twistX = !twistX;
+                    break;
+                case SDLK_y:
+                    twistY = !twistY;
+                    break;
+                case SDLK_z:
+                    twistZ = !twistZ;
                     break;
                 case SDLK_RETURN:
                     lightPos = glm::vec3(0.0f, 5.0f, 0.0f);
