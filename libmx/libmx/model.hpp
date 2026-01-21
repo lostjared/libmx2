@@ -12,6 +12,11 @@
 #include"util.hpp"
 #include<vector>
 #include<string>
+#ifdef __EMSCRIPTEN__
+#include "glm.hpp"
+#else
+#include <glm/glm.hpp>
+#endif
 
 namespace mx {
     enum class DeformAxis { X = 0, Y = 1, Z = 2 };
@@ -37,7 +42,24 @@ namespace mx {
         void saveOriginal();                                          
         void resetToOriginal();                                       
         void updateBuffers();                                         
-        void recalculateNormals();                                    
+        void recalculateNormals();
+        
+        void setNormalMap(GLuint normalMapTexture);
+        void setParallaxMap(GLuint heightMapTexture);
+        void setDisplacementMap(GLuint displacementMapTexture);
+        void setAmbientOcclusionMap(GLuint aoMapTexture);
+        void generateTangentBitangent();
+        void uvScroll(float uOffset, float vOffset);
+        void uvScale(float uScale, float vScale);
+        void uvRotate(float angle);
+        void applyChromaticAberration(float intensity);
+        void applyColorGrading(const glm::vec3 &colorShift);
+        void applyHSV(float hueShift, float saturation, float value);
+        void setCubemapBlending(GLuint cubemap1, GLuint cubemap2, float blendFactor);
+        GLuint getNormalMap() const { return normalMapTexture; }
+        GLuint getParallaxMap() const { return parallaxMapTexture; }
+        GLuint getAmbientOcclusionMap() const { return aoMapTexture; }
+        
         void scale(float factor);                                    
         void scale(float sx, float sy, float sz);                     
         void bend(DeformAxis axis, float angle, float center = 0.0f, float range = 1.0f);
@@ -51,6 +73,10 @@ namespace mx {
         void translate(float tx, float ty, float tz);
         void rotate(DeformAxis axis, float angle);
         GLuint EBO = 0, VAO = 0, positionVBO = 0, normalVBO = 0, texCoordVBO = 0;
+        GLuint tangentVBO = 0, bitangentVBO = 0;
+        GLuint normalMapTexture = 0, parallaxMapTexture = 0, aoMapTexture = 0, displacementMapTexture = 0;
+        std::vector<GLfloat> tangent;
+        std::vector<GLfloat> bitangent;
         size_t vertIndex = 0;
         size_t texIndex = 0;
         size_t normIndex = 0;
@@ -100,6 +126,20 @@ namespace mx {
        void morph(float t);
        void translate(float tx, float ty, float tz);
        void rotate(DeformAxis axis, float angle);
+       
+       // Texture Effect Methods for Model
+       void setNormalMap(GLuint normalMapTexture);
+       void setParallaxMap(GLuint heightMapTexture);
+       void setDisplacementMap(GLuint displacementMapTexture);
+       void setAmbientOcclusionMap(GLuint aoMapTexture);
+       void generateTangentBitangent();
+       void uvScroll(float uOffset, float vOffset);
+       void uvScale(float uScale, float vScale);
+       void uvRotate(float angle);
+       void applyChromaticAberration(float intensity);
+       void applyColorGrading(const glm::vec3 &colorShift);
+       void applyHSV(float hueShift, float saturation, float value);
+       void setCubemapBlending(GLuint cubemap1, GLuint cubemap2, float blendFactor);
    private:
        void parseLine(const std::string &line, Mesh &currentMesh, int &type, size_t &count);
        gl::ShaderProgram *program = nullptr;
