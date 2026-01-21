@@ -33,6 +33,7 @@ namespace mx {
         void drawWithForcedTexture(gl::ShaderProgram &shader, GLuint texture, const std::string texture_name);
         void setShapeType(GLuint type);
         void bindTexture(gl::ShaderProgram &shader, const std::string texture_name);
+        void bindCubemapTexture(gl::ShaderProgram &shader, GLuint cubemap, const std::string texture_name);
         void saveOriginal();                                          
         void resetToOriginal();                                       
         void updateBuffers();                                         
@@ -78,6 +79,7 @@ namespace mx {
        bool openModel(const std::string &filename, bool compress = true);
        void drawArrays();
        void drawArraysWithTexture(GLuint texture, const std::string texture_name);
+       void drawArraysWithCubemap(GLuint cubemap, const std::string texture_name);
        void printData(std::ostream &out);
        void setShaderProgram(gl::ShaderProgram *shader_program, const std::string texture_name = "texture1");
        void setTextures(const std::vector<GLuint> &textures); 

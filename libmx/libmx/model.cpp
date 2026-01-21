@@ -281,8 +281,12 @@ namespace mx {
         shader.setUniform(texture_name, 0);
     }
 
-    // ============== Deformation Functions ==============
-
+    void Mesh::bindCubemapTexture(gl::ShaderProgram &shader, GLuint cubemap, const std::string texture_name) {
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap);
+        shader.setUniform(texture_name, 0);
+    }
+    
     void Mesh::saveOriginal() {
         originalVert = vert;
         originalNorm = norm;
@@ -769,6 +773,15 @@ namespace mx {
             throw mx::Exception("Shader program must be set in model before call to drawArraysWithTexture");
         for(auto &mesh: meshes) {
             mesh.drawWithForcedTexture(*program, texture, texture_name);
+        }
+    }
+
+    void Model::drawArraysWithCubemap(GLuint cubemap, const std::string texture_name) {
+        if(program == nullptr)
+            throw mx::Exception("Shader program must be set in model before call to drawArraysWithCubemap");
+        for(auto &mesh: meshes) {
+            mesh.bindCubemapTexture(*program, cubemap, texture_name);
+            mesh.draw();
         }
     }
 
