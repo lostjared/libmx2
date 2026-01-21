@@ -3,21 +3,30 @@
 
 namespace mx {
 
-    VKWindow::VKWindow(const std::string &title, int width, int height) {
-        initWindow(title, width, height);
+    VKWindow::VKWindow(const std::string &title, int width, int height, bool full) {
+        initWindow(title, width, height, full);    
     }
 
-    void VKWindow::initWindow(const std::string &title, int width, int height) {
+    void VKWindow::initWindow(const std::string &title, int width, int height, bool full) {
         if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) {
             throw mx::Exception("SDL_Init: Failure: " + std::string(SDL_GetError()));
         }
-        window = SDL_CreateWindow(title.c_str(),SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,width, height,SDL_WINDOW_VULKAN);
+        if(full)
+            window = SDL_CreateWindow(title.c_str(),SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,width, height,SDL_WINDOW_VULKAN | SDL_WINDOW_FULLSCREEN_DESKTOP);
+        else
+            window = SDL_CreateWindow(title.c_str(),SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,width, height,SDL_WINDOW_VULKAN);
+            
         if (!window) {
             throw mx::Exception("failure to create window: " + std::string(SDL_GetError()));
         }
         w = width;
         h = height;
     }
+
+    void VKWindow::quit() {
+        active = false;
+    }
+
     void VKWindow::initVulkan() {
         createInstance();
         createSurface();
@@ -186,12 +195,9 @@ namespace mx {
 
 
     void VKWindow::loop() {
-        bool active = true;
         SDL_Event e;
         while (active) {
             while (SDL_PollEvent(&e)) {
-                if (e.type == SDL_QUIT || (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE))
-                    active = false;
                 event(e);
             }
             draw();
@@ -1345,9 +1351,9 @@ namespace mx {
                 uint8_t b = x + y % 255;
                 uint8_t a = 255;
                 unsigned char *buf = (unsigned char*)&pixels[i];
-                buf[0] += r;
-                buf[1] += g;
-                buf[2] += b;
+                buf[0] = static_cast<unsigned char>(buf[0]*r);
+                buf[1] = static_cast<unsigned char>(buf[1]*g);
+                buf[2] = static_cast<unsigned char>(buf[2]*b);
                 buf[3] = a;
             }
         }

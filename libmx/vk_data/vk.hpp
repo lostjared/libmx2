@@ -61,9 +61,9 @@ namespace mx {
     class VKWindow {
     public:
         VKWindow() = default;
-        VKWindow(const std::string &title, int width, int height);
+        VKWindow(const std::string &title, int width, int height, bool full = false);
         virtual ~VKWindow() { }
-        void initWindow(const std::string &title, int width, int height);
+        void initWindow(const std::string &title, int width, int height, bool full = false);
         void initVulkan();
         void createVertexBuffer();
         void setPath(const std::string &path);
@@ -76,7 +76,10 @@ namespace mx {
         VkShaderModule createShaderModule(const std::vector<char>& code);
         int w = 0, h = 0;
         mxUtil util;
+        void quit();
+        void setFullScreen(const bool full);
     protected:
+        bool active = true;
         VkInstance instance = VK_NULL_HANDLE;
         VkSurfaceKHR surface = VK_NULL_HANDLE;
         VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;

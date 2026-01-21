@@ -12,12 +12,16 @@ struct Vertex {
 
 class MainWindow : public mx::VKWindow {
 public:
-    MainWindow(const std::string& path, int wx, int wy) : mx::VKWindow("-[ Image with Vulkan ]-", wx, wy) {
+    MainWindow(const std::string& path, int wx, int wy, bool full) : mx::VKWindow("-[ Image with Vulkan ]-", wx, wy, full) {
         setPath(path);
     }
     virtual ~MainWindow() {
     }
-    virtual void event(SDL_Event& e) override {}
+    virtual void event(SDL_Event& e) override {
+        if(e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE)
+            quit();
+
+    }
 
 private:
  
@@ -27,7 +31,7 @@ int main(int argc, char **argv) {
 #ifndef __ANDROID__
         Arguments args = proc_args(argc, argv);
         try {
-            MainWindow window(args.path, args.width, args.height);
+            MainWindow window(args.path, args.width, args.height, args.fullscreen);
             window.initVulkan();
             window.loop();   
             window.cleanup();
@@ -37,7 +41,7 @@ int main(int argc, char **argv) {
 #endif
     #elif defined(__ANDROID__)
         try {
-            MainWindow window("", 960, 720);
+            MainWindow window("", 960, 720, false);
             window.initVulkan();
             window.loop();   
             window.cleanup();
