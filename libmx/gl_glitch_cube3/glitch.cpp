@@ -202,7 +202,7 @@ public:
     float twistAngle = 1.0f;
     float twistSpeed = 120.0f;
     bool twistX = false, twistY = false, twistZ = false;
-
+    bool morphT = false;
     virtual void draw(gl::GLWindow *win) override {
         shaderProgram.useProgram();
         CHECK_GL_ERROR();
@@ -248,6 +248,8 @@ public:
         if(twistY) cube.twist(mx::DeformAxis::Y, twistAngle);
         if(twistZ) cube.twist(mx::DeformAxis::Z, twistAngle);
         if(twistX) cube.twist(mx::DeformAxis::X, twistAngle);
+        if(morphT) cube.bend(mx::DeformAxis::Y, twistAngle);
+        
         cube.updateBuffers();
         cube.recalculateNormals();
         cube.drawArrays();
@@ -286,6 +288,9 @@ public:
                     break;
                 case SDLK_z:
                     twistZ = !twistZ;
+                    break;
+                case SDLK_t:
+                    morphT = !morphT;
                     break;
                 case SDLK_RETURN:
                     lightPos = glm::vec3(0.0f, 5.0f, 0.0f);
