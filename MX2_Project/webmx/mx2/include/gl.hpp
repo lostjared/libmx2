@@ -33,7 +33,7 @@ namespace gl {
     extern const char *fSource;
 
     class ShaderProgram {
-        private:
+    private:
         struct SharedState {
             GLuint vertex_shader = 0;
             GLuint fragment_shader = 0;
@@ -43,47 +43,35 @@ namespace gl {
             
             ~SharedState();  
         };
-
         std::shared_ptr<SharedState> state;
-
-        public:
+    public:
         ShaderProgram();
         ShaderProgram(GLuint id);
         ~ShaderProgram() = default;  
-
-        
         ShaderProgram(const ShaderProgram&) = default;
-        ShaderProgram& operator=(const ShaderProgram&) = default;
-
-        
+        ShaderProgram& operator=(const ShaderProgram&) = default;    
         ShaderProgram(ShaderProgram&&) noexcept = default;
         ShaderProgram& operator=(ShaderProgram&&) noexcept = default;
-
         void release();
         GLuint id() const;
         bool loaded() const;
         void useProgram();
         void setName(const std::string &n);
         void setSilent(bool s);
-
         bool loadProgram(const std::string &v, const std::string &f);
         bool loadProgramFromText(const std::string &v, const std::string &f);
-
-        
         void setUniform(const std::string &name, int value);
         void setUniform(const std::string &name, float value);
         void setUniform(const std::string &name, const glm::vec2 &value);
         void setUniform(const std::string &name, const glm::vec3 &value);
         void setUniform(const std::string &name, const glm::vec4 &value);
         void setUniform(const std::string &name, const glm::mat4 &value);
-
-        private:
+    private:
         GLuint createProgram(const char *vshaderSource, const char *fshaderSource);
         GLuint createProgramFromFile(const std::string &vert, const std::string &frag);
         int printShaderLog(GLuint shader);
         void printProgramLog(int p);
         bool checkError();
-        
     };
     
     class GLText {
@@ -130,9 +118,9 @@ namespace gl {
     class GLObject;
    
     class GLWindow {
+        private:
         GLMode gl_mode;
     public:
-
 #ifdef __EMSCRIPTEN__
         EMSCRIPTEN_WEBGL_CONTEXT_HANDLE webglContext = 0;    
         void restoreContext();
@@ -165,7 +153,6 @@ namespace gl {
         void activateConsole(const SDL_Rect &rc, const std::string &fnt, int size, const SDL_Color &color);
         void drawConsole();
         void showConsole(bool show);
-        
         std::unique_ptr<gl::GLObject> object = nullptr;
         mx::mxUtil util;
         console::GLConsole console;
@@ -199,7 +186,7 @@ namespace gl {
     GLuint loadTexture(const std::string &filename, int &w, int &h);
     void updateTexture(GLuint texture, SDL_Surface *surface, bool flip);    
     GLuint createTexture(SDL_Surface *surface, bool flip);
-    SDL_Surface *createSurface(int w, int h);
+    SDL_Surface *createSurface(int w, int h);    
 }
 #endif
 #endif
