@@ -122,11 +122,17 @@ namespace gl {
 
     void GLWindow::initGL(const std::string &title, int width, int height, bool resize_) {
         mx::redirect();
+        mx::system_out << "libmx2: GLWindow::initGL starting...\n";
+        mx::system_out.flush();
+        
         if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER | SDL_INIT_AUDIO) < 0) {
             mx::system_err << "Error initalizing SDL: " << SDL_GetError() << "\n";
             mx::system_err.flush();
             exit(EXIT_FAILURE);
         }
+        mx::system_out << "libmx2: SDL initialized\n";
+        mx::system_out.flush();
+        
 #ifndef __EMSCRIPTEN__
 
         if(gl_mode == GLMode::DESKTOP) {
@@ -143,11 +149,18 @@ namespace gl {
             SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
         }
 #endif
+        mx::system_out << "libmx2: Creating SDL window...\n";
+        mx::system_out.flush();
+        
         if(resize_) {
             window = SDL_CreateWindow(title.c_str(),SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,width,height,SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
         } else {
             window = SDL_CreateWindow(title.c_str(),SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,width,height,SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
         }
+        
+        mx::system_out << "libmx2: SDL window created: " << (window ? "success" : "failed") << "\n";
+        mx::system_out.flush();
+        
         if (!window) {
             throw std::runtime_error("Failed to create SDL window: " + std::string(SDL_GetError()));
         }
@@ -173,10 +186,16 @@ namespace gl {
     emscripten_webgl_make_context_current(context);
     webglContext = context;
 #else
+    mx::system_out << "libmx2: Creating GL context...\n";
+    mx::system_out.flush();
+    
     glContext = SDL_GL_CreateContext(window);
     if (!glContext) {
         throw std::runtime_error("Failed to create OpenGL context: " + std::string(SDL_GetError()));
     }
+    
+    mx::system_out << "libmx2: GL context created, loading GLAD...\n";
+    mx::system_out.flush();
 
     if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress)) {
         SDL_GL_DeleteContext(glContext);
@@ -184,17 +203,37 @@ namespace gl {
         SDL_Quit();
         exit(EXIT_FAILURE);
     }
+    
+    mx::system_out << "libmx2: GLAD loaded successfully\n";
+    mx::system_out.flush();
+    
     mx::system_out << "OpenGL Version: [" << glGetString(GL_VERSION) << "]\n";
 #endif
         w = width;
         h = height;
+        
+        mx::system_out << "libmx2: Initializing TTF...\n";
+        mx::system_out.flush();
+        
         if (TTF_Init() < 0) {
             mx::system_err << "Failed to initialize SDL_ttf: " << TTF_GetError() << std::endl;
             mx::system_err.flush();
             exit(EXIT_FAILURE);
         }
+        
+        mx::system_out << "libmx2: TTF initialized, setting up text...\n";
+        mx::system_out.flush();
+        
         text.init(w,  h);
+        
+        mx::system_out << "libmx2: text.init done, resizing console...\n";
+        mx::system_out.flush();
+        
         console.resize(this, w, h);
+        
+        mx::system_out << "libmx2: console.resize done, setting viewport...\n";
+        mx::system_out.flush();
+        
         glViewport(0, 0, w, h);
         if (SDL_GL_SetSwapInterval(1) != 0) {
                 SDL_Log("Failed to enable vSync: %s", SDL_GetError());
@@ -467,6 +506,11 @@ namespace gl {
         GLuint vfProgram = glCreateProgram();
         glAttachShader(vfProgram, vShader);
         glAttachShader(vfProgram, fShader);
+        // Set hint for binary retrieval (must be set before linking)
+        // Only call if the function is available (GL 4.1+)
+        if (glProgramParameteri != nullptr) {
+            glProgramParameteri(vfProgram, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE);
+        }
         glLinkProgram(vfProgram);
         checkError();
         glGetProgramiv(vfProgram, GL_LINK_STATUS, &linked);
