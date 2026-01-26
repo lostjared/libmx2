@@ -104,10 +104,8 @@ namespace mx {
         VkPipeline graphicsPipeline = VK_NULL_HANDLE;
         std::vector<VkFramebuffer> swapChainFramebuffers;
 
-
         VkCommandPool commandPool = VK_NULL_HANDLE;
         std::vector<VkCommandBuffer> commandBuffers;
-
 
         VkSemaphore imageAvailableSemaphore = VK_NULL_HANDLE;
         VkSemaphore renderFinishedSemaphore = VK_NULL_HANDLE;
@@ -163,8 +161,7 @@ namespace mx {
         void createDescriptorSets();
         void updateDescriptorSets();
         void recreateSwapChain();
-        void setupTextureImage(uint32_t w, uint32_t h);
-        
+        void setupTextureImage(uint32_t w, uint32_t h);        
     };
 
 }
