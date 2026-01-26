@@ -68,46 +68,18 @@ namespace mx {
         createSyncObjects();
     }
     
-    // =========================================================================
-    // CREATE DESCRIPTOR SET LAYOUT
-    // =========================================================================
-    // The Descriptor Set Layout defines the STRUCTURE of resources that shaders
-    // can access. Think of it as a "blueprint" that says:
-    //   "Binding 0 will be a texture sampler"
-    //   "Binding 1 will be a uniform buffer"
-    //
-    // KEY CONCEPTS:
-    // 1. BINDING NUMBER: Each resource gets a unique binding number (0, 1, 2...)
-    //    This matches the "layout(binding = N)" in the shader code
-    //
-    // 2. DESCRIPTOR TYPE: What kind of resource (sampler, uniform buffer, etc.)
-    //
-    // 3. STAGE FLAGS: Which shader stages can access this resource
-    //    (vertex, fragment, compute, etc.)
-    //
-    // RELATIONSHIP TO PIPELINE:
-    // - The Pipeline Layout includes descriptor set layouts
-    // - When we create the graphics pipeline, it knows what resources to expect
-    // - At draw time, we bind actual descriptor sets that match this layout
-    // =========================================================================
     void VKWindow::createDescriptorSetLayout() {
-        // Binding 0: Combined Image Sampler (texture + sampler in one)
-        // This allows the fragment shader to sample our texture
         VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-        samplerLayoutBinding.binding = 0;  // Matches "layout(binding = 0)" in shader
+        samplerLayoutBinding.binding = 0;  
         samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        samplerLayoutBinding.descriptorCount = 1;  // We have 1 texture
-        samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;  // Used in fragment shader
-
-        // Binding 1: Uniform Buffer Object (UBO)
-        // Contains per-frame data like time, colors, etc.
+        samplerLayoutBinding.descriptorCount = 1;  
+        samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         VkDescriptorSetLayoutBinding uboLayoutBinding{};
-        uboLayoutBinding.binding = 1;  // Matches "layout(binding = 1)" in shader
+        uboLayoutBinding.binding = 1;  
         uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; 
         uboLayoutBinding.descriptorCount = 1;
-        uboLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;  // Used in fragment shader
+        uboLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-        // Combine all bindings into the layout
         std::array<VkDescriptorSetLayoutBinding, 2> bindings = {samplerLayoutBinding, uboLayoutBinding};
         
         VkDescriptorSetLayoutCreateInfo layoutInfo{};
@@ -555,12 +527,6 @@ namespace mx {
         }
     }
 
-    // =========================================================================
-    // CREATE COMMAND BUFFERS
-    // =========================================================================
-    // Command buffers are pre-recorded lists of GPU commands.
-    // We create one per swap chain image for double/triple buffering.
-    // =========================================================================
     void VKWindow::createCommandBuffers() {
         commandBuffers.resize(swapChainFramebuffers.size());
         VkCommandBufferAllocateInfo allocInfo{};
@@ -625,50 +591,17 @@ namespace mx {
         }
     }
 
-    // =========================================================================
-    // CREATE VERTEX BUFFER - FULLSCREEN QUAD
-    // =========================================================================
-    // A fullscreen quad is drawn using TWO TRIANGLES that cover the entire screen.
-    // 
-    // VERTEX FORMAT (Vertex struct):
-    //   - pos[3]: Position in normalized device coordinates (NDC)
-    //             NDC range: -1 to +1 for both X and Y
-    //             (-1,-1) = bottom-left, (+1,+1) = top-right
-    //   - texCoord[2]: Texture coordinates (UV)
-    //             Range: 0 to 1, (0,0) = top-left of texture, (1,1) = bottom-right
-    //
-    // QUAD LAYOUT:
-    //   Vertex 3 (-1,+1) -------- Vertex 2 (+1,+1)
-    //        |   \                     |
-    //        |     \   Triangle 2      |
-    //        |       \                 |
-    //        |  Triangle 1  \          |
-    //        |                \        |
-    //   Vertex 0 (-1,-1) -------- Vertex 1 (+1,-1)
-    //
-    // INDEX BUFFER:
-    //   Triangle 1: vertices 0, 1, 2 (bottom-left, bottom-right, top-right)
-    //   Triangle 2: vertices 2, 3, 0 (top-right, top-left, bottom-left)
-    // =========================================================================
     void VKWindow::createVertexBuffer() {
-        // Define 4 vertices for the fullscreen quad
-        // Position: covers -1 to +1 in X and Y (full NDC range)
-        // TexCoord: covers 0 to 1 to map the entire texture
-        // NOTE: V coordinates are flipped (0 at bottom, 1 at top) because
-        // Vulkan's clip space Y-axis is inverted compared to texture coordinates
         std::vector<Vertex> vertices = {
-            // Position (x, y, z)      TexCoord (u, v)
-            { { -1.0f, -1.0f, 0.0f }, { 0.0f, 0.0f } },  // Vertex 0: Bottom-left
-            { {  1.0f, -1.0f, 0.0f }, { 1.0f, 0.0f } },  // Vertex 1: Bottom-right
-            { {  1.0f,  1.0f, 0.0f }, { 1.0f, 1.0f } },  // Vertex 2: Top-right
-            { { -1.0f,  1.0f, 0.0f }, { 0.0f, 1.0f } },  // Vertex 3: Top-left
+            { { -1.0f, -1.0f, 0.0f }, { 0.0f, 0.0f } },  
+            { {  1.0f, -1.0f, 0.0f }, { 1.0f, 0.0f } },  
+            { {  1.0f,  1.0f, 0.0f }, { 1.0f, 1.0f } },  
+            { { -1.0f,  1.0f, 0.0f }, { 0.0f, 1.0f } },  
         };
 
-        // Indices define which vertices form each triangle
-        // We draw 2 triangles = 6 indices total
         std::vector<uint16_t> indices = {
-            0, 1, 2,  // Triangle 1: bottom-left -> bottom-right -> top-right
-            2, 3, 0   // Triangle 2: top-right -> top-left -> bottom-left
+            0, 1, 2,
+            2, 3, 0
         };
         VkDeviceSize vertexBufferSize = sizeof(vertices[0]) * vertices.size();
         VkDeviceSize indexBufferSize = sizeof(indices[0]) * indices.size();
@@ -1141,33 +1074,6 @@ namespace mx {
         }
     }
 
-    // =========================================================================
-    // CREATE GRAPHICS PIPELINE
-    // =========================================================================
-    // The Graphics Pipeline is a CRUCIAL concept in Vulkan. It defines:
-    //   - What shaders to use (vertex, fragment)
-    //   - How vertices are organized (vertex input)
-    //   - How primitives are assembled (triangles, lines, points)
-    //   - Viewport and scissor settings
-    //   - Rasterization settings (fill mode, culling)
-    //   - Blending and color output
-    //   - What descriptor set layouts it expects (PIPELINE LAYOUT)
-    //
-    // PIPELINE LAYOUT:
-    //   The Pipeline Layout is the CONNECTION between the pipeline and 
-    //   descriptor sets. It defines:
-    //   - Which descriptor set layouts the pipeline uses
-    //   - Any push constants (small, fast-changing data)
-    //
-    // HOW PIPELINES AND DESCRIPTOR SETS WORK TOGETHER:
-    //   1. Create Descriptor Set Layout (defines the structure)
-    //   2. Create Pipeline Layout (includes descriptor set layouts)
-    //   3. Create Graphics Pipeline (uses pipeline layout)
-    //   4. At draw time:
-    //      a. Bind the pipeline (vkCmdBindPipeline)
-    //      b. Bind descriptor sets (vkCmdBindDescriptorSets)
-    //      c. Draw (vkCmdDraw or vkCmdDrawIndexed)
-    // =========================================================================
     void VKWindow::createGraphicsPipeline() {
         try {
             std::cout << "\n>> [GraphicsPipeline] Creating graphics pipeline...\n";
@@ -1178,11 +1084,6 @@ namespace mx {
                 throw mx::Exception("Device is invalid in createGraphicsPipeline()");
             }
      
-            // ================================================================
-            // STEP 1: Load SPIR-V Shaders
-            // ================================================================
-            // SPIR-V is the intermediate representation for Vulkan shaders
-            // Compile GLSL to SPIR-V with: glslangValidator -V shader.vert -o vert.spv
             auto vertShaderCode = mx::readFile(util.getFilePath("vert.spv"));
             auto fragShaderCode = mx::readFile(util.getFilePath("frag.spv"));
 
@@ -1198,14 +1099,11 @@ namespace mx {
 
             std::cout << "   SPIR-V shaders loaded successfully.\n";
 
-            // ================================================================
-            // STEP 2: Configure Shader Stages
-            // ================================================================
             VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
             vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
             vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
             vertShaderStageInfo.module = vertShaderModule;
-            vertShaderStageInfo.pName = "main";  // Entry point function name
+            vertShaderStageInfo.pName = "main";  
 
             VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
             fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -1215,28 +1113,24 @@ namespace mx {
 
             VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
 
-            // ================================================================
-            // STEP 3: Vertex Input - How to read vertex data
-            // ================================================================
-            // Binding: Describes the rate at which data is loaded from memory
             VkVertexInputBindingDescription bindingDescription{};
-            bindingDescription.binding = 0;              // Binding index
-            bindingDescription.stride = sizeof(Vertex);  // Bytes between vertices
+            bindingDescription.binding = 0;
+            bindingDescription.stride = sizeof(Vertex);
             bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-            // Attributes: Describe how to extract vertex attributes from binding
+            
             std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
             
-            // Attribute 0: Position (vec3 at location 0)
+            
             attributeDescriptions[0].binding = 0;
-            attributeDescriptions[0].location = 0;  // Matches "layout(location = 0)" in shader
-            attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;  // vec3
+            attributeDescriptions[0].location = 0;  
+            attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT; 
             attributeDescriptions[0].offset = offsetof(Vertex, pos);
 
-            // Attribute 1: Texture Coordinates (vec2 at location 1)
+            
             attributeDescriptions[1].binding = 0;
-            attributeDescriptions[1].location = 1;  // Matches "layout(location = 1)" in shader
-            attributeDescriptions[1].format = VK_FORMAT_R32G32_SFLOAT;  // vec2
+            attributeDescriptions[1].location = 1;
+            attributeDescriptions[1].format = VK_FORMAT_R32G32_SFLOAT;  
             attributeDescriptions[1].offset = offsetof(Vertex, texCoord);
 
             VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
@@ -1246,17 +1140,10 @@ namespace mx {
             vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
             vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
-            // ================================================================
-            // STEP 4: Input Assembly - How to form primitives from vertices
-            // ================================================================
             VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
             inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-            inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;  // Every 3 vertices = 1 triangle
+            inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
             inputAssembly.primitiveRestartEnable = VK_FALSE;
-
-            // ================================================================
-            // STEP 5: Viewport and Scissor (rendering area)
-            // ================================================================
             VkViewport viewport{};
             viewport.x = 0.0f;
             viewport.y = 0.0f;
@@ -1276,34 +1163,25 @@ namespace mx {
             viewportState.scissorCount = 1;
             viewportState.pScissors = &scissor;
 
-            // ================================================================
-            // STEP 6: Rasterization (convert triangles to fragments)
-            // ================================================================
             VkPipelineRasterizationStateCreateInfo rasterizer{};
             rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
             rasterizer.depthClampEnable = VK_FALSE;
             rasterizer.rasterizerDiscardEnable = VK_FALSE;
-            rasterizer.polygonMode = VK_POLYGON_MODE_FILL;  // Fill triangles
+            rasterizer.polygonMode = VK_POLYGON_MODE_FILL;  
             rasterizer.lineWidth = 1.0f;
-            rasterizer.cullMode = VK_CULL_MODE_NONE;  // Don't cull any faces (for fullscreen quad)
+            rasterizer.cullMode = VK_CULL_MODE_NONE;
             rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
             rasterizer.depthBiasEnable = VK_FALSE;
 
-            // ================================================================
-            // STEP 7: Multisampling (anti-aliasing)
-            // ================================================================
             VkPipelineMultisampleStateCreateInfo multisampling{};
             multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
             multisampling.sampleShadingEnable = VK_FALSE;
-            multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;  // No MSAA
+            multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT; 
 
-            // ================================================================
-            // STEP 8: Color Blending
-            // ================================================================
             VkPipelineColorBlendAttachmentState colorBlendAttachment{};
             colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
                 VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-            colorBlendAttachment.blendEnable = VK_FALSE;  // No blending, just overwrite
+            colorBlendAttachment.blendEnable = VK_FALSE;  
 
             VkPipelineColorBlendStateCreateInfo colorBlending{};
             colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -1311,19 +1189,11 @@ namespace mx {
             colorBlending.attachmentCount = 1;
             colorBlending.pAttachments = &colorBlendAttachment;
 
-            // ================================================================
-            // STEP 9: PIPELINE LAYOUT - The bridge to descriptor sets!
-            // ================================================================
-            // The Pipeline Layout tells the pipeline what resources it can access:
-            //   - Descriptor Set Layouts (textures, uniform buffers)
-            //   - Push Constants (small, fast-changing values)
-            //
-            // This is where DESCRIPTOR SETS connect to the PIPELINE!
             VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
             pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-            pipelineLayoutInfo.setLayoutCount = 1;  // We use 1 descriptor set
-            pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;  // Our texture + UBO layout
-            pipelineLayoutInfo.pushConstantRangeCount = 0;  // No push constants for fullscreen quad
+            pipelineLayoutInfo.setLayoutCount = 1;  
+            pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout; 
+            pipelineLayoutInfo.pushConstantRangeCount = 0;  
             pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
             if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
@@ -1332,12 +1202,9 @@ namespace mx {
             
             std::cout << "   Pipeline Layout created (links to descriptor set layout)\n";
 
-            // ================================================================
-            // STEP 10: Create the Graphics Pipeline
-            // ================================================================
             VkGraphicsPipelineCreateInfo pipelineInfo{};
             pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-            pipelineInfo.stageCount = 2;  // Vertex + Fragment
+            pipelineInfo.stageCount = 2;
             pipelineInfo.pStages = shaderStages;
             pipelineInfo.pVertexInputState = &vertexInputInfo;
             pipelineInfo.pInputAssemblyState = &inputAssembly;
@@ -1345,7 +1212,7 @@ namespace mx {
             pipelineInfo.pRasterizationState = &rasterizer;
             pipelineInfo.pMultisampleState = &multisampling;
             pipelineInfo.pColorBlendState = &colorBlending;
-            pipelineInfo.layout = pipelineLayout;  // Uses our pipeline layout!
+            pipelineInfo.layout = pipelineLayout;
             pipelineInfo.renderPass = renderPass;
             pipelineInfo.subpass = 0;
             pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
@@ -1357,7 +1224,7 @@ namespace mx {
             std::cout << "   Graphics Pipeline created successfully!\n";
             std::cout << ">> [GraphicsPipeline] Complete\n\n";
 
-            // Clean up shader modules (no longer needed after pipeline creation)
+            
             vkDestroyShaderModule(device, fragShaderModule, nullptr);
             vkDestroyShaderModule(device, vertShaderModule, nullptr);
         }
@@ -1367,25 +1234,7 @@ namespace mx {
         }
     }
     
-    // =========================================================================
-    // DRAW FRAME - Where Pipelines and Descriptor Sets come together!
-    // =========================================================================
-    // This is where all the setup pays off. The draw sequence is:
-    //   1. Acquire next swap chain image
-    //   2. Begin command buffer
-    //   3. Begin render pass
-    //   4. BIND THE PIPELINE (tells GPU which shaders & settings to use)
-    //   5. BIND VERTEX/INDEX BUFFERS (provides the geometry)
-    //   6. BIND DESCRIPTOR SETS (provides textures & uniform buffers!)
-    //   7. DRAW! (execute the pipeline with bound resources)
-    //   8. End render pass & submit
-    //
-    // The KEY insight: Descriptor Sets are "resource bundles" that get bound
-    // to the pipeline at draw time. The pipeline was created knowing the
-    // LAYOUT of these sets, so it knows how to access the resources.
-    // =========================================================================
     void VKWindow::draw() {
-        // Step 1: Acquire next image from swap chain
         uint32_t imageIndex;
         VkResult result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
 
@@ -1397,7 +1246,6 @@ namespace mx {
             throw mx::Exception("Failed to acquire swap chain image!");
         }
 
-        // Step 2: Reset and begin command buffer
         vkResetCommandBuffer(commandBuffers[imageIndex], 0);
 
         VkCommandBufferBeginInfo beginInfo{};
@@ -1406,29 +1254,20 @@ namespace mx {
             throw mx::Exception("Failed to begin recording command buffer!");
         }
 
-        // Step 3: Begin render pass
         VkRenderPassBeginInfo renderPassInfo{};
         renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         renderPassInfo.renderPass = renderPass;
         renderPassInfo.framebuffer = swapChainFramebuffers[imageIndex];
         renderPassInfo.renderArea.offset = { 0, 0 };
         renderPassInfo.renderArea.extent = swapChainExtent;
-        VkClearValue clearColor = { {{0.1f, 0.1f, 0.2f, 1.0f}} };  // Dark blue background
+        VkClearValue clearColor = { {{0.1f, 0.1f, 0.2f, 1.0f}} };  
         renderPassInfo.clearValueCount = 1;
         renderPassInfo.pClearValues = &clearColor;
 
         vkCmdBeginRenderPass(commandBuffers[imageIndex], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-        // ================================================================
-        // Step 4: BIND THE GRAPHICS PIPELINE
-        // ================================================================
-        // This sets up the GPU to use our shaders and pipeline settings
         vkCmdBindPipeline(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
-        // ================================================================
-        // Step 5: BIND VERTEX AND INDEX BUFFERS
-        // ================================================================
-        // Provides the fullscreen quad geometry (4 vertices, 6 indices)
         if (vertexBuffer != VK_NULL_HANDLE) {
             VkBuffer vertexBuffers[] = { vertexBuffer };
             VkDeviceSize offsets[] = { 0 };
@@ -1439,74 +1278,35 @@ namespace mx {
             vkCmdBindIndexBuffer(commandBuffers[imageIndex], indexBuffer, 0, VK_INDEX_TYPE_UINT16);
         }
 
-        // ================================================================
-        // UPDATE UNIFORM BUFFER (per-frame data)
-        // ================================================================
-        // The uniform buffer contains data that changes each frame
-        // This data is accessed by the fragment shader via the descriptor set
         UniformBufferObject ubo{};
-        ubo.time = SDL_GetTicks() / 1000.0f;  // Time in seconds
-        ubo.color = glm::vec3(1.0f, 0.9f, 0.8f);  // Warm tint color
+        ubo.time = SDL_GetTicks() / 1000.0f;  
+        ubo.color = glm::vec3(1.0f, 0.9f, 0.8f);
         
-        // Copy UBO data to the mapped uniform buffer for this frame
+        
         if (uniformBuffersMapped.size() > imageIndex && uniformBuffersMapped[imageIndex] != nullptr) {
             memcpy(uniformBuffersMapped[imageIndex], &ubo, sizeof(ubo));
         }
 
-        // ================================================================
-        // Step 6: BIND DESCRIPTOR SETS - The Key Connection!
-        // ================================================================
-        // This is where the magic happens! We bind our descriptor set which
-        // contains:
-        //   - Binding 0: The texture sampler (our image)
-        //   - Binding 1: The uniform buffer (time, tint color)
-        //
-        // The pipeline was created with a layout that expects this structure,
-        // so the shader can now access these resources by their binding numbers.
-        //
-        // Parameters:
-        //   - commandBuffer: The command buffer to record into
-        //   - VK_PIPELINE_BIND_POINT_GRAPHICS: We're using a graphics pipeline
-        //   - pipelineLayout: The layout that matches our descriptor set
-        //   - 0: First set index (we only use set 0)
-        //   - 1: Number of sets to bind
-        //   - &descriptorSets[imageIndex]: The actual descriptor set to bind
-        //   - 0, nullptr: No dynamic offsets
         if (!descriptorSets.empty()) {
             vkCmdBindDescriptorSets(
                 commandBuffers[imageIndex],
                 VK_PIPELINE_BIND_POINT_GRAPHICS,
                 pipelineLayout,
-                0,                              // First set
-                1,                              // Set count
-                &descriptorSets[imageIndex],    // Descriptor sets array
-                0,                              // Dynamic offset count
-                nullptr                         // Dynamic offsets
+                0,                              
+                1,                              
+                &descriptorSets[imageIndex],    
+                0,                              
+                nullptr                         
             );
         }
 
-        // ================================================================
-        // Step 7: DRAW THE FULLSCREEN QUAD!
-        // ================================================================
-        // Draw 6 indices (2 triangles) starting at index 0
-        // The pipeline will:
-        //   1. Fetch vertices from the vertex buffer
-        //   2. Run the vertex shader on each vertex
-        //   3. Assemble triangles and rasterize them
-        //   4. Run the fragment shader on each pixel
-        //   5. The fragment shader samples the texture using binding 0
-        //   6. The fragment shader reads the UBO using binding 1
-        //   7. Output the final color to the framebuffer
         vkCmdDrawIndexed(commandBuffers[imageIndex], indexCount, 1, 0, 0, 0);
-
-        // Step 8: End render pass and command buffer
         vkCmdEndRenderPass(commandBuffers[imageIndex]);
 
         if (vkEndCommandBuffer(commandBuffers[imageIndex]) != VK_SUCCESS) {
             throw mx::Exception("Failed to record command buffer!");
         }
 
-        // Submit command buffer
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         VkSemaphore waitSemaphores[] = { imageAvailableSemaphore };
@@ -1524,7 +1324,6 @@ namespace mx {
             throw mx::Exception("Failed to submit draw command buffer!");
         }
 
-        // Present the rendered image
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         presentInfo.waitSemaphoreCount = 1;
