@@ -1,0 +1,1605 @@
+#include"vk.hpp"
+#include"loadpng.hpp"
+
+namespace mx {
+
+    VKWindow::VKWindow(const std::string &title, int width, int height, bool full) {
+        initWindow(title, width, height, full);    
+    }
+
+    void VKWindow::initWindow(const std::string &title, int width, int height, bool full) {
+        if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) {
+            throw mx::Exception("SDL_Init: Failure: " + std::string(SDL_GetError()));
+        }
+        if(full)
+            window = SDL_CreateWindow(title.c_str(),SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,width, height,SDL_WINDOW_VULKAN | SDL_WINDOW_FULLSCREEN_DESKTOP);
+        else
+            window = SDL_CreateWindow(title.c_str(),SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,width, height,SDL_WINDOW_VULKAN);
+            
+        if (!window) {
+            throw mx::Exception("failure to create window: " + std::string(SDL_GetError()));
+        }
+        w = width;
+        h = height;
+    }
+
+    void VKWindow::quit() {
+        active = false;
+    }
+
+    void VKWindow::initVulkan() {
+        createInstance();
+        createSurface();
+        pickPhysicalDevice();
+        createLogicalDevice();
+        createSwapChain();
+        createImageViews();
+        createRenderPass();
+        createDescriptorSetLayout();
+        createGraphicsPipeline();
+        createFramebuffers();
+        createCommandPool();
+        createVertexBuffer();
+        surface_img = png::LoadPNG(util.getFilePath("bg.png").c_str());
+        if (!surface_img) throw mx::Exception("Failed to load!");
+        setupTextureImage(surface_img->w, surface_img->h);
+        {
+            VkDeviceSize imageSize = surface_img->w * surface_img->h * 4;
+            VkBuffer stagingBuffer; VkDeviceMemory stagingMem;
+            createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingMem);
+            
+            void* data;
+            vkMapMemory(device, stagingMem, 0, imageSize, 0, &data);
+            memcpy(data, surface_img->pixels, imageSize);
+            vkUnmapMemory(device, stagingMem);
+            
+            copyBufferToImage(stagingBuffer, textureImage, width, height);
+            transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+            
+            vkDestroyBuffer(device, stagingBuffer, nullptr);
+            vkFreeMemory(device, stagingMem, nullptr);
+        }
+        createTextureImageView();
+        createTextureSampler();
+        createDescriptorPool();
+        createUniformBuffers();
+        createDescriptorSets();
+        createCommandBuffers();
+        createSyncObjects();
+    }
+    
+    // =========================================================================
+    // CREATE DESCRIPTOR SET LAYOUT
+    // =========================================================================
+    // The Descriptor Set Layout defines the STRUCTURE of resources that shaders
+    // can access. Think of it as a "blueprint" that says:
+    //   "Binding 0 will be a texture sampler"
+    //   "Binding 1 will be a uniform buffer"
+    //
+    // KEY CONCEPTS:
+    // 1. BINDING NUMBER: Each resource gets a unique binding number (0, 1, 2...)
+    //    This matches the "layout(binding = N)" in the shader code
+    //
+    // 2. DESCRIPTOR TYPE: What kind of resource (sampler, uniform buffer, etc.)
+    //
+    // 3. STAGE FLAGS: Which shader stages can access this resource
+    //    (vertex, fragment, compute, etc.)
+    //
+    // RELATIONSHIP TO PIPELINE:
+    // - The Pipeline Layout includes descriptor set layouts
+    // - When we create the graphics pipeline, it knows what resources to expect
+    // - At draw time, we bind actual descriptor sets that match this layout
+    // =========================================================================
+    void VKWindow::createDescriptorSetLayout() {
+        // Binding 0: Combined Image Sampler (texture + sampler in one)
+        // This allows the fragment shader to sample our texture
+        VkDescriptorSetLayoutBinding samplerLayoutBinding{};
+        samplerLayoutBinding.binding = 0;  // Matches "layout(binding = 0)" in shader
+        samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        samplerLayoutBinding.descriptorCount = 1;  // We have 1 texture
+        samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;  // Used in fragment shader
+
+        // Binding 1: Uniform Buffer Object (UBO)
+        // Contains per-frame data like time, colors, etc.
+        VkDescriptorSetLayoutBinding uboLayoutBinding{};
+        uboLayoutBinding.binding = 1;  // Matches "layout(binding = 1)" in shader
+        uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; 
+        uboLayoutBinding.descriptorCount = 1;
+        uboLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;  // Used in fragment shader
+
+        // Combine all bindings into the layout
+        std::array<VkDescriptorSetLayoutBinding, 2> bindings = {samplerLayoutBinding, uboLayoutBinding};
+        
+        VkDescriptorSetLayoutCreateInfo layoutInfo{};
+        layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+        layoutInfo.pBindings = bindings.data(); 
+
+        if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
+            throw mx::Exception("Failed to create descriptor set layout!");
+        }
+        
+        std::cout << ">> [DescriptorSetLayout] Created with 2 bindings:\n";
+        std::cout << "   Binding 0: Combined Image Sampler (texture)\n";
+        std::cout << "   Binding 1: Uniform Buffer (time, tint color)\n";
+    }
+
+    void VKWindow::setPath(const std::string &path) {
+        util.path = path;
+    }
+
+    bool VKWindow::isDeviceSuitable(VkPhysicalDevice device) {
+        QueueFamilyIndices indices = findQueueFamilies(device);
+
+        bool extensionsSupported = false;
+        const std::vector<const char*> deviceExtensions = {
+            VK_KHR_SWAPCHAIN_EXTENSION_NAME
+        };
+
+        uint32_t extensionCount;
+        vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
+        std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+        vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
+
+        std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
+        for (const auto& extension : availableExtensions) {
+            requiredExtensions.erase(extension.extensionName);
+        }
+        extensionsSupported = requiredExtensions.empty();
+
+        bool swapChainAdequate = false;
+        if (extensionsSupported) {
+            SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device);
+            swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
+        }
+
+        return indices.isComplete() && extensionsSupported && swapChainAdequate;
+    }
+
+    VkShaderModule VKWindow::createShaderModule(const std::vector<char>& code) {
+        VkShaderModuleCreateInfo createInfo{};
+        createInfo.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        createInfo.codeSize = code.size();
+        createInfo.pCode    = reinterpret_cast<const uint32_t*>(code.data());
+        VkShaderModule shaderModule;
+        if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
+            throw mx::Exception("Failed to create shader module!");
+        }
+        return shaderModule;
+    }
+
+    QueueFamilyIndices VKWindow::findQueueFamilies(VkPhysicalDevice device) {
+        QueueFamilyIndices indices;
+        uint32_t queueFamilyCount = 0;
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+        std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+        
+        int i = 0;
+        for (const auto& queueFamily : queueFamilies) {
+            if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+                indices.graphicsFamily = i;
+            }
+            VkBool32 presentSupport = false;
+            vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
+            if (presentSupport) {
+                indices.presentFamily = i;
+            }
+            if (indices.isComplete()) {
+                break;
+            }
+            i++;
+        }
+        return indices;
+    }
+
+    VkSurfaceFormatKHR VKWindow::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) {
+        for (const auto& availableFormat : availableFormats) {
+            if (availableFormat.format == VK_FORMAT_R8G8B8A8_UNORM &&
+                availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+                return availableFormat;
+            }
+        }
+        return availableFormats[0];
+    }
+
+    VkPresentModeKHR VKWindow::chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes) {
+        for (const auto& availablePresentMode : availablePresentModes) {
+            if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
+                return availablePresentMode;
+            }
+        }
+        return VK_PRESENT_MODE_FIFO_KHR;
+    }
+
+    VkExtent2D VKWindow::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) {
+        if (capabilities.currentExtent.width != UINT32_MAX) {
+            return capabilities.currentExtent;
+        } else {
+            VkExtent2D actualExtent = { static_cast<uint32_t>(w), static_cast<uint32_t>(h) };
+            actualExtent.width = std::max(capabilities.minImageExtent.width,
+                                          std::min(capabilities.maxImageExtent.width, actualExtent.width));
+            actualExtent.height = std::max(capabilities.minImageExtent.height,
+                                           std::min(capabilities.maxImageExtent.height, actualExtent.height));
+            return actualExtent;
+        }
+    }
+
+
+    void VKWindow::loop() {
+        SDL_Event e;
+        while (active) {
+            while (SDL_PollEvent(&e)) {
+                event(e);
+            }
+            draw();
+        }
+
+    }
+    void VKWindow::proc() {
+    }
+    
+    void VKWindow::createInstance() {
+#ifndef WITH_MOLTEN
+        if (volkInitialize() != VK_SUCCESS) {
+            throw mx::Exception("Failed to initialize Volk!");
+        }
+#endif
+
+        VkApplicationInfo appInfo{};
+        appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+        appInfo.pApplicationName = "VulkanApp";
+        appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+        appInfo.apiVersion = VK_API_VERSION_1_0;
+
+        unsigned int sdlExtensionCount = 0;
+        SDL_Vulkan_GetInstanceExtensions(window, &sdlExtensionCount, nullptr);
+        std::vector<const char*> extensions(sdlExtensionCount);
+        SDL_Vulkan_GetInstanceExtensions(window, &sdlExtensionCount, extensions.data());
+
+        const std::vector<const char*> validationLayers = {
+            "VK_LAYER_KHRONOS_validation"
+        };
+        std::vector<const char*> debugExtensions = {
+            VK_EXT_DEBUG_UTILS_EXTENSION_NAME
+        };
+
+        bool enableValidation = true;
+        if (enableValidation) {
+            extensions.insert(extensions.end(), debugExtensions.begin(), debugExtensions.end());
+        }
+
+        bool layersSupported = true;
+        uint32_t layerCount;
+        vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+        std::vector<VkLayerProperties> availableLayers(layerCount);
+        vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
+
+        for (const char* layerName : validationLayers) {
+            bool layerFound = false;
+            for (const auto& layer : availableLayers) {
+                if (strcmp(layerName, layer.layerName) == 0) {
+                    layerFound = true;
+                    break;
+                }
+            }
+            if (!layerFound) {
+                layersSupported = false;
+                break;
+            }
+        }
+
+        VkInstanceCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+        createInfo.pApplicationInfo = &appInfo;
+        createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+        createInfo.ppEnabledExtensionNames = extensions.data();
+
+        if (layersSupported && enableValidation) {
+            createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
+            createInfo.ppEnabledLayerNames = validationLayers.data();
+        }
+        else {
+            createInfo.enabledLayerCount = 0;
+        }
+
+        VK_CHECK_RESULT(vkCreateInstance(&createInfo, nullptr, &instance));
+
+#ifndef WITH_MOLTEN
+        volkLoadInstance(instance);
+#endif
+    }
+
+
+    void VKWindow::createSurface() {
+        if (!SDL_Vulkan_CreateSurface(window, instance, &surface)) {
+            throw mx::Exception("Failed to create Vulkan surface!");
+        }
+    }
+
+    SwapChainSupportDetails VKWindow::querySwapChainSupport(VkPhysicalDevice device) {
+        SwapChainSupportDetails details;
+        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
+        
+        uint32_t formatCount = 0;
+        vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
+        if (formatCount != 0) {
+            details.formats.resize(formatCount);
+            vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats.data());
+        }
+        
+        uint32_t presentModeCount = 0;
+        vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
+        if (presentModeCount != 0) {
+            details.presentModes.resize(presentModeCount);
+            vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, details.presentModes.data());
+        }
+        return details;
+    }
+
+
+    void VKWindow::pickPhysicalDevice() {
+        uint32_t deviceCount = 0;
+        vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+        if (deviceCount == 0) {
+            throw mx::Exception("Failed to find GPUs with Vulkan support!");
+        }
+        std::vector<VkPhysicalDevice> devices(deviceCount);
+        vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
+        for (const auto& deviceCandidate : devices) {
+            if (isDeviceSuitable(deviceCandidate)) {
+                physicalDevice = deviceCandidate;            
+                break;
+            }
+        }
+        if (physicalDevice == VK_NULL_HANDLE) {
+            throw mx::Exception("Failed to find a suitable GPU!");
+        }
+        VkPhysicalDeviceProperties deviceProperties;
+        vkGetPhysicalDeviceProperties(physicalDevice, &deviceProperties);
+        std::cout << "Device Name: " << deviceProperties.deviceName << std::endl;
+    }
+
+    void VKWindow::createLogicalDevice() {
+        QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
+        std::set<uint32_t> uniqueQueueFamilies = {
+            indices.graphicsFamily.value(),
+            indices.presentFamily.value()
+        };
+        std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+        float queuePriority = 1.0f;
+        for (uint32_t queueFamily : uniqueQueueFamilies) {
+            VkDeviceQueueCreateInfo queueInfo{};
+            queueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+            queueInfo.queueFamilyIndex = queueFamily;
+            queueInfo.queueCount = 1;
+            queueInfo.pQueuePriorities = &queuePriority;
+            queueCreateInfos.push_back(queueInfo);
+        }
+        
+        VkPhysicalDeviceFeatures deviceFeatures{};
+        deviceFeatures.samplerAnisotropy = VK_TRUE;
+    
+        
+        const std::vector<const char*> deviceExtensions = {
+            VK_KHR_SWAPCHAIN_EXTENSION_NAME
+        };
+    
+        VkDeviceCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+        createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
+        createInfo.pQueueCreateInfos = queueCreateInfos.data();
+        createInfo.pEnabledFeatures = &deviceFeatures;
+        
+        
+        createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
+        createInfo.ppEnabledExtensionNames = deviceExtensions.data();
+        
+        if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS) {
+            throw mx::Exception("Failed to create logical device!");
+        }
+        
+        vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
+        vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
+#ifndef WITH_MOLTEN
+        volkLoadDevice(device);
+#endif
+        
+    }
+    
+    void VKWindow::createSwapChain() {
+        SwapChainSupportDetails swapChainSupport = querySwapChainSupport(physicalDevice);
+        VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
+        VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
+        VkExtent2D extent = chooseSwapExtent(swapChainSupport.capabilities);
+        
+        uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
+        if (swapChainSupport.capabilities.maxImageCount > 0 &&
+            imageCount > swapChainSupport.capabilities.maxImageCount) {
+            imageCount = swapChainSupport.capabilities.maxImageCount;
+        }
+        
+        VkSwapchainCreateInfoKHR createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+        createInfo.surface = surface;
+        createInfo.minImageCount = imageCount;
+        createInfo.imageFormat = surfaceFormat.format;
+        createInfo.imageColorSpace = surfaceFormat.colorSpace;
+        createInfo.imageExtent = extent;
+        createInfo.imageArrayLayers = 1;
+        createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+        
+        QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
+        uint32_t queueFamilyIndices[] = { indices.graphicsFamily.value(), indices.presentFamily.value() };
+        if (indices.graphicsFamily != indices.presentFamily) {
+            createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+            createInfo.queueFamilyIndexCount = 2;
+            createInfo.pQueueFamilyIndices = queueFamilyIndices;
+        } else {
+            createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+            createInfo.queueFamilyIndexCount = 0;
+            createInfo.pQueueFamilyIndices = nullptr;
+        }
+        
+        createInfo.preTransform = swapChainSupport.capabilities.currentTransform;
+        createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+        createInfo.presentMode = presentMode;
+        createInfo.clipped = VK_TRUE;
+        createInfo.oldSwapchain = VK_NULL_HANDLE;
+        
+        if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain) != VK_SUCCESS) {
+            throw mx::Exception("Failed to create swap chain!");
+        }
+        
+        vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
+        swapChainImages.resize(imageCount);
+        vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data());
+        
+        swapChainImageFormat = surfaceFormat.format;
+        swapChainExtent = extent;
+    }
+
+    void VKWindow::createImageViews() {
+        swapChainImageViews.resize(swapChainImages.size());
+        for (size_t i = 0; i < swapChainImages.size(); i++) {
+            VkImageViewCreateInfo createInfo{};
+            createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            createInfo.image = swapChainImages[i];
+            createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            createInfo.format = swapChainImageFormat;
+            createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+            createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+            createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+            createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+            createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            createInfo.subresourceRange.baseMipLevel = 0;
+            createInfo.subresourceRange.levelCount = 1;
+            createInfo.subresourceRange.baseArrayLayer = 0;
+            createInfo.subresourceRange.layerCount = 1;
+            if (vkCreateImageView(device, &createInfo, nullptr, &swapChainImageViews[i]) != VK_SUCCESS) {
+                throw mx::Exception("Failed to create image views!");
+            }
+        }
+    }
+
+    void VKWindow::createRenderPass() {
+        VkAttachmentDescription colorAttachment{};
+        colorAttachment.format = swapChainImageFormat;
+        colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+        colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        
+        VkAttachmentReference colorAttachmentRef{};
+        colorAttachmentRef.attachment = 0;
+        colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        
+        VkSubpassDescription subpass{};
+        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        subpass.colorAttachmentCount = 1;
+        subpass.pColorAttachments = &colorAttachmentRef;
+        
+        VkSubpassDependency dependency{};
+        dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+        dependency.dstSubpass = 0;
+        dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dependency.srcAccessMask = 0;
+        dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        
+        VkRenderPassCreateInfo renderPassInfo{};
+        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        renderPassInfo.attachmentCount = 1;
+        renderPassInfo.pAttachments = &colorAttachment;
+        renderPassInfo.subpassCount = 1;
+        renderPassInfo.pSubpasses = &subpass;
+        renderPassInfo.dependencyCount = 1;
+        renderPassInfo.pDependencies = &dependency;
+        
+        if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
+            throw mx::Exception("Failed to create render pass!");
+        }
+    }
+
+   
+
+    void VKWindow::createFramebuffers() {
+        swapChainFramebuffers.resize(swapChainImageViews.size());
+        for (size_t i = 0; i < swapChainImageViews.size(); i++) {
+            VkImageView attachments[] = { swapChainImageViews[i] };
+            VkFramebufferCreateInfo framebufferInfo{};
+            framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+            framebufferInfo.renderPass = renderPass;
+            framebufferInfo.attachmentCount = 1;
+            framebufferInfo.pAttachments = attachments;
+            framebufferInfo.width  = swapChainExtent.width;
+            framebufferInfo.height = swapChainExtent.height;
+            framebufferInfo.layers = 1;
+            if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS) {
+                throw mx::Exception("Failed to create framebuffer!");
+            }
+        }
+    }
+
+    void VKWindow::createCommandPool() {
+        QueueFamilyIndices queueFamilyIndices = findQueueFamilies(physicalDevice);
+        VkCommandPoolCreateInfo poolInfo{};
+        poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
+        poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
+            throw mx::Exception("Failed to create command pool!");
+        }
+    }
+
+    // =========================================================================
+    // CREATE COMMAND BUFFERS
+    // =========================================================================
+    // Command buffers are pre-recorded lists of GPU commands.
+    // We create one per swap chain image for double/triple buffering.
+    // =========================================================================
+    void VKWindow::createCommandBuffers() {
+        commandBuffers.resize(swapChainFramebuffers.size());
+        VkCommandBufferAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocInfo.commandPool = commandPool;
+        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocInfo.commandBufferCount = static_cast<uint32_t>(commandBuffers.size());
+
+        if (vkAllocateCommandBuffers(device, &allocInfo, commandBuffers.data()) != VK_SUCCESS) {
+            throw mx::Exception("Failed to allocate command buffers!");
+        }
+        
+        std::cout << ">> [CommandBuffers] Allocated " << commandBuffers.size() << " command buffers\n";
+    }
+
+    void VKWindow::createSyncObjects() {
+        VkSemaphoreCreateInfo semaphoreInfo{};
+        semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+        if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphore) != VK_SUCCESS ||
+            vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphore) != VK_SUCCESS) {
+            throw mx::Exception("Failed to create semaphores!");
+        }
+    }
+
+    void VKWindow::cleanupSwapChain() {
+
+        for (auto framebuffer : swapChainFramebuffers) {
+            if (framebuffer != VK_NULL_HANDLE) {
+                vkDestroyFramebuffer(device, framebuffer, nullptr);
+            }
+        }
+        swapChainFramebuffers.clear();
+
+        if (!commandBuffers.empty()) {
+            vkFreeCommandBuffers(device, commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
+            commandBuffers.clear();
+        }
+
+        if (graphicsPipeline != VK_NULL_HANDLE) {
+            vkDestroyPipeline(device, graphicsPipeline, nullptr);
+            graphicsPipeline = VK_NULL_HANDLE;
+        }
+        if (pipelineLayout != VK_NULL_HANDLE) {
+            vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+            pipelineLayout = VK_NULL_HANDLE;
+        }
+        if (renderPass != VK_NULL_HANDLE) {
+            vkDestroyRenderPass(device, renderPass, nullptr);
+            renderPass = VK_NULL_HANDLE;
+        }
+
+        for (auto imageView : swapChainImageViews) {
+            if (imageView != VK_NULL_HANDLE) {
+                vkDestroyImageView(device, imageView, nullptr);
+            }
+        }
+        swapChainImageViews.clear();
+
+        if (swapChain != VK_NULL_HANDLE) {
+            vkDestroySwapchainKHR(device, swapChain, nullptr);
+            swapChain = VK_NULL_HANDLE;
+        }
+    }
+
+    // =========================================================================
+    // CREATE VERTEX BUFFER - FULLSCREEN QUAD
+    // =========================================================================
+    // A fullscreen quad is drawn using TWO TRIANGLES that cover the entire screen.
+    // 
+    // VERTEX FORMAT (Vertex struct):
+    //   - pos[3]: Position in normalized device coordinates (NDC)
+    //             NDC range: -1 to +1 for both X and Y
+    //             (-1,-1) = bottom-left, (+1,+1) = top-right
+    //   - texCoord[2]: Texture coordinates (UV)
+    //             Range: 0 to 1, (0,0) = top-left of texture, (1,1) = bottom-right
+    //
+    // QUAD LAYOUT:
+    //   Vertex 3 (-1,+1) -------- Vertex 2 (+1,+1)
+    //        |   \                     |
+    //        |     \   Triangle 2      |
+    //        |       \                 |
+    //        |  Triangle 1  \          |
+    //        |                \        |
+    //   Vertex 0 (-1,-1) -------- Vertex 1 (+1,-1)
+    //
+    // INDEX BUFFER:
+    //   Triangle 1: vertices 0, 1, 2 (bottom-left, bottom-right, top-right)
+    //   Triangle 2: vertices 2, 3, 0 (top-right, top-left, bottom-left)
+    // =========================================================================
+    void VKWindow::createVertexBuffer() {
+        // Define 4 vertices for the fullscreen quad
+        // Position: covers -1 to +1 in X and Y (full NDC range)
+        // TexCoord: covers 0 to 1 to map the entire texture
+        // NOTE: V coordinates are flipped (0 at bottom, 1 at top) because
+        // Vulkan's clip space Y-axis is inverted compared to texture coordinates
+        std::vector<Vertex> vertices = {
+            // Position (x, y, z)      TexCoord (u, v)
+            { { -1.0f, -1.0f, 0.0f }, { 0.0f, 0.0f } },  // Vertex 0: Bottom-left
+            { {  1.0f, -1.0f, 0.0f }, { 1.0f, 0.0f } },  // Vertex 1: Bottom-right
+            { {  1.0f,  1.0f, 0.0f }, { 1.0f, 1.0f } },  // Vertex 2: Top-right
+            { { -1.0f,  1.0f, 0.0f }, { 0.0f, 1.0f } },  // Vertex 3: Top-left
+        };
+
+        // Indices define which vertices form each triangle
+        // We draw 2 triangles = 6 indices total
+        std::vector<uint16_t> indices = {
+            0, 1, 2,  // Triangle 1: bottom-left -> bottom-right -> top-right
+            2, 3, 0   // Triangle 2: top-right -> top-left -> bottom-left
+        };
+        VkDeviceSize vertexBufferSize = sizeof(vertices[0]) * vertices.size();
+        VkDeviceSize indexBufferSize = sizeof(indices[0]) * indices.size();
+        VkBuffer stagingVertexBuffer;
+        VkDeviceMemory stagingVertexBufferMemory;
+        createBuffer(vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingVertexBuffer, stagingVertexBufferMemory);
+        VkBuffer stagingIndexBuffer;
+        VkDeviceMemory stagingIndexBufferMemory;
+        createBuffer(indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingIndexBuffer, stagingIndexBufferMemory);
+        void* vertexData;
+        vkMapMemory(device, stagingVertexBufferMemory, 0, vertexBufferSize, 0, &vertexData);
+        memcpy(vertexData, vertices.data(), (size_t)vertexBufferSize);
+        vkUnmapMemory(device, stagingVertexBufferMemory);
+        void* indexData;
+        vkMapMemory(device, stagingIndexBufferMemory, 0, indexBufferSize, 0, &indexData);
+        memcpy(indexData, indices.data(), (size_t)indexBufferSize);
+        vkUnmapMemory(device, stagingIndexBufferMemory);
+        createBuffer(vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
+        createBuffer(indexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
+        copyBuffer(stagingVertexBuffer, vertexBuffer, vertexBufferSize);
+        copyBuffer(stagingIndexBuffer, indexBuffer, indexBufferSize);
+        vkDestroyBuffer(device, stagingVertexBuffer, nullptr);
+        vkFreeMemory(device, stagingVertexBufferMemory, nullptr);
+        vkDestroyBuffer(device, stagingIndexBuffer, nullptr);
+        vkFreeMemory(device, stagingIndexBufferMemory, nullptr);
+        indexCount = static_cast<uint32_t>(indices.size());
+    }
+
+    void VKWindow::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory) {
+        VkBufferCreateInfo bufferInfo{};
+        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        bufferInfo.size = size;
+        bufferInfo.usage = usage;
+        bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        if (vkCreateBuffer(device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS) {
+            throw mx::Exception("Failed to create buffer!");
+        }
+        VkMemoryRequirements memRequirements;
+        vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
+        VkMemoryAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        allocInfo.allocationSize = memRequirements.size;
+        allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
+        if (vkAllocateMemory(device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS) {
+            throw mx::Exception("Failed to allocate buffer memory!");
+        }
+        vkBindBufferMemory(device, buffer, bufferMemory, 0);
+    }
+
+    uint32_t VKWindow::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
+        VkPhysicalDeviceMemoryProperties memProperties;
+        vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+        for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+            if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+                return i;
+            }
+        }
+        throw mx::Exception("Failed to find suitable memory type!");
+    }
+
+    void VKWindow::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
+        VkCommandBufferAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocInfo.commandPool = commandPool;
+        allocInfo.commandBufferCount = 1;
+
+        VkCommandBuffer commandBuffer;
+        vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
+
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+        vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+        VkBufferCopy copyRegion{};
+        copyRegion.size = size;
+        vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+
+        vkEndCommandBuffer(commandBuffer);
+
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &commandBuffer;
+
+        vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+        vkQueueWaitIdle(graphicsQueue);
+
+        vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+    }
+
+    void VKWindow::createTextureImage(SDL_Surface* surfacex) {
+        if (!surfacex) {
+            throw mx::Exception("SDL_Surface is null!");
+        }
+
+        VkDeviceSize imageSize = surfacex->w * surfacex->h * 4; 
+        width = surfacex->w;
+        height = surfacex->h;
+        VkBuffer stagingBuffer;
+        VkDeviceMemory stagingBufferMemory;
+        createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            stagingBuffer, stagingBufferMemory);
+        VkFormat textureFormat = VK_FORMAT_R8G8B8A8_UNORM;
+        void* data;
+        vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
+        memcpy(data, surfacex->pixels, static_cast<size_t>(imageSize));
+        vkUnmapMemory(device, stagingBufferMemory);
+        createImage(width, height, textureFormat, VK_IMAGE_TILING_OPTIMAL,
+            VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
+        transitionImageLayout(textureImage, textureFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+        transitionImageLayout(textureImage, textureFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        vkDestroyBuffer(device, stagingBuffer, nullptr);
+        vkFreeMemory(device, stagingBufferMemory, nullptr);
+    }
+
+
+    void VKWindow::createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory) {
+        VkImageCreateInfo imageInfo{};
+        imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        imageInfo.imageType = VK_IMAGE_TYPE_2D;
+        imageInfo.extent.width = width;
+        imageInfo.extent.height = height;
+        imageInfo.extent.depth = 1;
+        imageInfo.mipLevels = 1;
+        imageInfo.arrayLayers = 1;
+        imageInfo.format = format;
+        imageInfo.tiling = tiling;
+        imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        imageInfo.usage = usage;
+        imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+        imageInfo.flags = 0;
+
+        if (vkCreateImage(device, &imageInfo, nullptr, &image) != VK_SUCCESS) {
+            throw mx::Exception("Failed to create image!");
+        }
+
+        VkMemoryRequirements memRequirements;
+        vkGetImageMemoryRequirements(device, image, &memRequirements);
+
+        VkMemoryAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        allocInfo.allocationSize = memRequirements.size;
+        allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
+
+        if (vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS) {
+            throw mx::Exception("Failed to allocate image memory!");
+        }
+
+        vkBindImageMemory(device, image, imageMemory, 0);
+    }
+
+    void VKWindow::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
+        VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+
+        VkImageMemoryBarrier barrier{};
+        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        barrier.oldLayout = oldLayout;
+        barrier.newLayout = newLayout;
+        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.image = image;
+        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        barrier.subresourceRange.baseMipLevel = 0;
+        barrier.subresourceRange.levelCount = 1;
+        barrier.subresourceRange.baseArrayLayer = 0;
+        barrier.subresourceRange.layerCount = 1;
+
+        VkPipelineStageFlags sourceStage;
+        VkPipelineStageFlags destinationStage;
+
+        if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+            barrier.srcAccessMask = 0;
+            barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+            destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        }
+        else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+            barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+            sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+            destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        }
+        else if (oldLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+            barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+            barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            sourceStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+            destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        } else {
+            throw mx::Exception ("Transition");
+        }
+        vkCmdPipelineBarrier(
+            commandBuffer,
+            sourceStage, destinationStage,
+            0,
+            0, nullptr,
+            0, nullptr,
+            1, &barrier
+        );
+
+        endSingleTimeCommands(commandBuffer);
+    }
+
+    void VKWindow::setupTextureImage(uint32_t w, uint32_t h) {
+        width = w;
+        height = h;
+        VkFormat textureFormat = VK_FORMAT_R8G8B8A8_UNORM;
+        createImage(width, height, textureFormat, VK_IMAGE_TILING_OPTIMAL,
+            VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
+
+        transitionImageLayout(textureImage, textureFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    }
+
+    void VKWindow::updateTexture(void* pixels, VkDeviceSize imageSize) {
+        VkBuffer stagingBuffer;
+        VkDeviceMemory stagingBufferMemory;
+        createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            stagingBuffer, stagingBufferMemory);
+        void* data;
+        vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
+        memcpy(data, pixels, static_cast<size_t>(imageSize));
+        vkUnmapMemory(device, stagingBufferMemory);
+        VkFormat textureFormat = VK_FORMAT_R8G8B8A8_UNORM;
+        transitionImageLayout(textureImage, textureFormat, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+        transitionImageLayout(textureImage, textureFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        vkDestroyBuffer(device, stagingBuffer, nullptr);
+        vkFreeMemory(device, stagingBufferMemory, nullptr);
+    }
+
+    void VKWindow::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
+        VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+
+        VkBufferImageCopy region{};
+        region.bufferOffset = 0;
+        region.bufferRowLength = 0;
+        region.bufferImageHeight = 0;
+        region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        region.imageSubresource.mipLevel = 0;
+        region.imageSubresource.baseArrayLayer = 0;
+        region.imageSubresource.layerCount = 1;
+        region.imageOffset = { 0, 0, 0 };
+        region.imageExtent = {
+            width,
+            height,
+            1
+        };
+
+        vkCmdCopyBufferToImage(
+            commandBuffer,
+            buffer,
+            image,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            1,
+            &region
+        );
+
+        endSingleTimeCommands(commandBuffer);
+    }
+
+    VkCommandBuffer VKWindow::beginSingleTimeCommands() {
+        VkCommandBufferAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocInfo.commandPool = commandPool;
+        allocInfo.commandBufferCount = 1;
+
+        VkCommandBuffer commandBuffer;
+        vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
+
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+        vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+        return commandBuffer;
+    }
+
+    void VKWindow::endSingleTimeCommands(VkCommandBuffer commandBuffer) {
+        vkEndCommandBuffer(commandBuffer);
+
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &commandBuffer;
+
+        vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+        vkQueueWaitIdle(graphicsQueue);
+
+        vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+    }
+
+    void VKWindow::createTextureImageView() {
+        textureImageView = createImageView(textureImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
+    }
+
+    VkImageView VKWindow::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags) {
+        VkImageViewCreateInfo viewInfo{};
+        viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        viewInfo.image = image;
+        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        viewInfo.format = format; 
+        viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+        viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+        viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+        viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+        viewInfo.subresourceRange.aspectMask = aspectFlags;
+        viewInfo.subresourceRange.baseMipLevel = 0;
+        viewInfo.subresourceRange.levelCount = 1;
+        viewInfo.subresourceRange.baseArrayLayer = 0;
+        viewInfo.subresourceRange.layerCount = 1;
+
+        VkImageView imageView;
+        if (vkCreateImageView(device, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
+            throw mx::Exception("Failed to create texture image view!");
+        }
+        return imageView;
+    }
+
+
+    void VKWindow::createTextureSampler() {
+        VkSamplerCreateInfo samplerInfo{};
+        samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        samplerInfo.magFilter = VK_FILTER_LINEAR;
+        samplerInfo.minFilter = VK_FILTER_LINEAR;
+        samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        samplerInfo.anisotropyEnable = VK_TRUE;
+        samplerInfo.maxAnisotropy = 16.0f;
+        samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+        samplerInfo.unnormalizedCoordinates = VK_FALSE;
+        samplerInfo.compareEnable = VK_FALSE;
+        samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+        samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+
+        if (vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS) {
+            throw mx::Exception("Failed to create texture sampler!");
+        }
+    }
+
+    void VKWindow::createDescriptorPool() {
+        std::array<VkDescriptorPoolSize, 2> poolSizes{};
+        poolSizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        poolSizes[0].descriptorCount = static_cast<uint32_t>(swapChainImages.size());
+        poolSizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        poolSizes[1].descriptorCount = static_cast<uint32_t>(swapChainImages.size());
+
+        VkDescriptorPoolCreateInfo poolInfo{};
+        poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size()); 
+        poolInfo.pPoolSizes = poolSizes.data();
+        poolInfo.maxSets = static_cast<uint32_t>(swapChainImages.size());
+        std::cout << ">> [DescriptorPool] Number of swap chain images: "
+            << swapChainImages.size() << "\n";
+        std::cout << ">> [DescriptorPool] Device address: " << device << "\n";
+        std::cout << ">> [DescriptorPool] Instance address: " << instance << "\n";
+
+        VkResult result = vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool);
+        if (result != VK_SUCCESS) {
+            SDL_Log("Failed to create descriptor pool! VkResult: %d\n", result);
+            throw mx::Exception("Failed to create descriptor pool!");
+        }
+        SDL_Log("Descriptor pool created successfully.\n");
+        SDL_Log("Descriptor pool: %p\n", descriptorPool);
+    }
+
+    void VKWindow::createDescriptorSets() {
+        try {
+            std::cout << ">> [DescriptorSets] Starting descriptor set creation...\n";
+
+            if (instance == VK_NULL_HANDLE) throw mx::Exception("Vulkan instance is null!");
+            if (device == VK_NULL_HANDLE) throw mx::Exception("Vulkan device is null!");
+            if (descriptorSetLayout == VK_NULL_HANDLE) throw mx::Exception("Descriptor set layout is null!");
+            if (descriptorPool == VK_NULL_HANDLE) throw mx::Exception("Descriptor pool is null!");
+
+            std::vector<VkDescriptorSetLayout> layouts(swapChainImages.size(), descriptorSetLayout);
+            VkDescriptorSetAllocateInfo allocInfo = {};
+            allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+            allocInfo.descriptorPool = descriptorPool;
+            allocInfo.descriptorSetCount = static_cast<uint32_t>(swapChainImages.size());
+            allocInfo.pSetLayouts = layouts.data();
+
+            descriptorSets.resize(swapChainImages.size());
+            VkResult result = vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data());
+
+            if (result != VK_SUCCESS) {
+                throw mx::Exception("Failed to allocate descriptor sets! Result: " + std::to_string(result));
+            }
+            std::cout << ">> [DescriptorSets] Successfully allocated descriptor sets\n";
+            for (size_t i = 0; i < swapChainImages.size(); i++) {
+                VkDescriptorImageInfo imageInfo = {};
+                imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                imageInfo.imageView = textureImageView;
+                imageInfo.sampler = textureSampler;
+                VkDescriptorBufferInfo bufferInfo = {};
+                bufferInfo.buffer = uniformBuffers[i]; 
+                bufferInfo.offset = 0;
+                bufferInfo.range = sizeof(UniformBufferObject);
+                std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
+                descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                descriptorWrites[0].dstSet = descriptorSets[i];
+                descriptorWrites[0].dstBinding = 0;
+                descriptorWrites[0].dstArrayElement = 0;
+                descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                descriptorWrites[0].descriptorCount = 1;
+                descriptorWrites[0].pImageInfo = &imageInfo;
+                descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                descriptorWrites[1].dstSet = descriptorSets[i];
+                descriptorWrites[1].dstBinding = 1;
+                descriptorWrites[1].dstArrayElement = 0;
+                descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                descriptorWrites[1].descriptorCount = 1;
+                descriptorWrites[1].pBufferInfo = &bufferInfo; 
+                vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+                std::cout << ">> [DescriptorSets] Updated descriptor set " << i << "\n";
+            }
+
+            std::cout << ">> [DescriptorSets] Completed descriptor set creation and updates\n";
+        }
+        catch (const std::exception& e) {
+            SDL_Log("Exception in createDescriptorSets: %s", e.what());
+            throw;
+        }
+    }
+    void VKWindow::updateDescriptorSets() {
+        for (size_t i = 0; i < swapChainImages.size(); i++) {
+            VkDescriptorImageInfo imageInfo{};
+            imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            imageInfo.imageView = textureImageView;
+            imageInfo.sampler = textureSampler;
+
+            VkWriteDescriptorSet descriptorWrite{};
+            descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            descriptorWrite.dstSet = descriptorSets[i];
+            descriptorWrite.dstBinding = 0;
+            descriptorWrite.dstArrayElement = 0;
+            descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            descriptorWrite.descriptorCount = 1;
+            descriptorWrite.pImageInfo = &imageInfo;
+
+            vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
+        }
+    }
+
+    void VKWindow::createUniformBuffers() {
+        VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+        size_t imageCount = swapChainImages.size();
+        uniformBuffers.resize(imageCount);
+        uniformBuffersMemory.resize(imageCount);
+        uniformBuffersMapped.resize(imageCount);
+
+        for (size_t i = 0; i < imageCount; i++) {
+            createBuffer(bufferSize, 
+                        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 
+                        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
+                        uniformBuffers[i], 
+                        uniformBuffersMemory[i]);
+
+            vkMapMemory(device, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
+        }
+    }
+
+    // =========================================================================
+    // CREATE GRAPHICS PIPELINE
+    // =========================================================================
+    // The Graphics Pipeline is a CRUCIAL concept in Vulkan. It defines:
+    //   - What shaders to use (vertex, fragment)
+    //   - How vertices are organized (vertex input)
+    //   - How primitives are assembled (triangles, lines, points)
+    //   - Viewport and scissor settings
+    //   - Rasterization settings (fill mode, culling)
+    //   - Blending and color output
+    //   - What descriptor set layouts it expects (PIPELINE LAYOUT)
+    //
+    // PIPELINE LAYOUT:
+    //   The Pipeline Layout is the CONNECTION between the pipeline and 
+    //   descriptor sets. It defines:
+    //   - Which descriptor set layouts the pipeline uses
+    //   - Any push constants (small, fast-changing data)
+    //
+    // HOW PIPELINES AND DESCRIPTOR SETS WORK TOGETHER:
+    //   1. Create Descriptor Set Layout (defines the structure)
+    //   2. Create Pipeline Layout (includes descriptor set layouts)
+    //   3. Create Graphics Pipeline (uses pipeline layout)
+    //   4. At draw time:
+    //      a. Bind the pipeline (vkCmdBindPipeline)
+    //      b. Bind descriptor sets (vkCmdBindDescriptorSets)
+    //      c. Draw (vkCmdDraw or vkCmdDrawIndexed)
+    // =========================================================================
+    void VKWindow::createGraphicsPipeline() {
+        try {
+            std::cout << "\n>> [GraphicsPipeline] Creating graphics pipeline...\n";
+            std::cout << "   Device = " << device << "\n";
+            std::cout << "   SwapChainExtent = (" << swapChainExtent.width << ", " << swapChainExtent.height << ")\n";
+
+            if (device == VK_NULL_HANDLE) {
+                throw mx::Exception("Device is invalid in createGraphicsPipeline()");
+            }
+     
+            // ================================================================
+            // STEP 1: Load SPIR-V Shaders
+            // ================================================================
+            // SPIR-V is the intermediate representation for Vulkan shaders
+            // Compile GLSL to SPIR-V with: glslangValidator -V shader.vert -o vert.spv
+            auto vertShaderCode = mx::readFile(util.getFilePath("vert.spv"));
+            auto fragShaderCode = mx::readFile(util.getFilePath("frag.spv"));
+
+            VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
+            if (vertShaderModule == VK_NULL_HANDLE) {
+                throw mx::Exception("Failed to create vertex shader module!");
+            }
+
+            VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
+            if (fragShaderModule == VK_NULL_HANDLE) {
+                throw mx::Exception("Failed to create fragment shader module!");
+            }
+
+            std::cout << "   SPIR-V shaders loaded successfully.\n";
+
+            // ================================================================
+            // STEP 2: Configure Shader Stages
+            // ================================================================
+            VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
+            vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+            vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+            vertShaderStageInfo.module = vertShaderModule;
+            vertShaderStageInfo.pName = "main";  // Entry point function name
+
+            VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
+            fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+            fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+            fragShaderStageInfo.module = fragShaderModule;
+            fragShaderStageInfo.pName = "main";
+
+            VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
+
+            // ================================================================
+            // STEP 3: Vertex Input - How to read vertex data
+            // ================================================================
+            // Binding: Describes the rate at which data is loaded from memory
+            VkVertexInputBindingDescription bindingDescription{};
+            bindingDescription.binding = 0;              // Binding index
+            bindingDescription.stride = sizeof(Vertex);  // Bytes between vertices
+            bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+            // Attributes: Describe how to extract vertex attributes from binding
+            std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
+            
+            // Attribute 0: Position (vec3 at location 0)
+            attributeDescriptions[0].binding = 0;
+            attributeDescriptions[0].location = 0;  // Matches "layout(location = 0)" in shader
+            attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;  // vec3
+            attributeDescriptions[0].offset = offsetof(Vertex, pos);
+
+            // Attribute 1: Texture Coordinates (vec2 at location 1)
+            attributeDescriptions[1].binding = 0;
+            attributeDescriptions[1].location = 1;  // Matches "layout(location = 1)" in shader
+            attributeDescriptions[1].format = VK_FORMAT_R32G32_SFLOAT;  // vec2
+            attributeDescriptions[1].offset = offsetof(Vertex, texCoord);
+
+            VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+            vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+            vertexInputInfo.vertexBindingDescriptionCount = 1;
+            vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+            vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+            vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+
+            // ================================================================
+            // STEP 4: Input Assembly - How to form primitives from vertices
+            // ================================================================
+            VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+            inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+            inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;  // Every 3 vertices = 1 triangle
+            inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+            // ================================================================
+            // STEP 5: Viewport and Scissor (rendering area)
+            // ================================================================
+            VkViewport viewport{};
+            viewport.x = 0.0f;
+            viewport.y = 0.0f;
+            viewport.width = static_cast<float>(swapChainExtent.width);
+            viewport.height = static_cast<float>(swapChainExtent.height);
+            viewport.minDepth = 0.0f;
+            viewport.maxDepth = 1.0f;
+
+            VkRect2D scissor{};
+            scissor.offset = { 0, 0 };
+            scissor.extent = swapChainExtent;
+
+            VkPipelineViewportStateCreateInfo viewportState{};
+            viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+            viewportState.viewportCount = 1;
+            viewportState.pViewports = &viewport;
+            viewportState.scissorCount = 1;
+            viewportState.pScissors = &scissor;
+
+            // ================================================================
+            // STEP 6: Rasterization (convert triangles to fragments)
+            // ================================================================
+            VkPipelineRasterizationStateCreateInfo rasterizer{};
+            rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+            rasterizer.depthClampEnable = VK_FALSE;
+            rasterizer.rasterizerDiscardEnable = VK_FALSE;
+            rasterizer.polygonMode = VK_POLYGON_MODE_FILL;  // Fill triangles
+            rasterizer.lineWidth = 1.0f;
+            rasterizer.cullMode = VK_CULL_MODE_NONE;  // Don't cull any faces (for fullscreen quad)
+            rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+            rasterizer.depthBiasEnable = VK_FALSE;
+
+            // ================================================================
+            // STEP 7: Multisampling (anti-aliasing)
+            // ================================================================
+            VkPipelineMultisampleStateCreateInfo multisampling{};
+            multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+            multisampling.sampleShadingEnable = VK_FALSE;
+            multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;  // No MSAA
+
+            // ================================================================
+            // STEP 8: Color Blending
+            // ================================================================
+            VkPipelineColorBlendAttachmentState colorBlendAttachment{};
+            colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+            colorBlendAttachment.blendEnable = VK_FALSE;  // No blending, just overwrite
+
+            VkPipelineColorBlendStateCreateInfo colorBlending{};
+            colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+            colorBlending.logicOpEnable = VK_FALSE;
+            colorBlending.attachmentCount = 1;
+            colorBlending.pAttachments = &colorBlendAttachment;
+
+            // ================================================================
+            // STEP 9: PIPELINE LAYOUT - The bridge to descriptor sets!
+            // ================================================================
+            // The Pipeline Layout tells the pipeline what resources it can access:
+            //   - Descriptor Set Layouts (textures, uniform buffers)
+            //   - Push Constants (small, fast-changing values)
+            //
+            // This is where DESCRIPTOR SETS connect to the PIPELINE!
+            VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+            pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+            pipelineLayoutInfo.setLayoutCount = 1;  // We use 1 descriptor set
+            pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;  // Our texture + UBO layout
+            pipelineLayoutInfo.pushConstantRangeCount = 0;  // No push constants for fullscreen quad
+            pipelineLayoutInfo.pPushConstantRanges = nullptr;
+
+            if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
+                throw mx::Exception("Failed to create pipeline layout!");
+            }
+            
+            std::cout << "   Pipeline Layout created (links to descriptor set layout)\n";
+
+            // ================================================================
+            // STEP 10: Create the Graphics Pipeline
+            // ================================================================
+            VkGraphicsPipelineCreateInfo pipelineInfo{};
+            pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+            pipelineInfo.stageCount = 2;  // Vertex + Fragment
+            pipelineInfo.pStages = shaderStages;
+            pipelineInfo.pVertexInputState = &vertexInputInfo;
+            pipelineInfo.pInputAssemblyState = &inputAssembly;
+            pipelineInfo.pViewportState = &viewportState;
+            pipelineInfo.pRasterizationState = &rasterizer;
+            pipelineInfo.pMultisampleState = &multisampling;
+            pipelineInfo.pColorBlendState = &colorBlending;
+            pipelineInfo.layout = pipelineLayout;  // Uses our pipeline layout!
+            pipelineInfo.renderPass = renderPass;
+            pipelineInfo.subpass = 0;
+            pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+
+            if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS) {
+                throw mx::Exception("Failed to create graphics pipeline!");
+            }
+            
+            std::cout << "   Graphics Pipeline created successfully!\n";
+            std::cout << ">> [GraphicsPipeline] Complete\n\n";
+
+            // Clean up shader modules (no longer needed after pipeline creation)
+            vkDestroyShaderModule(device, fragShaderModule, nullptr);
+            vkDestroyShaderModule(device, vertShaderModule, nullptr);
+        }
+        catch (mx::Exception& e) {
+            SDL_Log("Exception in createGraphicsPipeline: %s\n", e.text().c_str());
+            throw;
+        }
+    }
+    
+    // =========================================================================
+    // DRAW FRAME - Where Pipelines and Descriptor Sets come together!
+    // =========================================================================
+    // This is where all the setup pays off. The draw sequence is:
+    //   1. Acquire next swap chain image
+    //   2. Begin command buffer
+    //   3. Begin render pass
+    //   4. BIND THE PIPELINE (tells GPU which shaders & settings to use)
+    //   5. BIND VERTEX/INDEX BUFFERS (provides the geometry)
+    //   6. BIND DESCRIPTOR SETS (provides textures & uniform buffers!)
+    //   7. DRAW! (execute the pipeline with bound resources)
+    //   8. End render pass & submit
+    //
+    // The KEY insight: Descriptor Sets are "resource bundles" that get bound
+    // to the pipeline at draw time. The pipeline was created knowing the
+    // LAYOUT of these sets, so it knows how to access the resources.
+    // =========================================================================
+    void VKWindow::draw() {
+        // Step 1: Acquire next image from swap chain
+        uint32_t imageIndex;
+        VkResult result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+
+        if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+            recreateSwapChain();
+            return;
+        }
+        else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+            throw mx::Exception("Failed to acquire swap chain image!");
+        }
+
+        // Step 2: Reset and begin command buffer
+        vkResetCommandBuffer(commandBuffers[imageIndex], 0);
+
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        if (vkBeginCommandBuffer(commandBuffers[imageIndex], &beginInfo) != VK_SUCCESS) {
+            throw mx::Exception("Failed to begin recording command buffer!");
+        }
+
+        // Step 3: Begin render pass
+        VkRenderPassBeginInfo renderPassInfo{};
+        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        renderPassInfo.renderPass = renderPass;
+        renderPassInfo.framebuffer = swapChainFramebuffers[imageIndex];
+        renderPassInfo.renderArea.offset = { 0, 0 };
+        renderPassInfo.renderArea.extent = swapChainExtent;
+        VkClearValue clearColor = { {{0.1f, 0.1f, 0.2f, 1.0f}} };  // Dark blue background
+        renderPassInfo.clearValueCount = 1;
+        renderPassInfo.pClearValues = &clearColor;
+
+        vkCmdBeginRenderPass(commandBuffers[imageIndex], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+        // ================================================================
+        // Step 4: BIND THE GRAPHICS PIPELINE
+        // ================================================================
+        // This sets up the GPU to use our shaders and pipeline settings
+        vkCmdBindPipeline(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+
+        // ================================================================
+        // Step 5: BIND VERTEX AND INDEX BUFFERS
+        // ================================================================
+        // Provides the fullscreen quad geometry (4 vertices, 6 indices)
+        if (vertexBuffer != VK_NULL_HANDLE) {
+            VkBuffer vertexBuffers[] = { vertexBuffer };
+            VkDeviceSize offsets[] = { 0 };
+            vkCmdBindVertexBuffers(commandBuffers[imageIndex], 0, 1, vertexBuffers, offsets);
+        }
+
+        if (indexBuffer != VK_NULL_HANDLE) {
+            vkCmdBindIndexBuffer(commandBuffers[imageIndex], indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+        }
+
+        // ================================================================
+        // UPDATE UNIFORM BUFFER (per-frame data)
+        // ================================================================
+        // The uniform buffer contains data that changes each frame
+        // This data is accessed by the fragment shader via the descriptor set
+        UniformBufferObject ubo{};
+        ubo.time = SDL_GetTicks() / 1000.0f;  // Time in seconds
+        ubo.color = glm::vec3(1.0f, 0.9f, 0.8f);  // Warm tint color
+        
+        // Copy UBO data to the mapped uniform buffer for this frame
+        if (uniformBuffersMapped.size() > imageIndex && uniformBuffersMapped[imageIndex] != nullptr) {
+            memcpy(uniformBuffersMapped[imageIndex], &ubo, sizeof(ubo));
+        }
+
+        // ================================================================
+        // Step 6: BIND DESCRIPTOR SETS - The Key Connection!
+        // ================================================================
+        // This is where the magic happens! We bind our descriptor set which
+        // contains:
+        //   - Binding 0: The texture sampler (our image)
+        //   - Binding 1: The uniform buffer (time, tint color)
+        //
+        // The pipeline was created with a layout that expects this structure,
+        // so the shader can now access these resources by their binding numbers.
+        //
+        // Parameters:
+        //   - commandBuffer: The command buffer to record into
+        //   - VK_PIPELINE_BIND_POINT_GRAPHICS: We're using a graphics pipeline
+        //   - pipelineLayout: The layout that matches our descriptor set
+        //   - 0: First set index (we only use set 0)
+        //   - 1: Number of sets to bind
+        //   - &descriptorSets[imageIndex]: The actual descriptor set to bind
+        //   - 0, nullptr: No dynamic offsets
+        if (!descriptorSets.empty()) {
+            vkCmdBindDescriptorSets(
+                commandBuffers[imageIndex],
+                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                pipelineLayout,
+                0,                              // First set
+                1,                              // Set count
+                &descriptorSets[imageIndex],    // Descriptor sets array
+                0,                              // Dynamic offset count
+                nullptr                         // Dynamic offsets
+            );
+        }
+
+        // ================================================================
+        // Step 7: DRAW THE FULLSCREEN QUAD!
+        // ================================================================
+        // Draw 6 indices (2 triangles) starting at index 0
+        // The pipeline will:
+        //   1. Fetch vertices from the vertex buffer
+        //   2. Run the vertex shader on each vertex
+        //   3. Assemble triangles and rasterize them
+        //   4. Run the fragment shader on each pixel
+        //   5. The fragment shader samples the texture using binding 0
+        //   6. The fragment shader reads the UBO using binding 1
+        //   7. Output the final color to the framebuffer
+        vkCmdDrawIndexed(commandBuffers[imageIndex], indexCount, 1, 0, 0, 0);
+
+        // Step 8: End render pass and command buffer
+        vkCmdEndRenderPass(commandBuffers[imageIndex]);
+
+        if (vkEndCommandBuffer(commandBuffers[imageIndex]) != VK_SUCCESS) {
+            throw mx::Exception("Failed to record command buffer!");
+        }
+
+        // Submit command buffer
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        VkSemaphore waitSemaphores[] = { imageAvailableSemaphore };
+        VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+        submitInfo.waitSemaphoreCount = 1;
+        submitInfo.pWaitSemaphores = waitSemaphores;
+        submitInfo.pWaitDstStageMask = waitStages;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
+        VkSemaphore signalSemaphores[] = { renderFinishedSemaphore };
+        submitInfo.signalSemaphoreCount = 1;
+        submitInfo.pSignalSemaphores = signalSemaphores;
+
+        if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS) {
+            throw mx::Exception("Failed to submit draw command buffer!");
+        }
+
+        // Present the rendered image
+        VkPresentInfoKHR presentInfo{};
+        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        presentInfo.waitSemaphoreCount = 1;
+        presentInfo.pWaitSemaphores = signalSemaphores;
+        presentInfo.swapchainCount = 1;
+        presentInfo.pSwapchains = &swapChain;
+        presentInfo.pImageIndices = &imageIndex;
+
+        result = vkQueuePresentKHR(presentQueue, &presentInfo);
+        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+            recreateSwapChain();
+        }
+        else if (result != VK_SUCCESS) {
+            throw mx::Exception("Failed to present swap chain image!");
+        }
+
+        vkQueueWaitIdle(presentQueue);
+    }
+    
+    void VKWindow::cleanup() {
+        vkDeviceWaitIdle(device);
+
+        cleanupSwapChain();
+        vkDestroySampler(device, textureSampler, nullptr);
+        vkDestroyImageView(device, textureImageView, nullptr);
+        vkDestroyImage(device, textureImage, nullptr);
+        vkFreeMemory(device, textureImageMemory, nullptr);
+
+        vkDestroyBuffer(device, vertexBuffer, nullptr);
+        vkFreeMemory(device, vertexBufferMemory, nullptr);
+        vkDestroyBuffer(device, indexBuffer, nullptr);
+        vkFreeMemory(device, indexBufferMemory, nullptr);
+
+        vkDestroyDescriptorPool(device, descriptorPool, nullptr);
+        vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
+        vkDestroySemaphore(device, renderFinishedSemaphore, nullptr);
+        vkDestroySemaphore(device, imageAvailableSemaphore, nullptr);
+        if (commandPool != VK_NULL_HANDLE) {
+            vkDestroyCommandPool(device, commandPool, nullptr);
+        }
+
+        if (pipelineLayout != VK_NULL_HANDLE) {
+            vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+        }
+
+        if (device != VK_NULL_HANDLE) {
+            vkDestroyDevice(device, nullptr);
+        }
+        if (surface != VK_NULL_HANDLE) {
+            vkDestroySurfaceKHR(instance, surface, nullptr);
+        }
+        if (instance != VK_NULL_HANDLE) {
+            vkDestroyInstance(instance, nullptr);
+        }
+
+#ifndef WITH_MOLTEN
+	volkFinalize();
+#endif
+
+        if (window != nullptr) {
+            SDL_DestroyWindow(window);
+            SDL_Quit();
+        }
+
+    }
+    
+    void VKWindow::recreateSwapChain() {
+        vkDeviceWaitIdle(device);
+        cleanupSwapChain();
+        createSwapChain();
+        createImageViews();
+        createRenderPass();
+        createVertexBuffer();
+        createGraphicsPipeline();
+        createFramebuffers();
+        createCommandBuffers();
+    }
+}
