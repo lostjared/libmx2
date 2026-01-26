@@ -1152,7 +1152,6 @@ namespace mx {
      
             auto vertShaderCode = mx::readFile(util.getFilePath("vert.spv"));
             auto fragShaderCode = mx::readFile(util.getFilePath("frag.spv"));
-
             VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
 
             if (vertShaderModule == VK_NULL_HANDLE) {

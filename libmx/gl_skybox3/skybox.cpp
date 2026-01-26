@@ -16,11 +16,10 @@
         printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
 
 class Cube : public gl::GLObject {
-public:
+public: 
     gl::ShaderProgram shaderProgram;
     GLuint texture;
     mx::Model cubeModel;
-    
     float yaw = 0.0f;
     float pitch = 0.0f;
     bool mouseControl = false;
@@ -30,8 +29,6 @@ public:
     bool touchActive = false;
     float lastTouchX = 0.0f;
     float lastTouchY = 0.0f;
-    
-    
     float twistAngle = 0.0f;
     float wavePhase = 0.0f;
     float expandScale = 1.0f;
@@ -43,6 +40,16 @@ public:
     float maxScale = 50.5f;
     float waveAmplitude = 0.3f;
     float waveFrequency = 3.0f;
+    float uvScrollSpeedU = 0.05f;
+    float uvScrollSpeedV = 0.03f;
+    float chromaticAberrationIntensity = 0.0f;
+    glm::vec3 colorGradingShift = glm::vec3(0.0f);
+    float hueShift = 0.0f;
+    float saturation = 1.0f;
+    float brightness = 1.0f;
+    bool enableTextureEffects = true;
+    bool enableChromaticAberration = false;
+    bool enableColorGrading = false;
             
     Cube() = default;
     virtual ~Cube() override {
@@ -167,6 +174,26 @@ public:
         //cubeModel.wave(mx::DeformAxis::Z, waveAmplitude * 0.5f, waveFrequency * 1.5f, wavePhase * 0.7f);
         cubeModel.scale(expandScale);
         cubeModel.recalculateNormals();
+        
+        
+        if (enableTextureEffects) {
+            static float scrollTime = 0.0f;
+            scrollTime += deltaTime;
+            float uOffset = sin(scrollTime * uvScrollSpeedU) * 0.05f;
+            float vOffset = cos(scrollTime * uvScrollSpeedV) * 0.03f;
+            cubeModel.uvScroll(uOffset * deltaTime, vOffset * deltaTime);
+            float colorCycle = sin(scrollTime * 0.3f);
+            colorGradingShift = glm::vec3(colorCycle * 0.1f, colorCycle * 0.05f, -colorCycle * 0.15f);
+            cubeModel.applyColorGrading(colorGradingShift);
+            float saturationCycle = 0.8f + sin(scrollTime * 0.2f) * 0.2f;
+            cubeModel.applyHSV(hueShift, saturationCycle, brightness);
+        }
+        
+        if (enableChromaticAberration) {
+            float aberrationCycle = abs(sin(time_f * 0.5f)) * 0.5f;
+            cubeModel.applyChromaticAberration(aberrationCycle);
+        }
+        
         cubeModel.updateBuffers();
         
         static float rotation = 0.0f;
@@ -210,6 +237,34 @@ public:
             pitch = glm::clamp(pitch, -89.0f, 89.0f);
             lastTouchX = touchX;
             lastTouchY = touchY;
+        }
+        else if (e.type == SDL_KEYDOWN) {
+            switch (e.key.keysym.sym) {
+                case SDLK_e:
+                    enableTextureEffects = !enableTextureEffects;
+                    mx::system_out << "Texture Effects: " << (enableTextureEffects ? "ON" : "OFF") << "\n";
+                    break;
+                case SDLK_c:
+                    enableChromaticAberration = !enableChromaticAberration;
+                    mx::system_out << "Chromatic Aberration: " << (enableChromaticAberration ? "ON" : "OFF") << "\n";
+                    break;
+                case SDLK_g:
+                    enableColorGrading = !enableColorGrading;
+                    mx::system_out << "Color Grading: " << (enableColorGrading ? "ON" : "OFF") << "\n";
+                    break;
+                case SDLK_UP:
+                    uvScrollSpeedU += 0.01f;
+                    break;
+                case SDLK_DOWN:
+                    uvScrollSpeedU = glm::max(0.0f, uvScrollSpeedU - 0.01f);
+                    break;
+                case SDLK_RIGHT:
+                    uvScrollSpeedV += 0.01f;
+                    break;
+                case SDLK_LEFT:
+                    uvScrollSpeedV = glm::max(0.0f, uvScrollSpeedV - 0.01f);
+                    break;
+            }
         }
     }
     

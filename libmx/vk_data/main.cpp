@@ -20,11 +20,8 @@ public:
     virtual void event(SDL_Event& e) override {
         if(e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE)
             quit();
-
     }
-
 private:
- 
 };
 int main(int argc, char **argv) {
     #if defined(__APPLE__) || defined(_WIN32) || defined(_WIN64) || defined(__linux__)

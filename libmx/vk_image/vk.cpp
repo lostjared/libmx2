@@ -59,6 +59,7 @@ namespace mx {
             vkDestroyBuffer(device, stagingBuffer, nullptr);
             vkFreeMemory(device, stagingMem, nullptr);
         }
+        SDL_FreeSurface(surface_img);
         createTextureImageView();
         createTextureSampler();
         createDescriptorPool();
@@ -81,7 +82,7 @@ namespace mx {
         uboLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
         std::array<VkDescriptorSetLayoutBinding, 2> bindings = {samplerLayoutBinding, uboLayoutBinding};
-        
+    
         VkDescriptorSetLayoutCreateInfo layoutInfo{};
         layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());

@@ -1379,7 +1379,6 @@ namespace mx {
             );
         }
 
-        
         for (int i = 0; i < 3; ++i) {
             glm::vec3 position = glm::vec3((i - 1.0f) * 0.8f, 0.0f, 0.0f);
             glm::vec3 rotationAxis;
