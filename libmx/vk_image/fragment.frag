@@ -11,5 +11,5 @@ layout(binding = 1) uniform UniformBufferObject {
 
 void main() {
     vec4 texColor = texture(texSampler, fragTexCoord);
-    outColor = vec4(sin(texColor.rgb * ubo.time), texColor.a);
+    outColor = vec4(sin(texColor.rgb * (ubo.time * 2.0)), texColor.a);
 }

@@ -78,6 +78,8 @@ namespace mx {
         mxUtil util;
         void quit();
         void setFullScreen(const bool full);
+        void updateTexture(SDL_Surface* newSurface);
+        void updateTexture(void* pixels, VkDeviceSize imageSize);
     protected:
         bool active = true;
         VkInstance instance = VK_NULL_HANDLE;
@@ -162,7 +164,7 @@ namespace mx {
         void updateDescriptorSets();
         void recreateSwapChain();
         void setupTextureImage(uint32_t w, uint32_t h);
-        void updateTexture(void* pixels, VkDeviceSize imageSize);
+        
     };
 
 }

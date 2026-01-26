@@ -43,22 +43,7 @@ namespace mx {
         surface_img = png::LoadPNG(util.getFilePath("bg.png").c_str());
         if (!surface_img) throw mx::Exception("Failed to load!");
         setupTextureImage(surface_img->w, surface_img->h);
-        {
-            VkDeviceSize imageSize = surface_img->w * surface_img->h * 4;
-            VkBuffer stagingBuffer; VkDeviceMemory stagingMem;
-            createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingMem);
-            
-            void* data;
-            vkMapMemory(device, stagingMem, 0, imageSize, 0, &data);
-            memcpy(data, surface_img->pixels, imageSize);
-            vkUnmapMemory(device, stagingMem);
-            
-            copyBufferToImage(stagingBuffer, textureImage, width, height);
-            transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-            
-            vkDestroyBuffer(device, stagingBuffer, nullptr);
-            vkFreeMemory(device, stagingMem, nullptr);
-        }
+        updateTexture(surface_img->pixels, (surface_img->w*surface_img->h) * 4);
         SDL_FreeSurface(surface_img);
         createTextureImageView();
         createTextureSampler();
@@ -67,6 +52,11 @@ namespace mx {
         createDescriptorSets();
         createCommandBuffers();
         createSyncObjects();
+    }
+
+    void VKWindow::updateTexture(SDL_Surface* newSurface) {
+        VkDeviceSize imageSize = newSurface->w * newSurface->h * 4;
+        updateTexture(newSurface->pixels, imageSize);
     }
     
     void VKWindow::createDescriptorSetLayout() {
@@ -593,6 +583,14 @@ namespace mx {
     }
 
     void VKWindow::createVertexBuffer() {
+        if (vertexBuffer != VK_NULL_HANDLE) {
+            vkDestroyBuffer(device, vertexBuffer, nullptr);
+            vkFreeMemory(device, vertexBufferMemory, nullptr);
+        }
+        if (indexBuffer != VK_NULL_HANDLE) {
+            vkDestroyBuffer(device, indexBuffer, nullptr);
+            vkFreeMemory(device, indexBufferMemory, nullptr);
+        }
         std::vector<Vertex> vertices = {
             { { -1.0f, -1.0f, 0.0f }, { 0.0f, 0.0f } },  
             { {  1.0f, -1.0f, 0.0f }, { 1.0f, 0.0f } },  
@@ -811,8 +809,11 @@ namespace mx {
 
         endSingleTimeCommands(commandBuffer);
     }
-
     void VKWindow::setupTextureImage(uint32_t w, uint32_t h) {
+        if (textureImage != VK_NULL_HANDLE) {
+            vkDestroyImage(device, textureImage, nullptr);
+            vkFreeMemory(device, textureImageMemory, nullptr);
+        }
         width = w;
         height = h;
         VkFormat textureFormat = VK_FORMAT_R8G8B8A8_UNORM;
@@ -1346,8 +1347,15 @@ namespace mx {
     
     void VKWindow::cleanup() {
         vkDeviceWaitIdle(device);
-
         cleanupSwapChain();
+        for (size_t i = 0; i < uniformBuffers.size(); i++) {
+            vkDestroyBuffer(device, uniformBuffers[i], nullptr);
+            vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
+        }
+        uniformBuffers.clear();
+        uniformBuffersMemory.clear();
+        uniformBuffersMapped.clear();
+
         vkDestroySampler(device, textureSampler, nullptr);
         vkDestroyImageView(device, textureImageView, nullptr);
         vkDestroyImage(device, textureImage, nullptr);
@@ -1362,6 +1370,7 @@ namespace mx {
         vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
         vkDestroySemaphore(device, renderFinishedSemaphore, nullptr);
         vkDestroySemaphore(device, imageAvailableSemaphore, nullptr);
+        
         if (commandPool != VK_NULL_HANDLE) {
             vkDestroyCommandPool(device, commandPool, nullptr);
         }
@@ -1380,17 +1389,15 @@ namespace mx {
             vkDestroyInstance(instance, nullptr);
         }
 
-#ifndef WITH_MOLTEN
-	volkFinalize();
-#endif
+    #ifndef WITH_MOLTEN
+        volkFinalize();
+    #endif
 
         if (window != nullptr) {
             SDL_DestroyWindow(window);
             SDL_Quit();
         }
-
     }
-    
     void VKWindow::recreateSwapChain() {
         vkDeviceWaitIdle(device);
         cleanupSwapChain();
