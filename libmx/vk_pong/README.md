@@ -1,6 +1,7 @@
 # Vulkan Pong
 
-![pong_img](https://github.com/lostjared/libmx2/blob/main/libmx/vk_pong/3DPong.png)
+
+![pong_img](https://raw.githubusercontent.com/lostjared/libmx2/main/libmx/vk_pong/3DPong.png)
 
 A Vulkan implementation of the classic Pong game, ported from the OpenGL version.
 
