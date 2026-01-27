@@ -27,6 +27,7 @@
 #include <map>
 #include <utility>
 #include <SDL_ttf.h>
+#include <memory>
 
 #define VK_CHECK_RESULT(f) { \
     VkResult res = (f); \
@@ -266,7 +267,7 @@ namespace mx {
         
         float cameraDistance = 3.0f;
         
-        VKText* textRenderer = nullptr;
+        std::unique_ptr<VKText> textRenderer;
         VkPipeline textPipeline = VK_NULL_HANDLE;
         VkPipelineLayout textPipelineLayout = VK_NULL_HANDLE;
         VkDescriptorPool textDescriptorPool = VK_NULL_HANDLE;

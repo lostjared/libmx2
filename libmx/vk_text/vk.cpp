@@ -55,7 +55,7 @@ namespace mx {
         createSyncObjects();
         
         try {
-            textRenderer = new VKText(device, physicalDevice, graphicsQueue, commandPool, util.getFilePath("font.ttf"), 24);
+            textRenderer.reset(new VKText(device, physicalDevice, graphicsQueue, commandPool, util.getFilePath("font.ttf"), 24));
             createTextDescriptorSetLayout();
             textRenderer->setDescriptorSetLayout(textDescriptorSetLayout);
             createTextPipeline();
@@ -63,10 +63,6 @@ namespace mx {
         } catch (const std::exception& e) {
             std::cerr << "Warning: Text rendering initialization failed: " << e.what() << std::endl;
             std::cerr << "Text rendering will be disabled." << std::endl;
-            if (textRenderer != nullptr) {
-                delete textRenderer;
-                textRenderer = nullptr;
-            }
         }
     }
 
@@ -574,7 +570,7 @@ namespace mx {
         
         VkFenceCreateInfo fenceInfo{};
         fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;  // Start signaled so first frame doesn't wait forever
+        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;  
         
         if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphore) != VK_SUCCESS ||
             vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphore) != VK_SUCCESS ||
@@ -1522,7 +1518,6 @@ namespace mx {
 
             }
         }
-        
         vkCmdEndRenderPass(commandBuffers[imageIndex]);
         if (vkEndCommandBuffer(commandBuffers[imageIndex]) != VK_SUCCESS) {
             throw mx::Exception("Failed to record command buffer!");
@@ -1570,8 +1565,7 @@ namespace mx {
         vkDeviceWaitIdle(device);
         
         if (textRenderer != nullptr) {
-            delete textRenderer;
-            textRenderer = nullptr;
+            textRenderer.release();
         }
         
         if (textPipeline != VK_NULL_HANDLE) {
@@ -1651,8 +1645,6 @@ namespace mx {
         createFramebuffers();
         createCommandBuffers();
     }
-
-    // ====== VKText Implementation ======
     
     VKText::VKText(VkDevice dev, VkPhysicalDevice physDev, VkQueue gQueue, 
                    VkCommandPool cmdPool, const std::string &fontPath, int fontSize)
@@ -2103,7 +2095,7 @@ namespace mx {
 
         VkVertexInputBindingDescription bindingDescription{};
         bindingDescription.binding = 0;
-        bindingDescription.stride = sizeof(float) * 4;  // 2 for position + 2 for texCoord
+        bindingDescription.stride = sizeof(float) * 4;  
         bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
         std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
