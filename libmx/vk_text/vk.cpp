@@ -55,7 +55,7 @@ namespace mx {
         createSyncObjects();
         
         try {
-            textRenderer = new VKText(device, physicalDevice, graphicsQueue, commandPool, util.getFilePath("font.ttf"), 48);
+            textRenderer = new VKText(device, physicalDevice, graphicsQueue, commandPool, util.getFilePath("font.ttf"), 24);
             createTextDescriptorSetLayout();
             textRenderer->setDescriptorSetLayout(textDescriptorSetLayout);
             createTextPipeline();
