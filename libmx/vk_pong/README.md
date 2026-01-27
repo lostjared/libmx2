@@ -62,4 +62,3 @@ This Vulkan pong implementation extends the `mx::VKWindow` base class, overridin
 - `proc()` - Game logic update (physics, AI, scoring)
 - `draw()` - Render the game objects using the Vulkan pipeline
 
-The game uses an orthographic projection for the 2D gameplay while allowing 3D rotation of the view for visual effects.
