@@ -509,6 +509,7 @@ if(EXAMPLES)
     add_subdirectory(gl_glitch_cube3)
     if(ES3)
     add_subdirectory(gl_es3)
+    add_subdirectory(gl_warp_model)
     endif()
     # add_subdirectory(gl_about)
     if(CMD)
@@ -560,12 +561,14 @@ if(EXAMPLES)
      add_subdirectory(vk_tex_pyramid)
      add_subdirectory(vk_data)
      add_subdirectory(vk_image)
+     add_subdirectory(vk_frag)
   else()
     if(MOLTEN)
       add_subdirectory(vk_tex_cube)
       add_subdirectory(vk_tex_pyramid)
       add_subdirectory(vk_data)
       add_subdirectory(vk_image)
+      add_subdirectory(vk_frag)
     endif()
   endif()
 
@@ -635,8 +638,6 @@ if(JPEG)
 else()
   set(WITH_JPEG_VAL 0)
 endif()
-
-
 
 configure_file(
     ${CMAKE_SOURCE_DIR}/config.h.in
