@@ -1,0 +1,25 @@
+if(MOLTEN)
+add_executable(vk_borg ${CMAKE_SOURCE_DIR}/vk_borg/main.cpp ${CMAKE_SOURCE_DIR}/vk_borg/vk.cpp)
+else()
+add_executable(vk_borg ${CMAKE_SOURCE_DIR}/vk_borg/main.cpp ${CMAKE_SOURCE_DIR}/vk_borg/vk.cpp ${CMAKE_SOURCE_DIR}/vk_borg/volk.c)
+endif()
+target_include_directories(vk_borg PRIVATE 
+    ${CMAKE_SOURCE_DIR}/libmx 
+    ${SDL2_INCLUDE_DIRS} 
+    ${SDL2_TTF_INCLUDE_DIRS}y
+    ${VK_INCLUDE}
+)
+
+if(MOLTEN)
+link_directories(${MOLTEN_PATH}/lib)
+target_link_libraries(vk_borg PRIVATE
+    "-framework QuartzCore"
+    "-framework Metal"
+    "-framework IOSurface"
+    "-framework CoreGraphics")
+
+target_link_libraries(vk_borg PUBLIC SDL2::SDL2 SDL2::SDL2main SDL2_ttf::SDL2_ttf mx ${IMG_LIB} ${GL_LIB} ${MIXER_LIB} ${VK_LIB})
+else()
+target_link_libraries(vk_borg PUBLIC SDL2::SDL2 SDL2::SDL2main SDL2_ttf::SDL2_ttf mx ${IMG_LIB} ${GL_LIB} ${MIXER_LIB} ${VK_LIB})
+endif()
+
