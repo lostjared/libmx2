@@ -249,6 +249,34 @@ namespace mx {
         void printText(const std::string &text, int x, int y, const SDL_Color &col);
         void clearTextQueue();
     protected:
+
+        uint32_t activeParticleCount = 0;             
+        VkBuffer particleBuffer = VK_NULL_HANDLE;       
+        VkDeviceMemory particleBufferMemory = VK_NULL_HANDLE;
+        VkDescriptorSet starDescriptorSet = VK_NULL_HANDLE; 
+        
+        struct Particle {
+            glm::vec3 position;
+            glm::vec3 velocity;
+            float life; 
+            glm::vec4 color;
+        };
+        
+        struct ParticleVertex {
+            glm::vec3 position;
+            glm::vec4 color;
+        };
+
+        std::vector<Particle> particles;
+        static const int MAX_PARTICLES = 500;
+        void* mappedParticleData = nullptr; 
+        
+        VkPipeline particlePipeline = VK_NULL_HANDLE;
+        VkPipelineLayout particlePipelineLayout = VK_NULL_HANDLE;
+        
+        void createParticlePipeline();
+        void drawParticles(VkCommandBuffer cmdBuffer, uint32_t imageIndex);
+
         bool active = true;
         VkInstance instance = VK_NULL_HANDLE;
         VkSurfaceKHR surface = VK_NULL_HANDLE;

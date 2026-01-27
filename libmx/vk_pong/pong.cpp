@@ -60,6 +60,10 @@ public:
     glm::vec3 velocity;
     float radius;
     float speed;
+    bool hitPaddle1 = false;
+    bool hitPaddle2 = false;
+    bool hitWall = false;
+    glm::vec3 lastImpactPos;
     
     Ball(glm::vec3 pos, glm::vec3 vel, float r)
         : position(pos), velocity(vel), radius(r), speed(glm::length(vel)) {
@@ -89,20 +93,28 @@ public:
     }
     
     void update(float deltaTime, Paddle &paddle1, Paddle &paddle2, int &score1, int &score2) {
+        
+        hitPaddle1 = false;
+        hitPaddle2 = false;
+        hitWall = false;
+        
         position += velocity * deltaTime;
         
         
         if (position.y + radius > 1.0f) {
             position.y = 1.0f - radius;
             velocity.y = -velocity.y;
+            hitWall = true;
+            lastImpactPos = glm::vec3(position.x, 1.0f, 0.0f);
         } else if (position.y - radius < -1.0f) {
             position.y = -1.0f + radius;
             velocity.y = -velocity.y;
+            hitWall = true;
+            lastImpactPos = glm::vec3(position.x, -1.0f, 0.0f);
         }
         
-        handlePaddleCollision(paddle1, deltaTime);
-        handlePaddleCollision(paddle2, deltaTime);
-        
+        handlePaddleCollision(paddle1, paddle2, deltaTime);
+        handlePaddleCollision(paddle2, paddle1, deltaTime);
         
         
         if (position.x - radius < -2.5f) {
@@ -121,7 +133,7 @@ private:
         return std::max(min, std::min(value, max));
     }
     
-    void handlePaddleCollision(Paddle &paddle, float deltaTime) {
+    void handlePaddleCollision(Paddle &paddle, Paddle &otherPaddle, float deltaTime) {
         float paddleLeft = paddle.position.x - paddle.size.x / 2.0f;
         float paddleRight = paddle.position.x + paddle.size.x / 2.0f;
         float paddleTop = paddle.position.y + paddle.size.y / 2.0f;
@@ -157,6 +169,14 @@ private:
             
             velocity = glm::normalize(velocity) * speed;
             paddle.startRotation(360.0f);
+            
+            if (paddle.position.x < 0) {
+                hitPaddle1 = true;
+                lastImpactPos = glm::vec3(paddleRight, position.y, 0.0f);
+            } else {
+                hitPaddle2 = true;
+                lastImpactPos = glm::vec3(paddleLeft, position.y, 0.0f);
+            }
         }
     }
 };
@@ -175,6 +195,19 @@ struct PongUBO {
 };
 
 class PongWindow : public mx::VKWindow {
+
+    void spawnBurst(glm::vec3 impactPos, glm::vec3 normal, glm::vec4 paddleColor) {
+        for (int i = 0; i < 35 && particles.size() < static_cast<size_t>(MAX_PARTICLES); i++) {
+            Particle p;
+            p.position = impactPos;
+            p.velocity = normal * static_cast<float>(rand() % 50 / 10.0f + 0.5f) + 
+                        glm::vec3(0, (rand() % 60 - 30) / 30.0f, (rand() % 40 - 20) / 40.0f);
+            p.life = 0.6f;
+            p.color = paddleColor; 
+            particles.push_back(p);
+        }
+    }
+
 public:
     Paddle paddle1, paddle2;
     Ball ball;
@@ -231,6 +264,7 @@ public:
         mx::VKWindow::initVulkan();
         loadCubeVertexBuffer();
         createPongPipeline();
+        createParticlePipeline();  
         initStarfield(30000);
     }
     
@@ -575,6 +609,32 @@ public:
             paddle.position.y = -1.0f + halfPaddleHeight;
         }
     }
+
+    void updateParticles(float deltaTime) {
+        if (mappedParticleData == nullptr) return;
+        
+        glm::vec3 gravity(0.0f, -2.0f, 0.0f);
+        activeParticleCount = 0;
+        ParticleVertex* particleBufferData = static_cast<ParticleVertex*>(mappedParticleData);
+        
+        particles.erase(
+            std::remove_if(particles.begin(), particles.end(), 
+                [](const Particle& p) { return p.life <= 0.0f; }),
+            particles.end()
+        );
+        
+        for (auto& p : particles) {
+            if (p.life > 0.0f && activeParticleCount < static_cast<uint32_t>(MAX_PARTICLES)) {
+                p.velocity += gravity * deltaTime;
+                p.position += p.velocity * deltaTime;
+                p.life -= deltaTime * 1.5f;
+                p.color.a = p.life;
+                particleBufferData[activeParticleCount] = { p.position, p.color };
+                activeParticleCount++;
+            }
+        }
+    }
+
     
     virtual void proc() override {
         Uint64 currentTime = SDL_GetPerformanceCounter();
@@ -635,19 +695,16 @@ public:
         ball.update(deltaTime, paddle1, paddle2, score1, score2);
         
         
-        if (ball.position.x - ball.radius < paddle1.position.x + paddle1.size.x / 2 &&
-            ball.position.y < paddle1.position.y + paddle1.size.y / 2 &&
-            ball.position.y > paddle1.position.y - paddle1.size.y / 2) {
-            ball.velocity.x = -ball.velocity.x;
+        if (ball.hitPaddle1) {
+            spawnBurst(ball.lastImpactPos, glm::vec3(1.0f, 0.0f, 0.0f), glm::vec4(0.3f, 0.6f, 1.0f, 1.0f));
         }
-        
-        if (ball.position.x + ball.radius > paddle2.position.x - paddle2.size.x / 2 &&
-            ball.position.y < paddle2.position.y + paddle2.size.y / 2 &&
-            ball.position.y > paddle2.position.y - paddle2.size.y / 2) {
-            ball.velocity.x = -ball.velocity.x;
+        if (ball.hitPaddle2) {
+            spawnBurst(ball.lastImpactPos, glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec4(1.0f, 0.3f, 0.3f, 1.0f));
         }
         
         
+        updateParticles(deltaTime);
+       
         SDL_Color white {255, 255, 255, 255};
         SDL_Color yellow {255, 255, 0, 255};
         
@@ -715,7 +772,7 @@ public:
         
         
         drawStarfield(commandBuffers[imageIndex], imageIndex);
-        
+
         VkPipeline pipelineToUse = (currentPolygonMode == VK_POLYGON_MODE_LINE) ? pongPipelineWireframe : pongPipeline;
         vkCmdBindPipeline(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineToUse);
 
@@ -728,6 +785,7 @@ public:
         if (indexBuffer != VK_NULL_HANDLE) {
             vkCmdBindIndexBuffer(commandBuffers[imageIndex], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
         }
+
 
         
         glm::mat4 view = glm::mat4(1.0f);
@@ -804,6 +862,8 @@ public:
             vkCmdDrawIndexed(commandBuffers[imageIndex], indexCount, 1, 0, 0, 0);
         }
         
+        
+        drawParticles(commandBuffers[imageIndex], imageIndex);
         
         if (textRenderer && textPipeline != VK_NULL_HANDLE) {
             try {
