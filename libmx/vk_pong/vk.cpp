@@ -19,8 +19,8 @@ namespace mx {
         if (!window) {
             throw mx::Exception("failure to create window: " + std::string(SDL_GetError()));
         }
-        w = width;
-        h = height;
+        SDL_Vulkan_GetDrawableSize(window, &w, &h);
+        std::cout << ">> [Window] Actual drawable size: " << w << "x" << h << std::endl;
     }
 
     void VKWindow::quit() { 
@@ -1348,24 +1348,22 @@ namespace mx {
             inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
             inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
             inputAssembly.primitiveRestartEnable = VK_FALSE;
-            VkViewport viewport{};
-            viewport.x = 0.0f;
-            viewport.y = 0.0f;
-            viewport.width = static_cast<float>(swapChainExtent.width);
-            viewport.height = static_cast<float>(swapChainExtent.height);
-            viewport.minDepth = 0.0f;
-            viewport.maxDepth = 1.0f;
-
-            VkRect2D scissor{};
-            scissor.offset = { 0, 0 };
-            scissor.extent = swapChainExtent;
 
             VkPipelineViewportStateCreateInfo viewportState{};
             viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
             viewportState.viewportCount = 1;
-            viewportState.pViewports = &viewport;
+            viewportState.pViewports = nullptr;
             viewportState.scissorCount = 1;
-            viewportState.pScissors = &scissor;
+            viewportState.pScissors = nullptr;
+            
+            std::array<VkDynamicState, 2> baseDynamicStates = {
+                VK_DYNAMIC_STATE_VIEWPORT,
+                VK_DYNAMIC_STATE_SCISSOR
+            };
+            VkPipelineDynamicStateCreateInfo baseDynamicState{};
+            baseDynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+            baseDynamicState.dynamicStateCount = static_cast<uint32_t>(baseDynamicStates.size());
+            baseDynamicState.pDynamicStates = baseDynamicStates.data();
 
             VkPipelineRasterizationStateCreateInfo rasterizer{};
             rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -1425,6 +1423,7 @@ namespace mx {
             pipelineInfo.pMultisampleState = &multisampling;
             pipelineInfo.pDepthStencilState = &depthStencil;
             pipelineInfo.pColorBlendState = &colorBlending;
+            pipelineInfo.pDynamicState = &baseDynamicState;
             pipelineInfo.layout = pipelineLayout;
             pipelineInfo.renderPass = renderPass;
             pipelineInfo.subpass = 0;
@@ -1492,6 +1491,20 @@ namespace mx {
         
         VkPipeline pipelineToUse = (currentPolygonMode == VK_POLYGON_MODE_LINE) ? graphicsPipelineWireframe : graphicsPipeline;
         vkCmdBindPipeline(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineToUse);
+
+        VkViewport viewport{};
+        viewport.x = 0.0f;
+        viewport.y = 0.0f;
+        viewport.width = static_cast<float>(swapChainExtent.width);
+        viewport.height = static_cast<float>(swapChainExtent.height);
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+        vkCmdSetViewport(commandBuffers[imageIndex], 0, 1, &viewport);
+
+        VkRect2D scissor{};
+        scissor.offset = {0, 0};
+        scissor.extent = swapChainExtent;
+        vkCmdSetScissor(commandBuffers[imageIndex], 0, 1, &scissor);
 
         if (vertexBuffer != VK_NULL_HANDLE) {
             VkBuffer vertexBuffers[] = { vertexBuffer };
@@ -1636,7 +1649,6 @@ namespace mx {
             textRenderer.release();
         }
         
-        // Cleanup particle system
         if (mappedParticleData != nullptr) {
             vkUnmapMemory(device, particleBufferMemory);
             mappedParticleData = nullptr;
@@ -1722,6 +1734,9 @@ namespace mx {
     }
     void VKWindow::recreateSwapChain() {
         vkDeviceWaitIdle(device);
+
+        SDL_Vulkan_GetDrawableSize(window, &w, &h);
+        
         cleanupSwapChain();
         createSwapChain();
         createImageViews();
@@ -2634,24 +2649,21 @@ namespace mx {
             inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
             inputAssembly.primitiveRestartEnable = VK_FALSE;
             
-            VkViewport viewport{};
-            viewport.x = 0.0f;
-            viewport.y = 0.0f;
-            viewport.width = static_cast<float>(swapChainExtent.width);
-            viewport.height = static_cast<float>(swapChainExtent.height);
-            viewport.minDepth = 0.0f;
-            viewport.maxDepth = 1.0f;
-            
-            VkRect2D scissor{};
-            scissor.offset = {0, 0};
-            scissor.extent = swapChainExtent;
-            
             VkPipelineViewportStateCreateInfo viewportState{};
             viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
             viewportState.viewportCount = 1;
-            viewportState.pViewports = &viewport;
+            viewportState.pViewports = nullptr;
             viewportState.scissorCount = 1;
-            viewportState.pScissors = &scissor;
+            viewportState.pScissors = nullptr;
+            
+            std::array<VkDynamicState, 2> starDynamicStates = {
+                VK_DYNAMIC_STATE_VIEWPORT,
+                VK_DYNAMIC_STATE_SCISSOR
+            };
+            VkPipelineDynamicStateCreateInfo starDynamicState{};
+            starDynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+            starDynamicState.dynamicStateCount = static_cast<uint32_t>(starDynamicStates.size());
+            starDynamicState.pDynamicStates = starDynamicStates.data();
             
             VkPipelineRasterizationStateCreateInfo rasterizer{};
             rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -2713,6 +2725,7 @@ namespace mx {
             pipelineInfo.pMultisampleState = &multisampling;
             pipelineInfo.pDepthStencilState = &depthStencil;
             pipelineInfo.pColorBlendState = &colorBlending;
+            pipelineInfo.pDynamicState = &starDynamicState;
             pipelineInfo.layout = starPipelineLayout;
             pipelineInfo.renderPass = renderPass;
             pipelineInfo.subpass = 0;
@@ -2809,6 +2822,20 @@ namespace mx {
         }
         
         vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, starPipeline);
+
+        VkViewport viewport{};
+        viewport.x = 0.0f;
+        viewport.y = 0.0f;
+        viewport.width = static_cast<float>(swapChainExtent.width);
+        viewport.height = static_cast<float>(swapChainExtent.height);
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+        vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
+
+        VkRect2D scissor{};
+        scissor.offset = {0, 0};
+        scissor.extent = swapChainExtent;
+        vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
         
         VkBuffer vertexBuffers[] = {starVertexBuffer};
         VkDeviceSize offsets[] = {0};
@@ -2848,12 +2875,12 @@ namespace mx {
             bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
             
             std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
-            // Position
+            
             attributeDescriptions[0].binding = 0;
             attributeDescriptions[0].location = 0;
             attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
             attributeDescriptions[0].offset = offsetof(ParticleVertex, position);
-            // Color
+            
             attributeDescriptions[1].binding = 0;
             attributeDescriptions[1].location = 1;
             attributeDescriptions[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
@@ -2871,24 +2898,21 @@ namespace mx {
             inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
             inputAssembly.primitiveRestartEnable = VK_FALSE;
             
-            VkViewport viewport{};
-            viewport.x = 0.0f;
-            viewport.y = 0.0f;
-            viewport.width = static_cast<float>(swapChainExtent.width);
-            viewport.height = static_cast<float>(swapChainExtent.height);
-            viewport.minDepth = 0.0f;
-            viewport.maxDepth = 1.0f;
-            
-            VkRect2D scissor{};
-            scissor.offset = {0, 0};
-            scissor.extent = swapChainExtent;
-            
             VkPipelineViewportStateCreateInfo viewportState{};
             viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
             viewportState.viewportCount = 1;
-            viewportState.pViewports = &viewport;
+            viewportState.pViewports = nullptr;
             viewportState.scissorCount = 1;
-            viewportState.pScissors = &scissor;
+            viewportState.pScissors = nullptr;
+            
+            std::array<VkDynamicState, 2> particleDynamicStates = {
+                VK_DYNAMIC_STATE_VIEWPORT,
+                VK_DYNAMIC_STATE_SCISSOR
+            };
+            VkPipelineDynamicStateCreateInfo particleDynamicState{};
+            particleDynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+            particleDynamicState.dynamicStateCount = static_cast<uint32_t>(particleDynamicStates.size());
+            particleDynamicState.pDynamicStates = particleDynamicStates.data();
             
             VkPipelineRasterizationStateCreateInfo rasterizer{};
             rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -2913,13 +2937,13 @@ namespace mx {
             depthStencil.depthBoundsTestEnable = VK_FALSE;
             depthStencil.stencilTestEnable = VK_FALSE;
             
-            // Additive blending for glowing particles
+            
             VkPipelineColorBlendAttachmentState colorBlendAttachment{};
             colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
                 VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
             colorBlendAttachment.blendEnable = VK_TRUE;
             colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-            colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;  // Additive
+            colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE; 
             colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
             colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
             colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
@@ -2951,6 +2975,7 @@ namespace mx {
             pipelineInfo.pMultisampleState = &multisampling;
             pipelineInfo.pDepthStencilState = &depthStencil;
             pipelineInfo.pColorBlendState = &colorBlending;
+            pipelineInfo.pDynamicState = &particleDynamicState;
             pipelineInfo.layout = particlePipelineLayout;
             pipelineInfo.renderPass = renderPass;
             pipelineInfo.subpass = 0;
@@ -2977,6 +3002,20 @@ namespace mx {
         }
         
         vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, particlePipeline);
+
+        VkViewport viewport{};
+        viewport.x = 0.0f;
+        viewport.y = 0.0f;
+        viewport.width = static_cast<float>(swapChainExtent.width);
+        viewport.height = static_cast<float>(swapChainExtent.height);
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+        vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
+
+        VkRect2D scissor{};
+        scissor.offset = {0, 0};
+        scissor.extent = swapChainExtent;
+        vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
         
         VkBuffer vertexBuffers[] = {particleBuffer};
         VkDeviceSize offsets[] = {0};

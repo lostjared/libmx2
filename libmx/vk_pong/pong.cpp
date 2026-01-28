@@ -117,12 +117,12 @@ public:
         handlePaddleCollision(paddle2, paddle1, deltaTime);
         
         
-        if (position.x - radius < -2.5f) {
+        if (position.x - radius < -1.8f) {
             score2++;
             resetBall();
             return;
         }
-        if (position.x + radius > 2.5f) {
+        if (position.x + radius > 1.8f) {
             score1++;
             resetBall();
         }
@@ -232,8 +232,8 @@ public:
         
     PongWindow(const std::string& path, int wx, int wy, bool full) 
         : mx::VKWindow("-[ VK Pong ]-", wx, wy, full),
-          paddle1(glm::vec3(-0.9f, 0.0f, 0.0f), glm::vec3(0.1f, 0.4f, 0.1f)),
-          paddle2(glm::vec3(0.9f, 0.0f, 0.0f), glm::vec3(0.1f, 0.4f, 0.1f)),
+          paddle1(glm::vec3(-1.5f, 0.0f, 0.0f), glm::vec3(0.1f, 0.4f, 0.1f)),
+          paddle2(glm::vec3(1.5f, 0.0f, 0.0f), glm::vec3(0.1f, 0.4f, 0.1f)),
           ball(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.5f, 0.3f, 0.0f), 0.05f) {
         setPath(path);
         cameraZ = 5.0f;
@@ -285,6 +285,50 @@ public:
         createParticlePipeline();  
         initStarfield(30000);
         loadBallTexture();
+    }
+
+    void recreateSwapChain() {
+        vkDeviceWaitIdle(device);
+
+        if (pongPipeline != VK_NULL_HANDLE) {
+            vkDestroyPipeline(device, pongPipeline, nullptr);
+            pongPipeline = VK_NULL_HANDLE;
+        }
+        if (pongPipelineWireframe != VK_NULL_HANDLE) {
+            vkDestroyPipeline(device, pongPipelineWireframe, nullptr);
+            pongPipelineWireframe = VK_NULL_HANDLE;
+        }
+        if (pongPipelineLayout != VK_NULL_HANDLE) {
+            vkDestroyPipelineLayout(device, pongPipelineLayout, nullptr);
+            pongPipelineLayout = VK_NULL_HANDLE;
+        }
+
+        if (particlePipeline != VK_NULL_HANDLE) {
+            vkDestroyPipeline(device, particlePipeline, nullptr);
+            particlePipeline = VK_NULL_HANDLE;
+        }
+        if (particlePipelineLayout != VK_NULL_HANDLE) {
+            vkDestroyPipelineLayout(device, particlePipelineLayout, nullptr);
+            particlePipelineLayout = VK_NULL_HANDLE;
+        }
+
+        if (starPipeline != VK_NULL_HANDLE) {
+            vkDestroyPipeline(device, starPipeline, nullptr);
+            starPipeline = VK_NULL_HANDLE;
+        }
+        if (starPipelineLayout != VK_NULL_HANDLE) {
+            vkDestroyPipelineLayout(device, starPipelineLayout, nullptr);
+            starPipelineLayout = VK_NULL_HANDLE;
+        }
+
+        mx::VKWindow::recreateSwapChain();
+
+        loadCubeVertexBuffer();
+        createPongPipeline();
+        createParticlePipeline();
+        if (starfieldInitialized) {
+            createStarPipeline();
+        }
     }
     
     void loadBallTexture() {
@@ -502,24 +546,21 @@ public:
         inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
         inputAssembly.primitiveRestartEnable = VK_FALSE;
         
-        VkViewport viewport{};
-        viewport.x = 0.0f;
-        viewport.y = 0.0f;
-        viewport.width = static_cast<float>(swapChainExtent.width);
-        viewport.height = static_cast<float>(swapChainExtent.height);
-        viewport.minDepth = 0.0f;
-        viewport.maxDepth = 1.0f;
-        
-        VkRect2D scissor{};
-        scissor.offset = { 0, 0 };
-        scissor.extent = swapChainExtent;
-        
         VkPipelineViewportStateCreateInfo viewportState{};
         viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
         viewportState.viewportCount = 1;
-        viewportState.pViewports = &viewport;
+        viewportState.pViewports = nullptr;
         viewportState.scissorCount = 1;
-        viewportState.pScissors = &scissor;
+        viewportState.pScissors = nullptr;
+
+        std::array<VkDynamicState, 2> dynamicStates = {
+            VK_DYNAMIC_STATE_VIEWPORT,
+            VK_DYNAMIC_STATE_SCISSOR
+        };
+        VkPipelineDynamicStateCreateInfo dynamicState{};
+        dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
+        dynamicState.pDynamicStates = dynamicStates.data();
         
         VkPipelineRasterizationStateCreateInfo rasterizer{};
         rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -583,6 +624,7 @@ public:
         pipelineInfo.pMultisampleState = &multisampling;
         pipelineInfo.pDepthStencilState = &depthStencil;
         pipelineInfo.pColorBlendState = &colorBlending;
+        pipelineInfo.pDynamicState = &dynamicState;
         pipelineInfo.layout = pongPipelineLayout;
         pipelineInfo.renderPass = renderPass;
         pipelineInfo.subpass = 0;
@@ -867,6 +909,20 @@ public:
         VkPipeline pipelineToUse = (currentPolygonMode == VK_POLYGON_MODE_LINE) ? pongPipelineWireframe : pongPipeline;
         vkCmdBindPipeline(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineToUse);
 
+        VkViewport viewport{};
+        viewport.x = 0.0f;
+        viewport.y = 0.0f;
+        viewport.width = static_cast<float>(swapChainExtent.width);
+        viewport.height = static_cast<float>(swapChainExtent.height);
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+        vkCmdSetViewport(commandBuffers[imageIndex], 0, 1, &viewport);
+
+        VkRect2D scissor{};
+        scissor.offset = {0, 0};
+        scissor.extent = swapChainExtent;
+        vkCmdSetScissor(commandBuffers[imageIndex], 0, 1, &scissor);
+
         if (vertexBuffer != VK_NULL_HANDLE) {
             VkBuffer vertexBuffers[] = { vertexBuffer };
             VkDeviceSize offsets[] = { 0 };
@@ -880,7 +936,7 @@ public:
 
         
         glm::mat4 view = glm::mat4(1.0f);
-        view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f)); 
+        view = glm::translate(view, glm::vec3(0.0f, 0.0f, -5.0f)); 
         view = glm::rotate(view, glm::radians(gridRotation), glm::vec3(1.0f, 0.0f, 0.0f));
         view = glm::rotate(view, glm::radians(gridYRotation), glm::vec3(0.0f, 1.0f, 0.0f));
         
@@ -888,7 +944,7 @@ public:
         float zNear = 0.1f;
         float zFar = 100.0f;
         float aspectRatio = static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height);
-        glm::mat4 proj = glm::perspective(glm::radians(45.0f), aspectRatio, zNear, zFar);
+        glm::mat4 proj = glm::perspective(glm::radians(35.0f), aspectRatio, zNear, zFar);
         proj[1][1] *= -1; 
         
         {
