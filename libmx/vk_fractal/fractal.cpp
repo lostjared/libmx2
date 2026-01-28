@@ -25,26 +25,21 @@ struct FractalPushConstants {
 };
 
 class FractalWindow : public mx::VKWindow {
-
 public:
-    
     VkPipeline fractalPipeline = VK_NULL_HANDLE;
     VkPipelineLayout fractalPipelineLayout = VK_NULL_HANDLE;
     Writer writer;
     bool record = true;
-    
     double centerX = -0.5;
     double centerY = 0.0;
     double zoom = 1.0;
     int maxIterations = 256;
     float animTime = 0.0f;
-    
-    
     bool mouseDragging = false;
     int lastMouseX = 0, lastMouseY = 0;
     double dragStartCenterX = 0.0;
     double dragStartCenterY = 0.0;
-    
+    float param = 1.0f;    
     int screenshotCounter = 0;
     bool captureNextFrame = false;
     
@@ -492,6 +487,14 @@ public:
                 case SDLK_F12:
                     captureNextFrame = true;
                     break;
+                case SDLK_b:
+                    if(param < 6)
+                        param += 1;
+                    break;
+                case SDLK_v:
+                    if(param > 0)
+                        param -= 1;
+                    break;
                 case SDLK_t:
                     record = true;
                     if(!writer.is_open()) {
@@ -633,7 +636,7 @@ public:
         fpsStream << std::fixed << std::setprecision(1) << "FPS: " << fps;
         
         if(!writer.is_open()) {
-            printText("Mandelbrot Fractal", 10, 10, yellow);
+            printText("Mandelbrot Fractal - " + availableFragmentShaders[currentShaderIndex] + " - " + std::to_string(param), 10, 10, yellow);
             printText(infoStream.str(), 10, 40, white);
             printText(zoomStream.str(), 10, 70, white);
             printText(fpsStream.str(), 10, 100, white);
@@ -700,12 +703,13 @@ public:
         }
 
         {
+            
             mx::UniformBufferObject ubo{};
             ubo.model = glm::mat4(1.0f);
             ubo.view = glm::mat4(1.0f);
             ubo.proj = glm::mat4(1.0f);
             ubo.params = glm::vec4(static_cast<float>(swapChainExtent.width), 
-                                    static_cast<float>(swapChainExtent.height), 0.0f, 0.0f);
+                                    static_cast<float>(swapChainExtent.height), 0.0f, param);
             ubo.color = glm::vec4(1.0f);
             
             if (uniformBuffersMapped.size() > imageIndex && uniformBuffersMapped[imageIndex] != nullptr) {
