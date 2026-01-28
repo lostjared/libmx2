@@ -14,7 +14,6 @@ if(MINGW)
     set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
 endif()
 
-# Include necessary modules for checking headers and functions
 include(CheckIncludeFile)
 include(CheckIncludeFileCXX)
 include(CheckFunctionExists)
@@ -42,13 +41,8 @@ endif()
 
 add_compile_options(-Wall)
 
-# ==============================================================================
-# System Header Checks
-# ==============================================================================
 message(STATUS "")
 message(STATUS "=== Checking System Headers ===")
-
-# Standard C++ headers
 check_include_file_cxx(iostream HAVE_IOSTREAM)
 check_include_file_cxx(string HAVE_STRING)
 check_include_file_cxx(vector HAVE_VECTOR)
@@ -100,7 +94,6 @@ if(MISSING_STD_HEADERS)
 endif()
 message(STATUS "All required C++ standard headers found.")
 
-# Standard C headers  
 check_include_file(stdlib.h HAVE_STDLIB_H)
 check_include_file(stdio.h HAVE_STDIO_H)
 check_include_file(stdint.h HAVE_STDINT_H)
@@ -111,9 +104,6 @@ if(NOT HAVE_STDLIB_H OR NOT HAVE_STDIO_H OR NOT HAVE_STDINT_H)
 endif()
 message(STATUS "All required C standard headers found.")
 
-# ==============================================================================
-# C++20 Feature Check
-# ==============================================================================
 message(STATUS "")
 message(STATUS "=== Checking C++20 Compatibility ===")
 
@@ -131,9 +121,6 @@ else()
   message(STATUS "C++20 support confirmed.")
 endif()
 
-# ==============================================================================
-# Required Dependencies - SDL2, SDL2_ttf, ZLIB, PNG
-# ==============================================================================
 message(STATUS "")
 message(STATUS "=== Checking Required Dependencies ===")
 
@@ -153,11 +140,11 @@ if(NOT TARGET SDL2::SDL2)
     message(FATAL_ERROR "SDL2 target not found. Ensure mingw-w64-sdl2 is installed correctly.")
 endif()
 
-# SDL2_ttf
+
 find_package(SDL2_ttf REQUIRED)
 message(STATUS "SDL2_ttf found")
 
-# ZLIB
+
 find_package(ZLIB REQUIRED)
 if(ZLIB_FOUND)
   message(STATUS "ZLIB found: ${ZLIB_VERSION_STRING}")
@@ -171,14 +158,14 @@ else()
                       "  macOS: brew install zlib")
 endif()
 
-# Check ZLIB headers
+
 set(CMAKE_REQUIRED_INCLUDES ${ZLIB_INCLUDE_DIRS})
 check_include_file(zlib.h HAVE_ZLIB_H)
 if(NOT HAVE_ZLIB_H)
   message(FATAL_ERROR "zlib.h header not found.")
 endif()
 
-# PNG
+
 find_package(PNG REQUIRED)
 if(PNG_FOUND)
   message(STATUS "PNG found: ${PNG_VERSION_STRING}")
@@ -192,7 +179,6 @@ else()
                       "  macOS: brew install libpng")
 endif()
 
-# Check PNG headers
 set(CMAKE_REQUIRED_INCLUDES ${PNG_INCLUDE_DIRS})
 check_include_file(png.h HAVE_PNG_H)
 if(NOT HAVE_PNG_H)
@@ -208,9 +194,6 @@ include(GNUInstallDirs)
 set(INSTALL_INCLUDE_DIR ${CMAKE_INSTALL_INCLUDEDIR}/mx2)
 set(INSTALL_LIB_DIR ${CMAKE_INSTALL_LIBDIR})
 
-# ==============================================================================
-# Optional Feature Flags
-# ==============================================================================
 message(STATUS "")
 message(STATUS "=== Optional Features Configuration ===")
 
@@ -230,16 +213,12 @@ else()
 message(STATUS "libcmd: Disabled")
 endif()
 
-# ==============================================================================
-# SDL2_mixer (Optional - for Sound Support)
-# ==============================================================================
 if(MIXER)
   message(STATUS "")
   message(STATUS "=== Checking SDL2_mixer ===")
   find_package(SDL2_mixer REQUIRED)
   message(STATUS "SDL2_mixer found")
   
-  # Check for SDL_mixer.h header
   set(CMAKE_REQUIRED_INCLUDES ${SDL2_MIXER_INCLUDE_DIRS})
   check_include_file(SDL_mixer.h HAVE_SDL_MIXER_H)
   check_include_file(SDL2/SDL_mixer.h HAVE_SDL2_SDL_MIXER_H)
@@ -256,9 +235,6 @@ else()
   message(STATUS "SDL_mixer disabled.")
 endif()
 
-# ==============================================================================
-# OpenGL and GLM (Optional - for OpenGL Support)
-# ==============================================================================
 if(OPENGL)
   message(STATUS "")
   message(STATUS "=== Checking OpenGL and GLM ===")
@@ -271,7 +247,6 @@ if(OPENGL)
   find_package(glm REQUIRED)
   message(STATUS "GLM found")
   
-  # Check for GLM headers
   check_include_file_cxx(glm/glm.hpp HAVE_GLM_HPP)
   if(NOT HAVE_GLM_HPP)
     set(CMAKE_REQUIRED_INCLUDES ${GLM_INCLUDE_DIRS})
@@ -281,7 +256,6 @@ if(OPENGL)
     endif()
   endif()
   
-  # Check for GLAD (bundled with project)
   if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libmx/src/glad.c")
     message(STATUS "GLAD source found (bundled)")
   else()
@@ -327,9 +301,6 @@ else()
   message(STATUS "OpenGL Support Disabled.")
 endif()
 
-# ==============================================================================
-# Vulkan (Optional - for Vulkan Support)
-# ==============================================================================
 if(VULKAN)
   message(STATUS "")
   message(STATUS "=== Checking Vulkan ===")
@@ -346,14 +317,12 @@ if(VULKAN)
   message(STATUS "  Vulkan include dirs: ${Vulkan_INCLUDE_DIRS}")
   message(STATUS "  Vulkan libraries: ${Vulkan_LIBRARIES}")
   
-  # Check for Vulkan headers
   set(CMAKE_REQUIRED_INCLUDES ${Vulkan_INCLUDE_DIRS})
   check_include_file(vulkan/vulkan.h HAVE_VULKAN_H)
   if(NOT HAVE_VULKAN_H)
     message(WARNING "vulkan/vulkan.h header check failed - continuing anyway.")
   endif()
   
-  # Check for SDL2_vulkan
   set(CMAKE_REQUIRED_INCLUDES ${SDL2_INCLUDE_DIRS})
   check_include_file(SDL2/SDL_vulkan.h HAVE_SDL_VULKAN_H)
   check_include_file(SDL_vulkan.h HAVE_SDL_VULKAN_H_ALT)
@@ -361,7 +330,6 @@ if(VULKAN)
     message(WARNING "SDL_vulkan.h header check failed - continuing anyway.")
   endif()
   
-  # Check for volk (bundled Vulkan loader)
   if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libmx/volk.c" OR EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libmx/src/volk.c")
     message(STATUS "Volk source found (bundled)")
   else()
@@ -383,9 +351,6 @@ else()
   message(STATUS "Vulkan Support Disabled.")
 endif()
 
-# ==============================================================================
-# MoltenVK (Optional - for Vulkan on macOS)
-# ==============================================================================
 if(MOLTEN)
   message(STATUS "")
   message(STATUS "=== Checking MoltenVK ===")
@@ -400,7 +365,6 @@ if(MOLTEN)
     set(MOLTEN_PATH /usr/local/opt/molten-vk)
   endif()
   
-  # Check if MoltenVK exists at the specified path
   if(NOT EXISTS "${MOLTEN_PATH}")
     message(FATAL_ERROR "MoltenVK not found at ${MOLTEN_PATH}.\n"
                         "  Please install MoltenVK or set MOLTEN_PATH:\n"
@@ -409,12 +373,10 @@ if(MOLTEN)
                         "  Or disable with: -DMOLTEN=OFF")
   endif()
   
-  # Check for MoltenVK headers
   if(NOT EXISTS "${MOLTEN_PATH}/include/vulkan/vulkan.h")
     message(FATAL_ERROR "MoltenVK vulkan.h not found at ${MOLTEN_PATH}/include/vulkan/")
   endif()
   
-  # Check for MoltenVK library
   if(NOT EXISTS "${MOLTEN_PATH}/lib/libMoltenVK.dylib")
     message(FATAL_ERROR "libMoltenVK.dylib not found at ${MOLTEN_PATH}/lib/")
   endif()
@@ -431,19 +393,14 @@ else()
   message(STATUS "MoltenVK Disabled.")
 endif()
 
-# ==============================================================================
-# JPEG (Optional - for JPEG Image Support)
-# ==============================================================================
 if(JPEG)
   message(STATUS "")
-  message(STATUS "=== Checking JPEG ===")
-  
+  message(STATUS "=== Checking JPEG ===")  
   find_package(JPEG REQUIRED)
   message(STATUS "JPEG found: ${JPEG_VERSION}")
   message(STATUS "  JPEG Libraries: ${JPEG_LIBRARIES}")
   message(STATUS "  JPEG Include Dirs: ${JPEG_INCLUDE_DIRS}")
   
-  # Check for JPEG headers
   set(CMAKE_REQUIRED_INCLUDES ${JPEG_INCLUDE_DIRS})
   check_include_file(jpeglib.h HAVE_JPEGLIB_H)
   if(NOT HAVE_JPEGLIB_H)
@@ -495,7 +452,6 @@ if(EXAMPLES)
     add_subdirectory(gl_mxmod)
     add_subdirectory(space3d)
     add_subdirectory(gl_surface_test)
-    # add_subdirectory(gl_animation)
     add_subdirectory(gl_ps)
     add_subdirectory(gl_ps2)
     add_subdirectory(gl_ps3)
@@ -511,7 +467,6 @@ if(EXAMPLES)
     add_subdirectory(gl_es3)
     add_subdirectory(gl_warp_model)
     endif()
-    # add_subdirectory(gl_about)
     if(CMD)
     add_subdirectory(mp3d)
     message(STATUS "Building with libcmd Example: mp3d")
@@ -555,7 +510,6 @@ if(EXAMPLES)
     add_subdirectory(gl_glitch_ex)
   endif()
 
-#disable for now
   if(VULKAN)
      add_subdirectory(vk_tex_cube) 
      add_subdirectory(vk_tex_pyramid)
