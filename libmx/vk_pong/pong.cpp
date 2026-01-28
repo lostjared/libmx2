@@ -217,18 +217,19 @@ public:
     float rotationSpeed = 50.0f;
     Uint64 lastFrameTime = 0;
     
-    
     bool mouseDragging = false;
     int lastMouseX = 0;
     int lastMouseY = 0;
     float mouseSensitivity = 0.5f;
     
-    
     VkPipeline pongPipeline = VK_NULL_HANDLE;
     VkPipeline pongPipelineWireframe = VK_NULL_HANDLE;
     VkPipelineLayout pongPipelineLayout = VK_NULL_HANDLE;
     
-    
+    VkImage ballTextureImage = VK_NULL_HANDLE;
+    VkDeviceMemory ballTextureImageMemory = VK_NULL_HANDLE;
+    VkImageView ballTextureImageView = VK_NULL_HANDLE;
+        
     PongWindow(const std::string& path, int wx, int wy, bool full) 
         : mx::VKWindow("-[ VK Pong ]-", wx, wy, full),
           paddle1(glm::vec3(-0.9f, 0.0f, 0.0f), glm::vec3(0.1f, 0.4f, 0.1f)),
@@ -250,6 +251,17 @@ public:
     void cleanup() override {
         if (device != VK_NULL_HANDLE) {
             vkDeviceWaitIdle(device);
+            
+            if (ballTextureImageView != VK_NULL_HANDLE) {
+                vkDestroyImageView(device, ballTextureImageView, nullptr);
+                ballTextureImageView = VK_NULL_HANDLE;
+            }
+            if (ballTextureImage != VK_NULL_HANDLE) {
+                vkDestroyImage(device, ballTextureImage, nullptr);
+                vkFreeMemory(device, ballTextureImageMemory, nullptr);
+                ballTextureImage = VK_NULL_HANDLE;
+            }
+            
             if (pongPipeline != VK_NULL_HANDLE) {
                 vkDestroyPipeline(device, pongPipeline, nullptr);
                 pongPipeline = VK_NULL_HANDLE;
@@ -272,6 +284,47 @@ public:
         createPongPipeline();
         createParticlePipeline();  
         initStarfield(30000);
+        loadBallTexture();
+    }
+    
+    void loadBallTexture() {
+        SDL_Surface* ballSurface = png::LoadPNG(util.getFilePath("ball.png").c_str());
+        if (!ballSurface) {
+            std::cerr << "Warning: Failed to load ball.png, using bg.png for ball" << std::endl;
+            return;
+        }
+        
+        VkDeviceSize imageSize = ballSurface->w * ballSurface->h * 4;
+        
+        VkBuffer stagingBuffer;
+        VkDeviceMemory stagingBufferMemory;
+        createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            stagingBuffer, stagingBufferMemory);
+        
+        void* data;
+        VK_CHECK_RESULT(vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data));
+        memcpy(data, ballSurface->pixels, static_cast<size_t>(imageSize));
+        vkUnmapMemory(device, stagingBufferMemory);
+        
+        createImage(ballSurface->w, ballSurface->h, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
+            VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, ballTextureImage, ballTextureImageMemory);
+        
+        transitionImageLayout(ballTextureImage, VK_FORMAT_R8G8B8A8_UNORM,
+            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        copyBufferToImage(stagingBuffer, ballTextureImage, ballSurface->w, ballSurface->h);
+        transitionImageLayout(ballTextureImage, VK_FORMAT_R8G8B8A8_UNORM,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        
+        vkDestroyBuffer(device, stagingBuffer, nullptr);
+        vkFreeMemory(device, stagingBufferMemory, nullptr);
+        
+        
+        ballTextureImageView = createImageView(ballTextureImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
+        
+        SDL_FreeSurface(ballSurface);
+        std::cout << ">> [BallTexture] Loaded ball.png texture\n";
     }
     
     void loadCubeVertexBuffer() {
@@ -894,10 +947,60 @@ public:
             pc.model = ball.getModelMatrix();
             pc.color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f); 
             
+            if (ballTextureImageView != VK_NULL_HANDLE) {
+                VkDescriptorImageInfo ballImageInfo{};
+                ballImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                ballImageInfo.imageView = ballTextureImageView;
+                ballImageInfo.sampler = textureSampler;
+                
+                VkDescriptorBufferInfo bufferInfo{};
+                bufferInfo.buffer = uniformBuffers[imageIndex];
+                bufferInfo.offset = 0;
+                bufferInfo.range = sizeof(mx::UniformBufferObject);
+                
+                std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
+                descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                descriptorWrites[0].dstSet = descriptorSets[imageIndex];
+                descriptorWrites[0].dstBinding = 0;
+                descriptorWrites[0].dstArrayElement = 0;
+                descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                descriptorWrites[0].descriptorCount = 1;
+                descriptorWrites[0].pImageInfo = &ballImageInfo;
+                
+                descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                descriptorWrites[1].dstSet = descriptorSets[imageIndex];
+                descriptorWrites[1].dstBinding = 1;
+                descriptorWrites[1].dstArrayElement = 0;
+                descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                descriptorWrites[1].descriptorCount = 1;
+                descriptorWrites[1].pBufferInfo = &bufferInfo;
+                
+                vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), 
+                                       descriptorWrites.data(), 0, nullptr);
+            }
+            
             vkCmdPushConstants(commandBuffers[imageIndex], pongPipelineLayout, 
                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 
                 0, sizeof(PongPushConstants), &pc);
             vkCmdDrawIndexed(commandBuffers[imageIndex], indexCount, 1, 0, 0, 0);
+            
+            if (ballTextureImageView != VK_NULL_HANDLE) {
+                VkDescriptorImageInfo paddleImageInfo{};
+                paddleImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                paddleImageInfo.imageView = textureImageView;
+                paddleImageInfo.sampler = textureSampler;
+                
+                VkWriteDescriptorSet restoreWrite{};
+                restoreWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                restoreWrite.dstSet = descriptorSets[imageIndex];
+                restoreWrite.dstBinding = 0;
+                restoreWrite.dstArrayElement = 0;
+                restoreWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                restoreWrite.descriptorCount = 1;
+                restoreWrite.pImageInfo = &paddleImageInfo;
+                
+                vkUpdateDescriptorSets(device, 1, &restoreWrite, 0, nullptr);
+            }
         }
         
         

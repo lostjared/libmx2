@@ -28,11 +28,8 @@ void main() {
     vec3 lightDir = normalize(lightPos - fragWorldPos);
     vec3 normal = normalize(fragNormal);
     
-    float ambientStrength = 0.4;
-    vec3 ambient = ambientStrength * fragColor;
-    
+    float ambientStrength = 0.3;
     float diff = max(dot(normal, lightDir), 0.0);
-    vec3 diffuse = diff * fragColor;
     
     float specularStrength = 0.5;
     vec3 viewDir = normalize(-fragWorldPos);
@@ -40,9 +37,16 @@ void main() {
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
     vec3 specular = specularStrength * spec * vec3(1.0, 1.0, 1.0);
     
+    // Sample texture
+    vec4 texColor = texture(texSampler, fragTexCoord);
+    
+    // Blend texture with tint color (fragColor from push constants)
+    vec3 tintedTex = texColor.rgb * fragColor;
+    
+    // Apply lighting
+    vec3 ambient = ambientStrength * tintedTex;
+    vec3 diffuse = diff * tintedTex;
     vec3 lighting = ambient + diffuse + specular;
     
-    // Sample texture and blend with lighting
-    vec4 texColor = texture(texSampler, fragTexCoord);
-    outColor = vec4(lighting * texColor.rgb, 1.0);
+    outColor = vec4(lighting, 1.0);
 }
