@@ -494,7 +494,7 @@ public:
                 case SDLK_t:
                     record = true;
                     if(!writer.is_open()) {
-                        writer.open("output.mp4", swapChainExtent.width, swapChainExtent.height, 60.0f, "14");
+                        writer.open("output.mp4", swapChainExtent.width, swapChainExtent.height, 30.0f, "14");
                     }
                     break;
             }
