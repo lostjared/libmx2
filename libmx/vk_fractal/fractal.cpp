@@ -110,16 +110,11 @@ public:
     }
     
     void discoverFragmentShaders() {
-        // List of available fragment shader names (without .spv extension)
         availableFragmentShaders = {
-            "mandelbrot_frag",
-            "mandelbrot_fragment_frag",
-            "mandelbrot_fragment_glitch_frag",
-            "mandelbrot_fragment_multi_frag",
+            "mandelbrot_fragment",
             "mandelbrot_fragment_rainbow_frag",
-            "gradient_frag",
-            "pong_frag",
-            "particle_frag"
+            "mandelbrot_fragment_multi_frag",
+            "mandelbrot_fragment_glitch_frag"
         };
         currentShaderIndex = 0;
         std::cout << ">> [Shaders] Discovered " << availableFragmentShaders.size() << " fragment shaders\n";
@@ -131,11 +126,13 @@ public:
     void cycleFragmentShader(bool forward) {
         int newIndex = currentShaderIndex;
         if (forward) {
-            newIndex = (currentShaderIndex + 1) % availableFragmentShaders.size();
+            if(newIndex < static_cast<int>(availableFragmentShaders.size()-1))
+                ++newIndex;
+            
         } else {
-            newIndex = (currentShaderIndex - 1 + availableFragmentShaders.size()) % availableFragmentShaders.size();
+            if(newIndex > 0)
+                newIndex--;
         }
-        
         if (newIndex != currentShaderIndex) {
             currentShaderIndex = newIndex;
             std::cout << ">> [Shaders] Switched to: " << availableFragmentShaders[currentShaderIndex] << ".spv\n";
@@ -302,9 +299,7 @@ public:
     void createFractalPipeline() {
         
         auto vertShaderCode = mx::readFile(util.getFilePath("data/mandelbrot_vert.spv"));
-        
-        // Load the current fragment shader
-        std::string fragShaderPath = "data/" + availableFragmentShaders[currentShaderIndex] + ".spv";
+         std::string fragShaderPath = "data/" + availableFragmentShaders[currentShaderIndex] + ".spv";
         auto fragShaderCode = mx::readFile(util.getFilePath(fragShaderPath));
         
         VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
