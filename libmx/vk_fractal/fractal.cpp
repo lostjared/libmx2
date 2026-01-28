@@ -114,7 +114,8 @@ public:
             "mandelbrot_fragment",
             "mandelbrot_fragment_rainbow_frag",
             "mandelbrot_fragment_multi_frag",
-            "mandelbrot_fragment_glitch_frag"
+            "mandelbrot_fragment_glitch_frag",
+            "julia_zoom_fragment_frag"
         };
         currentShaderIndex = 0;
         std::cout << ">> [Shaders] Discovered " << availableFragmentShaders.size() << " fragment shaders\n";
