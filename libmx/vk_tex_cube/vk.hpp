@@ -97,13 +97,11 @@ namespace mx {
         VkRenderPass renderPass = VK_NULL_HANDLE;
         VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
         VkPipeline graphicsPipeline = VK_NULL_HANDLE;
+        VkPipelineLayout bgPipelineLayout = VK_NULL_HANDLE;
+        VkPipeline bgPipeline = VK_NULL_HANDLE;
         std::vector<VkFramebuffer> swapChainFramebuffers;
-
-
         VkCommandPool commandPool = VK_NULL_HANDLE;
         std::vector<VkCommandBuffer> commandBuffers;
-
-
         VkSemaphore imageAvailableSemaphore = VK_NULL_HANDLE;
         VkSemaphore renderFinishedSemaphore = VK_NULL_HANDLE;
 
@@ -117,8 +115,16 @@ namespace mx {
         VkDeviceMemory textureImageMemory = VK_NULL_HANDLE;
         VkImageView textureImageView = VK_NULL_HANDLE;
         VkSampler textureSampler = VK_NULL_HANDLE;
+        
+        // Background texture
+        VkImage bgTextureImage = VK_NULL_HANDLE;
+        VkDeviceMemory bgTextureImageMemory = VK_NULL_HANDLE;
+        VkImageView bgTextureImageView = VK_NULL_HANDLE;
+        VkSampler bgTextureSampler = VK_NULL_HANDLE;
+        
         VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
         std::vector<VkDescriptorSet> descriptorSets;
+        std::vector<VkDescriptorSet> bgDescriptorSets;
         uint32_t width, height;
         void createDescriptorSetLayout();
         SDL_Window *window = nullptr;
@@ -157,7 +163,12 @@ namespace mx {
         void createDescriptorPool();
         void createDescriptorSets();
         void updateDescriptorSets();
+        void createBackgroundDescriptorSets();
         void recreateSwapChain();
+        void createBackgroundPipeline();
+        void createBackgroundTextureImage(SDL_Surface* surface);
+        void createBackgroundTextureImageView();
+        void createBackgroundTextureSampler();
     };
 
 }
