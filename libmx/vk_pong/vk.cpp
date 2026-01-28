@@ -59,7 +59,7 @@ namespace mx {
                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
                     particleBuffer, particleBufferMemory);
 
-        vkMapMemory(device, particleBufferMemory, 0, bufferSize, 0, &mappedParticleData);
+        VK_CHECK_RESULT(vkMapMemory(device, particleBufferMemory, 0, bufferSize, 0, &mappedParticleData));
 
         try {
             textRenderer.reset(new VKText(device, physicalDevice, graphicsQueue, commandPool, util.getFilePath("font.ttf"), 24));
@@ -796,12 +796,12 @@ namespace mx {
                     stagingIndexBuffer, stagingIndexBufferMemory);
 
         void* vertexData = nullptr;
-        vkMapMemory(device, stagingVertexBufferMemory, 0, vertexBufferSize, 0, &vertexData);
+        VK_CHECK_RESULT(vkMapMemory(device, stagingVertexBufferMemory, 0, vertexBufferSize, 0, &vertexData));
         memcpy(vertexData, vertices.data(), (size_t)vertexBufferSize);
         vkUnmapMemory(device, stagingVertexBufferMemory);
 
         void* indexData = nullptr;
-        vkMapMemory(device, stagingIndexBufferMemory, 0, indexBufferSize, 0, &indexData);
+        VK_CHECK_RESULT(vkMapMemory(device, stagingIndexBufferMemory, 0, indexBufferSize, 0, &indexData));
         memcpy(indexData, indices.data(), (size_t)indexBufferSize);
         vkUnmapMemory(device, stagingIndexBufferMemory);
 
@@ -865,27 +865,27 @@ namespace mx {
         allocInfo.commandBufferCount = 1;
 
         VkCommandBuffer commandBuffer;
-        vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
+        VK_CHECK_RESULT(vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer));
 
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-        vkBeginCommandBuffer(commandBuffer, &beginInfo);
+        VK_CHECK_RESULT(vkBeginCommandBuffer(commandBuffer, &beginInfo));
 
         VkBufferCopy copyRegion{};
         copyRegion.size = size;
         vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
 
-        vkEndCommandBuffer(commandBuffer);
+        VK_CHECK_RESULT(vkEndCommandBuffer(commandBuffer));
 
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &commandBuffer;
 
-        vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-        vkQueueWaitIdle(graphicsQueue);
+        VK_CHECK_RESULT(vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE));
+        VK_CHECK_RESULT(vkQueueWaitIdle(graphicsQueue));
 
         vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
     }
@@ -905,7 +905,7 @@ namespace mx {
             stagingBuffer, stagingBufferMemory);
         VkFormat textureFormat = VK_FORMAT_R8G8B8A8_UNORM;
         void* data;
-        vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
+        VK_CHECK_RESULT(vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data));
         memcpy(data, surfacex->pixels, static_cast<size_t>(imageSize));
         vkUnmapMemory(device, stagingBufferMemory);
         createImage(width, height, textureFormat, VK_IMAGE_TILING_OPTIMAL,
@@ -1027,7 +1027,7 @@ namespace mx {
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
             stagingBuffer, stagingBufferMemory);
         void* data;
-        vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
+        VK_CHECK_RESULT(vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data));
         memcpy(data, pixels, static_cast<size_t>(imageSize));
         vkUnmapMemory(device, stagingBufferMemory);
         VkFormat textureFormat = VK_FORMAT_R8G8B8A8_UNORM;
@@ -1076,27 +1076,27 @@ namespace mx {
         allocInfo.commandBufferCount = 1;
 
         VkCommandBuffer commandBuffer;
-        vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
+        VK_CHECK_RESULT(vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer));
 
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-        vkBeginCommandBuffer(commandBuffer, &beginInfo);
+        VK_CHECK_RESULT(vkBeginCommandBuffer(commandBuffer, &beginInfo));
 
         return commandBuffer;
     }
 
     void VKWindow::endSingleTimeCommands(VkCommandBuffer commandBuffer) {
-        vkEndCommandBuffer(commandBuffer);
+        VK_CHECK_RESULT(vkEndCommandBuffer(commandBuffer));
 
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &commandBuffer;
 
-        vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-        vkQueueWaitIdle(graphicsQueue);
+        VK_CHECK_RESULT(vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE));
+        VK_CHECK_RESULT(vkQueueWaitIdle(graphicsQueue));
 
         vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
     }
@@ -1268,7 +1268,7 @@ namespace mx {
                         uniformBuffers[i], 
                         uniformBuffersMemory[i]);
 
-            vkMapMemory(device, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
+            VK_CHECK_RESULT(vkMapMemory(device, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]));
         }
     }
 
@@ -1465,7 +1465,7 @@ namespace mx {
             throw mx::Exception("Failed to acquire swap chain image!");
         }
 
-        vkResetCommandBuffer(commandBuffers[imageIndex], 0);
+        VK_CHECK_RESULT(vkResetCommandBuffer(commandBuffers[imageIndex], 0));
 
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -1591,7 +1591,7 @@ namespace mx {
             throw mx::Exception("Failed to present swap chain image!");
         }
         
-        vkQueueWaitIdle(presentQueue);
+        VK_CHECK_RESULT(vkQueueWaitIdle(presentQueue));
         clearTextQueue();
     }
     
@@ -1894,7 +1894,7 @@ namespace mx {
                     stagingBuffer, stagingMemory);
         
         void *data;
-        vkMapMemory(device, stagingMemory, 0, imageSize, 0, &data);
+        VK_CHECK_RESULT(vkMapMemory(device, stagingMemory, 0, imageSize, 0, &data));
         memcpy(data, rgbaSurface->pixels, imageSize);
         vkUnmapMemory(device, stagingMemory);
         
@@ -1926,7 +1926,7 @@ namespace mx {
                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
                     quad.vertexBuffer, quad.vertexBufferMemory);
         
-        vkMapMemory(device, quad.vertexBufferMemory, 0, vertexSize, 0, &data);
+        VK_CHECK_RESULT(vkMapMemory(device, quad.vertexBufferMemory, 0, vertexSize, 0, &data));
         memcpy(data, quad.vertices.data(), vertexSize);
         vkUnmapMemory(device, quad.vertexBufferMemory);
         
@@ -1935,7 +1935,7 @@ namespace mx {
                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
                     quad.indexBuffer, quad.indexBufferMemory);
         
-        vkMapMemory(device, quad.indexBufferMemory, 0, indexSize, 0, &data);
+        VK_CHECK_RESULT(vkMapMemory(device, quad.indexBufferMemory, 0, indexSize, 0, &data));
         memcpy(data, quad.indices.data(), indexSize);
         vkUnmapMemory(device, quad.indexBufferMemory);
         
@@ -1966,10 +1966,10 @@ namespace mx {
     }
     
     void VKText::clearQueue() {
-        vkQueueWaitIdle(graphicsQueue);
+        VK_CHECK_RESULT(vkQueueWaitIdle(graphicsQueue));
         textQuads.clear();
         if (descriptorPool != VK_NULL_HANDLE) {
-            vkResetDescriptorPool(device, descriptorPool, 0);
+            VK_CHECK_RESULT(vkResetDescriptorPool(device, descriptorPool, 0));
         }
     }
     
@@ -1993,7 +1993,7 @@ namespace mx {
         allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
         
         VK_CHECK_RESULT(vkAllocateMemory(device, &allocInfo, nullptr, &bufferMemory));
-        vkBindBufferMemory(device, buffer, bufferMemory, 0);
+        VK_CHECK_RESULT(vkBindBufferMemory(device, buffer, bufferMemory, 0));
     }
     
     uint32_t VKText::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
@@ -2073,27 +2073,27 @@ namespace mx {
         allocInfo.commandBufferCount = 1;
         
         VkCommandBuffer commandBuffer;
-        vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
+        VK_CHECK_RESULT(vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer));
         
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
         
-        vkBeginCommandBuffer(commandBuffer, &beginInfo);
+        VK_CHECK_RESULT(vkBeginCommandBuffer(commandBuffer, &beginInfo));
         
         return commandBuffer;
     }
     
     void VKText::endSingleTimeCommands(VkCommandBuffer commandBuffer) {
-        vkEndCommandBuffer(commandBuffer);
+        VK_CHECK_RESULT(vkEndCommandBuffer(commandBuffer));
         
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &commandBuffer;
         
-        vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-        vkQueueWaitIdle(graphicsQueue);
+        VK_CHECK_RESULT(vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE));
+        VK_CHECK_RESULT(vkQueueWaitIdle(graphicsQueue));
         
         vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
     }
@@ -2127,7 +2127,7 @@ namespace mx {
         allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
         
         VK_CHECK_RESULT(vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory));
-        vkBindImageMemory(device, image, imageMemory, 0);
+        VK_CHECK_RESULT(vkBindImageMemory(device, image, imageMemory, 0));
     }
     
     void VKWindow::printText(const std::string &text, int x, int y, const SDL_Color &col) {
@@ -2442,7 +2442,7 @@ namespace mx {
             stagingBuffer, stagingBufferMemory);
         
         void* data;
-        vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
+        VK_CHECK_RESULT(vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data));
         memcpy(data, starImg->pixels, static_cast<size_t>(imageSize));
         vkUnmapMemory(device, stagingBufferMemory);
         
@@ -2576,7 +2576,7 @@ namespace mx {
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
             starVertexBuffer, starVertexBufferMemory);
         
-        vkMapMemory(device, starVertexBufferMemory, 0, bufferSize, 0, &starVertexBufferMapped);
+        VK_CHECK_RESULT(vkMapMemory(device, starVertexBufferMemory, 0, bufferSize, 0, &starVertexBufferMapped));
         
         std::cout << ">> [Starfield] Vertex buffer created (" << bufferSize << " bytes)\n";
     }

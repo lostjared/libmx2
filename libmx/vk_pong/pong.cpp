@@ -362,12 +362,12 @@ public:
             stagingIndexBuffer, stagingIndexBufferMemory);
         
         void* vertexData = nullptr;
-        vkMapMemory(device, stagingVertexBufferMemory, 0, vertexBufferSize, 0, &vertexData);
+        VK_CHECK_RESULT(vkMapMemory(device, stagingVertexBufferMemory, 0, vertexBufferSize, 0, &vertexData));
         memcpy(vertexData, vertices.data(), (size_t)vertexBufferSize);
         vkUnmapMemory(device, stagingVertexBufferMemory);
         
         void* indexData = nullptr;
-        vkMapMemory(device, stagingIndexBufferMemory, 0, indexBufferSize, 0, &indexData);
+        VK_CHECK_RESULT(vkMapMemory(device, stagingIndexBufferMemory, 0, indexBufferSize, 0, &indexData));
         memcpy(indexData, indices.data(), (size_t)indexBufferSize);
         vkUnmapMemory(device, stagingIndexBufferMemory);
         
@@ -749,7 +749,7 @@ public:
             throw mx::Exception("Failed to acquire swap chain image!");
         }
 
-        vkResetCommandBuffer(commandBuffers[imageIndex], 0);
+        VK_CHECK_RESULT(vkResetCommandBuffer(commandBuffers[imageIndex], 0));
 
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -915,7 +915,7 @@ public:
             throw mx::Exception("Failed to present swap chain image!");
         }
         
-        vkQueueWaitIdle(presentQueue);
+        VK_CHECK_RESULT(vkQueueWaitIdle(presentQueue));
         clearTextQueue();
     }
 
