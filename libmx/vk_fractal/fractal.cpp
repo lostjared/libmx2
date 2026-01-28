@@ -16,9 +16,9 @@
 #endif
 
 struct FractalPushConstants {
-    float centerX;
-    float centerY;
-    float zoom;
+    double centerX;
+    double centerY;
+    double zoom;
     int maxIterations;
     float time;
 };
@@ -649,12 +649,11 @@ public:
                 nullptr
             );
         }
-
         
         FractalPushConstants pc{};
-        pc.centerX = static_cast<float>(centerX);
-        pc.centerY = static_cast<float>(centerY);
-        pc.zoom = static_cast<float>(zoom);
+        pc.centerX = centerX;
+        pc.centerY = centerY;
+        pc.zoom = zoom;
         pc.maxIterations = maxIterations;
         pc.time = animTime;
         

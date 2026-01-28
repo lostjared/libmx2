@@ -1,11 +1,12 @@
 #version 450
+#extension GL_ARB_gpu_shader_fp64 : enable
 
 layout(location = 0) out vec4 outColor;
 
 layout(push_constant) uniform PushConstants {
-    float centerX;
-    float centerY;
-    float zoom;
+    double centerX;
+    double centerY;
+    double zoom;
     int maxIterations;
     float time;
 } pc;
@@ -26,33 +27,34 @@ vec3 hsv2rgb(vec3 c) {
 
 void main() {
     vec2 resolution = ubo.params.xy;
-    vec2 fragCoord = gl_FragCoord.xy;
+    dvec2 fragCoord = dvec2(gl_FragCoord.xy);
     
-    // Map pixel coordinates to complex plane
-    vec2 uv = (fragCoord - 0.5 * resolution) / min(resolution.x, resolution.y);
+    // Map pixel coordinates to complex plane (using double precision)
+    dvec2 uv = (fragCoord - 0.5 * dvec2(resolution)) / double(min(resolution.x, resolution.y));
     
     // Apply zoom and center offset
-    vec2 c = uv / pc.zoom + vec2(pc.centerX, pc.centerY);
+    dvec2 c = uv / pc.zoom + dvec2(pc.centerX, pc.centerY);
     
-    // Mandelbrot iteration
-    vec2 z = vec2(0.0);
+    // Mandelbrot iteration (double precision)
+    dvec2 z = dvec2(0.0);
     int iterations = 0;
     
     for (int i = 0; i < pc.maxIterations; i++) {
         if (dot(z, z) > 4.0) break;
         
         // z = z^2 + c
-        z = vec2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + c;
+        z = dvec2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + c;
         iterations++;
     }
     
-    // Coloring
+    // Coloring (back to float for output)
     if (iterations == pc.maxIterations) {
         // Inside the set - black
         outColor = vec4(0.0, 0.0, 0.0, 1.0);
     } else {
         // Smooth coloring with escape time
-        float smoothIter = float(iterations) - log2(log2(dot(z, z))) + 4.0;
+        float zMag = float(dot(z, z));
+        float smoothIter = float(iterations) - log2(log2(zMag)) + 4.0;
         
         // Create vibrant colors using HSV
         float hue = fract(smoothIter * 0.02 + pc.time * 0.1);
