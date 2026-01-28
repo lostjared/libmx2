@@ -7,6 +7,12 @@ set(OpenGL_GL_PREFERENCE "GLVND")
 set(CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_PREFIX}/lib)
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON) 
+if(MINGW)
+    set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+    set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+    set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+    set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+endif()
 
 # Include necessary modules for checking headers and functions
 include(CheckIncludeFile)
@@ -131,26 +137,20 @@ endif()
 message(STATUS "")
 message(STATUS "=== Checking Required Dependencies ===")
 
-# SDL2
 find_package(SDL2 REQUIRED)
 if(SDL2_FOUND)
-  message(STATUS "SDL2 found: ${SDL2_VERSION}")
-  message(STATUS "  Include dirs: ${SDL2_INCLUDE_DIRS}")
-  message(STATUS "  Libraries: ${SDL2_LIBRARIES}")
+    message(STATUS "SDL2 found: ${SDL2_VERSION}")
+    if(TARGET SDL2::SDL2)
+        message(STATUS "  Using SDL2::SDL2 target")
+    elseif(TARGET SDL2::SDL2-static)
+        add_library(SDL2::SDL2 ALIAS SDL2::SDL2-static)
+    endif()
 else()
-  message(FATAL_ERROR "SDL2 not found. Please install SDL2 development package.\n"
-                      "  Ubuntu/Debian: sudo apt install libsdl2-dev\n"
-                      "  Fedora: sudo dnf install SDL2-devel\n"
-                      "  Arch: sudo pacman -S sdl2\n"
-                      "  macOS: brew install sdl2")
+    message(FATAL_ERROR "SDL2 not found. Please install mingw-w64-sdl2")
 endif()
 
-# Check for required SDL2 headers
-set(CMAKE_REQUIRED_INCLUDES ${SDL2_INCLUDE_DIRS})
-check_include_file(SDL.h HAVE_SDL_H)
-check_include_file(SDL2/SDL.h HAVE_SDL2_SDL_H)
-if(NOT HAVE_SDL_H AND NOT HAVE_SDL2_SDL_H)
-  message(FATAL_ERROR "SDL.h header not found. Please install SDL2 development package.")
+if(NOT TARGET SDL2::SDL2)
+    message(FATAL_ERROR "SDL2 target not found. Ensure mingw-w64-sdl2 is installed correctly.")
 endif()
 
 # SDL2_ttf
