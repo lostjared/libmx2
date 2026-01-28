@@ -217,6 +217,12 @@ public:
     float rotationSpeed = 50.0f;
     Uint64 lastFrameTime = 0;
     
+    // Mouse control state
+    bool mouseDragging = false;
+    int lastMouseX = 0;
+    int lastMouseY = 0;
+    float mouseSensitivity = 0.3f;
+    
     
     VkPipeline pongPipeline = VK_NULL_HANDLE;
     VkPipeline pongPipelineWireframe = VK_NULL_HANDLE;
@@ -585,11 +591,45 @@ public:
         }
         
         
+        if (e.type == SDL_MOUSEBUTTONDOWN) {
+            if (e.button.button == SDL_BUTTON_LEFT || e.button.button == SDL_BUTTON_RIGHT) {
+                mouseDragging = true;
+                lastMouseX = e.button.x;
+                lastMouseY = e.button.y;
+            }
+        }
+        
+        if (e.type == SDL_MOUSEBUTTONUP) {
+            if (e.button.button == SDL_BUTTON_LEFT || e.button.button == SDL_BUTTON_RIGHT) {
+                mouseDragging = false;
+            }
+        }
+        
         if (e.type == SDL_MOUSEMOTION) {
-            int mouseY = e.motion.y;
-            float normalizedY = (mouseY / (float)h) * 2.0f - 1.0f;
-            paddle1.position.y = -normalizedY;
-            clampPaddle(paddle1);
+            if (mouseDragging) {
+                int deltaX = e.motion.x - lastMouseX;
+                int deltaY = e.motion.y - lastMouseY;
+                
+                gridYRotation += deltaX * mouseSensitivity;
+                gridRotation += deltaY * mouseSensitivity;
+                
+                if (gridRotation > 89.0f) gridRotation = 89.0f;
+                if (gridRotation < -89.0f) gridRotation = -89.0f;
+                
+                lastMouseX = e.motion.x;
+                lastMouseY = e.motion.y;
+            } else {
+                int mouseY = e.motion.y;
+                float normalizedY = (mouseY / (float)h) * 2.0f - 1.0f;
+                paddle1.position.y = -normalizedY;
+                clampPaddle(paddle1);
+            }
+        }
+        
+        if (e.type == SDL_MOUSEWHEEL) {
+            cameraZ -= e.wheel.y * 0.5f;
+            if (cameraZ < 1.0f) cameraZ = 1.0f;
+            if (cameraZ > 20.0f) cameraZ = 20.0f;
         }
         
         
