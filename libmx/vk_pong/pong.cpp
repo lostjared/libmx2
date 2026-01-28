@@ -217,11 +217,11 @@ public:
     float rotationSpeed = 50.0f;
     Uint64 lastFrameTime = 0;
     
-    // Mouse control state
+    
     bool mouseDragging = false;
     int lastMouseX = 0;
     int lastMouseY = 0;
-    float mouseSensitivity = 0.3f;
+    float mouseSensitivity = 0.5f;
     
     
     VkPipeline pongPipeline = VK_NULL_HANDLE;
@@ -301,8 +301,7 @@ public:
         if (!f.is_open()) {
             throw mx::Exception("Failed to load cube.mxmod");
         }
-        
-        
+            
         std::string triTag;
         int a = 0, b = 0;
         f >> triTag >> a >> b;
@@ -335,7 +334,6 @@ public:
         }
         
         f.close();
-        
         
         for (int i = 0; i < vcount; ++i) {
             mx::Vertex v{};
