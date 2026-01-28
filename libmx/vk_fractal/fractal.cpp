@@ -6,6 +6,7 @@
 #include <fstream>
 #include <sstream>
 #include <iomanip>
+#include <mxwrite.hpp>
 
 #if defined(__APPLE__) || defined(_WIN32) || defined(__linux__)
 #include "argz.hpp"
@@ -29,7 +30,8 @@ public:
     
     VkPipeline fractalPipeline = VK_NULL_HANDLE;
     VkPipelineLayout fractalPipelineLayout = VK_NULL_HANDLE;
-    
+    Writer writer;
+    bool record = true;
     
     double centerX = -0.5;
     double centerY = 0.0;
@@ -46,16 +48,43 @@ public:
     int screenshotCounter = 0;
     bool captureNextFrame = false;
     
+    VkBuffer recordStagingBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory recordStagingBufferMemory = VK_NULL_HANDLE;
+    std::vector<uint8_t> recordPixelData;
+    uint32_t recordBufferWidth = 0;
+    uint32_t recordBufferHeight = 0;
+    
     FractalWindow(const std::string& path, int wx, int wy, bool full) 
         : mx::VKWindow("-[ Mandelbrot Fractal ]-", wx, wy, full) {
         setPath(path);
     }
     
-    virtual ~FractalWindow() {}
+    virtual ~FractalWindow() {
+        if(writer.is_open()) {
+            writer.close();
+            std::cout << "MXWrite: wrote output.mp4\n";
+        }
+    }
+    
+    void cleanupRecordingBuffers() {
+        if (device != VK_NULL_HANDLE) {
+            if (recordStagingBuffer != VK_NULL_HANDLE) {
+                vkDestroyBuffer(device, recordStagingBuffer, nullptr);
+                recordStagingBuffer = VK_NULL_HANDLE;
+            }
+            if (recordStagingBufferMemory != VK_NULL_HANDLE) {
+                vkFreeMemory(device, recordStagingBufferMemory, nullptr);
+                recordStagingBufferMemory = VK_NULL_HANDLE;
+            }
+        }
+        recordBufferWidth = 0;
+        recordBufferHeight = 0;
+    }
     
     void cleanup() override {
         if (device != VK_NULL_HANDLE) {
-            vkDeviceWaitIdle(device);
+            vkDeviceWaitIdle(device);           
+            cleanupRecordingBuffers();
             
             if (fractalPipeline != VK_NULL_HANDLE) {
                 vkDestroyPipeline(device, fractalPipeline, nullptr);
@@ -76,19 +105,20 @@ public:
     }
     
     void saveScreenshot(uint32_t imageIndex) {
-        vkDeviceWaitIdle(device);
-        
         uint32_t width = swapChainExtent.width;
         uint32_t height = swapChainExtent.height;
-        
         VkDeviceSize bufferSize = width * height * 4;
-        VkBuffer stagingBuffer;
-        VkDeviceMemory stagingBufferMemory;
         
-        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-            stagingBuffer, stagingBufferMemory);
-        
+        // Recreate staging buffer if dimensions changed
+        if (width != recordBufferWidth || height != recordBufferHeight) {
+            cleanupRecordingBuffers();
+            createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                recordStagingBuffer, recordStagingBufferMemory);
+            recordPixelData.resize(width * height * 4);
+            recordBufferWidth = width;
+            recordBufferHeight = height;
+        }
         
         VkImage srcImage = swapChainImages[imageIndex];
         VkCommandBuffer cmdBuffer = beginSingleTimeCommands();
@@ -124,7 +154,7 @@ public:
         region.imageExtent = {width, height, 1};
         
         vkCmdCopyImageToBuffer(cmdBuffer, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-            stagingBuffer, 1, &region);
+            recordStagingBuffer, 1, &region);
         
         barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
         barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
@@ -136,28 +166,25 @@ public:
             0, 0, nullptr, 0, nullptr, 1, &barrier);
         
         endSingleTimeCommands(cmdBuffer);
+        
         void* data;
-        vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
-        std::vector<uint8_t> rgbaData(width * height * 4);
+        vkMapMemory(device, recordStagingBufferMemory, 0, bufferSize, 0, &data);
         uint8_t* src = static_cast<uint8_t*>(data);
-        for (uint32_t i = 0; i < width * height; i++) {
-            rgbaData[i * 4 + 0] = src[i * 4 + 2]; 
-            rgbaData[i * 4 + 1] = src[i * 4 + 1]; 
-            rgbaData[i * 4 + 2] = src[i * 4 + 0]; 
-            rgbaData[i * 4 + 3] = 255;            
+        uint8_t* dst = recordPixelData.data();
+        const uint32_t pixelCount = width * height;
+        for (uint32_t i = 0; i < pixelCount; i++) {
+            dst[0] = src[2];
+            dst[1] = src[1];
+            dst[2] = src[0];
+            dst[3] = 255;
+            src += 4;
+            dst += 4;
         }
+        vkUnmapMemory(device, recordStagingBufferMemory);
         
-        vkUnmapMemory(device, stagingBufferMemory);
-        std::ostringstream filename;
-        filename << "mandelbrot_" << std::setfill('0') << std::setw(4) << screenshotCounter++ << ".png";
-        
-        if (png::SavePNG_RGBA(filename.str().c_str(), rgbaData.data(), width, height)) {
-            std::cout << "Screenshot saved: " << filename.str() << std::endl;
-        } else {
-            std::cerr << "Failed to save screenshot: " << filename.str() << std::endl;
+        if(writer.is_open()) {
+            writer.write(recordPixelData.data());
         }
-        vkDestroyBuffer(device, stagingBuffer, nullptr);
-        vkFreeMemory(device, stagingBufferMemory, nullptr);
     }
 
     void recreateSwapChain() {
@@ -424,6 +451,12 @@ public:
                 case SDLK_F12:
                     captureNextFrame = true;
                     break;
+                case SDLK_t:
+                    record = true;
+                    if(!writer.is_open()) {
+                        writer.open("output.mp4", swapChainExtent.width, swapChainExtent.height, 60.0f, "14");
+                    }
+                    break;
             }
         }
         
@@ -558,11 +591,13 @@ public:
         std::ostringstream fpsStream;
         fpsStream << std::fixed << std::setprecision(1) << "FPS: " << fps;
         
-        printText("Mandelbrot Fractal", 10, 10, yellow);
-        printText(infoStream.str(), 10, 40, white);
-        printText(zoomStream.str(), 10, 70, white);
-        printText(fpsStream.str(), 10, 100, white);
-        printText("Controls: Scroll=Zoom, Drag=Pan, WASD/Arrows=Move, Z/X=Zoom, R=Reset, 1-3=Presets", 10, h - 30, white);
+        if(!writer.is_open()) {
+            printText("Mandelbrot Fractal", 10, 10, yellow);
+            printText(infoStream.str(), 10, 40, white);
+            printText(zoomStream.str(), 10, 70, white);
+            printText(fpsStream.str(), 10, 100, white);
+            printText("Controls: Scroll=Zoom, Drag=Pan, WASD/Arrows=Move, Z/X=Zoom, R=Reset, 1-3=Presets", 10, h - 30, white);
+        }
     }
     
     void draw() override {
@@ -719,6 +754,9 @@ public:
             captureNextFrame = false;
         }
         
+        if (record && writer.is_open()) {
+            saveScreenshot(imageIndex);
+        }
         clearTextQueue();
     }
 
