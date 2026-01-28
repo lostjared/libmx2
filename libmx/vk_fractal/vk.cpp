@@ -680,8 +680,7 @@ namespace mx {
     }
 
     void VKWindow::createVertexBuffer() {
-        // Vertex buffer creation is handled by derived classes for specific geometry
-        // This base implementation does nothing - fractal uses fullscreen quad created in FractalWindow
+        
     }
     void VKWindow::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory) {
         VkBufferCreateInfo bufferInfo{};
@@ -1140,8 +1139,8 @@ namespace mx {
                 throw mx::Exception("Device is invalid in createGraphicsPipeline()");
             }
      
-            auto vertShaderCode = mx::readFile(util.getFilePath("vert.spv"));
-            auto fragShaderCode = mx::readFile(util.getFilePath("frag.spv"));
+            auto vertShaderCode = mx::readFile(util.getFilePath("data/vert.spv"));
+            auto fragShaderCode = mx::readFile(util.getFilePath("data/frag.spv"));
 
             VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
             if (vertShaderModule == VK_NULL_HANDLE) {
@@ -2033,8 +2032,8 @@ namespace mx {
     
     void VKWindow::createTextPipeline() {
         try {
-            auto textVertShaderCode = readFile(util.getFilePath("text_vert.spv"));
-            auto textFragShaderCode = readFile(util.getFilePath("text_frag.spv"));
+            auto textVertShaderCode = readFile(util.getFilePath("data/text_vert.spv"));
+            auto textFragShaderCode = readFile(util.getFilePath("data/text_frag.spv"));
 
             VkShaderModule textVertShaderModule = createShaderModule(textVertShaderCode);
             VkShaderModule textFragShaderModule = createShaderModule(textFragShaderCode);
@@ -2456,8 +2455,8 @@ namespace mx {
 
     void VKWindow::createStarPipeline() {
         try {
-            auto vertShaderCode = mx::readFile(util.getFilePath("star_vert.spv"));
-            auto fragShaderCode = mx::readFile(util.getFilePath("star_frag.spv"));
+            auto vertShaderCode = mx::readFile(util.getFilePath("data/star_vert.spv"));
+            auto fragShaderCode = mx::readFile(util.getFilePath("data/star_frag.spv"));
             
             VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
             VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);

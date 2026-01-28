@@ -54,6 +54,10 @@ public:
     uint32_t recordBufferWidth = 0;
     uint32_t recordBufferHeight = 0;
     
+    // Shader cycling
+    std::vector<std::string> availableFragmentShaders;
+    int currentShaderIndex = 0;
+    
     FractalWindow(const std::string& path, int wx, int wy, bool full) 
         : mx::VKWindow("-[ Mandelbrot Fractal ]-", wx, wy, full) {
         setPath(path);
@@ -100,8 +104,43 @@ public:
     
     void initVulkan() override {
         mx::VKWindow::initVulkan();
+        discoverFragmentShaders();
         createFullscreenQuad();
         createFractalPipeline();
+    }
+    
+    void discoverFragmentShaders() {
+        // List of available fragment shader names (without .spv extension)
+        availableFragmentShaders = {
+            "mandelbrot_frag",
+            "mandelbrot_fragment_frag",
+            "mandelbrot_fragment_glitch_frag",
+            "mandelbrot_fragment_multi_frag",
+            "mandelbrot_fragment_rainbow_frag",
+            "gradient_frag",
+            "pong_frag",
+            "particle_frag"
+        };
+        currentShaderIndex = 0;
+        std::cout << ">> [Shaders] Discovered " << availableFragmentShaders.size() << " fragment shaders\n";
+        if (!availableFragmentShaders.empty()) {
+            std::cout << ">> [Shaders] Starting with: " << availableFragmentShaders[0] << ".spv\n";
+        }
+    }
+    
+    void cycleFragmentShader(bool forward) {
+        int newIndex = currentShaderIndex;
+        if (forward) {
+            newIndex = (currentShaderIndex + 1) % availableFragmentShaders.size();
+        } else {
+            newIndex = (currentShaderIndex - 1 + availableFragmentShaders.size()) % availableFragmentShaders.size();
+        }
+        
+        if (newIndex != currentShaderIndex) {
+            currentShaderIndex = newIndex;
+            std::cout << ">> [Shaders] Switched to: " << availableFragmentShaders[currentShaderIndex] << ".spv\n";
+            recreateSwapChain();
+        }
     }
     
     void saveScreenshot(uint32_t imageIndex) {
@@ -262,8 +301,11 @@ public:
     
     void createFractalPipeline() {
         
-        auto vertShaderCode = mx::readFile(util.getFilePath("mandelbrot_vert.spv"));
-        auto fragShaderCode = mx::readFile(util.getFilePath("mandelbrot_frag.spv"));
+        auto vertShaderCode = mx::readFile(util.getFilePath("data/mandelbrot_vert.spv"));
+        
+        // Load the current fragment shader
+        std::string fragShaderPath = "data/" + availableFragmentShaders[currentShaderIndex] + ".spv";
+        auto fragShaderCode = mx::readFile(util.getFilePath(fragShaderPath));
         
         VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
         VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
@@ -427,10 +469,10 @@ public:
                     break;
                 case SDLK_PLUS:
                 case SDLK_EQUALS:
-                    maxIterations = std::min(maxIterations + 50, 2000);
+                    cycleFragmentShader(true);
                     break;
                 case SDLK_MINUS:
-                    maxIterations = std::max(maxIterations - 50, 50);
+                    cycleFragmentShader(false);
                     break;
                 case SDLK_1:
                     centerX = -0.745;
@@ -446,6 +488,9 @@ public:
                     centerX = -0.761574;
                     centerY = -0.0847596;
                     zoom = 200.0;
+                    break;
+                case SDLK_4:
+                    maxIterations += 25;
                     break;
                 case SDLK_p:
                 case SDLK_F12:
