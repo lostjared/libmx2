@@ -54,8 +54,10 @@ namespace mx {
     };
 
     struct UniformBufferObject {
-        float time;
-        alignas(16) glm::vec3 color; 
+        glm::vec2 iResolution;
+        float time_f;
+        float _pad0;
+        glm::vec4 iMouse;
     };
 
     class VKWindow {

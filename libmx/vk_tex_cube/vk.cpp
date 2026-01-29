@@ -1603,8 +1603,10 @@ namespace mx {
         }
 
         UniformBufferObject ubo{};
-        ubo.time = SDL_GetTicks() / 1000.0f;
-        ubo.color = glm::vec3(1.0f, 0.5f, 0.3f);
+        ubo.iResolution = glm::vec2(static_cast<float>(swapChainExtent.width), static_cast<float>(swapChainExtent.height));
+        ubo.time_f = SDL_GetTicks() / 1000.0f;
+        ubo._pad0 = 0.0f;
+        ubo.iMouse = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f); // No mouse input for now
         
         
         if (uniformBuffersMapped.size() > imageIndex && uniformBuffersMapped[imageIndex] != nullptr) {
