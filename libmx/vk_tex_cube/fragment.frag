@@ -177,6 +177,6 @@ void main(void){
     finalCol = clamp(finalCol, vec3(0.05), vec3(0.97));
 
     vec3 finalRGB = mix(baseTex.rgb, finalCol, pingPong(glow * PI, 5.0) * 0.8);
-    outColor = vec4(finalRGB, baseTex.a);
+    outColor = vec4(sin(finalRGB*ubo.time_f), baseTex.a);
     outColor.a = 0.7;
 }
