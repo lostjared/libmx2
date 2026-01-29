@@ -601,7 +601,7 @@ namespace mx {
             swapChain = VK_NULL_HANDLE;
         }
         
-        // Cleanup depth resources
+        
         if (depthImageView != VK_NULL_HANDLE) {
             vkDestroyImageView(device, depthImageView, nullptr);
             depthImageView = VK_NULL_HANDLE;
@@ -1292,19 +1292,19 @@ namespace mx {
             
             std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
             
-            // Position attribute
+            
             attributeDescriptions[0].binding = 0;
             attributeDescriptions[0].location = 0;  
             attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT; 
             attributeDescriptions[0].offset = offsetof(Vertex, pos);
 
-            // Texture coordinate attribute
+            
             attributeDescriptions[1].binding = 0;
             attributeDescriptions[1].location = 1;
             attributeDescriptions[1].format = VK_FORMAT_R32G32_SFLOAT;  
             attributeDescriptions[1].offset = offsetof(Vertex, texCoord);
 
-            // Normal attribute
+            
             attributeDescriptions[2].binding = 0;
             attributeDescriptions[2].location = 2;
             attributeDescriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
@@ -1467,7 +1467,7 @@ namespace mx {
         UniformBufferObject ubo{};
         float time = SDL_GetTicks() / 1000.0f;
         ubo.params = glm::vec4(time, static_cast<float>(swapChainExtent.width), static_cast<float>(swapChainExtent.height), 0.0f);
-        ubo.color = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);  // mouse: x, y, button state, unused
+        ubo.color = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
         ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(45.0f), glm::vec3(1.0f, 1.0f, 1.0f));
         ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, cameraDistance), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         float aspect = static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height);
