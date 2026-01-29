@@ -1466,8 +1466,8 @@ namespace mx {
 
         UniformBufferObject ubo{};
         float time = SDL_GetTicks() / 1000.0f;
-        ubo.params = glm::vec4(time, 0.0f, 0.0f, 0.0f);
-        ubo.color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+        ubo.params = glm::vec4(time, static_cast<float>(swapChainExtent.width), static_cast<float>(swapChainExtent.height), 0.0f);
+        ubo.color = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);  // mouse: x, y, button state, unused
         ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(45.0f), glm::vec3(1.0f, 1.0f, 1.0f));
         ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, cameraDistance), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         float aspect = static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height);
