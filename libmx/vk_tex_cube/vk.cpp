@@ -1229,18 +1229,34 @@ namespace mx {
                 imageInfo.imageView = bgTextureImageView;
                 imageInfo.sampler = bgTextureSampler;
                 
-                VkWriteDescriptorSet descriptorWrite{};
-                descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                descriptorWrite.dstSet = bgDescriptorSets[i];
-                descriptorWrite.dstBinding = 0;
-                descriptorWrite.dstArrayElement = 0;
-                descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-                descriptorWrite.descriptorCount = 1;
-                descriptorWrite.pImageInfo = &imageInfo;
-
-                vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
+                VkDescriptorBufferInfo bufferInfo{};
+                bufferInfo.buffer = uniformBuffers[i];
+                bufferInfo.offset = 0;
+                bufferInfo.range = sizeof(UniformBufferObject);
                 
-                std::cout << ">> [BackgroundDescriptorSets] Updated background descriptor set " << i << "\n";
+                std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
+                
+                // Binding 0: Texture sampler
+                descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                descriptorWrites[0].dstSet = bgDescriptorSets[i];
+                descriptorWrites[0].dstBinding = 0;
+                descriptorWrites[0].dstArrayElement = 0;
+                descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                descriptorWrites[0].descriptorCount = 1;
+                descriptorWrites[0].pImageInfo = &imageInfo;
+
+                // Binding 1: Uniform buffer
+                descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                descriptorWrites[1].dstSet = bgDescriptorSets[i];
+                descriptorWrites[1].dstBinding = 1;
+                descriptorWrites[1].dstArrayElement = 0;
+                descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                descriptorWrites[1].descriptorCount = 1;
+                descriptorWrites[1].pBufferInfo = &bufferInfo;
+
+                vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+                
+                std::cout << ">> [BackgroundDescriptorSets] Updated background descriptor set " << i << " with texture and UBO\n";
             }
 
             std::cout << ">> [BackgroundDescriptorSets] Completed background descriptor set creation and updates\n";
@@ -1606,7 +1622,7 @@ namespace mx {
         ubo.iResolution = glm::vec2(static_cast<float>(swapChainExtent.width), static_cast<float>(swapChainExtent.height));
         ubo.time_f = SDL_GetTicks() / 1000.0f;
         ubo._pad0 = 0.0f;
-        ubo.iMouse = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f); // No mouse input for now
+        ubo.iMouse = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f); 
         
         
         if (uniformBuffersMapped.size() > imageIndex && uniformBuffersMapped[imageIndex] != nullptr) {
@@ -1621,6 +1637,11 @@ namespace mx {
             glm::vec3(0.0f, 0.0f, 0.0f),
             glm::vec3(0.0f, 1.0f, 0.0f)
         );
+
+        float scale = 1.0f + 0.8f * sin(time * 2.0f);
+        glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(scale, scale, scale));
+        model = model * scaleMatrix;
+
         glm::mat4 proj = glm::perspective(
             glm::radians(45.0f),
             swapChainExtent.width / (float)swapChainExtent.height,
