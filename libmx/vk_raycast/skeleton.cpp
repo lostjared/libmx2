@@ -113,7 +113,7 @@ public:
         raycastPlayer.planeX = planeX;
         raycastPlayer.planeY = planeY;
         printText("WASD: Move  Arrow Keys: Turn  ESC: Quit", 10, 10, {255, 255, 255, 255});        
-        std::string posStr = std::format("Pos: %.1f, %.1f", posX, posY);
+        std::string posStr = std::format("Pos: {}, {}", posX, posY);
         printText(posStr, 10, 40, {200, 200, 200, 255});
     }
     
