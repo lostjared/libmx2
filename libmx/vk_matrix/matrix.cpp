@@ -56,7 +56,7 @@ public:
     void recreateSwapChain() override {
         vkDeviceWaitIdle(device);
         
-        // Cleanup matrix pipeline (it's bound to the old render pass)
+        
         if (matrixPipeline != VK_NULL_HANDLE) {
             vkDestroyPipeline(device, matrixPipeline, nullptr);
             matrixPipeline = VK_NULL_HANDLE;
@@ -66,10 +66,10 @@ public:
             matrixPipelineLayout = VK_NULL_HANDLE;
         }
         
-        // Call base class to recreate swapchain and render pass
+        
         mx::VKWindow::recreateSwapChain();
         
-        // Recreate matrix pipeline with new render pass
+        
         createMatrixPipeline();
     }
     
