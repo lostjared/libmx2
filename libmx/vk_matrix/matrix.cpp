@@ -53,6 +53,26 @@ public:
         initialized = true;
     }
     
+    void recreateSwapChain() override {
+        vkDeviceWaitIdle(device);
+        
+        // Cleanup matrix pipeline (it's bound to the old render pass)
+        if (matrixPipeline != VK_NULL_HANDLE) {
+            vkDestroyPipeline(device, matrixPipeline, nullptr);
+            matrixPipeline = VK_NULL_HANDLE;
+        }
+        if (matrixPipelineLayout != VK_NULL_HANDLE) {
+            vkDestroyPipelineLayout(device, matrixPipelineLayout, nullptr);
+            matrixPipelineLayout = VK_NULL_HANDLE;
+        }
+        
+        // Call base class to recreate swapchain and render pass
+        mx::VKWindow::recreateSwapChain();
+        
+        // Recreate matrix pipeline with new render pass
+        createMatrixPipeline();
+    }
+    
     void proc() override {
         if (!initialized) {
             mx::VKWindow::proc();
@@ -514,6 +534,15 @@ private:
         colorBlending.attachmentCount = 1;
         colorBlending.pAttachments = &colorBlendAttachment;
         
+        std::array<VkDynamicState, 2> dynamicStates = {
+            VK_DYNAMIC_STATE_VIEWPORT,
+            VK_DYNAMIC_STATE_SCISSOR
+        };
+        
+        VkPipelineDynamicStateCreateInfo dynamicState{};
+        dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
+        dynamicState.pDynamicStates = dynamicStates.data();
         
         VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
         pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -535,6 +564,7 @@ private:
         pipelineInfo.pMultisampleState = &multisampling;
         pipelineInfo.pDepthStencilState = &depthStencil;
         pipelineInfo.pColorBlendState = &colorBlending;
+        pipelineInfo.pDynamicState = &dynamicState;
         pipelineInfo.layout = matrixPipelineLayout;
         pipelineInfo.renderPass = renderPass;
         pipelineInfo.subpass = 0;
@@ -773,7 +803,6 @@ private:
         
         
         vkWaitForFences(device, 1, &inFlightFence, VK_TRUE, UINT64_MAX);
-        vkResetFences(device, 1, &inFlightFence);
         
         
         updateMatrixRain(currentDeltaTime);
@@ -789,7 +818,7 @@ private:
             throw mx::Exception("Failed to acquire swap chain image!");
         }
         
-        
+        vkResetFences(device, 1, &inFlightFence);    
         mx::UniformBufferObject ubo{};
         ubo.model = glm::mat4(1.0f);
         
@@ -853,6 +882,20 @@ private:
         
         vkCmdBindPipeline(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, matrixPipeline);
         
+        VkViewport viewport{};
+        viewport.x = 0.0f;
+        viewport.y = 0.0f;
+        viewport.width = static_cast<float>(swapChainExtent.width);
+        viewport.height = static_cast<float>(swapChainExtent.height);
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+        vkCmdSetViewport(commandBuffers[imageIndex], 0, 1, &viewport);
+        
+        VkRect2D scissor{};
+        scissor.offset = {0, 0};
+        scissor.extent = swapChainExtent;
+        vkCmdSetScissor(commandBuffers[imageIndex], 0, 1, &scissor);
+        
         VkBuffer vertexBuffers[] = {vertexBuffer};
         VkDeviceSize offsets[] = {0};
         vkCmdBindVertexBuffers(commandBuffers[imageIndex], 0, 1, vertexBuffers, offsets);
@@ -907,7 +950,13 @@ private:
         presentInfo.pSwapchains = swapChains;
         presentInfo.pImageIndices = &imageIndex;
         
-        vkQueuePresentKHR(presentQueue, &presentInfo);
+        result = vkQueuePresentKHR(presentQueue, &presentInfo);
+        
+        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+            recreateSwapChain();
+        } else if (result != VK_SUCCESS) {
+            throw mx::Exception("Failed to present swap chain image!");
+        }
     }
     
     void cleanupMatrix() {
@@ -957,7 +1006,7 @@ int main(int argc, char **argv) {
     Arguments args = proc_args(argc, argv);
     
     try {
-        Matrix3DWindow window(args.path, args.width, args.height, false);
+        Matrix3DWindow window(args.path, args.width, args.height, args.fullscreen);
         window.initVulkan();  
         window.loop();
     } catch (const mx::Exception &e) {

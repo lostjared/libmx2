@@ -320,7 +320,7 @@ namespace mx {
         void createDescriptorPool();
         void createDescriptorSets();
         void updateDescriptorSets();
-        void recreateSwapChain();
+        virtual void recreateSwapChain();
         void setupTextureImage(uint32_t w, uint32_t h);
         void createTextDescriptorSetLayout();
         void createTextPipeline();
