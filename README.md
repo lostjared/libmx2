@@ -18,9 +18,6 @@ It provides a collection of utilities and abstractions to streamline the creatio
 The motivation for creating this library was to give me an easy way to assemble new SDL2 applications 
 while using an approach I prefer, an Object Oriented Design. I have experimented with AI in some of the example projects for this library.
 
-# In Progress
-I am working on adding support for Vulkan (its not complete)
-
 ## Features
 
 - **SDL2 Integration**: Simplifies the setup and management of SDL2 components.
