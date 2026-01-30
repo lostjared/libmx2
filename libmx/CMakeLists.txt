@@ -205,6 +205,7 @@ option(MIXER "Build with Sound Support" ON)
 option(VULKAN "Build with Vulkan Support" OFF)
 option(MOLTEN "Build with MoltenVK Support" OFF)
 option(CMD "Build with libcmd Support" OFF)
+option(CROSS "Build Cross Glue" OFF)
 include_directories(${CMAKE_BINARY_DIR} ${CMAKE_INSTALL_PREFIX}/include)
 
 if(CMD)
@@ -542,6 +543,10 @@ if(EXAMPLES)
 
 else()
   message(STATUS "Not Building Examples")
+endif()
+
+if(CROSS)
+   add_subdirectory(cross)
 endif()
 
 add_subdirectory(mxmod_compress)
