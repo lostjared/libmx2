@@ -547,6 +547,8 @@ endif()
 
 if(CROSS)
    add_subdirectory(cross)
+   add_subdirectory(moon)
+   add_subdirectory(vk_cross_stars)
 endif()
 
 add_subdirectory(mxmod_compress)
