@@ -454,14 +454,11 @@ public:
         modelPosition = position;
         std::string modelPath = dataPath + "/data/" + modelFile;
         loadMXMOD(modelPath, vertices, indices, modelScale);
-        
-        
         std::string texPath = dataPath + "/data/" + textureFile;
         modelTexture = gl::loadTexture(texPath);
         if (!modelTexture) {
             SDL_Log("Warning: Could not load model texture from %s", texPath.c_str());
         }
-        
         
         glGenVertexArrays(1, &VAO);
         glGenBuffers(1, &VBO);
@@ -593,7 +590,7 @@ public:
     float cameraSpeed = 50.0f;
     float atmosphericTwinkle = 0.5f;
     float lightPollution = 0.0f;
-    float warpSpeed = 50.0f;         
+    float warpSpeed = 175.0f;         
     float starFieldRadius = 500.0f;  
     float starFieldDepth = 1000.0f;  
     
@@ -1046,7 +1043,7 @@ public:
     float cameraSpeed = 50.0f;
     float atmosphericTwinkle = 0.5f;
     float lightPollution = 0.0f;
-    float warpSpeed = 50.0f;
+    float warpSpeed = 175.0f;
     float starFieldDepth = 15000.0f;
     float starFieldRadius = 500.0f;
     
@@ -2899,7 +2896,7 @@ public:
             glModelRenderer = std::make_unique<GL_ModelRenderer>();
             glm::vec3 modelPos = glm::vec3(0.0f, 0.0f, -6.0f);  
             float modelScale = 1.5f;  
-            glModelRenderer->init(path, "geosphere.mxmod", "star.png", modelScale, modelPos);    
+            glModelRenderer->init(path, "sphere.mxmod", "bg.png", modelScale, modelPos);    
             glStarfield->cameraX = 0.0f;
             glStarfield->cameraY = 0.0f;
             glStarfield->cameraZ = 4.0f;
