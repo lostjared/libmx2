@@ -1,19 +1,23 @@
 #ifdef __EMSCRIPTEN__
-#include"config.hpp"
+#include "config.hpp"
 #else
-#include"config.h"
+#include "config.h"
 #endif
+
 #ifdef WITH_GL
-#include"model.hpp"
-#include<sstream>
-#include<fstream>
-#include<vector>
-#include<unordered_map>
-#include<functional>
-#include<cstddef>
-#include<cmath>
-#include<random>
-#include<algorithm>
+#include "model.hpp"
+#include <sstream>
+#include <fstream>
+#include <vector>
+#include <unordered_map>
+#include <functional>
+#include <cstddef>
+#include <cmath>
+#include <random>
+#include <algorithm>
+#include <iostream>
+#include <filesystem>
+
 #ifdef __EMSCRIPTEN__
 #include "glm.hpp"
 #else
@@ -39,7 +43,6 @@ namespace mx {
         }
     };
 
-
     struct VertexHash {
         std::size_t operator()(const Vertex& v) const {
             std::size_t seed = 0;
@@ -59,103 +62,122 @@ namespace mx {
         }
     };
 
-    
+    Mesh::Mesh()
+        : hasOriginal(false), shape_type(GL_TRIANGLES), texture(0),
+          EBO(0), VAO(0), positionVBO(0), normalVBO(0), texCoordVBO(0),
+          tangentVBO(0), bitangentVBO(0),
+          normalMapTexture(0), parallaxMapTexture(0), aoMapTexture(0), displacementMapTexture(0),
+          vertIndex(0), texIndex(0), normIndex(0) {}
 
-    Mesh::Mesh(Mesh &&m)
+        Mesh::Mesh(Mesh &&m) noexcept
         : vert(std::move(m.vert)),
-          tex(std::move(m.tex)),
-          norm(std::move(m.norm)),
-          originalVert(std::move(m.originalVert)),
-          originalNorm(std::move(m.originalNorm)),
-          hasOriginal(m.hasOriginal),
-          shape_type(m.shape_type),
-          texture{m.texture},
-          VAO(m.VAO),
-          positionVBO(m.positionVBO),
-          normalVBO(m.normalVBO),
-          texCoordVBO(m.texCoordVBO),
-          vertIndex(m.vertIndex),
-          texIndex(m.texIndex),
-          normIndex(m.normIndex) {
-          m.VAO = m.positionVBO = m.normalVBO = m.texCoordVBO = 0;
-          m.vertIndex = m.texIndex = m.normIndex = 0;
-          m.shape_type = 0;
-          m.texture = 0;
-          m.hasOriginal = false;
+        tex(std::move(m.tex)),
+        norm(std::move(m.norm)),
+        tangent(std::move(m.tangent)),
+        bitangent(std::move(m.bitangent)),
+        indices(std::move(m.indices)),
+        originalVert(std::move(m.originalVert)),
+        originalNorm(std::move(m.originalNorm)),
+        hasOriginal(m.hasOriginal),
+        shape_type(m.shape_type),
+        texture(m.texture),
+        EBO(m.EBO),
+        VAO(m.VAO),
+        positionVBO(m.positionVBO),
+        normalVBO(m.normalVBO),
+        texCoordVBO(m.texCoordVBO),
+        tangentVBO(m.tangentVBO),
+        bitangentVBO(m.bitangentVBO),
+        normalMapTexture(m.normalMapTexture),
+        parallaxMapTexture(m.parallaxMapTexture),
+        aoMapTexture(m.aoMapTexture),
+        displacementMapTexture(m.displacementMapTexture),
+        vertIndex(m.vertIndex),
+        texIndex(m.texIndex),
+        normIndex(m.normIndex) {
+
+        m.EBO = m.VAO = m.positionVBO = m.normalVBO = m.texCoordVBO = m.tangentVBO = m.bitangentVBO = 0;
+        m.texture = 0;
+        m.normalMapTexture = m.parallaxMapTexture = m.aoMapTexture = m.displacementMapTexture = 0;
+        m.vertIndex = m.texIndex = m.normIndex = 0;
+        m.shape_type = GL_TRIANGLES;
+        m.hasOriginal = false;
     }
 
     Mesh &Mesh::operator=(Mesh &&m) noexcept {
-        if(this != &m) {
+        if (this != &m) {
+            cleanup();
             vert = std::move(m.vert);
             tex = std::move(m.tex);
             norm = std::move(m.norm);
+            tangent = std::move(m.tangent);
+            bitangent = std::move(m.bitangent);
+            indices = std::move(m.indices);
             originalVert = std::move(m.originalVert);
             originalNorm = std::move(m.originalNorm);
             hasOriginal = m.hasOriginal;
+            shape_type = m.shape_type;
+            texture = m.texture;
             VAO = m.VAO;
             positionVBO = m.positionVBO;
             normalVBO = m.normalVBO;
             texCoordVBO = m.texCoordVBO;
-            shape_type = m.shape_type;
+            tangentVBO = m.tangentVBO;
+            bitangentVBO = m.bitangentVBO;
+            EBO = m.EBO;
+            normalMapTexture = m.normalMapTexture;
+            parallaxMapTexture = m.parallaxMapTexture;
+            aoMapTexture = m.aoMapTexture;
+            displacementMapTexture = m.displacementMapTexture;
             vertIndex = m.vertIndex;
             texIndex = m.texIndex;
             normIndex = m.normIndex;
-            texture = m.texture;
-            m.VAO = 0;
-            m.positionVBO = 0;
-            m.normalVBO = 0;
-            m.texCoordVBO = 0;
-            m.shape_type = 0;
-            m.vertIndex = 0;
-            m.texIndex = 0;
-            m.normIndex = 0;
+
+            m.VAO = m.positionVBO = m.normalVBO = m.texCoordVBO = m.tangentVBO = m.bitangentVBO = m.EBO = 0;
+            m.texture = 0;
+            m.normalMapTexture = m.parallaxMapTexture = m.aoMapTexture = m.displacementMapTexture = 0;
+            m.vertIndex = m.texIndex = m.normIndex = 0;
+            m.shape_type = GL_TRIANGLES;
             m.hasOriginal = false;
         }
         return *this;
     }
 
-    Mesh::~Mesh() {
-        cleanup();
-    }
+    Mesh::~Mesh() { cleanup(); }
 
     void Mesh::cleanup() {
-        if (positionVBO) {
-            glDeleteBuffers(1, &positionVBO);
-            positionVBO = 0;
-        }
-        if (normalVBO) {
-            glDeleteBuffers(1, &normalVBO);
-            normalVBO = 0;
-        }
-        if (texCoordVBO) {
-            glDeleteBuffers(1, &texCoordVBO);
-            texCoordVBO = 0;
-        }
-        if (EBO) {
-            glDeleteBuffers(1, &EBO);
-            EBO = 0;
-        }
-        if(texture) {
-             glDeleteTextures(1, &texture);
-        }
-        if (VAO) {
-            glDeleteVertexArrays(1, &VAO);
-            VAO = 0;
+        if (positionVBO) glDeleteBuffers(1, &positionVBO);
+        if (normalVBO) glDeleteBuffers(1, &normalVBO);
+        if (texCoordVBO) glDeleteBuffers(1, &texCoordVBO);
+        if (tangentVBO) glDeleteBuffers(1, &tangentVBO);
+        if (bitangentVBO) glDeleteBuffers(1, &bitangentVBO);
+        if (EBO) glDeleteBuffers(1, &EBO);
+        if (VAO) glDeleteVertexArrays(1, &VAO);
+        positionVBO = normalVBO = texCoordVBO = tangentVBO = bitangentVBO = EBO = VAO = 0;
+    }
+
+    void Mesh::setShapeType(GLuint type) {
+        switch (type) {
+            case 0: shape_type = GL_TRIANGLES; break;
+            case 1: shape_type = GL_TRIANGLE_STRIP; break;
+            case 2: shape_type = GL_TRIANGLE_FAN; break;
+            default: shape_type = GL_TRIANGLES; break;
         }
     }
 
     void Mesh::compressIndices() {
-        std::cout << "mx: Uncompressed Mesh: V: " << vert.size() << " T: " << tex.size() << " N: " << norm.size() << "\n";
-        size_t numVertices =vert.size() / 3;
+        size_t numVertices = vert.size() / 3;
         std::vector<Vertex> uniqueVertices;
         std::unordered_map<Vertex, GLuint, VertexHash> vertexToIndex;
         std::vector<GLuint> newIndices;
         newIndices.reserve(numVertices);
+
         for (size_t i = 0; i < numVertices; ++i) {
             Vertex vertex;
             vertex.position[0] = vert[i * 3 + 0];
             vertex.position[1] = vert[i * 3 + 1];
             vertex.position[2] = vert[i * 3 + 2];
+
             if (!norm.empty()) {
                 vertex.normal[0] = norm[i * 3 + 0];
                 vertex.normal[1] = norm[i * 3 + 1];
@@ -163,135 +185,142 @@ namespace mx {
             } else {
                 vertex.normal[0] = vertex.normal[1] = vertex.normal[2] = 0.0f;
             }
+
             if (!tex.empty()) {
                 vertex.texCoord[0] = tex[i * 2 + 0];
                 vertex.texCoord[1] = tex[i * 2 + 1];
             } else {
                 vertex.texCoord[0] = vertex.texCoord[1] = 0.0f;
-            }   
+            }
+
             auto it = vertexToIndex.find(vertex);
             if (it != vertexToIndex.end()) {
                 newIndices.push_back(it->second);
             } else {
-                GLuint newIndex = static_cast<GLuint>(uniqueVertices.size());
+                GLuint newIndex = (GLuint)uniqueVertices.size();
                 uniqueVertices.push_back(vertex);
                 vertexToIndex[vertex] = newIndex;
                 newIndices.push_back(newIndex);
             }
         }
-        std::vector<GLfloat> newVerts;
-        std::vector<GLfloat> newNorms;
-        std::vector<GLfloat> newTex;
+
+        std::vector<GLfloat> newVerts, newNorms, newTex;
         newVerts.reserve(uniqueVertices.size() * 3);
         if (!norm.empty()) newNorms.reserve(uniqueVertices.size() * 3);
         if (!tex.empty()) newTex.reserve(uniqueVertices.size() * 2);
-        for (const auto& v : uniqueVertices) {
+
+        for (const auto &v : uniqueVertices) {
             newVerts.push_back(v.position[0]);
             newVerts.push_back(v.position[1]);
             newVerts.push_back(v.position[2]);
+
             if (!norm.empty()) {
                 newNorms.push_back(v.normal[0]);
                 newNorms.push_back(v.normal[1]);
                 newNorms.push_back(v.normal[2]);
             }
+
             if (!tex.empty()) {
                 newTex.push_back(v.texCoord[0]);
                 newTex.push_back(v.texCoord[1]);
             }
         }
+
         vert = std::move(newVerts);
-        if (!norm.empty())
-            norm = std::move(newNorms);
-        if (!tex.empty())
-            tex = std::move(newTex);
+        if (!norm.empty()) norm = std::move(newNorms);
+        if (!tex.empty()) tex = std::move(newTex);
         indices = std::move(newIndices);
-        std::cout << "mx: Compressed Mesh: V: " << vert.size() << " T: " << tex.size() << " N: " << norm.size() << "\n";
-        std::cout << "mx: Mesh Indices: " << indices.size() << "\n";
     }
 
     void Mesh::generateBuffers() {
         glGenVertexArrays(1, &VAO);
         glBindVertexArray(VAO);
-        glGenBuffers(1, &positionVBO);
-        glBindBuffer(GL_ARRAY_BUFFER, positionVBO);
-        glBufferData(GL_ARRAY_BUFFER, vert.size() * sizeof(GLfloat), vert.data(), GL_STATIC_DRAW);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)0);
-        glEnableVertexAttribArray(0);
-        if (!norm.empty()) {
-            glGenBuffers(1, &normalVBO);
-            glBindBuffer(GL_ARRAY_BUFFER, normalVBO);
-            glBufferData(GL_ARRAY_BUFFER, norm.size() * sizeof(GLfloat), norm.data(), GL_STATIC_DRAW);
-            glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)0);
-            glEnableVertexAttribArray(1);
-        }
-        if (!tex.empty()) {
-            glGenBuffers(1, &texCoordVBO);
-            glBindBuffer(GL_ARRAY_BUFFER, texCoordVBO);
-            glBufferData(GL_ARRAY_BUFFER, tex.size() * sizeof(GLfloat), tex.data(), GL_STATIC_DRAW);
-            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, (GLvoid*)0);
-            glEnableVertexAttribArray(2);
-        }
+
+        auto setupAttr = [](GLuint &vbo, const std::vector<GLfloat> &d, int idx, int sz) {
+            if (d.empty()) return;
+            glGenBuffers(1, &vbo);
+            glBindBuffer(GL_ARRAY_BUFFER, vbo);
+            glBufferData(GL_ARRAY_BUFFER, d.size() * sizeof(GLfloat), d.data(), GL_STATIC_DRAW);
+            glVertexAttribPointer(idx, sz, GL_FLOAT, GL_FALSE, 0, (void*)0);
+            glEnableVertexAttribArray(idx);
+        };
+
+        setupAttr(positionVBO, vert, 0, 3);
+        setupAttr(normalVBO, norm, 1, 3);
+        setupAttr(texCoordVBO, tex, 2, 2);
+        setupAttr(tangentVBO, tangent, 3, 3);
+        setupAttr(bitangentVBO, bitangent, 4, 3);
+
         if (!indices.empty()) {
             glGenBuffers(1, &EBO);
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
             glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.data(), GL_STATIC_DRAW);
-        }    
+        }
+
+        glBindVertexArray(0);
+    }
+
+    void Mesh::updateBuffers() {
+        if (!VAO) return;
+        glBindVertexArray(VAO);
+
+        if (positionVBO && !vert.empty()) {
+            glBindBuffer(GL_ARRAY_BUFFER, positionVBO);
+            glBufferSubData(GL_ARRAY_BUFFER, 0, vert.size() * sizeof(GLfloat), vert.data());
+        }
+
+        if (normalVBO && !norm.empty()) {
+            glBindBuffer(GL_ARRAY_BUFFER, normalVBO);
+            glBufferSubData(GL_ARRAY_BUFFER, 0, norm.size() * sizeof(GLfloat), norm.data());
+        }
+
+        if (texCoordVBO && !tex.empty()) {
+            glBindBuffer(GL_ARRAY_BUFFER, texCoordVBO);
+            glBufferSubData(GL_ARRAY_BUFFER, 0, tex.size() * sizeof(GLfloat), tex.data());
+        }
+
         glBindVertexArray(0);
     }
 
     void Mesh::draw() {
         glBindVertexArray(VAO);
-        if (!indices.empty()) {
-            glDrawElements(shape_type, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0);
-        } else {
-            glDrawArrays(shape_type, 0, static_cast<GLsizei>(vert.size() / 3));
-        }
+        if (!indices.empty()) glDrawElements(shape_type, (GLsizei)indices.size(), GL_UNSIGNED_INT, 0);
+        else glDrawArrays(shape_type, 0, (GLsizei)(vert.size() / 3));
         glBindVertexArray(0);
-    }
-    
-    void Mesh::drawWithForcedTexture(gl::ShaderProgram &shader, GLuint texture, const std::string texture_name) {
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texture);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        shader.setUniform(texture_name, 0);
-        glBindVertexArray(VAO);
-        if (!indices.empty()) {
-            glDrawElements(shape_type, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0);
-        } else {
-            glDrawArrays(shape_type, 0, static_cast<GLsizei>(vert.size() / 3));
-        }
-        glBindVertexArray(0);
-    }
-
-    void Mesh::setShapeType(GLuint type) {
-        switch(type) {
-            case 0:
-                shape_type = GL_TRIANGLES;
-                break;
-            case 1:
-                shape_type = GL_TRIANGLE_STRIP;
-                break;
-            case 2:
-                shape_type = GL_TRIANGLE_FAN;
-                break;
-        }
     }
 
     void Mesh::bindTexture(gl::ShaderProgram &shader, const std::string texture_name) {
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         shader.setUniform(texture_name, 0);
+
+        if (normalMapTexture) {
+            glActiveTexture(GL_TEXTURE1);
+            glBindTexture(GL_TEXTURE_2D, normalMapTexture);
+            shader.setUniform("normalMap", 1);
+        }
+    }
+
+    void Mesh::drawWithForcedTexture(gl::ShaderProgram &shader, GLuint forced_texture, const std::string texture_name) {
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, forced_texture);
+        shader.setUniform(texture_name, 0);
+
+        if (normalMapTexture) {
+            glActiveTexture(GL_TEXTURE1);
+            glBindTexture(GL_TEXTURE_2D, normalMapTexture);
+            shader.setUniform("normalMap", 1);
+        }
+
+        draw();
     }
 
     void Mesh::bindCubemapTexture(gl::ShaderProgram &shader, GLuint cubemap, const std::string texture_name) {
-        glActiveTexture(GL_TEXTURE0);
+        glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap);
-        shader.setUniform(texture_name, 0);
+        shader.setUniform(texture_name, 1);
     }
-    
+
     void Mesh::saveOriginal() {
         originalVert = vert;
         originalNorm = norm;
@@ -306,227 +335,128 @@ namespace mx {
         }
     }
 
-    void Mesh::updateBuffers() {
-        if (VAO == 0) return;
-        
-        glBindVertexArray(VAO);
-        
-        if (positionVBO && !vert.empty()) {
-            glBindBuffer(GL_ARRAY_BUFFER, positionVBO);
-            glBufferSubData(GL_ARRAY_BUFFER, 0, vert.size() * sizeof(GLfloat), vert.data());
-        }
-        
-        if (normalVBO && !norm.empty()) {
-            glBindBuffer(GL_ARRAY_BUFFER, normalVBO);
-            glBufferSubData(GL_ARRAY_BUFFER, 0, norm.size() * sizeof(GLfloat), norm.data());
-        }
-        
-        glBindVertexArray(0);
-    }
-
     void Mesh::recalculateNormals() {
         if (vert.empty()) return;
-        
-        size_t numVerts = vert.size() / 3;
-        std::vector<GLfloat> newNormals(numVerts * 3, 0.0f);
-    
+
+        norm.assign(vert.size(), 0.0f);
+
         if (!indices.empty()) {
             for (size_t i = 0; i + 2 < indices.size(); i += 3) {
-                GLuint i0 = indices[i];
-                GLuint i1 = indices[i + 1];
-                GLuint i2 = indices[i + 2];
-                
-                float v0[3] = { vert[i0 * 3], vert[i0 * 3 + 1], vert[i0 * 3 + 2] };
-                float v1[3] = { vert[i1 * 3], vert[i1 * 3 + 1], vert[i1 * 3 + 2] };
-                float v2[3] = { vert[i2 * 3], vert[i2 * 3 + 1], vert[i2 * 3 + 2] };
-                
-                float edge1[3] = { v1[0] - v0[0], v1[1] - v0[1], v1[2] - v0[2] };
-                float edge2[3] = { v2[0] - v0[0], v2[1] - v0[1], v2[2] - v0[2] };
-                
-                float nx = edge1[1] * edge2[2] - edge1[2] * edge2[1];
-                float ny = edge1[2] * edge2[0] - edge1[0] * edge2[2];
-                float nz = edge1[0] * edge2[1] - edge1[1] * edge2[0];
-                
-                for (GLuint idx : {i0, i1, i2}) {
-                    newNormals[idx * 3] += nx;
-                    newNormals[idx * 3 + 1] += ny;
-                    newNormals[idx * 3 + 2] += nz;
-                }
+                int i0 = (int)indices[i] * 3;
+                int i1 = (int)indices[i + 1] * 3;
+                int i2 = (int)indices[i + 2] * 3;
+
+                glm::vec3 v0(vert[i0], vert[i0 + 1], vert[i0 + 2]);
+                glm::vec3 v1(vert[i1], vert[i1 + 1], vert[i1 + 2]);
+                glm::vec3 v2(vert[i2], vert[i2 + 1], vert[i2 + 2]);
+
+                glm::vec3 n = glm::normalize(glm::cross(v1 - v0, v2 - v0));
+
+                norm[i0] += n.x; norm[i0 + 1] += n.y; norm[i0 + 2] += n.z;
+                norm[i1] += n.x; norm[i1 + 1] += n.y; norm[i1 + 2] += n.z;
+                norm[i2] += n.x; norm[i2 + 1] += n.y; norm[i2 + 2] += n.z;
             }
         } else {
             for (size_t i = 0; i + 8 < vert.size(); i += 9) {
-                float v0[3] = { vert[i], vert[i + 1], vert[i + 2] };
-                float v1[3] = { vert[i + 3], vert[i + 4], vert[i + 5] };
-                float v2[3] = { vert[i + 6], vert[i + 7], vert[i + 8] };
-                
-                float edge1[3] = { v1[0] - v0[0], v1[1] - v0[1], v1[2] - v0[2] };
-                float edge2[3] = { v2[0] - v0[0], v2[1] - v0[1], v2[2] - v0[2] };
-                
-                float nx = edge1[1] * edge2[2] - edge1[2] * edge2[1];
-                float ny = edge1[2] * edge2[0] - edge1[0] * edge2[2];
-                float nz = edge1[0] * edge2[1] - edge1[1] * edge2[0];
-                
-                for (size_t j = 0; j < 3; ++j) {
-                    size_t idx = (i / 3) + j;
-                    newNormals[idx * 3] = nx;
-                    newNormals[idx * 3 + 1] = ny;
-                    newNormals[idx * 3 + 2] = nz;
-                }
+                glm::vec3 v0(vert[i], vert[i + 1], vert[i + 2]);
+                glm::vec3 v1(vert[i + 3], vert[i + 4], vert[i + 5]);
+                glm::vec3 v2(vert[i + 6], vert[i + 7], vert[i + 8]);
+                glm::vec3 n = glm::normalize(glm::cross(v1 - v0, v2 - v0));
+                norm[i] = norm[i + 3] = norm[i + 6] = n.x;
+                norm[i + 1] = norm[i + 4] = norm[i + 7] = n.y;
+                norm[i + 2] = norm[i + 5] = norm[i + 8] = n.z;
             }
         }
-        
-        for (size_t i = 0; i < numVerts; ++i) {
-            float nx = newNormals[i * 3];
-            float ny = newNormals[i * 3 + 1];
-            float nz = newNormals[i * 3 + 2];
-            float len = std::sqrt(nx * nx + ny * ny + nz * nz);
-            if (len > 0.0001f) {
-                newNormals[i * 3] = nx / len;
-                newNormals[i * 3 + 1] = ny / len;
-                newNormals[i * 3 + 2] = nz / len;
+
+        for (size_t i = 0; i < norm.size(); i += 3) {
+            glm::vec3 n(norm[i], norm[i + 1], norm[i + 2]);
+            float len = glm::length(n);
+            if (len > 1e-8f) {
+                n /= len;
+                norm[i] = n.x; norm[i + 1] = n.y; norm[i + 2] = n.z;
             }
         }
-        
-        norm = std::move(newNormals);
     }
 
-    void Mesh::scale(float factor) {
-        scale(factor, factor, factor);
+    void Mesh::generateTangentBitangent() {
+        if (vert.empty() || tex.empty()) return;
+
+        tangent.assign(vert.size(), 0.0f);
+        bitangent.assign(vert.size(), 0.0f);
+
+        auto addTri = [&](GLuint i0, GLuint i1, GLuint i2) {
+            size_t p0 = (size_t)i0 * 3, p1 = (size_t)i1 * 3, p2 = (size_t)i2 * 3;
+            size_t t0 = (size_t)i0 * 2, t1 = (size_t)i1 * 2, t2 = (size_t)i2 * 2;
+            if (p2 + 2 >= vert.size()) return;
+            if (t2 + 1 >= tex.size()) return;
+
+            glm::vec3 v0(vert[p0], vert[p0 + 1], vert[p0 + 2]);
+            glm::vec3 v1(vert[p1], vert[p1 + 1], vert[p1 + 2]);
+            glm::vec3 v2(vert[p2], vert[p2 + 1], vert[p2 + 2]);
+
+            glm::vec2 uv0(tex[t0], tex[t0 + 1]);
+            glm::vec2 uv1(tex[t1], tex[t1 + 1]);
+            glm::vec2 uv2(tex[t2], tex[t2 + 1]);
+
+            glm::vec3 e1 = v1 - v0;
+            glm::vec3 e2 = v2 - v0;
+
+            glm::vec2 duv1 = uv1 - uv0;
+            glm::vec2 duv2 = uv2 - uv0;
+
+            float denom = duv1.x * duv2.y - duv2.x * duv1.y;
+            if (std::abs(denom) < 1e-8f) return;
+
+            float f = 1.0f / denom;
+            glm::vec3 tan = f * (duv2.y * e1 - duv1.y * e2);
+            glm::vec3 bitan = f * (-duv2.x * e1 + duv1.x * e2);
+
+            tangent[p0] += tan.x; tangent[p0 + 1] += tan.y; tangent[p0 + 2] += tan.z;
+            tangent[p1] += tan.x; tangent[p1 + 1] += tan.y; tangent[p1 + 2] += tan.z;
+            tangent[p2] += tan.x; tangent[p2 + 1] += tan.y; tangent[p2 + 2] += tan.z;
+
+            bitangent[p0] += bitan.x; bitangent[p0 + 1] += bitan.y; bitangent[p0 + 2] += bitan.z;
+            bitangent[p1] += bitan.x; bitangent[p1 + 1] += bitan.y; bitangent[p1 + 2] += bitan.z;
+            bitangent[p2] += bitan.x; bitangent[p2 + 1] += bitan.y; bitangent[p2 + 2] += bitan.z;
+        };
+
+        if (!indices.empty()) {
+            for (size_t i = 0; i + 2 < indices.size(); i += 3) {
+                addTri(indices[i], indices[i + 1], indices[i + 2]);
+            }
+        } else {
+            GLuint vcount = (GLuint)(vert.size() / 3);
+            for (GLuint i = 0; i + 2 < vcount; i += 3) {
+                addTri(i, i + 1, i + 2);
+            }
+        }
+
+        for (size_t i = 0; i < tangent.size(); i += 3) {
+            glm::vec3 t(tangent[i], tangent[i + 1], tangent[i + 2]);
+            float len = glm::length(t);
+            if (len > 1e-8f) {
+                t /= len;
+                tangent[i] = t.x; tangent[i + 1] = t.y; tangent[i + 2] = t.z;
+            }
+        }
+
+        for (size_t i = 0; i < bitangent.size(); i += 3) {
+            glm::vec3 b(bitangent[i], bitangent[i + 1], bitangent[i + 2]);
+            float len = glm::length(b);
+            if (len > 1e-8f) {
+                b /= len;
+                bitangent[i] = b.x; bitangent[i + 1] = b.y; bitangent[i + 2] = b.z;
+            }
+        }
     }
+
+    void Mesh::scale(float factor) { scale(factor, factor, factor); }
 
     void Mesh::scale(float sx, float sy, float sz) {
         for (size_t i = 0; i < vert.size(); i += 3) {
             vert[i] *= sx;
             vert[i + 1] *= sy;
             vert[i + 2] *= sz;
-        }
-    }
-
-    void Mesh::bend(DeformAxis axis, float angle, float center, float range) {
-        int axisIdx = static_cast<int>(axis);
-        int bendIdx1 = (axisIdx + 1) % 3;
-        int bendIdx2 = (axisIdx + 2) % 3;
-        
-        for (size_t i = 0; i < vert.size(); i += 3) {
-            float pos = vert[i + axisIdx];
-            float t = (pos - center) / range;
-            t = std::clamp(t, -1.0f, 1.0f);
-            
-            float bendAngle = angle * t;
-            float cosA = std::cos(bendAngle);
-            float sinA = std::sin(bendAngle);
-            
-            float v1 = vert[i + bendIdx1];
-            float v2 = vert[i + bendIdx2];
-            
-            vert[i + bendIdx1] = v1 * cosA - v2 * sinA;
-            vert[i + bendIdx2] = v1 * sinA + v2 * cosA;
-        }
-    }
-
-    void Mesh::twist(DeformAxis axis, float angle, float center) {
-        int axisIdx = static_cast<int>(axis);
-        int rotIdx1 = (axisIdx + 1) % 3;
-        int rotIdx2 = (axisIdx + 2) % 3;
-        
-        for (size_t i = 0; i < vert.size(); i += 3) {
-            float pos = vert[i + axisIdx];
-            float twistAngle = angle * (pos - center);
-            float cosA = std::cos(twistAngle);
-            float sinA = std::sin(twistAngle);
-            
-            float v1 = vert[i + rotIdx1];
-            float v2 = vert[i + rotIdx2];
-            
-            vert[i + rotIdx1] = v1 * cosA - v2 * sinA;
-            vert[i + rotIdx2] = v1 * sinA + v2 * cosA;
-        }
-    }
-
-    void Mesh::wave(DeformAxis axis, float amplitude, float frequency, float phase) {
-        int axisIdx = static_cast<int>(axis);
-        int displaceIdx = (axisIdx + 1) % 3;
-        
-        for (size_t i = 0; i < vert.size(); i += 3) {
-            float pos = vert[i + axisIdx];
-            float displacement = amplitude * std::sin(frequency * pos + phase);
-            vert[i + displaceIdx] += displacement;
-        }
-    }
-
-    void Mesh::ripple(float amplitude, float frequency, float phase, float cx, float cy, float cz) {
-        for (size_t i = 0; i < vert.size(); i += 3) {
-            float dx = vert[i] - cx;
-            float dy = vert[i + 1] - cy;
-            float dz = vert[i + 2] - cz;
-            float dist = std::sqrt(dx * dx + dy * dy + dz * dz);
-            
-            float displacement = amplitude * std::sin(frequency * dist + phase);
-            
-            if (dist > 0.0001f) {
-                vert[i] += (dx / dist) * displacement;
-                vert[i + 1] += (dy / dist) * displacement;
-                vert[i + 2] += (dz / dist) * displacement;
-            }
-        }
-    }
-
-    void Mesh::noise(float amplitude, unsigned int seed) {
-        std::mt19937 gen(seed);
-        std::uniform_real_distribution<float> dist(-amplitude, amplitude);
-        
-        for (size_t i = 0; i < vert.size(); ++i) {
-            vert[i] += dist(gen);
-        }
-    }
-
-    void Mesh::taper(DeformAxis axis, float factor, float center) {
-        int axisIdx = static_cast<int>(axis);
-        int scaleIdx1 = (axisIdx + 1) % 3;
-        int scaleIdx2 = (axisIdx + 2) % 3;
-        
-        for (size_t i = 0; i < vert.size(); i += 3) {
-            float pos = vert[i + axisIdx];
-            float scaleFactor = 1.0f + factor * (pos - center);
-            scaleFactor = std::max(0.0f, scaleFactor);
-            
-            vert[i + scaleIdx1] *= scaleFactor;
-            vert[i + scaleIdx2] *= scaleFactor;
-        }
-    }
-
-    void Mesh::bulge(float factor, float cx, float cy, float cz, float radius) {
-        for (size_t i = 0; i < vert.size(); i += 3) {
-            float dx = vert[i] - cx;
-            float dy = vert[i + 1] - cy;
-            float dz = vert[i + 2] - cz;
-            float dist = std::sqrt(dx * dx + dy * dy + dz * dz);
-            
-            if (dist < radius && dist > 0.0001f) {
-                float t = dist / radius;
-                float bulgeFactor = 1.0f + factor * (1.0f - t * t);
-                
-                vert[i] = cx + dx * bulgeFactor;
-                vert[i + 1] = cy + dy * bulgeFactor;
-                vert[i + 2] = cz + dz * bulgeFactor;
-            }
-        }
-    }
-
-    void Mesh::morph(float t) {
-        if (!hasOriginal) return;
-        
-        t = std::clamp(t, 0.0f, 1.0f);
-        
-        std::vector<GLfloat> targetVert = vert;
-        std::vector<GLfloat> targetNorm = norm;
-        
-        for (size_t i = 0; i < vert.size(); ++i) {
-            vert[i] = originalVert[i] + t * (targetVert[i] - originalVert[i]);
-        }
-        
-        for (size_t i = 0; i < norm.size(); ++i) {
-            norm[i] = originalNorm[i] + t * (targetNorm[i] - originalNorm[i]);
         }
     }
 
@@ -538,220 +468,429 @@ namespace mx {
         }
     }
 
-    void Mesh::rotate(DeformAxis axis, float angle) {
-        int axisIdx = static_cast<int>(axis);
-        int rotIdx1 = (axisIdx + 1) % 3;
-        int rotIdx2 = (axisIdx + 2) % 3;
-        
-        float cosA = std::cos(angle);
-        float sinA = std::sin(angle);
-        
+    void Mesh::bend(DeformAxis axis, float angle, float center, float range) {
         for (size_t i = 0; i < vert.size(); i += 3) {
-            float v1 = vert[i + rotIdx1];
-            float v2 = vert[i + rotIdx2];
-            
-            vert[i + rotIdx1] = v1 * cosA - v2 * sinA;
-            vert[i + rotIdx2] = v1 * sinA + v2 * cosA;
-        }
-        
-        // Also rotate normals
-        for (size_t i = 0; i < norm.size(); i += 3) {
-            float n1 = norm[i + rotIdx1];
-            float n2 = norm[i + rotIdx2];
-            
-            norm[i + rotIdx1] = n1 * cosA - n2 * sinA;
-            norm[i + rotIdx2] = n1 * sinA + n2 * cosA;
+            float x = vert[i], y = vert[i + 1], z = vert[i + 2];
+            if (axis == DeformAxis::Y) {
+                float dist = y - center;
+                if (range == 0.0f || std::abs(dist) < range) {
+                    float theta = dist * angle;
+                    vert[i] = x * std::cos(theta) - dist * std::sin(theta);
+                    vert[i + 1] = center + x * std::sin(theta) + dist * std::cos(theta);
+                }
+            }
+            (void)z;
         }
     }
 
-    // ============== End Deformation Functions ==============
+    void Mesh::twist(DeformAxis axis, float angle, float center) {
+        for (size_t i = 0; i < vert.size(); i += 3) {
+            if (axis == DeformAxis::Y) {
+                float theta = (vert[i + 1] - center) * angle;
+                float s = std::sin(theta), c = std::cos(theta);
+                float x = vert[i], z = vert[i + 2];
+                vert[i] = x * c - z * s;
+                vert[i + 2] = x * s + z * c;
+            }
+        }
+    }
 
-    Model::Model(Model &&m) : meshes{std::move(m.meshes)} {}
+    void Mesh::wave(DeformAxis axis, float amplitude, float frequency, float phase) {
+        for (size_t i = 0; i < vert.size(); i += 3) {
+            float x = vert[i], y = vert[i + 1];
+            if (axis == DeformAxis::Y) vert[i + 1] += amplitude * std::sin(x * frequency + phase);
+            else if (axis == DeformAxis::X) vert[i] += amplitude * std::sin(y * frequency + phase);
+            else if (axis == DeformAxis::Z) vert[i + 2] += amplitude * std::sin(y * frequency + phase);
+        }
+    }
 
-    Model &Model::operator=(Model &&m) {
-        meshes = std::move(m.meshes);
+    void Mesh::ripple(float amplitude, float frequency, float phase, float cx, float cy, float cz) {
+        for (size_t i = 0; i < vert.size(); i += 3) {
+            float dx = vert[i] - cx;
+            float dy = vert[i + 1] - cy;
+            float dz = vert[i + 2] - cz;
+            float dist = std::sqrt(dx * dx + dy * dy + dz * dz);
+            float displacement = amplitude * std::sin(dist * frequency + phase);
+            if (dist > 1e-4f) {
+                vert[i] += (dx / dist) * displacement;
+                vert[i + 1] += (dy / dist) * displacement;
+                vert[i + 2] += (dz / dist) * displacement;
+            }
+        }
+    }
+
+    void Mesh::bulge(float factor, float cx, float cy, float cz, float radius) {
+        for (size_t i = 0; i < vert.size(); i += 3) {
+            float dx = vert[i] - cx;
+            float dy = vert[i + 1] - cy;
+            float dz = vert[i + 2] - cz;
+            float dist = std::sqrt(dx * dx + dy * dy + dz * dz);
+
+            if (dist < radius) {
+                float weight = 1.0f - (dist / radius);
+                float amount = factor * weight;
+                vert[i] += dx * amount;
+                vert[i + 1] += dy * amount;
+                vert[i + 2] += dz * amount;
+            }
+        }
+    }
+
+    void Mesh::uvScroll(float uOffset, float vOffset) {
+        for (size_t i = 0; i < tex.size(); i += 2) {
+            tex[i] += uOffset;
+            tex[i + 1] += vOffset;
+        }
+        if (texCoordVBO && !tex.empty()) {
+            glBindBuffer(GL_ARRAY_BUFFER, texCoordVBO);
+            glBufferSubData(GL_ARRAY_BUFFER, 0, tex.size() * sizeof(GLfloat), tex.data());
+        }
+    }
+
+    void Mesh::applyHSV(float h, float s, float v) { (void)h; (void)s; (void)v; }
+    void Mesh::applyColorGrading(const glm::vec3 &c) { (void)c; }
+    void Mesh::applyChromaticAberration(float intensity) { (void)intensity; }
+
+    void Mesh::setNormalMap(GLuint t) { normalMapTexture = t; }
+    void Mesh::setParallaxMap(GLuint t) { parallaxMapTexture = t; }
+    void Mesh::setDisplacementMap(GLuint t) { displacementMapTexture = t; }
+    void Mesh::setAmbientOcclusionMap(GLuint t) { aoMapTexture = t; }
+
+    Model::Model(const std::string &filename) {
+        if (!openModel(filename)) throw mx::Exception("Error: Could not load model");
+    }
+
+    Model::Model(Model &&m) noexcept
+        : meshes(std::move(m.meshes)), program(m.program), tex_name(std::move(m.tex_name)) {
+        m.program = nullptr;
+    }
+
+    Model &Model::operator=(Model &&m) noexcept {
+        if (this != &m) {
+            meshes = std::move(m.meshes);
+            program = m.program;
+            tex_name = std::move(m.tex_name);
+            m.program = nullptr;
+        }
         return *this;
     }
 
-    Model::Model(const std::string &filename) {
-        if (!openModel(filename)) {
-            throw mx::Exception("Error: Could not load model");
-        }
-    }
-
-    bool Model::openCompressedModel(const std::string &filename) {
-        std::vector<char> buffer = mx::readFile(filename);
-        std::string text = decompressString(buffer.data(), static_cast<uLong>(buffer.size()));
-        return openModelString(filename, text, true);
+    static bool ends_with(const std::string &s, const std::string &suf) {
+        return s.size() >= suf.size() && s.compare(s.size() - suf.size(), suf.size(), suf) == 0;
     }
 
     bool Model::openModel(const std::string &filename, bool compress) {
-        if(filename.rfind("mxmod.z") != std::string::npos) {
-            return openCompressedModel(filename);
+        std::cout << "mx: Open model: " << filename << std::endl;
+
+        meshes.clear();
+
+        std::vector<char> buffer;
+        std::string text;
+
+        try {
+            buffer = mx::readFile(filename);
+            if (buffer.empty()) {
+                std::cerr << "mx: Error - File not found or empty buffer: " << filename << std::endl;
+                return false;
+            }
+
+            if (ends_with(filename, ".mxmod.z")) {
+                text = decompressString(buffer.data(), static_cast<uLong>(buffer.size()));
+            } else {
+                text.assign(buffer.begin(), buffer.end());
+            }
+
+            return openModelString(filename, text, compress);
         }
-        std::vector<char> buffer = mx::readFile(filename);
-        std::string text(buffer.begin(), buffer.end());
-        return openModelString(filename, text, compress);
+        catch (const mx::Exception &e) {
+            std::cerr << "mx: Exception in openModel(" << filename << "): " << e.text() << std::endl;
+            return false;
+        }
+        catch (const std::exception &e) {
+            std::cerr << "mx: std::exception in openModel(" << filename << "): " << e.what() << std::endl;
+            return false;
+        }
+        catch (...) {
+            std::cerr << "mx: Unknown exception in openModel(" << filename << ")" << std::endl;
+            return false;
+        }
+    }
+
+    void Model::dumpMeshStats(const Mesh &m, size_t meshIndex, bool didCompress, bool compressRequested) {
+        mx::system_out
+            << "mx: Mesh[" << meshIndex << "] "
+            << (compressRequested ? "[compress=on]" : "[compress=off]") << " "
+            << (didCompress ? "[compressed]" : "[not-compressed]") << "\n{\n"
+            << "    verts: " << (m.vert.size() / 3) << "\n"
+            << "    norms: " << (m.norm.size() / 3) <<  "\n"
+            << "    tex:   " << (m.tex.size() / 2) << "\n"
+            << "    tang:  " << (m.tangent.size() / 3) << "\n"
+            << "    bitan: " << (m.bitangent.size() / 3) << "\n"
+            << "    index: " << m.indices.size() << "\n}\n";
     }
 
     bool Model::openModelString(const std::string &filename, const std::string &text, bool compress) {
-        std::istringstream file(text);
+        std::string cleaned = text;
+
+        if (cleaned.size() >= 3 &&
+            (unsigned char)cleaned[0] == 0xEF &&
+            (unsigned char)cleaned[1] == 0xBB &&
+            (unsigned char)cleaned[2] == 0xBF) {
+            cleaned.erase(0, 3);
+        }
+
+        mx::system_out
+            << "mx: Parsing model: " << filename << "\n"
+            << "mx: compress flag: " << (compress ? "true" : "false") << "\n";
+
+        std::istringstream file(cleaned);
         Mesh currentMesh;
         int type = -1;
         size_t count = 0;
+        std::string line;
 
-        while (!file.eof()) {
-            std::string line;
-            std::getline(file, line);
-            if (!line.empty()) {
-                auto pos = line.find('#');                
-                if(pos != std::string::npos) {
-                    line = line.substr(0, pos);
-                    if(line.empty())
-                        continue;
-                }
-                if (line.find("tri") == 0) {
-                    if (!currentMesh.vert.empty()) {
-                        if (count * 3 != currentMesh.vert.size()) {
-                            std::ostringstream stream;
-                            stream << "mx: Model :" << filename << " invalid vertex count unaligned expected: " << (count) << " found: " << currentMesh.vert.size()/3;
-                            throw mx::Exception(stream.str());
-                        }              
-                        if (count * 2 != currentMesh.tex.size()) {
-                            std::ostringstream stream;
-                            stream << "mx: Model :" << filename << " invalid texture count unaligned expected: " << (count) << " found: " << currentMesh.tex.size()/3;
-                            throw mx::Exception(stream.str());
-                        }
-                        if (count * 3 != currentMesh.norm.size()) {
-                            std::ostringstream stream;
-                            stream << "mx: Model :" << filename << " invalid normal count unaligned expected: " << (count) << " found: " << currentMesh.norm.size()/3;
-                            throw mx::Exception(stream.str());
-                        }
-                        meshes.push_back(std::move(currentMesh));
-                        currentMesh = Mesh();
-                    }
-                    std::istringstream stream(line);
-                    std::string dummy;
-                    GLuint shapeType = 0;
-                    GLuint texture_index = 0;
-                    stream >> dummy >> shapeType>> texture_index;
-                    currentMesh.texture = texture_index;
-                    currentMesh.setShapeType(shapeType);
-                    type = -1;
-                } else {
-                    parseLine(line, currentMesh, type, count);
+        auto trim = [](std::string &s) {
+            size_t b = s.find_first_not_of(" \t\r\n");
+            if (b == std::string::npos) { s.clear(); return; }
+            size_t e = s.find_last_not_of(" \t\r\n");
+            s = s.substr(b, e - b + 1);
+        };
+
+        auto finalize = [&]() {
+            if (currentMesh.vert.empty()) return;
+
+            bool didCompress = false;
+
+            mx::system_out << "mx: Finalizing mesh\n";
+
+            if (currentMesh.norm.empty()) {
+                mx::system_out << "mx: normals missing, recalculating\n";
+                currentMesh.recalculateNormals();
+            }
+
+            if (!currentMesh.tex.empty()) {
+                if (currentMesh.tangent.empty() || currentMesh.bitangent.empty()) {
+                    mx::system_out << "mx: generating tangent/bitangent\n";
+                    currentMesh.generateTangentBitangent();
                 }
             }
-        }
-        if (!currentMesh.vert.empty()) {
-            if (count * 3 != currentMesh.vert.size()) {
-                std::ostringstream stream;
-                stream << "mx: Model :" << filename << " invalid vertex count unaligned expected: " << (count) << " found: " << currentMesh.vert.size()/3;
-                throw mx::Exception(stream.str());
-            }              
-            if (count * 2 != currentMesh.tex.size()) {
-                std::ostringstream stream;
-                stream << "mx: Model :" << filename << " invalid texture count unaligned expected: " << (count) << " found: " << currentMesh.tex.size()/3;
-                throw mx::Exception(stream.str());
+
+            if (compress && currentMesh.indices.empty()) {
+                mx::system_out << "mx: compressing vertices\n";
+                currentMesh.compressIndices();
+                didCompress = true;
+            } else {
+                if (compress && !currentMesh.indices.empty())
+                    mx::system_out << "mx: compress requested but indices already exist, skipping\n";
+                if (!compress)
+                    mx::system_out << "mx: compression disabled\n";
             }
-            if (count * 3 != currentMesh.norm.size()) {
-                std::ostringstream stream;
-                stream << "mx: Model :" << filename << " invalid normal count unaligned expected: " << (count) << " found: " << currentMesh.norm.size()/3;
-                throw mx::Exception(stream.str());
-            }
+
+            dumpMeshStats(currentMesh, meshes.size(), didCompress, compress);
+            currentMesh.generateBuffers();
             meshes.push_back(std::move(currentMesh));
 
+            currentMesh = Mesh();
+            type = -1;
+            count = 0;
+        };
+
+        while (std::getline(file, line)) {
+            if (line.empty()) continue;
+
+            size_t commentPos = line.find('#');
+            if (commentPos != std::string::npos) line = line.substr(0, commentPos);
+
+            trim(line);
+            if (line.empty()) continue;
+
+            if (line.size() >= 3 &&
+                (unsigned char)line[0] == 0xEF &&
+                (unsigned char)line[1] == 0xBB &&
+                (unsigned char)line[2] == 0xBF) {
+                line.erase(0, 3);
+                trim(line);
+                if (line.empty()) continue;
+            }
+
+            std::istringstream s(line);
+            std::string tag;
+            s >> tag;
+            if (tag.empty()) continue;
+
+            if (tag == "tri") {
+                finalize();
+                GLuint st = 0, ti = 0;
+                s >> st >> ti;
+                currentMesh.texture = ti;
+                currentMesh.setShapeType(st);
+                type = -1;
+                continue;
+            }
+
+            parseLine(line, currentMesh, type, count);
         }
 
-        mx::system_out << "mx: Model Loaded: " << filename << "\n";
-        if(compress) {
-            mx::system_out << "mx: Compressing Indices\n";
+        finalize();
+
+        if (meshes.empty()) {
+            std::cerr << "mx: Warning - No meshes loaded from " << filename << std::endl;
+            return false;
         }
-        for(auto &m : meshes) {
-            if(compress) {
-                m.compressIndices();
-            }
-            m.generateBuffers();
+
+        size_t totalVerts = 0;
+        size_t totalIdx = 0;
+        for (const auto &m : meshes) {
+            totalVerts += m.vert.size() / 3;
+            totalIdx += m.indices.size();
         }
+
+        mx::system_out
+            << "mx: Model summary\n"
+            << "mx: meshes: " << meshes.size() << "\n"
+            << "mx: total vertices: " << totalVerts << "\n"
+            << "mx: total indices:  " << totalIdx << "\n"
+            << "mx: Model Loaded: " << filename << "\n";
+
         return true;
     }
-
+    
     void Model::parseLine(const std::string &line, Mesh &currentMesh, int &type, size_t &count) {
         if (line.empty()) return;
 
-        if (line.find("vert") == 0) {
-            std::istringstream stream(line);
-            std::string dummy;
-            stream >> dummy >> count;
+        auto is_data_line = [&](char c) {
+            return (c >= '0' && c <= '9') || c == '-' || c == '+' || c == '.';
+        };
+
+        size_t p = line.find_first_not_of(" \t\r\n");
+        if (p == std::string::npos) return;
+
+        std::istringstream stream(line);
+
+        if (is_data_line(line[p])) {
+            float x = 0.0f, y = 0.0f, z = 0.0f;
+
+            switch (type) {
+                case 0:
+                    if (stream >> x >> y >> z) {
+                        if (currentMesh.vertIndex + 3 > currentMesh.vert.size()) {
+                            currentMesh.vert.push_back(x);
+                            currentMesh.vert.push_back(y);
+                            currentMesh.vert.push_back(z);
+                        } else {
+                            currentMesh.vert[currentMesh.vertIndex++] = x;
+                            currentMesh.vert[currentMesh.vertIndex++] = y;
+                            currentMesh.vert[currentMesh.vertIndex++] = z;
+                        }
+                    }
+                    break;
+
+                case 1:
+                    if (stream >> x >> y) {
+                        if (currentMesh.texIndex + 2 > currentMesh.tex.size()) {
+                            currentMesh.tex.push_back(x);
+                            currentMesh.tex.push_back(y);
+                        } else {
+                            currentMesh.tex[currentMesh.texIndex++] = x;
+                            currentMesh.tex[currentMesh.texIndex++] = y;
+                        }
+                    }
+                    break;
+
+                case 2:
+                    if (stream >> x >> y >> z) {
+                        if (currentMesh.normIndex + 3 > currentMesh.norm.size()) {
+                            currentMesh.norm.push_back(x);
+                            currentMesh.norm.push_back(y);
+                            currentMesh.norm.push_back(z);
+                        } else {
+                            currentMesh.norm[currentMesh.normIndex++] = x;
+                            currentMesh.norm[currentMesh.normIndex++] = y;
+                            currentMesh.norm[currentMesh.normIndex++] = z;
+                        }
+                    }
+                    break;
+
+                case 3:
+                    if (stream >> x >> y >> z) {
+                        currentMesh.tangent.push_back(x);
+                        currentMesh.tangent.push_back(y);
+                        currentMesh.tangent.push_back(z);
+                    }
+                    break;
+
+                case 4:
+                    if (stream >> x >> y >> z) {
+                        currentMesh.bitangent.push_back(x);
+                        currentMesh.bitangent.push_back(y);
+                        currentMesh.bitangent.push_back(z);
+                    }
+                    break;
+
+                case 5: {
+                    GLuint idx = 0;
+                    while (stream >> idx) currentMesh.indices.push_back(idx);
+                } break;
+
+                default:
+                    break;
+            }
+            return;
+        }
+
+        std::string tag;
+        stream >> tag;
+        if (tag.empty()) return;
+
+        if (tag == "vert") {
+            stream >> count;
+            currentMesh.vert.clear();
             currentMesh.vert.resize(count * 3);
             currentMesh.vertIndex = 0;
             type = 0;
             return;
         }
 
-        if (line.find("tex") == 0) {
-            std::istringstream stream(line);
-            std::string dummy;
-            stream >> dummy >> count;
+        if (tag == "tex") {
+            stream >> count;
+            currentMesh.tex.clear();
             currentMesh.tex.resize(count * 2);
             currentMesh.texIndex = 0;
             type = 1;
             return;
         }
 
-        if (line.find("norm") == 0) {
-            std::istringstream stream(line);
-            std::string dummy;
-            stream >> dummy >> count;
+        if (tag == "norm") {
+            stream >> count;
+            currentMesh.norm.clear();
             currentMesh.norm.resize(count * 3);
             currentMesh.normIndex = 0;
             type = 2;
             return;
         }
 
-        std::istringstream stream(line);
-        switch (type) {
-            case 0: {
-                if(currentMesh.vertIndex != count * 3) {
-                    if(currentMesh.vertIndex+3 > (count * 3)) {
-                        throw mx::Exception("mx: Model loader: Vertex coordinate index overflow: " + std::to_string(count * 3) + "/" + std::to_string(currentMesh.vertIndex+3));
-                    }
-                }
-                float x, y, z;
-                if (stream >> x >> y >> z) {
-                    currentMesh.vert[currentMesh.vertIndex++] = x;
-                    currentMesh.vert[currentMesh.vertIndex++] = y;
-                    currentMesh.vert[currentMesh.vertIndex++] = z;
-                }
-            } break;
-            case 1: {
-                if(currentMesh.texIndex != count * 2) {
-                    if(currentMesh.texIndex+2 > (count * 2)) {
-                        throw mx::Exception("mx: Model loader: Texture coordinate index overflow: " + std::to_string(count * 3) + "/" + std::to_string(currentMesh.texIndex+2));
-                    }
-                }
-                float u, v;
-                if (stream >> u >> v) {
-                    currentMesh.tex[currentMesh.texIndex++] = u;
-                    currentMesh.tex[currentMesh.texIndex++] = v;
-                }
-                
-            } break;
-            case 2: {
-                if(currentMesh.normIndex != count * 3) {
-                    if(currentMesh.normIndex+3 > (count * 3)) {
-                        throw mx::Exception("mx: Model loader: Norm coordinate index overflow: " + std::to_string(count * 3) + "/" + std::to_string(currentMesh.normIndex+3));
-                    }
-                }
-                float nx, ny, nz;
-                if (stream >> nx >> ny >> nz) {
-                    currentMesh.norm[currentMesh.normIndex++] = nx;
-                    currentMesh.norm[currentMesh.normIndex++] = ny;
-                    currentMesh.norm[currentMesh.normIndex++] = nz;
-                }
-            } break;
-            default:
-                break;
+        if (tag == "tangent") {
+            stream >> count;
+            currentMesh.tangent.clear();
+            currentMesh.tangent.reserve(count * 3);
+            type = 3;
+            return;
+        }
+
+        if (tag == "bitangent") {
+            stream >> count;
+            currentMesh.bitangent.clear();
+            currentMesh.bitangent.reserve(count * 3);
+            type = 4;
+            return;
+        }
+
+        if (tag == "indices") {
+            stream >> count;
+            currentMesh.indices.clear();
+            currentMesh.indices.reserve(count);
+            type = 5;
+            return;
         }
     }
 
@@ -760,394 +899,80 @@ namespace mx {
         tex_name = texture_name;
     }
 
-
     void Model::drawArrays() {
-        if(program == nullptr)
-            throw mx::Exception("Shader program mut be set in Model before call to drawArrays");
-
+        if (!program) throw mx::Exception("Shader program must be set in Model before drawArrays");
         for (auto &mesh : meshes) {
             mesh.bindTexture(*program, tex_name);
             mesh.draw();
         }
     }
 
-    void Model::drawArraysWithTexture(GLuint texture, const std::string texture_name = "texture1") {
-        if(program == nullptr)
-            throw mx::Exception("Shader program must be set in model before call to drawArraysWithTexture");
-        for(auto &mesh: meshes) {
-            mesh.drawWithForcedTexture(*program, texture, texture_name);
-        }
+    void Model::drawArraysWithTexture(GLuint texture, const std::string texture_name) {
+        if (!program) throw mx::Exception("Shader program must be set in Model before drawArraysWithTexture");
+        for (auto &mesh : meshes) mesh.drawWithForcedTexture(*program, texture, texture_name);
     }
 
     void Model::drawArraysWithCubemap(GLuint cubemap, const std::string texture_name) {
-        if(program == nullptr)
-            throw mx::Exception("Shader program must be set in model before call to drawArraysWithCubemap");
-        for(auto &mesh: meshes) {
+        if (!program) throw mx::Exception("Shader program must be set in Model before drawArraysWithCubemap");
+        for (auto &mesh : meshes) {
             mesh.bindCubemapTexture(*program, cubemap, texture_name);
             mesh.draw();
         }
     }
 
-    void Model::printData(std::ostream &out) {
-        size_t index = 0;
-        for(auto &m : meshes) {
-            out << "Mesh Index: " << index << " -> {\n";
-            for(auto &v : m.vert) {
-                out << "\tV: " << v << "\n";
-            }
-            for(auto &t : m.tex) {
-                out << "\tT: " << t << "\n";
-            }
-            for(auto &n : m.norm) {
-                out << "\tN: " << n << "\n";
-            }
-            out << "\n}\n";
-            index++;
-        }
-    }
-
     void Model::setTextures(const std::vector<GLuint> &textures) {
-        if(textures.empty()) {
-            throw mx::Exception("At least one texture is required");
-        }
-        for(size_t i = 0; i < meshes.size(); ++i) {
+        if (textures.empty()) throw mx::Exception("At least one texture is required");
+        for (size_t i = 0; i < meshes.size(); ++i) {
             GLuint pos = meshes.at(i).texture;
-            if(pos < textures.size())
-                meshes.at(i).texture = textures[meshes.at(i).texture];
-            else
-                throw mx::Exception("Texture index in file on tri statement out of range not enough defined textures");
+            if (pos < textures.size()) meshes.at(i).texture = textures[pos];
+            else throw mx::Exception("Texture index out of range for this model");
         }
     }
 
-    void Model::setTextures(gl::GLWindow *win, const std::string &filename, const std::string prefix) {
+    void Model::setTextures(gl::GLWindow *win, const std::string &filename, std::string prefix) {
+        if (!win) return;
+        std::vector<GLuint> text;
         std::fstream file;
         file.open(filename, std::ios::in);
-        if(!file.is_open()) {
-            throw mx::Exception("Error could not open file: " + filename + " for texture");
-        }
-        std::vector<GLuint> text;
-        while(!file.eof()) {
+        if (!file.is_open()) throw mx::Exception("Error could not open file: " + filename + " for texture");
+
+        while (!file.eof()) {
             std::string line;
             std::getline(file, line);
-            if(file) {
-                std::string final_path = prefix+"/"+line;
-                GLuint tex = gl::loadTexture(final_path);
-                text.push_back(tex);
-                mx::system_out << "mx: Loaded Texture: " << tex << " -> " << final_path << std::endl;
-                mx::system_out.flush();
+            if (file && !line.empty()) {
+                std::string final_path = prefix + "/" + line;
+                GLuint texid = gl::loadTexture(final_path);
+                text.push_back(texid);
+                mx::system_out << "mx: Loaded Texture: " << texid << " -> " << final_path << "\n";
             }
         }
         file.close();
         setTextures(text);
     }
 
-    void Model::saveOriginal() {
-        for (auto &mesh : meshes) {
-            mesh.saveOriginal();
-        }
-    }
+    void Model::saveOriginal() { for (auto &m : meshes) m.saveOriginal(); }
+    void Model::resetToOriginal() { for (auto &m : meshes) m.resetToOriginal(); }
+    void Model::updateBuffers() { for (auto &m : meshes) m.updateBuffers(); }
+    void Model::recalculateNormals() { for (auto &m : meshes) m.recalculateNormals(); }
 
-    void Model::resetToOriginal() {
-        for (auto &mesh : meshes) {
-            mesh.resetToOriginal();
-        }
-    }
+    void Model::scale(float factor) { for (auto &m : meshes) m.scale(factor); }
+    void Model::scale(float sx, float sy, float sz) { for (auto &m : meshes) m.scale(sx, sy, sz); }
+    void Model::translate(float tx, float ty, float tz) { for (auto &m : meshes) m.translate(tx, ty, tz); }
+    void Model::bend(DeformAxis axis, float angle, float center, float range) { for (auto &m : meshes) m.bend(axis, angle, center, range); }
+    void Model::twist(DeformAxis axis, float angle, float center) { for (auto &m : meshes) m.twist(axis, angle, center); }
+    void Model::wave(DeformAxis axis, float amplitude, float frequency, float phase) { for (auto &m : meshes) m.wave(axis, amplitude, frequency, phase); }
+    void Model::ripple(float amplitude, float frequency, float phase, float cx, float cy, float cz) { for (auto &m : meshes) m.ripple(amplitude, frequency, phase, cx, cy, cz); }
+    void Model::bulge(float factor, float cx, float cy, float cz, float radius) { for (auto &m : meshes) m.bulge(factor, cx, cy, cz, radius); }
+    void Model::uvScroll(float uOffset, float vOffset) { for (auto &m : meshes) m.uvScroll(uOffset, vOffset); }
+    void Model::applyHSV(float hueShift, float saturation, float value) { for (auto &m : meshes) m.applyHSV(hueShift, saturation, value); }
+    void Model::applyColorGrading(const glm::vec3 &colorShift) { for (auto &m : meshes) m.applyColorGrading(colorShift); }
+    void Model::applyChromaticAberration(float intensity) { for (auto &m : meshes) m.applyChromaticAberration(intensity); }
 
-    void Model::updateBuffers() {
-        for (auto &mesh : meshes) {
-            mesh.updateBuffers();
-        }
-    }
-
-    void Model::recalculateNormals() {
-        for (auto &mesh : meshes) {
-            mesh.recalculateNormals();
-        }
-    }
-
-    void Model::scale(float factor) {
-        for (auto &mesh : meshes) {
-            mesh.scale(factor);
-        }
-    }
-
-    void Model::scale(float sx, float sy, float sz) {
-        for (auto &mesh : meshes) {
-            mesh.scale(sx, sy, sz);
-        }
-    }
-
-    void Model::bend(DeformAxis axis, float angle, float center, float range) {
-        for (auto &mesh : meshes) {
-            mesh.bend(axis, angle, center, range);
-        }
-    }
-
-    void Model::twist(DeformAxis axis, float angle, float center) {
-        for (auto &mesh : meshes) {
-            mesh.twist(axis, angle, center);
-        }
-    }
-
-    void Model::wave(DeformAxis axis, float amplitude, float frequency, float phase) {
-        for (auto &mesh : meshes) {
-            mesh.wave(axis, amplitude, frequency, phase);
-        }
-    }
-
-    void Model::ripple(float amplitude, float frequency, float phase, float cx, float cy, float cz) {
-        for (auto &mesh : meshes) {
-            mesh.ripple(amplitude, frequency, phase, cx, cy, cz);
-        }
-    }
-
-    void Model::noise(float amplitude, unsigned int seed) {
-        for (auto &mesh : meshes) {
-            mesh.noise(amplitude, seed);
-        }
-    }
-
-    void Model::taper(DeformAxis axis, float factor, float center) {
-        for (auto &mesh : meshes) {
-            mesh.taper(axis, factor, center);
-        }
-    }
-
-    void Model::bulge(float factor, float cx, float cy, float cz, float radius) {
-        for (auto &mesh : meshes) {
-            mesh.bulge(factor, cx, cy, cz, radius);
-        }
-    }
-
-    void Model::morph(float t) {
-        for (auto &mesh : meshes) {
-            mesh.morph(t);
-        }
-    }
-
-    void Model::translate(float tx, float ty, float tz) {
-        for (auto &mesh : meshes) {
-            mesh.translate(tx, ty, tz);
-        }
-    }
-
-    void Model::rotate(DeformAxis axis, float angle) {
-        for (auto &mesh : meshes) {
-            mesh.rotate(axis, angle);
-        }
-    }
-
-    void Mesh::setNormalMap(GLuint normalMapTexture_) {
-        normalMapTexture = normalMapTexture_;
-    }
-
-    void Mesh::setParallaxMap(GLuint heightMapTexture_) {
-        parallaxMapTexture = heightMapTexture_;
-    }
-
-    void Mesh::setDisplacementMap(GLuint displacementMapTexture_) {
-        displacementMapTexture = displacementMapTexture_;
-    }
-
-    void Mesh::setAmbientOcclusionMap(GLuint aoMapTexture_) {
-        aoMapTexture = aoMapTexture_;
-    }
-
-    void Mesh::generateTangentBitangent() {
-        if (vert.empty() || tex.empty()) return;
-        
-        tangent.clear();
-        bitangent.clear();
-        tangent.resize(vert.size(), 0.0f);
-        bitangent.resize(vert.size(), 0.0f);
-
-        for (size_t i = 0; i < vert.size(); i += 9) {
-            glm::vec3 v0(vert[i], vert[i+1], vert[i+2]);
-            glm::vec3 v1(vert[i+3], vert[i+4], vert[i+5]);
-            glm::vec3 v2(vert[i+6], vert[i+7], vert[i+8]);
-            glm::vec2 uv0(tex[i/3*2], tex[i/3*2+1]);
-            glm::vec2 uv1(tex[(i/3+1)*2], tex[(i/3+1)*2+1]);
-            glm::vec2 uv2(tex[(i/3+2)*2], tex[(i/3+2)*2+1]);
-            glm::vec3 edge1 = v1 - v0;
-            glm::vec3 edge2 = v2 - v0;
-            glm::vec2 uvEdge1 = uv1 - uv0;
-            glm::vec2 uvEdge2 = uv2 - uv0;
-
-            float r = 1.0f / (uvEdge1.x * uvEdge2.y - uvEdge1.y * uvEdge2.x);
-            glm::vec3 tangent_vec = (edge1 * uvEdge2.y - edge2 * uvEdge1.y) * r;
-            glm::vec3 bitangent_vec = (edge2 * uvEdge1.x - edge1 * uvEdge2.x) * r;
-
-            for (int j = 0; j < 3; ++j) {
-                size_t idx = i + j * 3;
-                tangent[idx] = tangent_vec.x;
-                tangent[idx+1] = tangent_vec.y;
-                tangent[idx+2] = tangent_vec.z;
-                bitangent[idx] = bitangent_vec.x;
-                bitangent[idx+1] = bitangent_vec.y;
-                bitangent[idx+2] = bitangent_vec.z;
-            }
-        }
-
-        if (VAO != 0) {
-            glBindVertexArray(VAO);
-            
-            if (tangentVBO == 0) {
-                glGenBuffers(1, &tangentVBO);
-            }
-            glBindBuffer(GL_ARRAY_BUFFER, tangentVBO);
-            glBufferData(GL_ARRAY_BUFFER, tangent.size() * sizeof(GLfloat), tangent.data(), GL_STATIC_DRAW);
-            glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)0);
-            glEnableVertexAttribArray(3);
-
-            if (bitangentVBO == 0) {
-                glGenBuffers(1, &bitangentVBO);
-            }
-            glBindBuffer(GL_ARRAY_BUFFER, bitangentVBO);
-            glBufferData(GL_ARRAY_BUFFER, bitangent.size() * sizeof(GLfloat), bitangent.data(), GL_STATIC_DRAW);
-            glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)0);
-            glEnableVertexAttribArray(4);
-
-            glBindVertexArray(0);
-        }
-    }
-
-    void Mesh::uvScroll(float uOffset, float vOffset) {
-        for (size_t i = 0; i < tex.size(); i += 2) {
-            tex[i] += uOffset;
-            tex[i+1] += vOffset;
-        }
-        if (texCoordVBO != 0) {
-            glBindBuffer(GL_COPY_WRITE_BUFFER, texCoordVBO);
-            glBufferSubData(GL_COPY_WRITE_BUFFER, 0, tex.size() * sizeof(GLfloat), tex.data());
-            glBindBuffer(GL_COPY_WRITE_BUFFER, 0);
-        }
-    }
-
-    void Mesh::uvScale(float uScale, float vScale) {
-        for (size_t i = 0; i < tex.size(); i += 2) {
-            tex[i] *= uScale;
-            tex[i+1] *= vScale;
-        }
-        if (texCoordVBO != 0) {
-            glBindBuffer(GL_COPY_WRITE_BUFFER, texCoordVBO);
-            glBufferSubData(GL_COPY_WRITE_BUFFER, 0, tex.size() * sizeof(GLfloat), tex.data());
-            glBindBuffer(GL_COPY_WRITE_BUFFER, 0);
-        }
-    }
-
-    void Mesh::uvRotate(float angle) {
-        float cosA = std::cos(angle);
-        float sinA = std::sin(angle);
-        for (size_t i = 0; i < tex.size(); i += 2) {
-            float u = tex[i] - 0.5f;
-            float v = tex[i+1] - 0.5f;
-            tex[i] = u * cosA - v * sinA + 0.5f;
-            tex[i+1] = u * sinA + v * cosA + 0.5f;
-        }
-        if (texCoordVBO != 0) {
-            glBindBuffer(GL_COPY_WRITE_BUFFER, texCoordVBO);
-            glBufferSubData(GL_COPY_WRITE_BUFFER, 0, tex.size() * sizeof(GLfloat), tex.data());
-            glBindBuffer(GL_COPY_WRITE_BUFFER, 0);
-        }
-    }
-
-    void Mesh::applyChromaticAberration(float intensity) {
-        // Store chromatic aberration parameters for shader use
-        // This would typically be used in a shader, stored here for reference
-        (void)intensity; // placeholder
-    }
-
-    void Mesh::applyColorGrading(const glm::vec3 &colorShift) {
-        // Store color grading parameters for shader use
-        (void)colorShift; // placeholder
-    }
-
-    void Mesh::applyHSV(float hueShift, float saturation, float value) {
-        // Store HSV adjustment parameters for shader use
-        (void)hueShift;
-        (void)saturation;
-        (void)value;
-    }
-
-    void Mesh::setCubemapBlending(GLuint cubemap1, GLuint cubemap2, float blendFactor) {
-        // Store cubemap blending parameters for shader use
-        (void)cubemap1;
-        (void)cubemap2;
-        (void)blendFactor;
-    }
-
-    // Texture Effect Implementations for Model
-    void Model::setNormalMap(GLuint normalMapTexture) {
-        for (auto &mesh : meshes) {
-            mesh.setNormalMap(normalMapTexture);
-        }
-    }
-
-    void Model::setParallaxMap(GLuint heightMapTexture) {
-        for (auto &mesh : meshes) {
-            mesh.setParallaxMap(heightMapTexture);
-        }
-    }
-
-    void Model::setDisplacementMap(GLuint displacementMapTexture) {
-        for (auto &mesh : meshes) {
-            mesh.setDisplacementMap(displacementMapTexture);
-        }
-    }
-
-    void Model::setAmbientOcclusionMap(GLuint aoMapTexture) {
-        for (auto &mesh : meshes) {
-            mesh.setAmbientOcclusionMap(aoMapTexture);
-        }
-    }
-
-    void Model::generateTangentBitangent() {
-        for (auto &mesh : meshes) {
-            mesh.generateTangentBitangent();
-        }
-    }
-
-    void Model::uvScroll(float uOffset, float vOffset) {
-        for (auto &mesh : meshes) {
-            mesh.uvScroll(uOffset, vOffset);
-        }
-    }
-
-    void Model::uvScale(float uScale, float vScale) {
-        for (auto &mesh : meshes) {
-            mesh.uvScale(uScale, vScale);
-        }
-    }
-
-    void Model::uvRotate(float angle) {
-        for (auto &mesh : meshes) {
-            mesh.uvRotate(angle);
-        }
-    }
-
-    void Model::applyChromaticAberration(float intensity) {
-        for (auto &mesh : meshes) {
-            mesh.applyChromaticAberration(intensity);
-        }
-    }
-
-    void Model::applyColorGrading(const glm::vec3 &colorShift) {
-        for (auto &mesh : meshes) {
-            mesh.applyColorGrading(colorShift);
-        }
-    }
-
-    void Model::applyHSV(float hueShift, float saturation, float value) {
-        for (auto &mesh : meshes) {
-            mesh.applyHSV(hueShift, saturation, value);
-        }
-    }
-
-    void Model::setCubemapBlending(GLuint cubemap1, GLuint cubemap2, float blendFactor) {
-        for (auto &mesh : meshes) {
-            mesh.setCubemapBlending(cubemap1, cubemap2, blendFactor);
-        }
-    }
+    void Model::setNormalMap(GLuint normalMapTexture) { for (auto &m : meshes) m.setNormalMap(normalMapTexture); }
+    void Model::setParallaxMap(GLuint heightMapTexture) { for (auto &m : meshes) m.setParallaxMap(heightMapTexture); }
+    void Model::setDisplacementMap(GLuint displacementMapTexture) { for (auto &m : meshes) m.setDisplacementMap(displacementMapTexture); }
+    void Model::setAmbientOcclusionMap(GLuint aoMapTexture) { for (auto &m : meshes) m.setAmbientOcclusionMap(aoMapTexture); }
+    void Model::generateTangentBitangent() { for (auto &m : meshes) m.generateTangentBitangent(); }
 
 }
 #endif
