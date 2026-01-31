@@ -1,7 +1,10 @@
 #ifndef MXCROSS_H_
 #define MXCROSS_H_
+#ifndef __EMSCRIPTEN__
 #include"config.h"
+#endif
 #include"mx.hpp"
+#include"argz.hpp"
 #ifdef WITH_GL
 #include"gl.hpp"
 #endif

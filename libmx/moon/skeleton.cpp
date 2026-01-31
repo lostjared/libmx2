@@ -9,8 +9,7 @@
 #include <format>
 #include <fstream>
 #include <sstream>
-#include <fstream>
-#include <sstream>
+#include <functional>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -601,49 +600,53 @@ public:
 
     void init(const std::string& dataPath) {
         if (initialized) return;
-        
+
         keyboardState = SDL_GetKeyboardState(nullptr);
-        
+
         if (!program.loadProgramFromText(glStarVertSource, glStarFragSource)) {
             throw mx::Exception("Failed to load GL star shaders");
         }
-        
+
         std::string texPath = dataPath + "/data/star.png";
         starTexture = gl::loadTexture(texPath);
         if (!starTexture) {
             SDL_Log("Warning: Could not load star texture from %s", texPath.c_str());
         }
-        
+
         std::string texPath2 = dataPath + "/data/star2.png";
         starTexture2 = gl::loadTexture(texPath2);
         if (!starTexture2) {
             SDL_Log("Warning: Could not load star texture2 from %s", texPath2.c_str());
         }
-        
+
         initStars();
-        
+
         glGenVertexArrays(1, &VAO);
         glGenBuffers(3, VBO);
-        
+        glGenBuffers(1, &EBO);
+
         glBindVertexArray(VAO);
-        
+
         glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
         glBufferData(GL_ARRAY_BUFFER, NUM_STARS * 3 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
         glEnableVertexAttribArray(0);
-        
+
         glBindBuffer(GL_ARRAY_BUFFER, VBO[1]);
         glBufferData(GL_ARRAY_BUFFER, NUM_STARS * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
         glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, 0, nullptr);
         glEnableVertexAttribArray(1);
-        
+
         glBindBuffer(GL_ARRAY_BUFFER, VBO[2]);
         glBufferData(GL_ARRAY_BUFFER, NUM_STARS * 4 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
         glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, 0, nullptr);
         glEnableVertexAttribArray(2);
-        
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, NUM_STARS * sizeof(uint32_t), nullptr, GL_DYNAMIC_DRAW);
+
         glBindVertexArray(0);
-        
+
         lastUpdateTime = SDL_GetTicks();
         initialized = true;
         SDL_Log("GL Starfield initialized with %d stars", NUM_STARS);
@@ -862,9 +865,9 @@ public:
     void draw(int screenW, int screenH) {
         if (!initialized) return;
 
-        #ifndef __EMSCRIPTEN__
+#ifndef __EMSCRIPTEN__
         glEnable(GL_PROGRAM_POINT_SIZE);
-        #endif
+#endif
 
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LEQUAL);
@@ -902,23 +905,31 @@ public:
         program.setUniform("spriteTexture", 0);
 
         glBindVertexArray(VAO);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
 
         glActiveTexture(GL_TEXTURE0);
 
         glBindTexture(GL_TEXTURE_2D, starTexture);
         if (!tex1Indices.empty()) {
-            glDrawElements(GL_POINTS, (GLsizei)tex1Indices.size(), GL_UNSIGNED_INT, tex1Indices.data());
+            glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0,
+                            tex1Indices.size() * sizeof(uint32_t),
+                            tex1Indices.data());
+            glDrawElements(GL_POINTS, (GLsizei)tex1Indices.size(), GL_UNSIGNED_INT, (void*)0);
         }
 
         glBindTexture(GL_TEXTURE_2D, starTexture2);
         if (!tex2Indices.empty()) {
-            glDrawElements(GL_POINTS, (GLsizei)tex2Indices.size(), GL_UNSIGNED_INT, tex2Indices.data());
+            glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0,
+                            tex2Indices.size() * sizeof(uint32_t),
+                            tex2Indices.data());
+            glDrawElements(GL_POINTS, (GLsizei)tex2Indices.size(), GL_UNSIGNED_INT, (void*)0);
         }
 
         glBindVertexArray(0);
 
         glDepthMask(GL_TRUE);
     }
+
 
     void cleanup() {
         if (!initialized) return;
@@ -2895,8 +2906,6 @@ public:
             SDL_Log("Using OpenGL renderer");
             glStarfield = std::make_unique<GL_Starfield>();
             glStarfield->init(path);
-
-            
             glModelRenderer = std::make_unique<GL_ModelRenderer>();
             glm::vec3 modelPos = glm::vec3(0.0f, 0.0f, -6.0f);  
             float modelScale = 1.5f;  
@@ -2906,8 +2915,6 @@ public:
             glStarfield->cameraZ = -3.0f;
             glStarfield->cameraYaw = -90.0f;  
             glStarfield->cameraPitch = 0.0f;  
-
-            
             glStarfield->exclusionCenter = modelPos;
             glStarfield->exclusionRadius = 15.0f * modelScale;
             glStarfield->initStars();
@@ -2920,18 +2927,14 @@ public:
     void draw() override {
         int w = window->getWidth();
         int h = window->getHeight();
-        
 #ifdef WITH_VK
         if (vkStarfield) {
             auto* vkWin = window->as<cross::VK_Window>();
             if (vkWin) {
                 VkCommandBuffer cmd = vkWin->getCurrentCommandBuffer();
                 uint32_t imageIndex = vkWin->getCurrentImageIndex();
-                
-                
                 vkStarfield->draw(cmd, imageIndex, w, h);
                 vkStarfield->drawText(w, h);
-                
                 if (showModel && vkModelRenderer) {
                     glm::vec3 camPos(vkStarfield->cameraX, vkStarfield->cameraY, vkStarfield->cameraZ);
                     vkModelRenderer->draw(cmd, imageIndex, w, h, camPos, vkStarfield->cameraYaw, vkStarfield->cameraPitch);
@@ -3059,18 +3062,37 @@ public:
     }
 };
 
+static std::function<void()> emscripten_tick;
+
+extern "C" void proc_window() {
+    if (emscripten_tick) emscripten_tick();
+}
+
 int main(int argc, char **argv) {
     Arguments args = proc_args(argc, argv);
-    
+#ifdef __EMSCRIPTEN__
+        args.path = "";
+#endif
     try {
         auto window = cross::createWindow();
         StarfieldApp app;
-        
         window->setHandler(&app);
         window->init("Cross-Platform Starfield 3D with Sphere Model", args.path, args.width, args.height, args.fullscreen);
+ #ifndef __EMSCRIPTEN__
         window->loop();
+#else
+        {
+            auto raw = window.get();
+            emscripten_tick = [raw]() {
+                if (auto p = dynamic_cast<cross::MX_Window*>(raw)) {
+                    p->proc();
+                }
+            };
+        }
+        emscripten_set_main_loop(proc_window, 0, 1);
+#endif
+
         window->cleanup();
-        
     } catch (mx::Exception &e) {
         SDL_Log("mx: Exception: %s", e.text().c_str());
         return EXIT_FAILURE;
