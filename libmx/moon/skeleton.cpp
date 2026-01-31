@@ -502,11 +502,15 @@ public:
         program.useProgram();
         
         
+        float time = SDL_GetTicks() * 0.001f;
+        float rotX = time * 10.0f;
+        float rotY = time * 30.0f;
+        float rotZ = time * 5.0f;
         glm::mat4 model = glm::mat4(1.0f);
         model = glm::translate(model, modelPosition);
-        model = glm::rotate(model, glm::radians(rotationX), glm::vec3(1.0f, 0.0f, 0.0f));
-        model = glm::rotate(model, glm::radians(rotationY), glm::vec3(0.0f, 1.0f, 0.0f));
-        model = glm::rotate(model, glm::radians(rotationZ), glm::vec3(0.0f, 0.0f, 1.0f));
+        model = glm::rotate(model, glm::radians(rotX), glm::vec3(1.0f, 0.0f, 0.0f));
+        model = glm::rotate(model, glm::radians(rotY), glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::rotate(model, glm::radians(rotZ), glm::vec3(0.0f, 0.0f, 1.0f));
         
         
         glm::vec3 front;
@@ -960,14 +964,14 @@ public:
             cameraY -= front.y * velocity;
             cameraZ -= front.z * velocity;
         }
-        if (keyboardState[SDL_SCANCODE_A]) {
+        /*if (keyboardState[SDL_SCANCODE_A]) {
             cameraX -= right.x * velocity;
             cameraZ -= right.z * velocity;
         }
         if (keyboardState[SDL_SCANCODE_D]) {
             cameraX += right.x * velocity;
             cameraZ += right.z * velocity;
-        }
+        }*/
 
         
         if (keyboardState[SDL_SCANCODE_SPACE]) {
@@ -1953,15 +1957,7 @@ public:
         }
     }
 
-    void drawText(int screenW, int screenH) {
-        
-        static int frameCount = 0;
-        frameCount++;
-        if (frameCount % 30 == 0) {
-            SDL_Log("INFO: Model Position: (%.1f, %.1f, %.1f)", 
-                    modelPosToDisplay.x, modelPosToDisplay.y, modelPosToDisplay.z);
-        }
-    }
+    void drawText(int screenW, int screenH) {}
 
     void processInput(float deltaTime) {
         if (!keyboardState) return;
@@ -1972,7 +1968,7 @@ public:
         front.z = sin(glm::radians(cameraYaw)) * cos(glm::radians(cameraPitch));
         front = glm::normalize(front);
         
-        glm::vec3 right = glm::normalize(glm::cross(front, glm::vec3(0.0f, 1.0f, 0.0f)));
+        //glm::vec3 right = glm::normalize(glm::cross(front, glm::vec3(0.0f, 1.0f, 0.0f)));
         
         float velocity = cameraSpeed * deltaTime;
         
@@ -1986,6 +1982,7 @@ public:
             cameraY -= front.y * velocity;
             cameraZ -= front.z * velocity;
         }
+        /*
         if (keyboardState[SDL_SCANCODE_A]) {
             cameraX -= right.x * velocity;
             cameraZ -= right.z * velocity;
@@ -1993,7 +1990,7 @@ public:
         if (keyboardState[SDL_SCANCODE_D]) {
             cameraX += right.x * velocity;
             cameraZ += right.z * velocity;
-        }
+        }*/
         if (keyboardState[SDL_SCANCODE_Q]) {
             cameraY += velocity;
         }
@@ -2051,6 +2048,9 @@ public:
     std::vector<VkDescriptorSet> descriptorSets;
     VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
     VkPipeline pipeline = VK_NULL_HANDLE;
+    std::vector<VkBuffer> uniformBuffers;
+    std::vector<VkDeviceMemory> uniformBuffersMemory;
+    std::vector<void*> uniformBuffersMapped;
     
     bool initialized = false;
     float rotationX = 0.0f;
@@ -2105,6 +2105,17 @@ public:
             vkFreeMemory(device, modelTextureMemory, nullptr);
             modelTexture = VK_NULL_HANDLE;
         }
+        for (size_t i = 0; i < uniformBuffers.size(); ++i) {
+            if (uniformBuffers[i] != VK_NULL_HANDLE) {
+                vkDestroyBuffer(device, uniformBuffers[i], nullptr);
+            }
+            if (uniformBuffersMemory[i] != VK_NULL_HANDLE) {
+                vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
+            }
+        }
+        uniformBuffers.clear();
+        uniformBuffersMemory.clear();
+        uniformBuffersMapped.clear();
         
         vertices.clear();
         indices.clear();
@@ -2139,6 +2150,7 @@ public:
         createPipeline(vkWin, dataPath);
         createVertexBuffer();
         createIndexBuffer();
+        createUniformBuffers(vkWin);
         createDescriptorPool(vkWin);
         createDescriptorSets(vkWin);
         
@@ -2423,7 +2435,7 @@ public:
         
         for (size_t i = 0; i < imageCount; i++) {
             VkDescriptorBufferInfo bufferInfo{};
-            bufferInfo.buffer = vkWin->getUniformBuffer(i);
+            bufferInfo.buffer = uniformBuffers[i];
             bufferInfo.offset = 0;
             bufferInfo.range = sizeof(mx::UniformBufferObject);
             
@@ -2505,6 +2517,27 @@ public:
         
         vkDestroyBuffer(device, stagingBuffer, nullptr);
         vkFreeMemory(device, stagingBufferMemory, nullptr);
+    }
+
+    void createUniformBuffers(mx::VKWindow* vkWin) {
+        uint32_t imageCount = vkWin->getSwapChainImageCount();
+        VkDeviceSize bufferSize = sizeof(mx::UniformBufferObject);
+        uniformBuffers.resize(imageCount);
+        uniformBuffersMemory.resize(imageCount);
+        uniformBuffersMapped.resize(imageCount);
+
+        for (size_t i = 0; i < imageCount; ++i) {
+            createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                uniformBuffers[i], uniformBuffersMemory[i]);
+            vkMapMemory(device, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
+        }
+    }
+
+    void updateModelUniformBuffer(uint32_t imageIndex, const mx::UniformBufferObject& ubo) {
+        if (uniformBuffersMapped.size() > imageIndex && uniformBuffersMapped[imageIndex] != nullptr) {
+            memcpy(uniformBuffersMapped[imageIndex], &ubo, sizeof(ubo));
+        }
     }
     
     void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, 
@@ -2735,9 +2768,12 @@ public:
     }
     
     void update(float deltaTime) {
-        
+        rotationX += 10.0f * deltaTime;
         rotationY += 30.0f * deltaTime;
+        rotationZ += 5.0f * deltaTime;
+        if (rotationX >= 360.0f) rotationX -= 360.0f;
         if (rotationY >= 360.0f) rotationY -= 360.0f;
+        if (rotationZ >= 360.0f) rotationZ -= 360.0f;
     }
     
     void draw(VkCommandBuffer commandBuffer, uint32_t imageIndex, int screenW, int screenH,
@@ -2773,7 +2809,7 @@ public:
         ubo.proj = proj;
         ubo.color = glm::vec4(1.0f);
         ubo.params = glm::vec4(SDL_GetTicks() / 1000.0f, 0.0f, 0.0f, 0.0f);
-        vkWindow->updateUniformBuffer(imageIndex, ubo);
+        updateModelUniformBuffer(imageIndex, ubo);
         
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
         
@@ -2836,14 +2872,14 @@ public:
 
             
             vkModelRenderer = std::make_unique<VK_ModelRenderer>();
-            glm::vec3 vkModelPos = glm::vec3(0.0f, 0.0f, -80.0f);  
+            glm::vec3 vkModelPos = glm::vec3(0.0f, 0.0f, -6.0f);  
             float vkModelScale = 1.5f;  
-            vkModelRenderer->init(vkWin, path, "sphere.mxmod", "bg.png", vkModelScale, vkModelPos);
+            vkModelRenderer->init(vkWin, path, "geosphere.mxmod", "bg.png", vkModelScale, vkModelPos);
 
             
             vkStarfield->cameraX = 0.0f;
             vkStarfield->cameraY = 0.0f;
-            vkStarfield->cameraZ = 4.0f;
+            vkStarfield->cameraZ = -3.0f;
             vkStarfield->cameraYaw = -90.0f;  
             vkStarfield->cameraPitch = 0.0f;  
 
@@ -2863,11 +2899,9 @@ public:
 
             
             glModelRenderer = std::make_unique<GL_ModelRenderer>();
-            glm::vec3 modelPos = glm::vec3(0.0f, 0.0f, -80.0f);  
+            glm::vec3 modelPos = glm::vec3(0.0f, 0.0f, -6.0f);  
             float modelScale = 1.5f;  
-            glModelRenderer->init(path, "sphere.mxmod", "star.png", modelScale, modelPos);
-
-            
+            glModelRenderer->init(path, "geosphere.mxmod", "star.png", modelScale, modelPos);    
             glStarfield->cameraX = 0.0f;
             glStarfield->cameraY = 0.0f;
             glStarfield->cameraZ = 4.0f;
@@ -2896,15 +2930,14 @@ public:
                 uint32_t imageIndex = vkWin->getCurrentImageIndex();
                 
                 
+                vkStarfield->draw(cmd, imageIndex, w, h);
+                vkStarfield->drawText(w, h);
+                
                 if (showModel && vkModelRenderer) {
                     glm::vec3 camPos(vkStarfield->cameraX, vkStarfield->cameraY, vkStarfield->cameraZ);
                     vkModelRenderer->draw(cmd, imageIndex, w, h, camPos, vkStarfield->cameraYaw, vkStarfield->cameraPitch);
                     vkStarfield->modelPosToDisplay = vkModelRenderer->modelPosition;
                 }
-                
-                
-                vkStarfield->draw(cmd, imageIndex, w, h);
-                vkStarfield->drawText(w, h);
             }
             return;
         }
