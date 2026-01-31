@@ -950,8 +950,6 @@ public:
         front.z = sin(glm::radians(cameraYaw)) * cos(glm::radians(cameraPitch));
         front = glm::normalize(front);
         
-        glm::vec3 right = glm::normalize(glm::cross(front, glm::vec3(0.0f, 1.0f, 0.0f)));
-        
         float velocity = cameraSpeed * deltaTime;
         
         if (keyboardState[SDL_SCANCODE_W]) {

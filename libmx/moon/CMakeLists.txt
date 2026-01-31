@@ -30,4 +30,3 @@ else()
 target_link_libraries(moon PUBLIC SDL2::SDL2 SDL2::SDL2main SDL2_ttf::SDL2_ttf mx ${IMG_LIB} ${GL_LIB} ${MIXER_LIB})
 endif()
 endif()
-
