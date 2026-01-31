@@ -159,7 +159,6 @@ static void loadMXMOD(
     outIndices.clear();
     outIndices.reserve(static_cast<size_t>(vcount));
     for (uint32_t i = 0; i < static_cast<uint32_t>(vcount); ++i) outIndices.push_back(i);
-
     SDL_Log("Loaded MXMOD: %s (%d vertices)", path.c_str(), vcount);
 }
 
@@ -863,10 +862,14 @@ public:
     void draw(int screenW, int screenH) {
         if (!initialized) return;
 
-#ifndef __EMSCRIPTEN__
+        #ifndef __EMSCRIPTEN__
         glEnable(GL_PROGRAM_POINT_SIZE);
-#endif
-        glDisable(GL_DEPTH_TEST);
+        #endif
+
+        glEnable(GL_DEPTH_TEST);
+        glDepthFunc(GL_LEQUAL);
+        glDepthMask(GL_FALSE);
+
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -899,21 +902,22 @@ public:
         program.setUniform("spriteTexture", 0);
 
         glBindVertexArray(VAO);
-        
-        
+
         glActiveTexture(GL_TEXTURE0);
+
         glBindTexture(GL_TEXTURE_2D, starTexture);
         if (!tex1Indices.empty()) {
-            glDrawElements(GL_POINTS, static_cast<GLsizei>(tex1Indices.size()), GL_UNSIGNED_INT, tex1Indices.data());
+            glDrawElements(GL_POINTS, (GLsizei)tex1Indices.size(), GL_UNSIGNED_INT, tex1Indices.data());
         }
-        
-        
+
         glBindTexture(GL_TEXTURE_2D, starTexture2);
         if (!tex2Indices.empty()) {
-            glDrawElements(GL_POINTS, static_cast<GLsizei>(tex2Indices.size()), GL_UNSIGNED_INT, tex2Indices.data());
+            glDrawElements(GL_POINTS, (GLsizei)tex2Indices.size(), GL_UNSIGNED_INT, tex2Indices.data());
         }
-        
+
         glBindVertexArray(0);
+
+        glDepthMask(GL_TRUE);
     }
 
     void cleanup() {
@@ -2899,7 +2903,7 @@ public:
             glModelRenderer->init(path, "sphere.mxmod", "bg.png", modelScale, modelPos);    
             glStarfield->cameraX = 0.0f;
             glStarfield->cameraY = 0.0f;
-            glStarfield->cameraZ = 4.0f;
+            glStarfield->cameraZ = -3.0f;
             glStarfield->cameraYaw = -90.0f;  
             glStarfield->cameraPitch = 0.0f;  
 
