@@ -110,7 +110,8 @@ public:
             "mandelbrot_fragment_rainbow_frag",
             "mandelbrot_fragment_multi_frag",
             "mandelbrot_fragment_glitch_frag",
-            "julia_zoom_fragment_frag"
+            "julia_zoom_fragment_frag",
+            "fractal_frag"
         };
         currentShaderIndex = 0;
         std::cout << ">> [Shaders] Discovered " << availableFragmentShaders.size() << " fragment shaders\n";
@@ -636,7 +637,7 @@ public:
         fpsStream << std::fixed << std::setprecision(1) << "FPS: " << fps;
         
         if(!writer.is_open()) {
-            printText("Mandelbrot Fractal - " + availableFragmentShaders[currentShaderIndex] + " - " + std::to_string(param), 10, 10, yellow);
+            printText("Fractal - " + availableFragmentShaders[currentShaderIndex] + " - " + std::to_string(param), 10, 10, yellow);
             printText(infoStream.str(), 10, 40, white);
             printText(zoomStream.str(), 10, 70, white);
             printText(fpsStream.str(), 10, 100, white);
