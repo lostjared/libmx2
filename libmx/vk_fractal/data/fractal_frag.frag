@@ -3,13 +3,12 @@
 
 layout(location = 0) out vec4 outColor;
 
-// STABILITY FIX: Ensure doubles are at the top for 8-byte alignment
 layout(push_constant) uniform PushConstants {
-    double centerX;      // 8 bytes
-    double centerY;      // 8 bytes
-    double zoom;         // 8 bytes
-    int maxIterations;   // 4 bytes
-    float time;          // 4 bytes
+    double centerX;
+    double centerY;
+    double zoom;
+    int maxIterations; // This now acts as our "Limit" or "Cap"
+    float time; 
 } pc;
 
 layout(binding = 1) uniform UniformBufferObject {
@@ -27,54 +26,71 @@ vec3 hsv2rgb(vec3 c) {
 }
 
 void main() {
-    // 1. STABLE RESOLUTION FETCH
-    // Using ubo.params.xy; ensure these are set in your C++ code
-    vec2 res = ubo.params.xy;
-    if (res.x <= 0.0 || res.y <= 0.0) res = vec2(1920.0, 1080.0); // Fallback
+    // Use double precision throughout coordinate calculation
+    double resX = double(ubo.params.x);
+    double resY = double(ubo.params.y);
+    double minRes = min(resX, resY);
     
-    // 2. COORDINATE MAPPING (Double Precision)
-    // We explicitly cast to dvec2 to ensure the subtraction and division are high-precision
-    dvec2 fragCoord = dvec2(gl_FragCoord.xy);
-    dvec2 uv = (fragCoord - 0.5 * dvec2(res)) / double(min(res.x, res.y));
+    // gl_FragCoord is float, but pixel coordinates are integers so conversion is exact
+    double fragX = double(gl_FragCoord.x);
+    double fragY = double(gl_FragCoord.y);
     
-    // 3. APPLY ZOOM AND PAN
-    dvec2 c = uv / pc.zoom + dvec2(pc.centerX, pc.centerY);
-    dvec2 z = dvec2(0.0);
+    // Center the coordinates and normalize
+    double uvX = (fragX - resX * 0.5LF) / minRes;
+    double uvY = (fragY - resY * 0.5LF) / minRes;
     
-    // 4. ADAPTIVE ITERATIONS
-    float zoomLog = float(log(max(1.0, float(pc.zoom))));
-    int adaptiveMax = int(128.0 + (zoomLog * 100.0)); 
+    // Apply zoom and pan - all in double precision
+    double cx = uvX / pc.zoom + pc.centerX;
+    double cy = uvY / pc.zoom + pc.centerY;
+    
+    double zx = 0.0LF;
+    double zy = 0.0LF;
+    
+    // --- ADAPTIVE ITERATION LOGIC ---
+    // Higher zoom = more iterations needed. 
+    // We use log10 of the zoom to scale the iterations linearly with depth.
+    float zoomLevel = float(log(float(pc.zoom)) / log(10.0));
+    int adaptiveMax = int(128.0 + (zoomLevel * 150.0)); 
+    
+    // Clamp the value between a reasonable floor and the push constant limit
     int currentMax = clamp(adaptiveMax, 128, pc.maxIterations);
     
     int iterations = 0;
-    const double ESCAPE_SQ = 1.0e8; // High escape for smoother banding
+    const double ESCAPE_RADIUS_SQ = 4.0LF; // Standard escape radius for tricorn
 
     for (int i = 0; i < currentMax; i++) {
-        // TRICORN MATH: z = conj(z)^2 + c
-        double next_x = z.x * z.x - z.y * z.y + c.x;
-        double next_y = -2.0 * z.x * z.y + c.y; 
+        // Tricorn fractal: z = conj(z)^2 + c
+        // conj(z) = (zx, -zy)
+        // conj(z)^2 = zx^2 - zy^2 - 2i*zx*zy
+        double zx_new = zx * zx - zy * zy + cx;
+        double zy_new = -2.0LF * zx * zy + cy;
         
-        z.x = next_x;
-        z.y = next_y;
+        zx = zx_new;
+        zy = zy_new;
         
-        if (dot(z, z) > ESCAPE_SQ) break;
+        // Check escape AFTER computing new z
+        double magSq = zx * zx + zy * zy;
+        if (magSq > ESCAPE_RADIUS_SQ) break;
         iterations++;
     }
 
     if (iterations == currentMax) {
         outColor = vec4(0.0, 0.0, 0.0, 1.0);
     } else {
-        // 5. STABILIZED COLORING
-        float zMag = float(length(z));
-        // Using log2(log2()) with a large escape constant for liquid-smooth colors
-        float smoothIter = float(iterations) + 1.0 - log2(log2(zMag));
+        // Use double precision for magnitude calculation
+        double zMagSq = zx * zx + zy * zy;
+        float zMag = float(sqrt(zMagSq));
+        // Smooth iteration count for tricorn (power 2 fractal)
+        float smoothIter = float(iterations) + 1.0 - log2(log2(max(zMag, 1.0)));
         
-        // Animation using pc.time
-        float hue = fract(smoothIter * 0.015 + pc.time * 0.1);
-        vec3 rgb = hsv2rgb(vec3(hue, 0.8, 1.0));
+        // Speed and color cycling using pc.time
+        float hue = fract(smoothIter * 0.01 + pc.time * 0.1);
+        vec3 color = hsv2rgb(vec3(hue, 0.75, 1.0));
         
-        // Darken based on iteration count to give the set "depth"
-        float darkness = clamp(float(iterations) / 20.0, 0.0, 1.0);
-        outColor = vec4(rgb * darkness, 1.0);
+        // Anti-pixelation: fade out colors if we are near the max iterations
+        float edgeFade = 1.0 - (float(iterations) / float(currentMax));
+        color *= edgeFade;
+
+        outColor = vec4(color, 1.0);
     }
 }
