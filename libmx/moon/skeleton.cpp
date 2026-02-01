@@ -974,14 +974,14 @@ public:
             cameraY -= front.y * velocity;
             cameraZ -= front.z * velocity;
         }
-        /*if (keyboardState[SDL_SCANCODE_A]) {
-            cameraX -= right.x * velocity;
-            cameraZ -= right.z * velocity;
-        }
-        if (keyboardState[SDL_SCANCODE_D]) {
-            cameraX += right.x * velocity;
-            cameraZ += right.z * velocity;
-        }*/
+        
+
+
+
+
+
+
+
 
         
         if (keyboardState[SDL_SCANCODE_SPACE]) {
@@ -1978,7 +1978,7 @@ public:
         front.z = sin(glm::radians(cameraYaw)) * cos(glm::radians(cameraPitch));
         front = glm::normalize(front);
         
-        //glm::vec3 right = glm::normalize(glm::cross(front, glm::vec3(0.0f, 1.0f, 0.0f)));
+        
         
         float velocity = cameraSpeed * deltaTime;
         
@@ -1992,15 +1992,15 @@ public:
             cameraY -= front.y * velocity;
             cameraZ -= front.z * velocity;
         }
-        /*
-        if (keyboardState[SDL_SCANCODE_A]) {
-            cameraX -= right.x * velocity;
-            cameraZ -= right.z * velocity;
-        }
-        if (keyboardState[SDL_SCANCODE_D]) {
-            cameraX += right.x * velocity;
-            cameraZ += right.z * velocity;
-        }*/
+        
+
+
+
+
+
+
+
+
         if (keyboardState[SDL_SCANCODE_Q]) {
             cameraY += velocity;
         }
@@ -2067,7 +2067,9 @@ public:
     float rotationY = 0.0f;
     float rotationZ = 0.0f;
     float modelScale = 10.0f;  
-    glm::vec3 modelPosition = glm::vec3(0.0f, 0.0f, -30.0f);  
+    glm::vec3 modelPosition = glm::vec3(0.0f, 0.0f, -30.0f);
+    bool useEffectShader = false;  
+    std::string dataPathCache;  
     
     void cleanup() {
         if (!initialized || device == VK_NULL_HANDLE) return;
@@ -2145,7 +2147,7 @@ public:
         physicalDevice = vkWin->getPhysicalDevice();
         commandPool = vkWin->getCommandPool();
         graphicsQueue = vkWin->getGraphicsQueue();
-        
+        dataPathCache = dataPath;  
         
         modelScale = scale;
         modelPosition = position;
@@ -2623,7 +2625,9 @@ public:
     void createPipeline(mx::VKWindow* vkWin, const std::string& dataPath) {
         
         auto vertShaderCode = mx::readFile(dataPath + "/data/vert.spv");
-        auto fragShaderCode = mx::readFile(dataPath + "/data/frag.spv");
+        std::string fragShaderFile = useEffectShader ? "/data/frage.spv" : "/data/frag.spv";
+        auto fragShaderCode = mx::readFile(dataPath + fragShaderFile);
+        SDL_Log("Loading fragment shader: %s", fragShaderFile.c_str());
         
         VkShaderModuleCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -2847,6 +2851,37 @@ public:
         
         vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
     }
+    
+    void switchShader() {
+        if (!initialized || device == VK_NULL_HANDLE) return;
+        
+        vkDeviceWaitIdle(device);
+        
+        if (pipeline != VK_NULL_HANDLE) {
+            vkDestroyPipeline(device, pipeline, nullptr);
+            pipeline = VK_NULL_HANDLE;
+        }
+        if (pipelineLayout != VK_NULL_HANDLE) {
+            vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+            pipelineLayout = VK_NULL_HANDLE;
+        }
+    
+        useEffectShader = !useEffectShader;
+        SDL_Log("Switching to %s shader", useEffectShader ? "effect (frage.spv)" : "normal (frag.spv)");
+        createPipeline(vkWindow, dataPathCache);
+    }
+    
+    void processInputShaderSwitch(const uint8_t* keyboardState) {
+        static bool spaceKeyPressed = false;   
+        if (keyboardState && keyboardState[SDL_SCANCODE_SPACE]) {
+            if (!spaceKeyPressed) {
+                switchShader();
+                spaceKeyPressed = true;
+            }
+        } else {
+            spaceKeyPressed = false;
+        }
+    }
 };
 
 #endif 
@@ -3025,6 +3060,8 @@ public:
         }
         if (vkModelRenderer) {
             vkModelRenderer->update(deltaTime);
+            const Uint8* keyboardState = SDL_GetKeyboardState(nullptr);
+            vkModelRenderer->processInputShaderSwitch(keyboardState);
         }
 #endif
 #ifdef WITH_GL
