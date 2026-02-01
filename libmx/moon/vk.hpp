@@ -272,7 +272,7 @@ namespace mx {
         VkRenderPass renderPass = VK_NULL_HANDLE;
         VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
         VkPipeline graphicsPipeline = VK_NULL_HANDLE;
-        VkPipeline graphicsPipelineWireframe = VK_NULL_HANDLE;
+        VkPipeline graphicsPipelineStarfield = VK_NULL_HANDLE;
         VkPolygonMode currentPolygonMode = VK_POLYGON_MODE_FILL;
         std::vector<VkFramebuffer> swapChainFramebuffers;
 

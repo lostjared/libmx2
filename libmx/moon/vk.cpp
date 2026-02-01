@@ -592,9 +592,9 @@ namespace mx {
             vkDestroyPipeline(device, graphicsPipeline, nullptr);
             graphicsPipeline = VK_NULL_HANDLE;
         }
-        if (graphicsPipelineWireframe != VK_NULL_HANDLE) {
-            vkDestroyPipeline(device, graphicsPipelineWireframe, nullptr);
-            graphicsPipelineWireframe = VK_NULL_HANDLE;
+        if (graphicsPipelineStarfield != VK_NULL_HANDLE) {
+            vkDestroyPipeline(device, graphicsPipelineStarfield, nullptr);
+            graphicsPipelineStarfield = VK_NULL_HANDLE;
         }
         if (pipelineLayout != VK_NULL_HANDLE) {
             vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
@@ -1283,12 +1283,12 @@ namespace mx {
             }
             
             rasterizer.polygonMode = VK_POLYGON_MODE_LINE;
-            if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipelineWireframe) != VK_SUCCESS) {
-                throw mx::Exception("Failed to create wireframe graphics pipeline!");
+            if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipelineStarfield) != VK_SUCCESS) {
+                throw mx::Exception("Failed to create starfield graphics pipeline!");
             }
             
             std::cout << "   Graphics Pipeline created successfully!\n";
-            std::cout << "   Wireframe Pipeline created successfully!\n";
+            std::cout << "   Starfield Pipeline created successfully!\n";
             std::cout << ">> [GraphicsPipeline] Complete\n\n";
 
             
@@ -1334,7 +1334,7 @@ namespace mx {
         renderPassInfo.pClearValues = clearValues.data();
         vkCmdBeginRenderPass(commandBuffers[imageIndex], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
         
-        VkPipeline pipelineToUse = (currentPolygonMode == VK_POLYGON_MODE_LINE) ? graphicsPipelineWireframe : graphicsPipeline;
+        VkPipeline pipelineToUse = (currentPolygonMode == VK_POLYGON_MODE_LINE) ? graphicsPipelineStarfield : graphicsPipeline;
         vkCmdBindPipeline(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineToUse);
 
         VkViewport viewport{};
