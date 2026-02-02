@@ -5,6 +5,7 @@
 #include <random>
 #include <deque>
 #include <unordered_map>
+#include <memory>
 
 #if defined(__APPLE__) || defined(_WIN32) || defined(__linux__)
 #include "argz.hpp"
@@ -50,6 +51,87 @@ int getMap(int x, int y) {
     return 0;
 }
 
+struct GlyphKey {
+    int codepoint;
+    uint32_t color; 
+
+    bool operator==(const GlyphKey& other) const {
+        return codepoint == other.codepoint && color == other.color;
+    }
+};
+
+struct GlyphHasher {
+    std::size_t operator()(const GlyphKey& k) const {
+        return std::hash<int>{}(k.codepoint) ^ (std::hash<uint32_t>{}(k.color) << 1);
+    }
+};
+
+class GlyphCache {
+public:
+    struct GlyphData {
+        std::vector<uint32_t> pixels;
+        int w, h;
+    };
+
+    GlyphCache(TTF_Font* font) : font(font) {}
+
+    void draw(int codepoint, SDL_Color color, uint32_t* destBuffer, int destX, int destY, int destWidth, int destHeight) {
+        color.a = (color.a / 10) * 10;
+        uint32_t colorKey = (color.r << 24) | (color.g << 16) | (color.b << 8) | color.a;
+        GlyphKey key{codepoint, colorKey};
+        auto it = cache.find(key);
+        if (it == cache.end()) {
+            it = cache.emplace(key, renderToPixels(codepoint, color)).first;
+        }
+
+        const GlyphData& glyph = it->second;
+        for (int py = 0; py < glyph.h && (destY + py) < destHeight; ++py) {
+            for (int px = 0; px < glyph.w && (destX + px) < destWidth; ++px) {
+                if (destX + px >= 0 && destY + py >= 0) {
+                    uint32_t pixel = glyph.pixels[py * glyph.w + px];
+                    if ((pixel >> 24) & 0xFF) { // Simple alpha test
+                        destBuffer[(destY + py) * destWidth + (destX + px)] = pixel;
+                    }
+                }
+            }
+        }
+    }
+
+private:
+    TTF_Font* font;
+    std::unordered_map<GlyphKey, GlyphData, GlyphHasher> cache;
+
+    GlyphData renderToPixels(int codepoint, SDL_Color color) {
+        std::string s = unicodeToUTF8(codepoint);
+        SDL_Surface* surf = TTF_RenderUTF8_Blended(font, s.c_str(), color);
+        if (!surf) return {{}, 0, 0};
+
+        SDL_Surface* rgba = SDL_ConvertSurfaceFormat(surf, SDL_PIXELFORMAT_RGBA32, 0);
+        SDL_FreeSurface(surf);
+
+        GlyphData data;
+        data.w = rgba->w;
+        data.h = rgba->h;
+        data.pixels.resize(data.w * data.h);
+        memcpy(data.pixels.data(), rgba->pixels, data.w * data.h * 4);
+
+        SDL_FreeSurface(rgba);
+        return data;
+    }
+
+    std::string unicodeToUTF8(int cp) {
+        std::string res;
+        if (cp <= 0x7F) res += (char)cp;
+        else if (cp <= 0x7FF) { res += (char)((cp >> 6) | 0xC0); res += (char)((cp & 0x3F) | 0x80); }
+        else if (cp <= 0xFFFF) { 
+            res += (char)((cp >> 12) | 0xE0); 
+            res += (char)(((cp >> 6) & 0x3F) | 0x80); 
+            res += (char)((cp & 0x3F) | 0x80); 
+        }
+        return res;
+    }
+};
+
 class RaycastWindow;
 
 class RaycastWindow : public mx::VKWindow {
@@ -73,6 +155,8 @@ public:
     static constexpr int TEXTURE_WIDTH = 800;
     static constexpr int TEXTURE_HEIGHT = 800;
     
+    std::unique_ptr<GlyphCache> glyphCache;
+
     RaycastWindow(const std::string& path, int wx, int wy, bool full) 
         : mx::VKWindow("-[ Vulkan Raycaster ]-", wx, wy, full) {
         setPath(path);
@@ -217,23 +301,26 @@ private:
     std::vector<float> columnBrightness;
     std::vector<bool> isHighlightColumn;
     std::vector<std::pair<int, int>> codepointRanges;
-    
+    std::vector<int> gridCodepoints;
     TTF_Font* matrixFont = nullptr;
     std::vector<uint32_t> texturePixels;
     
     void initMatrix() {
-        
         std::string fontPath = util.getFilePath("data/keifont.ttf");
         matrixFont = TTF_OpenFont(fontPath.c_str(), 28);
         if (!matrixFont) {
             throw mx::Exception("Failed to load matrix font: " + fontPath);
         }
-        
-        
+        glyphCache = std::make_unique<GlyphCache>(matrixFont);
         numColumns = NUM_RAIN_COLUMNS;
         numRows = TEXTURE_HEIGHT / charHeight;
         charWidth = TEXTURE_WIDTH / numColumns;
         
+        gridCodepoints.resize(numColumns * numRows);
+        for (int i = 0; i < static_cast<int>(gridCodepoints.size()); ++i) {
+            gridCodepoints[i] = getRandomCodepoint();
+        }
+
         fallPositions.resize(numColumns);
         fallSpeeds.resize(numColumns);
         trailLengths.resize(numColumns);
@@ -241,31 +328,15 @@ private:
         isHighlightColumn.resize(numColumns);
         
         for (int i = 0; i < numColumns; ++i) {
-            fallPositions[i] = static_cast<float>(generateRandomFloat(0.0f, numRows));
+            fallPositions[i] = static_cast<float>(getRand<int>(0, numRows));
             fallSpeeds[i] = generateRandomFloat(MIN_FALL_SPEED, MAX_FALL_SPEED);
-            trailLengths[i] = getRand<int>(0, MAX_TRAIL_LENGTH-1);
+            trailLengths[i] = getRand<int>(MIN_TRAIL_LENGTH, MAX_TRAIL_LENGTH);
             isHighlightColumn[i] = (getRand<int>(0, 14) == 0);
-            columnBrightness[i] = generateRandomFloat(0.7f, 1.3f);
+            columnBrightness[i] = generateRandomFloat(0.8f, 1.2f);
         }
         
         texturePixels.resize(TEXTURE_WIDTH * TEXTURE_HEIGHT);
     }
-    
-    std::string unicodeToUTF8(int codepoint) {
-        std::string utf8;
-        if (codepoint <= 0x7F) {
-            utf8 += static_cast<char>(codepoint);
-        } else if (codepoint <= 0x7FF) {
-            utf8 += static_cast<char>((codepoint >> 6) | 0xC0);
-            utf8 += static_cast<char>((codepoint & 0x3F) | 0x80);
-        } else if (codepoint <= 0xFFFF) {
-            utf8 += static_cast<char>((codepoint >> 12) | 0xE0);
-            utf8 += static_cast<char>(((codepoint >> 6) & 0x3F) | 0x80);
-            utf8 += static_cast<char>((codepoint & 0x3F) | 0x80);
-        }
-        return utf8;
-    }
-    
     int getRandomCodepoint() {
         static std::random_device rd;
         static std::default_random_engine eng(rd());
@@ -275,103 +346,50 @@ private:
         std::uniform_int_distribution<int> cpDist(start, end);   
         return cpDist(eng);
     }
+    
     void updateMatrixRain(float deltaTime) {
         memset(texturePixels.data(), 0, texturePixels.size() * sizeof(uint32_t)); 
+        for(int i = 0; i < 30; ++i) {
+            int randIdx = getRand<int>(0, gridCodepoints.size() - 1);
+            gridCodepoints[randIdx] = getRandomCodepoint();
+        }
+
         for (int col = 0; col < numColumns; ++col) {
-            if (getRand<unsigned int>(0, 100-1) == 0) {
-                fallSpeeds[col] = generateRandomFloat(MIN_FALL_SPEED, MAX_FALL_SPEED);
-            }
             fallPositions[col] -= fallSpeeds[col] * deltaTime;
             if (fallPositions[col] < -trailLengths[col]) { 
-                fallPositions[col] = numRows; 
-                trailLengths[col] = getRand<int>(MIN_TRAIL_LENGTH, MAX_TRAIL_LENGTH-1);
-                isHighlightColumn[col] = (getRand<int>(0, 14) == 0); 
-                columnBrightness[col] = getRand<float>(0.7f, 1.3f);
+                fallPositions[col] = (float)numRows; 
+                trailLengths[col] = getRand<int>(MIN_TRAIL_LENGTH, MAX_TRAIL_LENGTH);
+                isHighlightColumn[col] = (getRand<int>(0, 20) == 0); 
+                columnBrightness[col] = generateRandomFloat(0.7f, 1.3f);
             }
-            
             
             for (int i = 0; i < trailLengths[col]; ++i) {
-                int row = static_cast<int>(fallPositions[col] + i + numRows) % numRows;
-                
-                
-                int codepoint = getRandomCodepoint();
-                std::string charStr = unicodeToUTF8(codepoint);
-                
-                
+                int row = static_cast<int>(fallPositions[col] + i + numRows) % numRows;    
+                int codepoint = gridCodepoints[row * numColumns + col];
                 SDL_Color color;
                 if (i == 0) {
-                    
-                    if (isHighlightColumn[col]) {
-                        color = {255, 255, 255, 255};
-                    } else {
-                        color = {180, 255, 180, 255};
-                    }
-                } else {
-                    
+                    color = {255, 255, 255, 255}; 
+                } else if (i < 3 && isHighlightColumn[col]) {
+                    color = {140, 255, 140, 255};
+                } else { 
                     float intensity = 1.0f - (float)i / (float)trailLengths[col];
-                    intensity = powf(intensity, 1.5f) * columnBrightness[col];
-                    if (intensity < 0.0f) intensity = 0.0f;
-                    if (intensity > 1.0f) intensity = 1.0f;
-                    
+                    intensity = powf(intensity, 1.3f) * columnBrightness[col];
+                    intensity = std::clamp(intensity, 0.0f, 1.0f);
                     uint8_t green = static_cast<uint8_t>(255 * intensity);
-                    uint8_t red = static_cast<uint8_t>(50 * intensity);
-                    uint8_t alpha = static_cast<uint8_t>(255 * intensity);
-                    if (alpha < 30) alpha = 30;
-                    
-                    color = {red, green, 0, alpha};
+                    uint8_t red = static_cast<uint8_t>(30 * intensity);
+                    uint8_t blue = static_cast<uint8_t>(30 * intensity);
+                    uint8_t alpha = static_cast<uint8_t>(std::max(0.15f, intensity) * 255);
+                    color = {red, green, blue, alpha};
                 }
-                
-                
-                renderCharToTexture(charStr, col * charWidth, row * charHeight, color);
+            
+                glyphCache->draw(codepoint, color, texturePixels.data(), 
+                                col * charWidth, row * charHeight, 
+                                TEXTURE_WIDTH, TEXTURE_HEIGHT);
             }
         }
-        
         
         updateGPUTexture();
     }
-    
-    void renderCharToTexture(const std::string& charStr, int x, int y, SDL_Color color) {
-        if (!matrixFont) return;
-        
-        SDL_Surface* charSurface = TTF_RenderUTF8_Blended(matrixFont, charStr.c_str(), color);
-        if (!charSurface) {
-            charSurface = TTF_RenderUTF8_Blended(matrixFont, "#", color);
-            if (!charSurface) return;
-        }
-               
-        SDL_Surface* rgbaSurface = SDL_ConvertSurfaceFormat(charSurface, SDL_PIXELFORMAT_RGBA32, 0);
-        SDL_FreeSurface(charSurface);
-        if (!rgbaSurface) return;
-        
-        if (SDL_MUSTLOCK(rgbaSurface)) {
-            SDL_LockSurface(rgbaSurface);
-        }
-        
-        int pitchInPixels = rgbaSurface->pitch / 4;
-        uint32_t* srcPixels = (uint32_t*)rgbaSurface->pixels;
-        
-        for (int py = 0; py < rgbaSurface->h && (y + py) < TEXTURE_HEIGHT; ++py) {
-            for (int px = 0; px < rgbaSurface->w && (x + px) < TEXTURE_WIDTH; ++px) {
-                if (x + px >= 0 && y + py >= 0) {
-                    int srcIdx = py * pitchInPixels + px;
-                    int dstIdx = (y + py) * TEXTURE_WIDTH + (x + px);
-                    
-                    uint32_t srcPixel = srcPixels[srcIdx];
-                    uint8_t srcAlpha = (srcPixel >> 24) & 0xFF;
-                    
-                    if (srcAlpha > 0) {
-                        texturePixels[dstIdx] = srcPixel;
-                    }
-                }
-            }
-        }
-        
-        if (SDL_MUSTLOCK(rgbaSurface)) {
-            SDL_UnlockSurface(rgbaSurface);
-        }
-        SDL_FreeSurface(rgbaSurface);
-    }
-    
     void updateGPUTexture() {
         
         VkDeviceSize imageSize = TEXTURE_WIDTH * TEXTURE_HEIGHT * 4;
