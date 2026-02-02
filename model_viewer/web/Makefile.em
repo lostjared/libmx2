@@ -11,7 +11,7 @@ PRELOAD = --preload-file data
 SOURCES = main.cpp
 OBJECTS = $(SOURCES:.cpp=.o)
 OUTPUT = mxMod_Web.html
-EXPORTED_FUNCS = -s EXPORTED_FUNCTIONS='["_main","_loadModelFromJS","_setRotationX","_setRotationY","_setRotationZ","_logMessage"]' -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap","FS"]'
+EXPORTED_FUNCS = -s EXPORTED_FUNCTIONS='["_main","_loadModelFromJS","_setCompressModelFromJS","_setRotationX","_setRotationY","_setRotationZ","_logMessage","_setZoom","_setLightX","_setLightY","_setLightZ","_setCameraX","_setCameraY","_resizeCanvas"]' -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap","FS"]'
 
 .PHONY: all clean install
 

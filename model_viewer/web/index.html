@@ -1076,9 +1076,9 @@
                     Module.ccall('setLightX', null, ['number'], [0]);
                     Module.ccall('setLightY', null, ['number'], [50]);
                     Module.ccall('setLightZ', null, ['number'], [50]);
-                    Module.ccall('setRotationX', null, ['boolean'], [true]);
-                    Module.ccall('setRotationY', null, ['boolean'], [true]);
-                    Module.ccall('setRotationZ', null, ['boolean'], [false]);
+                    Module.ccall('setRotationX', null, ['number'], [1]);
+                    Module.ccall('setRotationY', null, ['number'], [1]);
+                    Module.ccall('setRotationZ', null, ['number'], [0]);
                 } catch (e) {
                     // Function may not be available
                 }
@@ -1225,7 +1225,7 @@
                 const compress = e.target.checked;
                 if (state.isModuleReady) {
                     try {
-                        Module.ccall('setCompressModelFromJS', null, ['boolean'], [compress]);
+                        Module.ccall('setCompressModelFromJS', null, ['number'], [compress ? 1 : 0]);
                     } catch (e) {
                         addLogMessage(`[WARNING] Could not set compress model: ${e.message}`);
                     }
@@ -1243,7 +1243,7 @@
                     if (state.isModuleReady) {
                         const funcName = `setRotation${axis.toUpperCase()}`;
                         try {
-                            Module.ccall(funcName, null, ['boolean'], [state.rotation[axis]]);
+                            Module.ccall(funcName, null, ['number'], [state.rotation[axis] ? 1 : 0]);
                         } catch (e) {
                             // Function may not be available
                         }
