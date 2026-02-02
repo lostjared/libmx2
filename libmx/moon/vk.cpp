@@ -239,6 +239,12 @@ namespace mx {
             extensions.insert(extensions.end(), debugExtensions.begin(), debugExtensions.end());
         }
 
+#ifdef WITH_MOLTEN
+        
+        extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+        extensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+#endif
+
         bool layersSupported = true;
         uint32_t layerCount;
         vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
@@ -264,6 +270,10 @@ namespace mx {
         createInfo.pApplicationInfo = &appInfo;
         createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
         createInfo.ppEnabledExtensionNames = extensions.data();
+
+#ifdef WITH_MOLTEN
+        createInfo.flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+#endif
 
         if (layersSupported && enableValidation) {
             createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
@@ -351,9 +361,24 @@ namespace mx {
         deviceFeatures.samplerAnisotropy = VK_TRUE;
     
         
-        const std::vector<const char*> deviceExtensions = {
+        std::vector<const char*> deviceExtensions = {
             VK_KHR_SWAPCHAIN_EXTENSION_NAME
         };
+
+#ifdef WITH_MOLTEN
+        
+        uint32_t extensionCount;
+        vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, nullptr);
+        std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+        vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, availableExtensions.data());
+        
+        for (const auto& ext : availableExtensions) {
+            if (strcmp(ext.extensionName, "VK_KHR_portability_subset") == 0) {
+                deviceExtensions.push_back("VK_KHR_portability_subset");
+                break;
+            }
+        }
+#endif
     
         VkDeviceCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
