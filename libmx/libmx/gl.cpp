@@ -506,11 +506,11 @@ namespace gl {
         GLuint vfProgram = glCreateProgram();
         glAttachShader(vfProgram, vShader);
         glAttachShader(vfProgram, fShader);
-        // Set hint for binary retrieval (must be set before linking)
-        // Only call if the function is available (GL 4.1+)
+#ifndef __EMSCRIPTEN__
         if (glProgramParameteri != nullptr) {
             glProgramParameteri(vfProgram, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE);
         }
+#endif
         glLinkProgram(vfProgram);
         checkError();
         glGetProgramiv(vfProgram, GL_LINK_STATUS, &linked);
