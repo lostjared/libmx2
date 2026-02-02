@@ -374,8 +374,57 @@ if(MOLTEN)
                         "  -DVULKAN=OFF -DMOLTEN=ON  (for MoltenVK on macOS)")
   endif()
   
+  # Auto-detect Homebrew prefix for macOS
+  if(APPLE)
+    execute_process(
+      COMMAND brew --prefix
+      OUTPUT_VARIABLE HOMEBREW_PREFIX
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      ERROR_QUIET
+    )
+    if(NOT HOMEBREW_PREFIX)
+      # Fallback for Apple Silicon and Intel Macs
+      if(EXISTS "/opt/homebrew")
+        set(HOMEBREW_PREFIX "/opt/homebrew")
+      elseif(EXISTS "/usr/local")
+        set(HOMEBREW_PREFIX "/usr/local")
+      endif()
+    endif()
+    message(STATUS "Homebrew prefix: ${HOMEBREW_PREFIX}")
+  endif()
+  
   if(NOT MOLTEN_PATH)
-    set(MOLTEN_PATH /usr/local/opt/molten-vk)
+    # Try multiple common MoltenVK paths
+    if(APPLE AND HOMEBREW_PREFIX)
+      # First try brew --prefix molten-vk
+      execute_process(
+        COMMAND brew --prefix molten-vk
+        OUTPUT_VARIABLE BREW_MOLTEN_PATH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+      )
+      if(EXISTS "${BREW_MOLTEN_PATH}")
+        set(MOLTEN_PATH "${BREW_MOLTEN_PATH}")
+      elseif(EXISTS "${HOMEBREW_PREFIX}/opt/molten-vk")
+        set(MOLTEN_PATH "${HOMEBREW_PREFIX}/opt/molten-vk")
+      elseif(EXISTS "${HOMEBREW_PREFIX}/Cellar/molten-vk")
+        # Find the latest version in Cellar
+        file(GLOB MOLTEN_VERSIONS "${HOMEBREW_PREFIX}/Cellar/molten-vk/*")
+        list(SORT MOLTEN_VERSIONS ORDER DESCENDING)
+        list(GET MOLTEN_VERSIONS 0 MOLTEN_PATH)
+      endif()
+    endif()
+    
+    # Final fallback paths
+    if(NOT MOLTEN_PATH OR NOT EXISTS "${MOLTEN_PATH}")
+      if(EXISTS "/usr/local/opt/molten-vk")
+        set(MOLTEN_PATH "/usr/local/opt/molten-vk")
+      elseif(EXISTS "/opt/homebrew/opt/molten-vk")
+        set(MOLTEN_PATH "/opt/homebrew/opt/molten-vk")
+      elseif(EXISTS "$ENV{VULKAN_SDK}")
+        set(MOLTEN_PATH "$ENV{VULKAN_SDK}")
+      endif()
+    endif()
   endif()
   
   if(NOT EXISTS "${MOLTEN_PATH}")
@@ -386,22 +435,73 @@ if(MOLTEN)
                         "  Or disable with: -DMOLTEN=OFF")
   endif()
   
-  if(NOT EXISTS "${MOLTEN_PATH}/include/vulkan/vulkan.h")
-    message(FATAL_ERROR "MoltenVK vulkan.h not found at ${MOLTEN_PATH}/include/vulkan/")
+  # Check for Vulkan headers - try multiple locations
+  set(MOLTEN_VULKAN_HEADER_FOUND FALSE)
+  if(EXISTS "${MOLTEN_PATH}/include/vulkan/vulkan.h")
+    set(MOLTEN_VULKAN_HEADER_FOUND TRUE)
+    set(MOLTEN_INCLUDE_DIR "${MOLTEN_PATH}/include")
+  elseif(EXISTS "${MOLTEN_PATH}/include/MoltenVK/vulkan/vulkan.h")
+    set(MOLTEN_VULKAN_HEADER_FOUND TRUE)
+    set(MOLTEN_INCLUDE_DIR "${MOLTEN_PATH}/include/MoltenVK")
+  elseif(APPLE AND HOMEBREW_PREFIX AND EXISTS "${HOMEBREW_PREFIX}/include/vulkan/vulkan.h")
+    set(MOLTEN_VULKAN_HEADER_FOUND TRUE)
+    set(MOLTEN_INCLUDE_DIR "${HOMEBREW_PREFIX}/include")
   endif()
   
-  if(NOT EXISTS "${MOLTEN_PATH}/lib/libMoltenVK.dylib")
-    message(FATAL_ERROR "libMoltenVK.dylib not found at ${MOLTEN_PATH}/lib/")
+  if(NOT MOLTEN_VULKAN_HEADER_FOUND)
+    message(FATAL_ERROR "MoltenVK vulkan.h not found.\n"
+                        "  Searched in:\n"
+                        "    ${MOLTEN_PATH}/include/vulkan/\n"
+                        "    ${MOLTEN_PATH}/include/MoltenVK/vulkan/\n"
+                        "  Try: brew install molten-vk vulkan-headers")
+  endif()
+  
+  # Check for MoltenVK library - try both .dylib and framework
+  set(MOLTEN_LIB_FOUND FALSE)
+  if(EXISTS "${MOLTEN_PATH}/lib/libMoltenVK.dylib")
+    set(MOLTEN_LIB_FOUND TRUE)
+    set(MOLTEN_LIBRARY "${MOLTEN_PATH}/lib/libMoltenVK.dylib")
+    set(MOLTEN_LIB_DIR "${MOLTEN_PATH}/lib")
+  elseif(EXISTS "${MOLTEN_PATH}/lib/MoltenVK.xcframework")
+    set(MOLTEN_LIB_FOUND TRUE)
+    set(MOLTEN_LIBRARY "-framework MoltenVK")
+    set(MOLTEN_LIB_DIR "${MOLTEN_PATH}/lib")
+  elseif(APPLE AND HOMEBREW_PREFIX AND EXISTS "${HOMEBREW_PREFIX}/lib/libMoltenVK.dylib")
+    set(MOLTEN_LIB_FOUND TRUE)
+    set(MOLTEN_LIBRARY "${HOMEBREW_PREFIX}/lib/libMoltenVK.dylib")
+    set(MOLTEN_LIB_DIR "${HOMEBREW_PREFIX}/lib")
+  endif()
+  
+  if(NOT MOLTEN_LIB_FOUND)
+    message(FATAL_ERROR "libMoltenVK.dylib not found.\n"
+                        "  Searched in:\n"
+                        "    ${MOLTEN_PATH}/lib/\n"
+                        "  Try: brew install molten-vk")
   endif()
   
   find_package(glm REQUIRED)
   
-  set(VK_INCLUDE ${MOLTEN_PATH}/include ${GLM_INCLUDE_DIRS})
+  # Set MoltenVK variables for use in subdirectories
+  set(VK_INCLUDE ${MOLTEN_INCLUDE_DIR} ${GLM_INCLUDE_DIRS})
   set(VK_SRC vk.cpp)
-  set(VK_LIB "${MOLTEN_PATH}/lib/libMoltenVK.dylib")
+  set(VK_LIB "${MOLTEN_LIBRARY}")
+  set(MOLTEN_LINK_DIR "${MOLTEN_LIB_DIR}")
+  
+  # macOS frameworks required for MoltenVK
+  set(MOLTEN_FRAMEWORKS
+    "-framework QuartzCore"
+    "-framework Metal"
+    "-framework IOSurface"
+    "-framework CoreGraphics"
+    "-framework Foundation"
+    "-framework Cocoa"
+    "-framework IOKit"
+  )
+  
   message(STATUS "MoltenVK found at ${MOLTEN_PATH}")
   message(STATUS "  MoltenVK Include: ${VK_INCLUDE}")
-  message(STATUS "  MoltenVK LIB: ${VK_LIB}")
+  message(STATUS "  MoltenVK Library: ${VK_LIB}")
+  message(STATUS "  MoltenVK Library Dir: ${MOLTEN_LINK_DIR}")
 else()
   message(STATUS "MoltenVK Disabled.")
 endif()
