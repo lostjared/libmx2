@@ -651,6 +651,13 @@
                     <div class="file-list" id="imageFileList"></div>
                 </div>
 
+                <div class="control-group">
+                    <label class="control-label">
+                        <input type="checkbox" id="compressModelCheckbox" checked style="margin-right: 8px;">
+                        Compress Model
+                    </label>
+                </div>
+
                 <button class="btn btn-primary btn-full" id="loadModelBtn" disabled>
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="16 16 12 12 8 16"/>
@@ -1145,8 +1152,8 @@
                 Module.ccall(
                     'loadModelFromJS',
                     null,
-                    ['string', 'string', 'string'],
-                    [modelPath, texturePath, '/uploaded']
+                    ['string', 'string', 'string', 'boolean'],
+                    [modelPath, texturePath, '/uploaded', elements.compressModelCheckbox.checked]
                 );
                 
                 // Reset all controls to defaults after successful load
@@ -1179,6 +1186,7 @@
                 statusDot: document.getElementById('statusDot'),
                 statusText: document.getElementById('statusText'),
                 loadModelBtn: document.getElementById('loadModelBtn'),
+                compressModelCheckbox: document.getElementById('compressModelCheckbox'),
                 modelUploadZone: document.getElementById('modelUploadZone'),
                 textureUploadZone: document.getElementById('textureUploadZone'),
                 imageUploadZone: document.getElementById('imageUploadZone'),
@@ -1211,6 +1219,19 @@
             
             // Load model button
             elements.loadModelBtn.addEventListener('click', loadModel);
+            
+            // Compress model checkbox
+            elements.compressModelCheckbox.addEventListener('change', (e) => {
+                const compress = e.target.checked;
+                if (state.isModuleReady) {
+                    try {
+                        Module.ccall('setCompressModelFromJS', null, ['boolean'], [compress]);
+                    } catch (e) {
+                        addLogMessage(`[WARNING] Could not set compress model: ${e.message}`);
+                    }
+                }
+                addLogMessage(`[INFO] Compress model: ${compress ? 'enabled' : 'disabled'}`);
+            });
             
             // Rotation toggles
             [elements.rotXBtn, elements.rotYBtn, elements.rotZBtn].forEach(btn => {

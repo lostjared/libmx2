@@ -75,11 +75,11 @@ void main() {
     vec3 ambient = ambientStrength * lightColor;
     vec3 norm = normalize(fragNormal);
     vec3 lightDir = normalize(lightPos-fragPos);  
-    vec3 viewDir = normalize(-fragPos); // In view space, the view position is (0,0,0)
+    vec3 viewDir = normalize(-fragPos); 
     float diff = max(dot(norm, lightDir), 0.0);
     vec3 diffuse = diff * lightColor;
     float specularStrength = 0.2;
-    vec3 reflectDir = reflect(-lightDir, norm); // Compute reflectDir
+    vec3 reflectDir = reflect(-lightDir, norm); 
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0); 
     vec3 specular = specularStrength * spec * lightColor;
     vec3 textureColor = texture(texture1, fragTexCoord).rgb; 
@@ -107,7 +107,7 @@ void main() {
     vec4 viewPos4 = view * model * vec4(position, 1.0);
     fragPos = viewPos4.xyz;
     fragNormal = mat3(transpose(inverse(view * model))) * normal;
-    //fragNormal = mat3(view * model) * normal;
+    
     fragTexCoord = texCoord;                                 
     gl_Position = projection * view * vec4(fragPos, 1.0);    
 })";
@@ -116,6 +116,7 @@ class ModelViewer : public gl::GLObject {
 public:
 
     float zoom = 45.0f;
+    bool compressModel = true;
 
     ModelViewer() = default;
     virtual ~ModelViewer() override {}
@@ -129,7 +130,7 @@ public:
 
     void loadObject(gl::GLWindow *win, const std::string &filename, const std::string &texture_file, const std::string &texture_path) {
         obj.reset(new mx::Model());
-        if(!obj->openModel(filename, true)) {
+        if(!obj->openModel(filename, compressModel)) {
             throw mx::Exception("Could not load model file: " + filename);
         }
         
@@ -370,10 +371,18 @@ public:
         delay();
     }
     
-    void loadNewObject(const std::string &modelPath, const std::string &texturePath, const std::string &textureDir) {
+    void loadNewObject(const std::string &modelPath, const std::string &texturePath, const std::string &textureDir, bool compress = true) {
         ModelViewer *viewer = dynamic_cast<ModelViewer*>(object.get());
         if (viewer) {
+            viewer->compressModel = compress;
             viewer->loadObject(this, modelPath, texturePath, textureDir);
+        }
+    }
+    
+    void setCompressModel(bool compress) {
+        ModelViewer *viewer = dynamic_cast<ModelViewer*>(object.get());
+        if (viewer) {
+            viewer->compressModel = compress;
         }
     }
     
@@ -454,18 +463,27 @@ void eventProc() {
 
 extern "C" {
     EMSCRIPTEN_KEEPALIVE
-    void loadModelFromJS(const char* modelPath, const char* texturePath, const char* textureDir) {
+    void loadModelFromJS(const char* modelPath, const char* texturePath, const char* textureDir, bool compressModel = true) {
         if (main_w) {
             try {
                 jsLogStream << "[INFO] Loading model: " << modelPath << "\n";
                 jsLogStream << "[INFO] Texture: " << texturePath << "\n";
-                main_w->loadNewObject(modelPath, texturePath, textureDir);
+                jsLogStream << "[INFO] Compress model: " << (compressModel ? "true" : "false") << "\n";
+                main_w->loadNewObject(modelPath, texturePath, textureDir, compressModel);
                 jsLogStream << "[SUCCESS] Model loaded successfully!\n";
             } catch (const mx::Exception &e) {
                 jsLogStream << "[ERROR] " << e.text() << "\n";
             } catch (const std::exception &e) {
                 jsLogStream << "[ERROR] " << e.what() << "\n";
             }
+        }
+    }
+    
+    EMSCRIPTEN_KEEPALIVE
+    void setCompressModelFromJS(bool compressModel) {
+        if (main_w) {
+            main_w->setCompressModel(compressModel);
+            jsLogStream << "[INFO] Compress model set to: " << (compressModel ? "true" : "false") << "\n";
         }
     }
     
