@@ -31,6 +31,7 @@
 #include <QDragEnterEvent>
 #include <QDropEvent>
 #include <QMimeData>
+#include <QCheckBox>
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -85,6 +86,7 @@ private:
     QComboBox *resolutionCombo;
     QSpinBox *fpsSpinBox;
     QComboBox *recentFilesCombo;
+    QCheckBox *compressCheckBox;
     
     QAction *openModelAction;
     QAction *openTextureAction;

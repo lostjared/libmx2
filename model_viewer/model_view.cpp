@@ -175,6 +175,9 @@ void MainWindow::setupCentralWidget() {
     fpsSpinBox->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     fpsSpinBox->setMinimumWidth(100);
     
+    compressCheckBox = new QCheckBox(tr("Compress"), this);
+    compressCheckBox->setChecked(true);
+    
     optionsLayout->addWidget(recentLabel, 0, 0);
     optionsLayout->addWidget(recentFilesCombo, 0, 1);
     optionsLayout->addWidget(removeRecentBtn, 0, 2);
@@ -182,6 +185,7 @@ void MainWindow::setupCentralWidget() {
     optionsLayout->addWidget(resolutionCombo, 0, 4);
     optionsLayout->addWidget(fpsLabel, 0, 5);
     optionsLayout->addWidget(fpsSpinBox, 0, 6);
+    optionsLayout->addWidget(compressCheckBox, 0, 7);
     
     optionsLayout->setColumnStretch(1, 2);
     optionsLayout->setColumnStretch(4, 1);
@@ -468,13 +472,11 @@ void MainWindow::openModelViewer() {
     arguments << "-m" << modelPath;
     arguments << "-t" << texturePath;
     arguments << "-T" << textureDir;
-    
     QString resolution = resolutionCombo->currentText().split(" ").first();
-    arguments << "-r" << resolution;
-    
+    arguments << "-r" << resolution;    
+    arguments << "--compress" << (compressCheckBox->isChecked() ? "true" : "false");
     QString appPath = QCoreApplication::applicationDirPath();
     arguments << "-p" << appPath;
-    
     consoleOutput->appendPlainText(QString("[%1] Command: %2 %3")
         .arg(QDateTime::currentDateTime().toString("hh:mm:ss"))
         .arg(executablePath)
@@ -537,6 +539,7 @@ void MainWindow::updateUIState(bool processRunning) {
     textureDirLineEdit->setEnabled(!processRunning);
     resolutionCombo->setEnabled(!processRunning);
     fpsSpinBox->setEnabled(!processRunning);
+    compressCheckBox->setEnabled(!processRunning);
     recentFilesCombo->setEnabled(!processRunning);
     openModelAction->setEnabled(!processRunning);
     openTextureAction->setEnabled(!processRunning);
@@ -558,6 +561,9 @@ void MainWindow::loadSettings() {
     int fps = settings->value("fpsLimit", 60).toInt();
     fpsSpinBox->setValue(fps);
     
+    bool compress = settings->value("compress", true).toBool();
+    compressCheckBox->setChecked(compress);
+    
     QSize size = settings->value("windowSize", QSize(1200, 800)).toSize();
     resize(size);
     
@@ -572,6 +578,7 @@ void MainWindow::saveSettings() {
     settings->setValue("executablePath", executablePath);
     settings->setValue("resolutionIndex", resolutionCombo->currentIndex());
     settings->setValue("fpsLimit", fpsSpinBox->value());
+    settings->setValue("compress", compressCheckBox->isChecked());
     settings->setValue("windowSize", size());
     settings->setValue("windowPos", pos());
     settings->setValue("recentModels", recentModels);
