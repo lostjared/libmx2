@@ -153,6 +153,7 @@ public:
     static constexpr int TEXTURE_HEIGHT = 800;
     std::string filename;
     cv::VideoCapture cap;
+    bool draw_glyph = false;
 
     void setFile(const std::string &filen) {
         filename = filen;
@@ -273,6 +274,9 @@ public:
                 case SDLK_d: keyD = true; break;
                 case SDLK_LEFT: keyLeft = true; break;
                 case SDLK_RIGHT: keyRight = true; break;
+                case SDLK_SPACE: 
+                    draw_glyph = !draw_glyph;
+                break;
             }
         }
         else if (e.type == SDL_KEYUP) {
@@ -290,13 +294,10 @@ public:
 private:
     Uint64 lastFrameTime;
     float currentDeltaTime = 0.0f;
-    
-    
     int charWidth = 24;
     int charHeight = 32;
     int numColumns;
     int numRows;
-    
     std::vector<float> fallPositions;
     std::vector<float> fallSpeeds;
     std::vector<int> trailLengths;
@@ -363,46 +364,46 @@ private:
         cv::resize(frame, resized, cv::Size(TEXTURE_WIDTH, TEXTURE_HEIGHT));
         cv::cvtColor(resized, resized, cv::COLOR_BGR2RGBA);
         memcpy(texturePixels.data(), resized.data, TEXTURE_WIDTH * TEXTURE_HEIGHT * 4);
-
-        for(int i = 0; i < 30; ++i) {
-            int randIdx = getRand<int>(0, gridCodepoints.size() - 1);
-            gridCodepoints[randIdx] = getRandomCodepoint();
-        }
-
-        for (int col = 0; col < numColumns; ++col) {
-            fallPositions[col] -= fallSpeeds[col] * deltaTime;
-            if (fallPositions[col] < -trailLengths[col]) { 
-                fallPositions[col] = (float)numRows; 
-                trailLengths[col] = getRand<int>(MIN_TRAIL_LENGTH, MAX_TRAIL_LENGTH);
-                isHighlightColumn[col] = (getRand<int>(0, 20) == 0); 
-                columnBrightness[col] = generateRandomFloat(0.7f, 1.3f);
+        if(draw_glyph) {
+            for(int i = 0; i < 30; ++i) {
+                int randIdx = getRand<int>(0, gridCodepoints.size() - 1);
+                gridCodepoints[randIdx] = getRandomCodepoint();
             }
-            
-            for (int i = 0; i < trailLengths[col]; ++i) {
-                int row = static_cast<int>(fallPositions[col] + i + numRows) % numRows;    
-                int codepoint = gridCodepoints[row * numColumns + col];
-                SDL_Color color;
-                if (i == 0) {
-                    color = {255, 255, 255, 255}; 
-                } else if (i < 3 && isHighlightColumn[col]) {
-                    color = {140, 255, 140, 255};
-                } else { 
-                    float intensity = 1.0f - (float)i / (float)trailLengths[col];
-                    intensity = powf(intensity, 1.3f) * columnBrightness[col];
-                    intensity = std::clamp(intensity, 0.0f, 1.0f);
-                    uint8_t green = static_cast<uint8_t>(255 * intensity);
-                    uint8_t red = static_cast<uint8_t>(30 * intensity);
-                    uint8_t blue = static_cast<uint8_t>(30 * intensity);
-                    uint8_t alpha = static_cast<uint8_t>(std::max(0.15f, intensity) * 255);
-                    color = {red, green, blue, alpha};
+
+            for (int col = 0; col < numColumns; ++col) {
+                fallPositions[col] -= fallSpeeds[col] * deltaTime;
+                if (fallPositions[col] < -trailLengths[col]) { 
+                    fallPositions[col] = (float)numRows; 
+                    trailLengths[col] = getRand<int>(MIN_TRAIL_LENGTH, MAX_TRAIL_LENGTH);
+                    isHighlightColumn[col] = (getRand<int>(0, 20) == 0); 
+                    columnBrightness[col] = generateRandomFloat(0.7f, 1.3f);
                 }
-            
-                glyphCache->draw(codepoint, color, texturePixels.data(), 
-                                col * charWidth, row * charHeight, 
-                                TEXTURE_WIDTH, TEXTURE_HEIGHT);
+                
+                for (int i = 0; i < trailLengths[col]; ++i) {
+                    int row = static_cast<int>(fallPositions[col] + i + numRows) % numRows;    
+                    int codepoint = gridCodepoints[row * numColumns + col];
+                    SDL_Color color;
+                    if (i == 0) {
+                        color = {255, 255, 255, 255}; 
+                    } else if (i < 3 && isHighlightColumn[col]) {
+                        color = {140, 255, 140, 255};
+                    } else { 
+                        float intensity = 1.0f - (float)i / (float)trailLengths[col];
+                        intensity = powf(intensity, 1.3f) * columnBrightness[col];
+                        intensity = std::clamp(intensity, 0.0f, 1.0f);
+                        uint8_t green = static_cast<uint8_t>(255 * intensity);
+                        uint8_t red = static_cast<uint8_t>(30 * intensity);
+                        uint8_t blue = static_cast<uint8_t>(30 * intensity);
+                        uint8_t alpha = static_cast<uint8_t>(std::max(0.15f, intensity) * 255);
+                        color = {red, green, blue, alpha};
+                    }
+                
+                    glyphCache->draw(codepoint, color, texturePixels.data(), 
+                                    col * charWidth, row * charHeight, 
+                                    TEXTURE_WIDTH, TEXTURE_HEIGHT);
+                }
             }
         }
-        
         updateGPUTexture();
     }
     void updateGPUTexture() {
@@ -423,7 +424,6 @@ int main(int argc, char **argv) {
     Arguments args = proc_args(argc, argv);
     try {
         RaycastWindow window(args.path, args.width, args.height, args.fullscreen);
-
         window.setFile(args.filename);
         window.initVulkan();
         window.loop();
