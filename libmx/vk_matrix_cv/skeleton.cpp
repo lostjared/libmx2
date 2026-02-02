@@ -6,11 +6,8 @@
 #include <deque>
 #include <unordered_map>
 #include <memory>
-
-#if defined(__APPLE__) || defined(_WIN32) || defined(__linux__)
+#include <opencv2/opencv.hpp>
 #include "argz.hpp"
-#endif
-
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -154,6 +151,15 @@ public:
     static constexpr float MAX_FALL_SPEED = 20.0f;
     static constexpr int TEXTURE_WIDTH = 800;
     static constexpr int TEXTURE_HEIGHT = 800;
+    std::string filename;
+    cv::VideoCapture cap;
+
+    void setFile(const std::string &filen) {
+        filename = filen;
+        if(cap.open(filename)) {
+            std::cout << "cv: Opened capture device.\n";
+        }
+    }
     
     std::unique_ptr<GlyphCache> glyphCache;
 
@@ -241,12 +247,8 @@ public:
         lastFrameTime = currentTime;
         if (deltaTime > 0.1f) deltaTime = 0.1f;
         currentDeltaTime = deltaTime;
-        
         updatePlayer();
-        
-        
         updateMatrixRain(deltaTime);
-        
         raycastPlayer.posX = posX;
         raycastPlayer.posY = posY;
         raycastPlayer.dirX = dirX;
@@ -349,6 +351,19 @@ private:
     
     void updateMatrixRain(float deltaTime) {
         memset(texturePixels.data(), 0, texturePixels.size() * sizeof(uint32_t)); 
+        cv::Mat frame;
+        if(!cap.read(frame)) {
+            cap.set(cv::CAP_PROP_POS_FRAMES, 0);
+            if(!cap.read(frame)) {
+                quit();
+                return;
+            }
+        }
+        cv::Mat resized;
+        cv::resize(frame, resized, cv::Size(TEXTURE_WIDTH, TEXTURE_HEIGHT));
+        cv::cvtColor(resized, resized, cv::COLOR_BGR2RGBA);
+        memcpy(texturePixels.data(), resized.data, TEXTURE_WIDTH * TEXTURE_HEIGHT * 4);
+
         for(int i = 0; i < 30; ++i) {
             int randIdx = getRand<int>(0, gridCodepoints.size() - 1);
             gridCodepoints[randIdx] = getRandomCodepoint();
@@ -408,6 +423,8 @@ int main(int argc, char **argv) {
     Arguments args = proc_args(argc, argv);
     try {
         RaycastWindow window(args.path, args.width, args.height, args.fullscreen);
+
+        window.setFile(args.filename);
         window.initVulkan();
         window.loop();
         window.cleanup();
