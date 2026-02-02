@@ -21,6 +21,18 @@ float generateRandomFloat(float min, float max) {
     return dist(eng);
 }
 
+template<typename T>
+T getRand(T min, T max) {
+    static std::random_device rd;
+    static std::default_random_engine eng(rd());
+    if constexpr (std::is_floating_point_v<T>) {
+        std::uniform_real_distribution<T> dist(min, max);
+        return dist(eng);
+    } else {
+        std::uniform_int_distribution<T> dist(min, max);
+        return dist(eng);
+    }
+}
 
 const int MAP_WIDTH = 16;
 const int MAP_HEIGHT = 16;
@@ -90,47 +102,52 @@ public:
     }
     
     void updatePlayer() {
+        float frameMoveSpeed = moveSpeed * (currentDeltaTime * 60.0f); 
+        float frameRotSpeed = rotSpeed * (currentDeltaTime * 60.0f);
         if (keyW) {
-            float newX = posX + dirX * moveSpeed;
-            float newY = posY + dirY * moveSpeed;
+            float newX = posX + dirX * frameMoveSpeed;
+            float newY = posY + dirY * frameMoveSpeed;
             if (canMove(newX, posY)) posX = newX;
             if (canMove(posX, newY)) posY = newY;
         }
         if (keyS) {
-            float newX = posX - dirX * moveSpeed;
-            float newY = posY - dirY * moveSpeed;
+            float newX = posX - dirX * frameMoveSpeed;
+            float newY = posY - dirY * frameMoveSpeed;
             if (canMove(newX, posY)) posX = newX;
             if (canMove(posX, newY)) posY = newY;
         }
         
         if (keyA) {
-            float newX = posX - planeX * moveSpeed;
-            float newY = posY - planeY * moveSpeed;
+            float newX = posX - planeX * frameMoveSpeed;
+            float newY = posY - planeY * frameMoveSpeed;
             if (canMove(newX, posY)) posX = newX;
             if (canMove(posX, newY)) posY = newY;
         }
         if (keyD) {
-            float newX = posX + planeX * moveSpeed;
-            float newY = posY + planeY * moveSpeed;
+            float newX = posX + planeX * frameMoveSpeed;
+            float newY = posY + planeY * frameMoveSpeed;
             if (canMove(newX, posY)) posX = newX;
             if (canMove(posX, newY)) posY = newY;
         }
-        
+  
         if (keyLeft) {
             float oldDirX = dirX;
-            dirX = dirX * cos(rotSpeed) - dirY * sin(rotSpeed);
-            dirY = oldDirX * sin(rotSpeed) + dirY * cos(rotSpeed);
+            dirX = dirX * cos(frameRotSpeed) - dirY * sin(frameRotSpeed);
+            dirY = oldDirX * sin(frameRotSpeed) + dirY * cos(frameRotSpeed);
+            
             float oldPlaneX = planeX;
-            planeX = planeX * cos(rotSpeed) - planeY * sin(rotSpeed);
-            planeY = oldPlaneX * sin(rotSpeed) + planeY * cos(rotSpeed);
+            planeX = planeX * cos(frameRotSpeed) - planeY * sin(frameRotSpeed);
+            planeY = oldPlaneX * sin(frameRotSpeed) + planeY * cos(frameRotSpeed);
         }
+  
         if (keyRight) {
             float oldDirX = dirX;
-            dirX = dirX * cos(-rotSpeed) - dirY * sin(-rotSpeed);
-            dirY = oldDirX * sin(-rotSpeed) + dirY * cos(-rotSpeed);
+            dirX = dirX * cos(-frameRotSpeed) - dirY * sin(-frameRotSpeed);
+            dirY = oldDirX * sin(-frameRotSpeed) + dirY * cos(-frameRotSpeed);
+            
             float oldPlaneX = planeX;
-            planeX = planeX * cos(-rotSpeed) - planeY * sin(-rotSpeed);
-            planeY = oldPlaneX * sin(-rotSpeed) + planeY * cos(-rotSpeed);
+            planeX = planeX * cos(-frameRotSpeed) - planeY * sin(-frameRotSpeed);
+            planeY = oldPlaneX * sin(-frameRotSpeed) + planeY * cos(-frameRotSpeed);
         }
     }
     
@@ -224,10 +241,10 @@ private:
         isHighlightColumn.resize(numColumns);
         
         for (int i = 0; i < numColumns; ++i) {
-            fallPositions[i] = static_cast<float>(rand() % numRows);
+            fallPositions[i] = static_cast<float>(generateRandomFloat(0.0f, numRows));
             fallSpeeds[i] = generateRandomFloat(MIN_FALL_SPEED, MAX_FALL_SPEED);
-            trailLengths[i] = rand() % (MAX_TRAIL_LENGTH - MIN_TRAIL_LENGTH + 1) + MIN_TRAIL_LENGTH;
-            isHighlightColumn[i] = (rand() % 15 == 0);
+            trailLengths[i] = getRand<int>(0, MAX_TRAIL_LENGTH-1);
+            isHighlightColumn[i] = (getRand<int>(0, 14) == 0);
             columnBrightness[i] = generateRandomFloat(0.7f, 1.3f);
         }
         
@@ -250,31 +267,26 @@ private:
     }
     
     int getRandomCodepoint() {
-        int rangeIndex = rand() % codepointRanges.size();
-        int start = codepointRanges[rangeIndex].first;
-        int end = codepointRanges[rangeIndex].second;
-        return start + rand() % (end - start + 1);
+        static std::random_device rd;
+        static std::default_random_engine eng(rd());
+        std::uniform_int_distribution<size_t> rangeDist(0, codepointRanges.size() - 1);
+        size_t rangeIndex = rangeDist(eng);
+        auto [start, end] = codepointRanges[rangeIndex];
+        std::uniform_int_distribution<int> cpDist(start, end);   
+        return cpDist(eng);
     }
-    
     void updateMatrixRain(float deltaTime) {
-        
-        memset(texturePixels.data(), 0, texturePixels.size() * sizeof(uint32_t));
-        
-        
+        memset(texturePixels.data(), 0, texturePixels.size() * sizeof(uint32_t)); 
         for (int col = 0; col < numColumns; ++col) {
-            
-            if (rand() % 100 == 0) {
+            if (getRand<unsigned int>(0, 100-1) == 0) {
                 fallSpeeds[col] = generateRandomFloat(MIN_FALL_SPEED, MAX_FALL_SPEED);
             }
-            
             fallPositions[col] -= fallSpeeds[col] * deltaTime;
-            
-            
-            if (fallPositions[col] < 0) {
-                fallPositions[col] += numRows;
-                trailLengths[col] = rand() % (MAX_TRAIL_LENGTH - MIN_TRAIL_LENGTH + 1) + MIN_TRAIL_LENGTH;
-                isHighlightColumn[col] = (rand() % 15 == 0);
-                columnBrightness[col] = generateRandomFloat(0.7f, 1.3f);
+            if (fallPositions[col] < -trailLengths[col]) { 
+                fallPositions[col] = numRows; 
+                trailLengths[col] = getRand<int>(MIN_TRAIL_LENGTH, MAX_TRAIL_LENGTH-1);
+                isHighlightColumn[col] = (getRand<int>(0, 14) == 0); 
+                columnBrightness[col] = getRand<float>(0.7f, 1.3f);
             }
             
             
@@ -326,8 +338,7 @@ private:
             charSurface = TTF_RenderUTF8_Blended(matrixFont, "#", color);
             if (!charSurface) return;
         }
-        
-        
+               
         SDL_Surface* rgbaSurface = SDL_ConvertSurfaceFormat(charSurface, SDL_PIXELFORMAT_RGBA32, 0);
         SDL_FreeSurface(charSurface);
         if (!rgbaSurface) return;
