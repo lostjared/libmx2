@@ -19,16 +19,16 @@
       if (err != GL_NO_ERROR) \
         printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
 
-// Helper function to find shader files from multiple locations
+
 static std::string findShaderFile(const std::string &filename) {
     namespace fs = std::filesystem;
     
     std::vector<std::string> searchPaths = {
-        filename,  // Try exact path first
+        filename,  
         "data/" + filename,
         "./data/" + filename,
         "../data/" + filename,
-        "../../libmx/gl_mxmod/data/" + filename  // Relative to build directory
+        "../../libmx/gl_mxmod/data/" + filename  
     };
     
     for (const auto &path : searchPaths) {
@@ -64,11 +64,13 @@ public:
     glm::vec3 modelCenter = glm::vec3(0.0f);
     float modelRadius = 1.0f;
     float baseCameraDistance = 50.0f;
+    bool compress = true;
 
-    ModelViewer(const std::string &filename, const std::string &text, std::string text_path) : rot_x{1.0f, true}, rot_y{1.0f, true}, rot_z{0.0f, false}, light(0.0, 10.0, 5.0) {
+    ModelViewer(const std::string &filename, const std::string &text, std::string text_path, bool compress_) : rot_x{1.0f, true}, rot_y{1.0f, true}, rot_z{0.0f, false}, light(0.0, 10.0, 5.0) {
         this->filename = filename;
         this->text = text;
         this->texture_path = text_path;    
+        this->compress = compress_;
     }
     virtual ~ModelViewer() override {
         glDeleteTextures(1, &texture);
@@ -81,7 +83,7 @@ public:
             std::cout << "Viewer: Texture default: " << texture_path << "\n";
         }
         mx::system_out << "Viewer: Loading files in path: " << win->util.getFilePath("data") << "\n";
-        if(!obj_model.openModel(filename, true)) { 
+        if(!obj_model.openModel(filename, compress)) { 
             throw mx::Exception("Error loading model...");
         }
         mx::system_out << "mx: Loaded Meshes:  " << obj_model.meshes.size() << "\n";
@@ -269,12 +271,12 @@ public:
                     case SDLK_UP:
                         toggle(rot_y);
                     break;
-                    case SDLK_a: // Zoom in
+                    case SDLK_a: 
                        outsideCameraPos.z -= modelRadius * 0.1f;
                        if (outsideCameraPos.z < modelCenter.z + modelRadius * 0.5f) 
                            outsideCameraPos.z = modelCenter.z + modelRadius * 0.5f;
                     break;
-                    case SDLK_s: // Zoom out
+                    case SDLK_s: 
                        outsideCameraPos.z += modelRadius * 0.1f;
                        if (outsideCameraPos.z > modelCenter.z + modelRadius * 10.0f) 
                            outsideCameraPos.z = modelCenter.z + modelRadius * 10.0f;
@@ -320,9 +322,9 @@ private:
 
 class MainWindow : public gl::GLWindow {
 public:
-    MainWindow(const std::string &path, const std::string &filename, const std::string &text, const std::string &tpath, int tw, int th) : gl::GLWindow("Model Viewer", tw, th) {
+    MainWindow(const std::string &path, const std::string &filename, const std::string &text, const std::string &tpath, int tw, int th, bool compress) : gl::GLWindow("Model Viewer", tw, th) {
         setPath(path);
-        setObject(new ModelViewer(filename, text, tpath));
+        setObject(new ModelViewer(filename, text, tpath, compress));
 		object->load(this);
     }
     
@@ -366,13 +368,16 @@ int main(int argc, char **argv) {
           .addOptionSingleValue('t', "texture file")
           .addOptionDoubleValue(123, "texture", "texture file")
           .addOptionSingleValue('T', "texture path")
-          .addOptionSingle('a', "Aboolute Path");
+          .addOptionSingle('a', "Aboolute Path")
+          .addOptionDoubleValue(256, "compress", "compress true, compress false");
+
     Argument<std::string> arg;
     std::string path;
     int value = 0;
     int tw = 1440, th = 1080;
     std::string model_file;
     std::string text_file, texture_path;
+    bool compress = true;
     try {
         while((value = parser.proc(arg)) != -1) {
             switch(value) {
@@ -411,6 +416,12 @@ int main(int argc, char **argv) {
                 case 'T':
                     texture_path = arg.arg_value;
                     break;
+                case 256:
+                    if(arg.arg_value == "true")
+                        compress = true;
+                    else
+                        compress = false;
+                    break;
 
             }
         }
@@ -428,7 +439,7 @@ int main(int argc, char **argv) {
         path = ".";
     }
     try {
-        MainWindow main_window(path, model_file, text_file,texture_path,  tw, th);
+        MainWindow main_window(path, model_file, text_file,texture_path,  tw, th, compress);
         main_window.loop();
     } catch(const mx::Exception &e) {
         mx::system_err << "mx: Exception: " << e.text() << "\n";
