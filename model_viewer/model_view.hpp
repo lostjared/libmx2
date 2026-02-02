@@ -1,7 +1,4 @@
-/*
-    Coded by Jared Bruni
-    (C) 2026 GPL v3
-*/
+
 #ifndef MODEL_VIEW_HPP
 #define MODEL_VIEW_HPP
 
