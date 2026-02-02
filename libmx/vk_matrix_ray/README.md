@@ -1,3 +1,3 @@
 # Vulkan Ray casting Demo
 
-<img width="1280" height="720" alt="image" src="https://github.com/user-attachments/assets/42455796-e96e-4e32-bfc6-7e787b8e41c3" />
+<img width="1280" height="720" alt="image" src="https://github.com/lostjared/libmx2/blob/main/libmx/vk_matrix_ray/matrix.png" />
