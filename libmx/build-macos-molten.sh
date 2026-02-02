@@ -77,7 +77,7 @@ cmake .. \
     -DCMAKE_BUILD_TYPE=Release \
     -DMOLTEN=ON \
     -DVULKAN=OFF \
-    -DOPENGL=ON \
+    -DOPENGL=OFF \
     -DMIXER=ON \
     -DEXAMPLES=ON \
     -DMOLTEN_PATH="$MOLTEN_PATH" \
