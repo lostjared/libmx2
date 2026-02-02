@@ -6,6 +6,22 @@ find_package(Threads REQUIRED)
 if(NOT PKG_CONFIG_FOUND)
     message(FATAL_ERROR "pkg-config not found. Please install pkg-config.")
 endif()
+
+# Handle FFmpeg with homebrew on macOS
+if(APPLE)
+    # Try to find homebrew FFmpeg
+    execute_process(
+        COMMAND brew --prefix ffmpeg
+        OUTPUT_VARIABLE HOMEBREW_FFMPEG_PREFIX
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+    if(HOMEBREW_FFMPEG_PREFIX)
+        message(STATUS "Found homebrew FFmpeg at: ${HOMEBREW_FFMPEG_PREFIX}")
+        set(ENV{PKG_CONFIG_PATH} "${HOMEBREW_FFMPEG_PREFIX}/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
+    endif()
+endif()
+
 pkg_check_modules(FFMPEG REQUIRED IMPORTED_TARGET
     libavcodec
     libavformat
