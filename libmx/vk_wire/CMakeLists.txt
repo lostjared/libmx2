@@ -8,14 +8,10 @@ target_include_directories(vk_wire PRIVATE
 )
 
 if(MOLTEN)
-link_directories(${MOLTEN_PATH}/lib)
-target_link_libraries(vk_wire PRIVATE
-    "-framework QuartzCore"
-    "-framework Metal"
-    "-framework IOSurface"
-    "-framework CoreGraphics")
-target_link_libraries(vk_wire PUBLIC SDL2::SDL2 SDL2::SDL2main SDL2_ttf::SDL2_ttf mx ${IMG_LIB} ${GL_LIB} ${MIXER_LIB} ${VK_LIB})
+    target_link_directories(vk_wire PRIVATE ${MOLTEN_LINK_DIR})
+    target_link_libraries(vk_wire PRIVATE ${MOLTEN_FRAMEWORKS})
+    target_link_libraries(vk_wire PUBLIC SDL2::SDL2 SDL2::SDL2main SDL2_ttf::SDL2_ttf mx ${IMG_LIB} ${GL_LIB} ${MIXER_LIB} ${VK_LIB})
 else()
-target_link_libraries(vk_wire PUBLIC SDL2::SDL2 SDL2::SDL2main SDL2_ttf::SDL2_ttf mx volk ${IMG_LIB} ${GL_LIB} ${MIXER_LIB} ${VK_LIB})
+    target_link_libraries(vk_wire PUBLIC SDL2::SDL2 SDL2::SDL2main SDL2_ttf::SDL2_ttf mx volk ${IMG_LIB} ${GL_LIB} ${MIXER_LIB} ${VK_LIB})
 endif()
 
