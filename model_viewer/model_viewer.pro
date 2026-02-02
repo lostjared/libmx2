@@ -17,3 +17,6 @@ QT += widgets
 # Input
 HEADERS += model_view.hpp
 SOURCES += main.cpp model_view.cpp
+
+# Resource files
+RESOURCES += resources.qrc
