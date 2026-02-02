@@ -209,12 +209,12 @@ namespace console {
         bool enterCallbackSet = false;
         void clearText();
         
-        int visibleLineCount = 0;            // recalculated each reflow
-        int scrollOffset = 0;                // how many lines up from bottom
+        int visibleLineCount = 0;            
+        int scrollOffset = 0;                
         bool scrollDragging = false;
         int scrollDragStartY = 0;
         int scrollDragStartOffset = 0;
-        SDL_Rect scrollbarRect = {0, 0, 0, 0}; // Cached rect for hit testing
+        SDL_Rect scrollbarRect = {0, 0, 0, 0}; 
     };
 
     class GLConsole {

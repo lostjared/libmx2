@@ -53,7 +53,7 @@ namespace mx {
             if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
                 throw mx::Exception("Could not initalize: " + std::string(Mix_GetError()));
             }
-            //mx::system_out << "mx: Mixer: initalized...\n";
+            
             init_ = true;
         }
 

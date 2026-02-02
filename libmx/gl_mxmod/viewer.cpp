@@ -12,11 +12,34 @@
 #include<tuple>
 #include<limits>
 #include<cmath>
+#include<filesystem>
 
 #define CHECK_GL_ERROR() \
     { GLenum err = glGetError(); \
       if (err != GL_NO_ERROR) \
         printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
+
+// Helper function to find shader files from multiple locations
+static std::string findShaderFile(const std::string &filename) {
+    namespace fs = std::filesystem;
+    
+    std::vector<std::string> searchPaths = {
+        filename,  // Try exact path first
+        "data/" + filename,
+        "./data/" + filename,
+        "../data/" + filename,
+        "../../libmx/gl_mxmod/data/" + filename  // Relative to build directory
+    };
+    
+    for (const auto &path : searchPaths) {
+        if (fs::exists(path)) {
+            mx::system_out << "Found shader: " << path << "\n";
+            return path;
+        }
+    }
+    
+    throw mx::Exception("Could not find shader file: " + filename);
+}
 
 class ModelViewer : public gl::GLObject {
 public:
@@ -93,7 +116,7 @@ public:
         mx::system_out << "mx: Model center: (" << modelCenter.x << ", " << modelCenter.y << ", " << modelCenter.z << ")\n";
         mx::system_out << "mx: Model radius: " << modelRadius << ", Camera distance: " << baseCameraDistance << "\n";
 
-        if (!shaderProgram.loadProgram(win->util.getFilePath("data/tri.vert"), win->util.getFilePath("data/tri.frag"))) {
+        if (!shaderProgram.loadProgram(findShaderFile("tri.vert"), findShaderFile("tri.frag"))) {
             throw mx::Exception("Failed to load shader program");
         }
         shaderProgram.useProgram();
@@ -114,9 +137,15 @@ public:
         shaderProgram.setUniform("projection", projection);
 
         if(text.find(".png") != std::string::npos) {
-            texture = gl::loadTexture(text);
-            std::vector<GLuint> textures {texture};
-            obj_model.setTextures(textures);
+            try {
+                texture = gl::loadTexture(text);
+                std::vector<GLuint> textures {texture};
+                obj_model.setTextures(textures);
+            } catch (const mx::Exception &e) {
+                mx::system_err << "Warning: Failed to load PNG from '" << text << "': " << e.text() << "\n";
+                mx::system_err << "Attempting to load as color name or default texture...\n";
+                obj_model.setTextures(win, text, texture_path);
+            }
         } else {
             obj_model.setTextures(win, text, texture_path);
         }

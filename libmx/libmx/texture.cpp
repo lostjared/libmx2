@@ -8,20 +8,13 @@
 
 namespace mx {
     
-   // Texture::Texture(const Texture &tex) : texture{tex.texture}, width_{tex.width_}, height_{tex.height_} {}
+   
  
     Texture::Texture(Texture &&tex) : texture{tex.texture}, width_{tex.width_}, height_{tex.height_} {
         tex.texture = nullptr;
     }
  
-/*
-     Texture &Texture::operator=(const Texture &tex) {
-        texture = tex.texture;
-        width_ = tex.width_;
-        height_ = tex.height_;
-        return *this;
-    }
-*/
+
     Texture &Texture::operator=(Texture &&tex) {
         texture = tex.texture;
         tex.texture = nullptr;

@@ -52,13 +52,10 @@ public:
         drawBombs(win);
         drawBucket(win);
         drawScore(win);
-
         update(win);
-
         if (gameOver) {
             drawGameOver(win);
-        }
-        
+        }     
     }
 
     virtual void event(mx::mxWindow* win, SDL_Event& e) override {

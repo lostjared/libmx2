@@ -941,13 +941,35 @@ namespace mx {
             std::getline(file, line);
             if (file && !line.empty()) {
                 std::string final_path = prefix + "/" + line;
-                GLuint texid = gl::loadTexture(final_path);
-                text.push_back(texid);
-                mx::system_out << "mx: Loaded Texture: " << texid << " -> " << final_path << "\n";
+                try {
+                    GLuint texid = gl::loadTexture(final_path);
+                    text.push_back(texid);
+                    mx::system_out << "mx: Loaded Texture: " << texid << " -> " << final_path << "\n";
+                } catch (const mx::Exception &e) {
+                    mx::system_err << "Warning: Failed to load texture from '" << final_path << "': " << e.text() << "\n";
+                    mx::system_err << "Using default white texture as fallback\n";
+                    
+                    GLuint placeholderTexture = 0;
+                    glGenTextures(1, &placeholderTexture);
+                    glBindTexture(GL_TEXTURE_2D, placeholderTexture);
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                    unsigned char whitePixel[] = {255, 255, 255, 255};
+                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, whitePixel);
+                    glBindTexture(GL_TEXTURE_2D, 0);
+                    text.push_back(placeholderTexture);
+                    mx::system_out << "mx: Using placeholder texture: " << placeholderTexture << "\n";
+                }
             }
         }
         file.close();
-        setTextures(text);
+        if (!text.empty()) {
+            setTextures(text);
+        } else {
+            mx::system_err << "Warning: No valid textures loaded, model may not render correctly\n";
+        }
     }
 
     void Model::saveOriginal() { for (auto &m : meshes) m.saveOriginal(); }

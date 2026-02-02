@@ -19,15 +19,12 @@ namespace mx {
         }
         
         Font::Font(TTF_Font *tf) : the_font{tf} {}
-        //Font::Font(const Font &f) : the_font(f.the_font) {}
+        
         Font::Font(Font &&f) : the_font{f.the_font} {
             f.the_font = nullptr;
         }
         
-        /*Font &Font::operator=(const Font &f) {
-            the_font = f.the_font;
-            return *this;
-        }*/
+        
             
         Font &Font::operator=(Font && f) {
             if(this != &f) {
