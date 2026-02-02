@@ -245,7 +245,7 @@ namespace mx {
         }
 
 #ifdef WITH_MOLTEN
-        // MoltenVK portability extensions
+        
         extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
         extensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
 #endif
@@ -371,7 +371,7 @@ namespace mx {
         };
 
 #ifdef WITH_MOLTEN
-        // Check if portability subset extension is available (required for MoltenVK)
+        
         uint32_t extensionCount;
         vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, nullptr);
         std::vector<VkExtensionProperties> availableExtensions(extensionCount);

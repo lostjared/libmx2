@@ -217,7 +217,7 @@ namespace mx {
         }
 
 #ifdef WITH_MOLTEN
-        // MoltenVK portability extensions
+        
         extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
         extensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
 #endif
@@ -341,7 +341,7 @@ namespace mx {
         };
 
 #ifdef WITH_MOLTEN
-        // Check if portability subset extension is available (required for MoltenVK)
+        
         uint32_t extensionCount;
         vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, nullptr);
         std::vector<VkExtensionProperties> availableExtensions(extensionCount);
@@ -653,48 +653,48 @@ namespace mx {
     
     void VKWindow::createVertexBuffer() {
         std::vector<Vertex> vertices = {
-            // Base (square on bottom, y = -0.5)
-            { { -0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f }, { 0.0f, -1.0f, 0.0f } }, // 0: back-left
-            { {  0.5f, -0.5f, -0.5f }, { 1.0f, 1.0f }, { 0.0f, -1.0f, 0.0f } }, // 1: back-right
-            { {  0.5f, -0.5f,  0.5f }, { 1.0f, 0.0f }, { 0.0f, -1.0f, 0.0f } }, // 2: front-right
-            { { -0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f } }, // 3: front-left
+            
+            { { -0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f }, { 0.0f, -1.0f, 0.0f } }, 
+            { {  0.5f, -0.5f, -0.5f }, { 1.0f, 1.0f }, { 0.0f, -1.0f, 0.0f } }, 
+            { {  0.5f, -0.5f,  0.5f }, { 1.0f, 0.0f }, { 0.0f, -1.0f, 0.0f } }, 
+            { { -0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f } }, 
 
-            // Front face (separate vertices with proper texture coords)
-            { { -0.5f, -0.5f,  0.5f }, { 0.0f, 1.0f }, { 0.0f, 0.707f, 0.707f } }, // 4: base-left
-            { {  0.5f, -0.5f,  0.5f }, { 1.0f, 1.0f }, { 0.0f, 0.707f, 0.707f } }, // 5: base-right
-            { {  0.0f,  0.5f,  0.0f }, { 0.5f, 0.0f }, { 0.0f, 0.707f, 0.707f } }, // 6: apex
+            
+            { { -0.5f, -0.5f,  0.5f }, { 0.0f, 1.0f }, { 0.0f, 0.707f, 0.707f } }, 
+            { {  0.5f, -0.5f,  0.5f }, { 1.0f, 1.0f }, { 0.0f, 0.707f, 0.707f } }, 
+            { {  0.0f,  0.5f,  0.0f }, { 0.5f, 0.0f }, { 0.0f, 0.707f, 0.707f } }, 
 
-            // Right face (separate vertices with proper texture coords)
-            { {  0.5f, -0.5f,  0.5f }, { 0.0f, 1.0f }, { 0.707f, 0.707f, 0.0f } }, // 7: base-left
-            { {  0.5f, -0.5f, -0.5f }, { 1.0f, 1.0f }, { 0.707f, 0.707f, 0.0f } }, // 8: base-right
-            { {  0.0f,  0.5f,  0.0f }, { 0.5f, 0.0f }, { 0.707f, 0.707f, 0.0f } }, // 9: apex
+            
+            { {  0.5f, -0.5f,  0.5f }, { 0.0f, 1.0f }, { 0.707f, 0.707f, 0.0f } }, 
+            { {  0.5f, -0.5f, -0.5f }, { 1.0f, 1.0f }, { 0.707f, 0.707f, 0.0f } }, 
+            { {  0.0f,  0.5f,  0.0f }, { 0.5f, 0.0f }, { 0.707f, 0.707f, 0.0f } }, 
 
-            // Back face (separate vertices with proper texture coords)
-            { {  0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f }, { 0.0f, 0.707f, -0.707f } }, // 10: base-left
-            { { -0.5f, -0.5f, -0.5f }, { 1.0f, 1.0f }, { 0.0f, 0.707f, -0.707f } }, // 11: base-right
-            { {  0.0f,  0.5f,  0.0f }, { 0.5f, 0.0f }, { 0.0f, 0.707f, -0.707f } }, // 12: apex
+            
+            { {  0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f }, { 0.0f, 0.707f, -0.707f } }, 
+            { { -0.5f, -0.5f, -0.5f }, { 1.0f, 1.0f }, { 0.0f, 0.707f, -0.707f } }, 
+            { {  0.0f,  0.5f,  0.0f }, { 0.5f, 0.0f }, { 0.0f, 0.707f, -0.707f } }, 
 
-            // Left face (separate vertices with proper texture coords)
-            { { -0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f }, { -0.707f, 0.707f, 0.0f } }, // 13: base-left
-            { { -0.5f, -0.5f,  0.5f }, { 1.0f, 1.0f }, { -0.707f, 0.707f, 0.0f } }, // 14: base-right
-            { {  0.0f,  0.5f,  0.0f }, { 0.5f, 0.0f }, { -0.707f, 0.707f, 0.0f } }  // 15: apex
+            
+            { { -0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f }, { -0.707f, 0.707f, 0.0f } }, 
+            { { -0.5f, -0.5f,  0.5f }, { 1.0f, 1.0f }, { -0.707f, 0.707f, 0.0f } }, 
+            { {  0.0f,  0.5f,  0.0f }, { 0.5f, 0.0f }, { -0.707f, 0.707f, 0.0f } }  
         };
 
         std::vector<uint16_t> indices = {
-            // Base (two triangles)
+            
             0, 2, 1,
             2, 0, 3,
             
-            // Front face (clockwise when viewed from front)
+            
             4, 6, 5,
             
-            // Right face (clockwise when viewed from right)
+            
             7, 9, 8,
             
-            // Back face (clockwise when viewed from back)
+            
             10, 12, 11,
             
-            // Left face (clockwise when viewed from left)
+            
             13, 15, 14
         };
         VkDeviceSize vertexBufferSize = sizeof(vertices[0]) * vertices.size();
@@ -811,7 +811,7 @@ namespace mx {
             throw mx::Exception("SDL_Surface is null!");
         }
 
-        VkDeviceSize imageSize = surface->w * surface->h * 4; // Assuming 32-bit pixels
+        VkDeviceSize imageSize = surface->w * surface->h * 4; 
         width = surface->w;
         height = surface->h;
 
@@ -996,7 +996,7 @@ namespace mx {
         viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         viewInfo.image = image;
         viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        viewInfo.format = format; // Use the passed format parameter
+        viewInfo.format = format; 
         viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
         viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
         viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;

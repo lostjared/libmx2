@@ -234,7 +234,7 @@ namespace mx {
         }
 
 #ifdef WITH_MOLTEN
-        // MoltenVK portability extensions
+        
         extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
         extensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
 #endif
@@ -360,7 +360,7 @@ namespace mx {
         };
 
 #ifdef WITH_MOLTEN
-        // Check if portability subset extension is available (required for MoltenVK)
+        
         uint32_t extensionCount;
         vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, nullptr);
         std::vector<VkExtensionProperties> availableExtensions(extensionCount);
@@ -626,7 +626,7 @@ namespace mx {
             swapChain = VK_NULL_HANDLE;
         }
         
-        // Cleanup depth resources
+        
         if (depthImageView != VK_NULL_HANDLE) {
             vkDestroyImageView(device, depthImageView, nullptr);
             depthImageView = VK_NULL_HANDLE;
@@ -1266,19 +1266,19 @@ namespace mx {
             
             std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
             
-            // Position attribute
+            
             attributeDescriptions[0].binding = 0;
             attributeDescriptions[0].location = 0;  
             attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT; 
             attributeDescriptions[0].offset = offsetof(Vertex, pos);
 
-            // Texture coordinate attribute
+            
             attributeDescriptions[1].binding = 0;
             attributeDescriptions[1].location = 1;
             attributeDescriptions[1].format = VK_FORMAT_R32G32_SFLOAT;  
             attributeDescriptions[1].offset = offsetof(Vertex, texCoord);
 
-            // Normal attribute
+            
             attributeDescriptions[2].binding = 0;
             attributeDescriptions[2].location = 2;
             attributeDescriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;

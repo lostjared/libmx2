@@ -269,7 +269,7 @@ namespace mx {
         }
 
 #ifdef WITH_MOLTEN
-        // MoltenVK portability extensions
+        
         extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
         extensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
 #endif
@@ -395,7 +395,7 @@ namespace mx {
         };
 
 #ifdef WITH_MOLTEN
-        // Check if portability subset extension is available (required for MoltenVK)
+        
         uint32_t extensionCount;
         vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, nullptr);
         std::vector<VkExtensionProperties> availableExtensions(extensionCount);
@@ -726,24 +726,24 @@ namespace mx {
     }
 
     void VKWindow::createVertexBuffer() {
-        // Create a full-screen quad for raycasting
-        // Two triangles covering the entire screen with texture coords 0-1
+        
+        
         std::vector<Vertex> vertices = {
-            // pos (x,y,z), texCoord (u,v), normal (nx,ny,nz)
-            {{-1.0f, -1.0f, 0.0f}, {0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}},  // bottom-left
-            {{ 1.0f, -1.0f, 0.0f}, {1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}},  // bottom-right
-            {{ 1.0f,  1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}},  // top-right
-            {{-1.0f,  1.0f, 0.0f}, {0.0f, 1.0f}, {0.0f, 0.0f, 1.0f}},  // top-left
+            
+            {{-1.0f, -1.0f, 0.0f}, {0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}},  
+            {{ 1.0f, -1.0f, 0.0f}, {1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}},  
+            {{ 1.0f,  1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}},  
+            {{-1.0f,  1.0f, 0.0f}, {0.0f, 1.0f}, {0.0f, 0.0f, 1.0f}},  
         };
         
         std::vector<uint32_t> indices = {
-            0, 1, 2,  // first triangle
-            2, 3, 0   // second triangle
+            0, 1, 2,  
+            2, 3, 0   
         };
         
         indexCount = static_cast<uint32_t>(indices.size());
         
-        // Create vertex buffer
+        
         VkDeviceSize vertexBufferSize = sizeof(Vertex) * vertices.size();
         
         VkBuffer stagingBuffer;
@@ -765,7 +765,7 @@ namespace mx {
         vkDestroyBuffer(device, stagingBuffer, nullptr);
         vkFreeMemory(device, stagingBufferMemory, nullptr);
         
-        // Create index buffer
+        
         VkDeviceSize indexBufferSize = sizeof(uint32_t) * indices.size();
         
         createBuffer(indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
@@ -1138,9 +1138,9 @@ namespace mx {
     }
 
     void VKWindow::setupFloorTextureImage(uint32_t w, uint32_t h) {
-        // Create a simple 1x1 default texture for floor
+        
         VkDeviceSize imageSize = w * h * 4;
-        std::vector<uint8_t> pixels(imageSize, 128); // Gray default
+        std::vector<uint8_t> pixels(imageSize, 128); 
         
         VkBuffer stagingBuffer;
         VkDeviceMemory stagingBufferMemory;
@@ -1190,7 +1190,7 @@ namespace mx {
     void VKWindow::createDescriptorPool() {
         std::array<VkDescriptorPoolSize, 2> poolSizes{};
         poolSizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        poolSizes[0].descriptorCount = static_cast<uint32_t>(swapChainImages.size() * 2); // 2 samplers per set
+        poolSizes[0].descriptorCount = static_cast<uint32_t>(swapChainImages.size() * 2); 
         poolSizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         poolSizes[1].descriptorCount = static_cast<uint32_t>(swapChainImages.size());
 

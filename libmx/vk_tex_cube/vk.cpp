@@ -229,7 +229,7 @@ namespace mx {
         }
 
 #ifdef WITH_MOLTEN
-        // MoltenVK portability extensions
+        
         extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
         extensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
 #endif
@@ -355,7 +355,7 @@ namespace mx {
         };
 
 #ifdef WITH_MOLTEN
-        // Check if portability subset extension is available (required for MoltenVK)
+        
         uint32_t extensionCount;
         vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, nullptr);
         std::vector<VkExtensionProperties> availableExtensions(extensionCount);
@@ -712,17 +712,17 @@ namespace mx {
         };
 
         std::vector<uint16_t> indices = {
-            // Front face
+            
              0,  1,  2,   2,  3,  0,
-             // Back face
+             
               4,  5,  6,   6,  7,  4,
-              // Left face
+              
                8,  9, 10,  10, 11,  8,
-               // Right face
+               
                12, 13, 14,  14, 15, 12,
-               // Top face
+               
                16, 17, 18,  18, 19, 16,
-               // Bottom face
+               
                20, 21, 22,  22, 23, 20,
         };
         VkDeviceSize vertexBufferSize = sizeof(vertices[0]) * vertices.size();
@@ -1024,7 +1024,7 @@ namespace mx {
         viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         viewInfo.image = image;
         viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        viewInfo.format = format; // Use the passed format parameter
+        viewInfo.format = format; 
         viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
         viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
         viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -1148,13 +1148,13 @@ namespace mx {
         try {
             std::cout << ">> [DescriptorSets] Starting descriptor set creation...\n";
 
-            // ... [Keep your existing validation checks here] ...
+            
             if (instance == VK_NULL_HANDLE) throw mx::Exception("Vulkan instance is null!");
             if (device == VK_NULL_HANDLE) throw mx::Exception("Vulkan device is null!");
             if (descriptorSetLayout == VK_NULL_HANDLE) throw mx::Exception("Descriptor set layout is null!");
             if (descriptorPool == VK_NULL_HANDLE) throw mx::Exception("Descriptor pool is null!");
 
-            // 1. Allocate the Sets
+            
             std::vector<VkDescriptorSetLayout> layouts(swapChainImages.size(), descriptorSetLayout);
             VkDescriptorSetAllocateInfo allocInfo = {};
             allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -1261,7 +1261,7 @@ namespace mx {
                 
                 std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
                 
-                // Binding 0: Texture sampler
+                
                 descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
                 descriptorWrites[0].dstSet = bgDescriptorSets[i];
                 descriptorWrites[0].dstBinding = 0;
@@ -1270,7 +1270,7 @@ namespace mx {
                 descriptorWrites[0].descriptorCount = 1;
                 descriptorWrites[0].pImageInfo = &imageInfo;
 
-                // Binding 1: Uniform buffer
+                
                 descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
                 descriptorWrites[1].dstSet = bgDescriptorSets[i];
                 descriptorWrites[1].dstBinding = 1;
