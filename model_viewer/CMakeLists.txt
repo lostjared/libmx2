@@ -19,7 +19,11 @@ set(HEADERS
     model_view.hpp
 )
 
-add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
+set(RESOURCES
+    resources.qrc
+)
+
+add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS} ${RESOURCES})
 
 target_link_libraries(${PROJECT_NAME}
     Qt6::Core
