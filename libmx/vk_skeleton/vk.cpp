@@ -2177,7 +2177,7 @@ namespace mx {
     void VKSprite::createQuadBuffer() {
         if (quadBufferCreated) return;
         
-        // Unit quad - will be transformed by push constants
+        
         SpriteVertex vertices[] = {
             {{0.0f, 0.0f}, {0.0f, 0.0f}},
             {{1.0f, 0.0f}, {1.0f, 0.0f}},
@@ -2230,7 +2230,7 @@ namespace mx {
         createSpriteTexture(rgbaSurface);
         SDL_FreeSurface(rgbaSurface);    
         createSampler();
-        createQuadBuffer();  // Create shared quad buffer once
+        createQuadBuffer();  
         if (!fragmentShaderPath.empty()) {
             auto shaderCode = readShaderFile(fragmentShaderPath);
             fragmentShaderModule = createShaderModule(shaderCode);
@@ -2294,7 +2294,7 @@ namespace mx {
     }
     
     void VKSprite::drawSprite(int x, int y, float scaleX, float scaleY, float rotation) {
-        // For rotation, we just ignore it and use rect for now (rotation requires different approach)
+        
         drawSpriteRect(x, y, static_cast<int>(spriteWidth * scaleX), static_cast<int>(spriteHeight * scaleY));
     }
     
@@ -2302,7 +2302,7 @@ namespace mx {
         if (!spriteLoaded) {
             throw mx::Exception("VKSprite::drawSpriteRect called before sprite was loaded");
         }
-        // Just queue the draw command - no buffer allocation!
+        
         drawQueue.push_back({static_cast<float>(x), static_cast<float>(y), 
                             static_cast<float>(w), static_cast<float>(h)});
     }
@@ -2321,13 +2321,13 @@ namespace mx {
         vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
                                0, 1, &descriptorSet, 0, nullptr);
         
-        // Bind shared quad buffer once
+        
         VkBuffer vertexBuffers[] = {quadVertexBuffer};
         VkDeviceSize offsets[] = {0};
         vkCmdBindVertexBuffers(cmdBuffer, 0, 1, vertexBuffers, offsets);
         vkCmdBindIndexBuffer(cmdBuffer, quadIndexBuffer, 0, VK_INDEX_TYPE_UINT16);
         
-        // Draw each sprite with push constants (no buffer allocation!)
+        
         for (const auto &cmd : drawQueue) {
             struct SpritePushConstants {
                 float screenWidth;
@@ -2355,7 +2355,7 @@ namespace mx {
     }
     
     void VKSprite::clearQueue() {
-        drawQueue.clear();  // Just clear the vector - no GPU wait!
+        drawQueue.clear();  
     }
     
     void VKSprite::createDescriptorPool() {
@@ -2804,7 +2804,7 @@ namespace mx {
             VkPushConstantRange pushConstantRange{};
             pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
             pushConstantRange.offset = 0;
-            pushConstantRange.size = sizeof(float) * 10;  // screenSize(2) + spritePos(2) + spriteSize(2) + params(4)
+            pushConstantRange.size = sizeof(float) * 10;  
 
             VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
             pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;

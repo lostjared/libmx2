@@ -225,9 +225,9 @@ namespace mx {
             float texCoord[2];
         };
         
-        // Lightweight draw command - no buffer allocation
+        
         struct SpriteDrawCmd {
-            float x, y, w, h;  // Screen position and size
+            float x, y, w, h;  
         };
         
         VkDevice device = VK_NULL_HANDLE;
@@ -243,9 +243,9 @@ namespace mx {
         VkShaderModule fragmentShaderModule = VK_NULL_HANDLE;
         bool hasCustomShader = false;
         glm::vec4 shaderParams = glm::vec4(0.0f);
-        std::vector<SpriteDrawCmd> drawQueue;  // Lightweight draw queue
+        std::vector<SpriteDrawCmd> drawQueue;  
         
-        // Shared quad buffer - created once
+        
         VkBuffer quadVertexBuffer = VK_NULL_HANDLE;
         VkDeviceMemory quadVertexBufferMemory = VK_NULL_HANDLE;
         VkBuffer quadIndexBuffer = VK_NULL_HANDLE;
