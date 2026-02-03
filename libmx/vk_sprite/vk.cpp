@@ -2213,14 +2213,13 @@ namespace mx {
                 float spritePosY;
                 float spriteSizeW;
                 float spriteSizeH;
+                float padding1; 
+                float padding2;
                 float params[4];
             } pc {
-                static_cast<float>(screenWidth),
-                static_cast<float>(screenHeight),
-                cmd.x,
-                cmd.y,
-                cmd.w,
-                cmd.h,
+                (float)screenWidth, (float)screenHeight,
+                cmd.x, cmd.y, cmd.w, cmd.h,
+                0.0f, 0.0f, 
                 {shaderParams.x, shaderParams.y, shaderParams.z, shaderParams.w}
             };
             

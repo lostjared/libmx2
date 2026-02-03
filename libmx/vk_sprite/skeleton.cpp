@@ -22,18 +22,26 @@ public:
         }
     }
     
+    static constexpr int block_w = 8;
+    static constexpr int block_h = 8;
+
     void proc() override {
-        int grid_w = getWidth() / 32;
-        int grid_h = getHeight() /  16;
+        
+        int grid_w = getWidth() / block_w;
+        int grid_h = getHeight() /  block_h;
         static std::random_device rd;
         static std::mt19937 gen(rd());
         static std::uniform_int_distribution<> dis(0, 8);
+        float currentTime = static_cast<float>(SDL_GetTicks()) / 1000.0f;
         for(int i = 0; i < grid_w; ++i) {
             for(int z = 0; z < grid_h; ++z) {
                 int blockIndex = dis(gen);
-                if(blocks[blockIndex]) {
-                    blocks[blockIndex]->drawSpriteRect(i*32, z*16, 32, 16);
-                }
+                float px = i * block_w;
+                float py = z * block_h;
+                float spriteTime = currentTime + (z * 0.02f); 
+                spriteTime += (rand() % 100 / 1000.0f); 
+                blocks[blockIndex]->setShaderParams(0.0f, 0.0f, 1.0f, spriteTime);
+                blocks[blockIndex]->drawSpriteRect(px, py, block_w, block_h);
             }
         }
         printText("-[ Hello World Random Sprites ]-", 50, 50, {255, 255, 255, 255});

@@ -1,21 +1,26 @@
 #version 450
 
-layout(location = 0) in vec3 inPosition;
-layout(location = 1) in float inSize;
-layout(location = 2) in vec4 inColor;
+layout(location = 0) in vec2 inPosition;  // Must match your C++ Vertex struct
+layout(location = 1) in vec2 inTexCoord;
 
-layout(location = 0) out vec4 fragColor;
+layout(location = 0) out vec2 fragTexCoord;
 
-layout(binding = 1) uniform UniformBufferObject {
-    mat4 model;
-    mat4 view;
-    mat4 proj;
-    vec4 params;
-    vec4 color;
-} ubo;
+layout(push_constant) uniform PushConstants {
+    float screenWidth;
+    float screenHeight;
+    float spritePosX;
+    float spritePosY;
+    float spriteSizeW;
+    float spriteSizeH;
+    float padding1; 
+    float padding2;
+    float params[4];
+} pc;
 
 void main() {
-    gl_Position = ubo.proj * ubo.view * ubo.model * vec4(inPosition, 1.0);
-    gl_PointSize = inSize;
-    fragColor = inColor;
+    vec2 screenPos = vec2(pc.spritePosX, pc.spritePosY) + inPosition * vec2(pc.spriteSizeW, pc.spriteSizeH);
+    vec2 ndc = (screenPos / vec2(pc.screenWidth, pc.screenHeight)) * 2.0 - 1.0;
+    
+    gl_Position = vec4(ndc, 0.0, 1.0);
+    fragTexCoord = inTexCoord;
 }
