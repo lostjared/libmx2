@@ -66,8 +66,10 @@ namespace mx {
         alignas(16) glm::mat4 model;
         alignas(16) glm::mat4 view;
         alignas(16) glm::mat4 proj;
-        alignas(16) glm::vec4 params; 
+        alignas(16) glm::vec4 params;      
         alignas(16) glm::vec4 color;  
+        alignas(16) glm::vec4 playerPos;   
+        alignas(16) glm::vec4 playerPlane; 
     };
 
     class VKText {
@@ -196,6 +198,130 @@ namespace mx {
         SDL_Surface* convertToRGBA(SDL_Surface* surface);
     };
 
+    class VKSprite {
+    public:
+        VKSprite(VkDevice device, VkPhysicalDevice physicalDevice, VkQueue graphicsQueue,
+                 VkCommandPool commandPool);
+        ~VKSprite();
+        
+        void loadSprite(const std::string &pngPath, const std::string &fragmentShaderPath = "");
+        void loadSprite(SDL_Surface* surface, const std::string &fragmentShaderPath = "");
+        void drawSprite(int x, int y);
+        void drawSprite(int x, int y, float scaleX, float scaleY);
+        void drawSprite(int x, int y, float scaleX, float scaleY, float rotation);
+        void drawSpriteRect(int x, int y, int w, int h);
+        void setShaderParams(float p1 = 0.0f, float p2 = 0.0f, float p3 = 0.0f, float p4 = 0.0f);
+        void renderSprites(VkCommandBuffer cmdBuffer, VkPipelineLayout pipelineLayout,
+                          uint32_t screenWidth, uint32_t screenHeight);
+        void clearQueue();
+        int getWidth() const { return spriteWidth; }
+        int getHeight() const { return spriteHeight; }
+        void setDescriptorSetLayout(VkDescriptorSetLayout layout) { descriptorSetLayout = layout; }
+        VkSampler spriteSampler = VK_NULL_HANDLE;
+        
+    private:
+        struct SpriteVertex {
+            float pos[2];
+            float texCoord[2];
+        };
+        
+        struct SpriteInstance {
+            int x, y;
+            float scaleX, scaleY;
+            float rotation;
+            std::vector<SpriteVertex> vertices;
+            std::vector<uint16_t> indices;
+            VkBuffer vertexBuffer = VK_NULL_HANDLE;
+            VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE;
+            VkBuffer indexBuffer = VK_NULL_HANDLE;
+            VkDeviceMemory indexBufferMemory = VK_NULL_HANDLE;
+            uint32_t indexCount = 0;
+            VkDevice device = VK_NULL_HANDLE;
+            
+            SpriteInstance() = default;
+            SpriteInstance(const SpriteInstance&) = delete;
+            SpriteInstance& operator=(const SpriteInstance&) = delete;
+            SpriteInstance(SpriteInstance&& other) noexcept {
+                *this = std::move(other);
+            }
+            SpriteInstance& operator=(SpriteInstance&& other) noexcept {
+                if (this != &other) {
+                    x = other.x;
+                    y = other.y;
+                    scaleX = other.scaleX;
+                    scaleY = other.scaleY;
+                    rotation = other.rotation;
+                    vertices = std::move(other.vertices);
+                    indices = std::move(other.indices);
+                    vertexBuffer = other.vertexBuffer;
+                    vertexBufferMemory = other.vertexBufferMemory;
+                    indexBuffer = other.indexBuffer;
+                    indexBufferMemory = other.indexBufferMemory;
+                    indexCount = other.indexCount;
+                    device = other.device;
+                    
+                    other.vertexBuffer = VK_NULL_HANDLE;
+                    other.vertexBufferMemory = VK_NULL_HANDLE;
+                    other.indexBuffer = VK_NULL_HANDLE;
+                    other.indexBufferMemory = VK_NULL_HANDLE;
+                    other.indexCount = 0;
+                    other.device = VK_NULL_HANDLE;
+                }
+                return *this;
+            }
+            
+            ~SpriteInstance() {
+                if (device != VK_NULL_HANDLE) {
+                    if (vertexBuffer != VK_NULL_HANDLE) {
+                        vkDestroyBuffer(device, vertexBuffer, nullptr);
+                        vkFreeMemory(device, vertexBufferMemory, nullptr);
+                    }
+                    if (indexBuffer != VK_NULL_HANDLE) {
+                        vkDestroyBuffer(device, indexBuffer, nullptr);
+                        vkFreeMemory(device, indexBufferMemory, nullptr);
+                    }
+                }
+            }
+        };
+        
+        VkDevice device = VK_NULL_HANDLE;
+        VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+        VkQueue graphicsQueue = VK_NULL_HANDLE;
+        VkCommandPool commandPool = VK_NULL_HANDLE;
+        VkImage spriteImage = VK_NULL_HANDLE;
+        VkDeviceMemory spriteImageMemory = VK_NULL_HANDLE;
+        VkImageView spriteImageView = VK_NULL_HANDLE;
+        int spriteWidth = 0;
+        int spriteHeight = 0;
+        bool spriteLoaded = false;
+        VkShaderModule fragmentShaderModule = VK_NULL_HANDLE;
+        bool hasCustomShader = false;
+        glm::vec4 shaderParams = glm::vec4(0.0f);
+        std::vector<SpriteInstance> spriteInstances;
+        VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
+        VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
+        VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
+        void createDescriptorPool();
+        VkDescriptorSet createDescriptorSet(VkImageView imageView);
+        void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
+                         VkMemoryPropertyFlags properties, VkBuffer& buffer,
+                         VkDeviceMemory& bufferMemory);
+        uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
+        void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+        VkCommandBuffer beginSingleTimeCommands();
+        void endSingleTimeCommands(VkCommandBuffer commandBuffer);
+        void transitionImageLayout(VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout);
+        void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling,
+                        VkImageUsageFlags usage, VkMemoryPropertyFlags properties,
+                        VkImage& image, VkDeviceMemory& imageMemory);
+        VkImageView createImageView(VkImage image, VkFormat format);
+        void createSampler();
+        SDL_Surface* convertToRGBA(SDL_Surface* surface);
+        void createSpriteTexture(SDL_Surface* surface);
+        VkShaderModule createShaderModule(const std::vector<char>& code);
+        std::vector<char> readShaderFile(const std::string& filename);
+    };
+
     class VKWindow {
     public:
         VKWindow() = default;
@@ -210,6 +336,7 @@ namespace mx {
         virtual void cleanup();
         virtual void event(SDL_Event &e) = 0;
         virtual void draw(); 
+        virtual bool shouldRender3D() { return true; } 
         void createGraphicsPipeline(); 
         VkShaderModule createShaderModule(const std::vector<char>& code);
         int w = 0, h = 0;
@@ -220,6 +347,17 @@ namespace mx {
         void updateTexture(void* pixels, VkDeviceSize imageSize);
         void printText(const std::string &text, int x, int y, const SDL_Color &col);
         void clearTextQueue();
+        VKSprite* createSprite(const std::string &pngPath, const std::string &fragmentShaderPath = "");
+        VKSprite* createSprite(SDL_Surface* surface, const std::string &fragmentShaderPath = "");
+        void renderSprites();
+        int getWidth() const { return w; }
+        int getHeight() const { return h; }
+        struct {
+            float posX = 8.0f, posY = 2.0f;
+            float dirX = 0.0f, dirY = 1.0f;
+            float planeX = 0.66f, planeY = 0.0f;
+        } raycastPlayer;
+        
     protected:
         bool active = true;
         VkInstance instance = VK_NULL_HANDLE;
@@ -242,7 +380,7 @@ namespace mx {
         VkRenderPass renderPass = VK_NULL_HANDLE;
         VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
         VkPipeline graphicsPipeline = VK_NULL_HANDLE;
-        VkPipeline graphicsPipelineWireframe = VK_NULL_HANDLE;
+        VkPipeline graphicsPipelineMatrix = VK_NULL_HANDLE;
         VkPolygonMode currentPolygonMode = VK_POLYGON_MODE_FILL;
         std::vector<VkFramebuffer> swapChainFramebuffers;
 
@@ -263,6 +401,12 @@ namespace mx {
         VkDeviceMemory textureImageMemory = VK_NULL_HANDLE;
         VkImageView textureImageView = VK_NULL_HANDLE;
         VkSampler textureSampler = VK_NULL_HANDLE;
+        
+        VkImage floorTextureImage = VK_NULL_HANDLE;
+        VkDeviceMemory floorTextureImageMemory = VK_NULL_HANDLE;
+        VkImageView floorTextureImageView = VK_NULL_HANDLE;
+        VkSampler floorTextureSampler = VK_NULL_HANDLE;
+        
         VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
         std::vector<VkDescriptorSet> descriptorSets;
         
@@ -278,6 +422,12 @@ namespace mx {
         VkPipelineLayout textPipelineLayout = VK_NULL_HANDLE;
         VkDescriptorPool textDescriptorPool = VK_NULL_HANDLE;
         VkDescriptorSetLayout textDescriptorSetLayout = VK_NULL_HANDLE;
+        
+        std::vector<std::unique_ptr<VKSprite>> sprites;
+        VkPipeline spritePipeline = VK_NULL_HANDLE;
+        VkPipelineLayout spritePipelineLayout = VK_NULL_HANDLE;
+        VkDescriptorPool spriteDescriptorPool = VK_NULL_HANDLE;
+        VkDescriptorSetLayout spriteDescriptorSetLayout = VK_NULL_HANDLE;
         
         uint32_t width, height;
         void createDescriptorSetLayout();
@@ -317,6 +467,10 @@ namespace mx {
         void createTextureImageView();
         VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
         void createTextureSampler();
+        void createFloorTextureImage(SDL_Surface* surfacex);
+        void setupFloorTextureImage(uint32_t w, uint32_t h);
+        void createFloorTextureImageView();
+        void createFloorTextureSampler();
         void createDescriptorPool();
         void createDescriptorSets();
         void updateDescriptorSets();
@@ -325,6 +479,9 @@ namespace mx {
         void createTextDescriptorSetLayout();
         void createTextPipeline();
         void createTextDescriptorPool();
+        void createSpriteDescriptorSetLayout();
+        void createSpritePipeline();
+        void createSpriteDescriptorPool();
     };
 
 }

@@ -32,8 +32,6 @@ private:
 };
 
 int main(int argc, char **argv) {
-#if defined(__APPLE__) || defined(_WIN32) || defined(_WIN64) || defined(__linux__)
-#ifndef __ANDROID__
     Arguments args = proc_args(argc, argv);
     try {
         SkeletonWindow window(args.path, args.width, args.height, args.fullscreen);
@@ -43,16 +41,5 @@ int main(int argc, char **argv) {
     } catch (mx::Exception &e) {
         SDL_Log("mx: Exception: %s\n", e.text().c_str());
     }
-#endif
-#elif defined(__ANDROID__)
-    try {
-        SkeletonWindow window("", 960, 720, false);
-        window.initVulkan();
-        window.loop();
-        window.cleanup();
-    } catch (mx::Exception &e) {
-        SDL_Log("mx: Exception: %s\n", e.text().c_str());
-    }
-#endif
     return EXIT_SUCCESS;
 }
