@@ -27,6 +27,11 @@ namespace mx {
         active = false;
     }
 
+    void VKWindow::setFont(const std::string &font, const int size) {
+        this->font = font;
+        this->font_size = size;
+    }
+
     void VKWindow::initVulkan() {
         createInstance();
         createSurface();
@@ -41,29 +46,12 @@ namespace mx {
         createFramebuffers();
         createCommandPool();
         createVertexBuffer();
-        
-        SDL_Surface* wallTexture = png::LoadPNG(util.getFilePath("data/bg.png").c_str());
-        if (wallTexture) {
-            createTextureImage(wallTexture);
-            SDL_FreeSurface(wallTexture);
-        } else {
-            setupTextureImage(1, 1);
-        }
-        
+        setupTextureImage(1, 1);
         createTextureImageView();
         createTextureSampler();
-        
-        SDL_Surface* floorTexture = png::LoadPNG(util.getFilePath("data/ground.png").c_str());
-        if (floorTexture) {
-            createFloorTextureImage(floorTexture);
-            SDL_FreeSurface(floorTexture);
-        } else {
-            setupFloorTextureImage(1, 1);
-        }
-        
+        setupFloorTextureImage(1, 1);
         createFloorTextureImageView();
         createFloorTextureSampler();
-        
         createDescriptorPool();
         createUniformBuffers();
         createDescriptorSets();
@@ -71,7 +59,7 @@ namespace mx {
         createSyncObjects();
 
         try {
-            textRenderer.reset(new VKText(device, physicalDevice, graphicsQueue, commandPool, util.getFilePath("font.ttf"), 24));
+            textRenderer.reset(new VKText(device, physicalDevice, graphicsQueue, commandPool, util.getFilePath(font), font_size));
             createTextDescriptorSetLayout();
             textRenderer->setDescriptorSetLayout(textDescriptorSetLayout);
             createTextPipeline();

@@ -283,6 +283,7 @@ namespace mx {
         VKWindow(const std::string &title, int width, int height, bool full = false);
         virtual ~VKWindow() { }
         void initWindow(const std::string &title, int width, int height, bool full = false);
+        void setFont(const std::string &font, const int size = 24);
         virtual void initVulkan();
         void createVertexBuffer();
         void setPath(const std::string &path);
@@ -315,6 +316,8 @@ namespace mx {
         
     protected:
         bool active = true;
+        std::string font = "font.ttf";
+        int font_size = 24;
         VkInstance instance = VK_NULL_HANDLE;
         VkSurfaceKHR surface = VK_NULL_HANDLE;
         VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
