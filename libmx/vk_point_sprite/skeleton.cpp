@@ -77,7 +77,12 @@ public:
     
     void initVulkan() override {
         mx::VKWindow::initVulkan();
-        background = createSprite(util.getFilePath("data/universe.png")); 
+        
+        background = createSprite(util.getFilePath("data/universe.png"),
+            util.getFilePath("data/sprite_vert.spv"), 
+            util.getFilePath("data/sprite_frag.spv")
+        );
+
         initOrbs();
         createOrbSprite();  
     }
@@ -120,35 +125,10 @@ public:
     }
     
     void createOrbSprite() {
-        const int texSize = 128;
-        SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormat(0, texSize, texSize, 32, SDL_PIXELFORMAT_RGBA32);
-        if (!surface) {
-            throw mx::Exception("Failed to create orb surface");
-        }
-        Uint32* pixels = static_cast<Uint32*>(surface->pixels);
-        float center = texSize / 2.0f;
-        for (int y = 0; y < texSize; y++) {
-            for (int x = 0; x < texSize; x++) {
-                float dx = (x - center) / center;
-                float dy = (y - center) / center;
-                float dist = std::sqrt(dx * dx + dy * dy);
-                float angle = std::atan2(dy, dx);
-                float rays = 0.5f + 0.5f * std::cos(angle * 4.0f);
-                float rays2 = 0.5f + 0.5f * std::cos(angle * 4.0f + M_PI/4.0f);
-                float starShape = std::max(rays, rays2);
-                float radialGlow = 0.0f;
-                if (dist < 1.0f) {
-                    float coreGlow = std::pow(1.0f - std::min(dist * 2.0f, 1.0f), 2.0f);
-                    float outerGlow = std::pow(1.0f - dist, 1.5f) * (0.5f + 0.5f * starShape);
-                    radialGlow = std::max(coreGlow, outerGlow);
-                }
-                Uint8 alpha = static_cast<Uint8>(std::min(radialGlow * 255.0f, 255.0f));
-                Uint8 white = 255;
-                pixels[y * texSize + x] = SDL_MapRGBA(surface->format, white, white, white, alpha);
-            }
-        }
-        orbSprite = createSprite(surface);
-        SDL_FreeSurface(surface);
+        orbSprite = createSprite(util.getFilePath("data/star.png"),
+            util.getFilePath("data/sprite_vert.spv"), 
+            util.getFilePath("data/sprite_fragment_frag.spv")
+        );
     }
 
     void proc() override {

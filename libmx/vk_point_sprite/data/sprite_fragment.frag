@@ -21,7 +21,6 @@ layout(push_constant) uniform PushConstants {
 
 void main() {
     vec4 texColor = texture(spriteTexture, fragTexCoord);
-    
     // Apply color tint from push constants
     vec3 tintColor = vec3(pc.colorR, pc.colorG, pc.colorB);
     float bright = pc.brightness;

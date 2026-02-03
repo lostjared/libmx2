@@ -2652,7 +2652,7 @@ namespace mx {
     }
     
     
-    VKSprite* VKWindow::createSprite(const std::string &pngPath, const std::string &fragmentShaderPath) {
+    VKSprite* VKWindow::createSprite(const std::string &pngPath, const std::string &vertexShader, const std::string &fragmentShaderPath) {
         auto sprite = std::make_unique<VKSprite>(device, physicalDevice, graphicsQueue, commandPool);
         if (spriteDescriptorSetLayout == VK_NULL_HANDLE) {
             createSpriteDescriptorSetLayout();
@@ -2660,7 +2660,7 @@ namespace mx {
         sprite->setDescriptorSetLayout(spriteDescriptorSetLayout);  
         if (!fragmentShaderPath.empty()) {
             sprite->setRenderPass(renderPass);
-            sprite->setVertexShaderPath("data/sprite_vertex.spv");
+            sprite->setVertexShaderPath(vertexShader);
         }
         sprite->loadSprite(pngPath, fragmentShaderPath);
         if (spritePipeline == VK_NULL_HANDLE) {
@@ -2673,7 +2673,7 @@ namespace mx {
         return ptr;
     }
     
-    VKSprite* VKWindow::createSprite(SDL_Surface* surface, const std::string &fragmentShaderPath) {
+    VKSprite* VKWindow::createSprite(SDL_Surface* surface, const std::string &vertexShader, const std::string &fragmentShaderPath) {
         auto sprite = std::make_unique<VKSprite>(device, physicalDevice, graphicsQueue, commandPool);
         if (spriteDescriptorSetLayout == VK_NULL_HANDLE) {
             createSpriteDescriptorSetLayout();
@@ -2681,7 +2681,7 @@ namespace mx {
         sprite->setDescriptorSetLayout(spriteDescriptorSetLayout);
         if (!fragmentShaderPath.empty()) {
             sprite->setRenderPass(renderPass);
-            sprite->setVertexShaderPath("data/sprite_vertex.spv");
+            sprite->setVertexShaderPath(vertexShader);
         }
         sprite->loadSprite(surface, fragmentShaderPath);
         if (spritePipeline == VK_NULL_HANDLE) {
