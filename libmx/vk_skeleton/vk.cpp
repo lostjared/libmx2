@@ -49,9 +49,6 @@ namespace mx {
         setupTextureImage(1, 1);
         createTextureImageView();
         createTextureSampler();
-        setupFloorTextureImage(1, 1);
-        createFloorTextureImageView();
-        createFloorTextureSampler();
         createDescriptorPool();
         createUniformBuffers();
         createDescriptorSets();
@@ -88,13 +85,7 @@ namespace mx {
         uboLayoutBinding.descriptorCount = 1;
         uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
-        VkDescriptorSetLayoutBinding floorSamplerLayoutBinding{};
-        floorSamplerLayoutBinding.binding = 2;  
-        floorSamplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        floorSamplerLayoutBinding.descriptorCount = 1;  
-        floorSamplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-        std::array<VkDescriptorSetLayoutBinding, 3> bindings = {samplerLayoutBinding, uboLayoutBinding, floorSamplerLayoutBinding};
+        std::array<VkDescriptorSetLayoutBinding, 2> bindings = {samplerLayoutBinding, uboLayoutBinding};
     
         VkDescriptorSetLayoutCreateInfo layoutInfo{};
         layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -105,10 +96,9 @@ namespace mx {
             throw mx::Exception("Failed to create descriptor set layout!");
         }
         
-        std::cout << ">> [DescriptorSetLayout] Created with 3 bindings:\n";
-        std::cout << "   Binding 0: Combined Image Sampler (wall texture)\n";
+        std::cout << ">> [DescriptorSetLayout] Created with 2 bindings:\n";
+        std::cout << "   Binding 0: Combined Image Sampler (texture)\n";
         std::cout << "   Binding 1: Uniform Buffer (time, tint color)\n";
-        std::cout << "   Binding 2: Combined Image Sampler (floor texture)\n";
     }
 
     void VKWindow::setPath(const std::string &path) {
@@ -1098,82 +1088,6 @@ namespace mx {
         }
     }
 
-    void VKWindow::createFloorTextureImage(SDL_Surface* surfacex) {
-        if (!surfacex) {
-            throw mx::Exception("SDL_Surface is null for floor texture!");
-        }
-
-        VkDeviceSize imageSize = surfacex->w * surfacex->h * 4; 
-        VkBuffer stagingBuffer;
-        VkDeviceMemory stagingBufferMemory;
-        createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-            stagingBuffer, stagingBufferMemory);
-        VkFormat textureFormat = VK_FORMAT_R8G8B8A8_UNORM;
-        void* data;
-        VK_CHECK_RESULT(vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data));
-        memcpy(data, surfacex->pixels, static_cast<size_t>(imageSize));
-        vkUnmapMemory(device, stagingBufferMemory);
-        createImage(surfacex->w, surfacex->h, textureFormat, VK_IMAGE_TILING_OPTIMAL,
-            VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, floorTextureImage, floorTextureImageMemory);
-        transitionImageLayout(floorTextureImage, textureFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-        copyBufferToImage(stagingBuffer, floorTextureImage, static_cast<uint32_t>(surfacex->w), static_cast<uint32_t>(surfacex->h));
-        transitionImageLayout(floorTextureImage, textureFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-        vkDestroyBuffer(device, stagingBuffer, nullptr);
-        vkFreeMemory(device, stagingBufferMemory, nullptr);
-    }
-
-    void VKWindow::setupFloorTextureImage(uint32_t w, uint32_t h) {
-        
-        VkDeviceSize imageSize = w * h * 4;
-        std::vector<uint8_t> pixels(imageSize, 128); 
-        
-        VkBuffer stagingBuffer;
-        VkDeviceMemory stagingBufferMemory;
-        createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-            stagingBuffer, stagingBufferMemory);
-        VkFormat textureFormat = VK_FORMAT_R8G8B8A8_UNORM;
-        void* data;
-        VK_CHECK_RESULT(vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data));
-        memcpy(data, pixels.data(), static_cast<size_t>(imageSize));
-        vkUnmapMemory(device, stagingBufferMemory);
-        createImage(w, h, textureFormat, VK_IMAGE_TILING_OPTIMAL,
-            VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, floorTextureImage, floorTextureImageMemory);
-        transitionImageLayout(floorTextureImage, textureFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-        copyBufferToImage(stagingBuffer, floorTextureImage, w, h);
-        transitionImageLayout(floorTextureImage, textureFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-        vkDestroyBuffer(device, stagingBuffer, nullptr);
-        vkFreeMemory(device, stagingBufferMemory, nullptr);
-    }
-
-    void VKWindow::createFloorTextureImageView() {
-        floorTextureImageView = createImageView(floorTextureImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
-    }
-
-    void VKWindow::createFloorTextureSampler() {
-        VkSamplerCreateInfo samplerInfo{};
-        samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-        samplerInfo.magFilter = VK_FILTER_LINEAR;
-        samplerInfo.minFilter = VK_FILTER_LINEAR;
-        samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        samplerInfo.anisotropyEnable = VK_TRUE;
-        samplerInfo.maxAnisotropy = 16.0f;
-        samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-        samplerInfo.unnormalizedCoordinates = VK_FALSE;
-        samplerInfo.compareEnable = VK_FALSE;
-        samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-        samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-
-        if (vkCreateSampler(device, &samplerInfo, nullptr, &floorTextureSampler) != VK_SUCCESS) {
-            throw mx::Exception("Failed to create floor texture sampler!");
-        }
-    }
-
     void VKWindow::createDescriptorPool() {
         std::array<VkDescriptorPoolSize, 2> poolSizes{};
         poolSizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -1229,16 +1143,11 @@ namespace mx {
                 imageInfo.imageView = textureImageView;
                 imageInfo.sampler = textureSampler;
                 
-                VkDescriptorImageInfo floorImageInfo = {};
-                floorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                floorImageInfo.imageView = floorTextureImageView;
-                floorImageInfo.sampler = floorTextureSampler;
-                
                 VkDescriptorBufferInfo bufferInfo = {};
                 bufferInfo.buffer = uniformBuffers[i]; 
                 bufferInfo.offset = 0;
                 bufferInfo.range = sizeof(UniformBufferObject);
-                std::array<VkWriteDescriptorSet, 3> descriptorWrites{};
+                std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
                 descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
                 descriptorWrites[0].dstSet = descriptorSets[i];
                 descriptorWrites[0].dstBinding = 0;
@@ -1253,13 +1162,6 @@ namespace mx {
                 descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
                 descriptorWrites[1].descriptorCount = 1;
                 descriptorWrites[1].pBufferInfo = &bufferInfo;
-                descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                descriptorWrites[2].dstSet = descriptorSets[i];
-                descriptorWrites[2].dstBinding = 2;
-                descriptorWrites[2].dstArrayElement = 0;
-                descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-                descriptorWrites[2].descriptorCount = 1;
-                descriptorWrites[2].pImageInfo = &floorImageInfo;
                 vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
                 std::cout << ">> [DescriptorSets] Updated descriptor set " << i << "\n";
             }
@@ -1657,19 +1559,6 @@ namespace mx {
         vkDestroyImageView(device, textureImageView, nullptr);
         vkDestroyImage(device, textureImage, nullptr);
         vkFreeMemory(device, textureImageMemory, nullptr);
-
-        if (floorTextureSampler != VK_NULL_HANDLE) {
-            vkDestroySampler(device, floorTextureSampler, nullptr);
-        }
-        if (floorTextureImageView != VK_NULL_HANDLE) {
-            vkDestroyImageView(device, floorTextureImageView, nullptr);
-        }
-        if (floorTextureImage != VK_NULL_HANDLE) {
-            vkDestroyImage(device, floorTextureImage, nullptr);
-        }
-        if (floorTextureImageMemory != VK_NULL_HANDLE) {
-            vkFreeMemory(device, floorTextureImageMemory, nullptr);
-        }
 
         vkDestroyBuffer(device, vertexBuffer, nullptr);
         vkFreeMemory(device, vertexBufferMemory, nullptr);

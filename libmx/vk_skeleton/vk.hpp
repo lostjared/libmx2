@@ -360,11 +360,6 @@ namespace mx {
         VkImageView textureImageView = VK_NULL_HANDLE;
         VkSampler textureSampler = VK_NULL_HANDLE;
         
-        VkImage floorTextureImage = VK_NULL_HANDLE;
-        VkDeviceMemory floorTextureImageMemory = VK_NULL_HANDLE;
-        VkImageView floorTextureImageView = VK_NULL_HANDLE;
-        VkSampler floorTextureSampler = VK_NULL_HANDLE;
-        
         VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
         std::vector<VkDescriptorSet> descriptorSets;
         
@@ -425,10 +420,6 @@ namespace mx {
         void createTextureImageView();
         VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
         void createTextureSampler();
-        void createFloorTextureImage(SDL_Surface* surfacex);
-        void setupFloorTextureImage(uint32_t w, uint32_t h);
-        void createFloorTextureImageView();
-        void createFloorTextureSampler();
         void createDescriptorPool();
         void createDescriptorSets();
         void updateDescriptorSets();

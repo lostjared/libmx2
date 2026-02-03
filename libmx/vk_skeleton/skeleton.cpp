@@ -19,7 +19,6 @@ public:
         logoSprite = createSprite(util.getFilePath("data/logo.png"));
     }
     
-    
     void proc() override {
         if (logoSprite) {
             logoSprite->drawSpriteRect(0, 0, getWidth(), getHeight());
@@ -43,16 +42,13 @@ public:
 
         printText("Hello World", 50, 50, {255, 255, 255, 255});
     }
-    
     void event(SDL_Event& e) override {
         if (e.type == SDL_QUIT || (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE)) {
             quit();
         }
     }
-
 private:
     mx::VKSprite* logoSprite = nullptr;
-    
     struct SpriteData {
         int x, y, w, h;
     };
