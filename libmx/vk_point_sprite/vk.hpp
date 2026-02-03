@@ -317,7 +317,6 @@ namespace mx {
         void clearTextQueue();
         VKSprite* createSprite(const std::string &pngPath, const std::string &vertexShader, const std::string &fragmentShaderPath = "");
         VKSprite* createSprite(SDL_Surface* surface, const std::string &vertexShader, const std::string &fragmentShaderPath = "");
-        void renderSprites();
         int getWidth() const { return w; }
         int getHeight() const { return h; }
         struct {

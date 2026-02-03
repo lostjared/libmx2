@@ -24,6 +24,9 @@ layout(push_constant) uniform PushConstants {
 void main() {
     vec4 texColor = texture(spriteTexture, fragTexCoord);
 
+    if(texColor.r < 0.4 || texColor.g < 0.4 || texColor.b < 0.4)
+        discard;
+
     // Discard dark/background pixels from the sprite
     float texLuminance = dot(texColor.rgb, vec3(0.299, 0.587, 0.114));
     if (texLuminance < 0.3 || texColor.a < 0.5)

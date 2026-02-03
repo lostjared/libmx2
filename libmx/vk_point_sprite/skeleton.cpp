@@ -99,7 +99,6 @@ public:
         std::uniform_int_distribution<int> hueDist(0, 359);
         std::uniform_real_distribution<float> strobeIntervalDist(1.0f, 3.0f);  
         std::uniform_real_distribution<float> strobeTimerDist(0.0f, 3.0f);     
-        
         orbs.resize(NUM_ORBS);
         for (size_t i = 0; i < orbs.size(); ++i) {
             auto& orb = orbs[i];
@@ -123,12 +122,49 @@ public:
         
         lastTime = SDL_GetTicks();
     }
+
+    SDL_Surface* generateStarSurface(int size, float coreRadiusFrac = 0.18f, float glowRadiusFrac = 0.48f) {
+        SDL_Surface* surf = SDL_CreateRGBSurfaceWithFormat(0, size, size, 32, SDL_PIXELFORMAT_RGBA32);
+        if (!surf) return nullptr;
+
+        Uint32* pixels = (Uint32*)surf->pixels;
+        int cx = size / 2, cy = size / 2;
+        float maxDist = size * glowRadiusFrac;
+        float coreDist = size * coreRadiusFrac;
+
+        for (int y = 0; y < size; ++y) {
+            for (int x = 0; x < size; ++x) {
+                float dx = x - cx, dy = y - cy;
+                float dist = std::sqrt(dx*dx + dy*dy);
+
+                float intensity = 0.0f;
+                if (dist < coreDist) {
+                    intensity = 1.0f;
+                } else if (dist < maxDist) {
+                    float glow = 1.0f - (dist - coreDist) / (maxDist - coreDist);
+                    intensity = std::pow(glow, 2.5f); 
+                }
+                float angle = std::atan2(dy, dx);
+                float spike = 0.15f * std::pow(std::cos(angle * 6.0f), 12.0f);
+                intensity += spike * (1.0f - dist / maxDist);
+                intensity = std::min(1.0f, std::max(0.0f, intensity));
+                Uint8 r = static_cast<Uint8>(255 * intensity);
+                Uint8 g = static_cast<Uint8>(220 * intensity);
+                Uint8 b = static_cast<Uint8>(180 * intensity);
+                Uint8 a = static_cast<Uint8>(255 * intensity);
+                pixels[y * size + x] = SDL_MapRGBA(surf->format, r, g, b, a);
+            }
+        }
+        return surf;
+    }
     
     void createOrbSprite() {
-        orbSprite = createSprite(util.getFilePath("data/star.png"),
+        SDL_Surface* star = generateStarSurface(128);
+        orbSprite = createSprite(star,
             util.getFilePath("data/sprite_vert.spv"), 
             util.getFilePath("data/sprite_fragment_frag.spv")
         );
+        SDL_FreeSurface(star);
     }
 
     void proc() override {
@@ -171,21 +207,19 @@ public:
     void event(SDL_Event& e) override {
         if (e.type == SDL_QUIT || (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE)) {
             quit();
+            return;
         }
         
         if (e.type == SDL_KEYDOWN) {
             if (e.key.keysym.sym == SDLK_SPACE) {
-                
                 addRandomOrbs(10);
             }
             if (e.key.keysym.sym == SDLK_c) {
-                
                 orbs.clear();
                 initOrbs();
             }
         }
-        
-        
+    
         if (e.type == SDL_MOUSEBUTTONDOWN) {
             int mx, my;
             SDL_GetMouseState(&mx, &my);
@@ -262,7 +296,7 @@ public:
 private:
     static constexpr int NUM_ORBS = 50;
     std::vector<LightOrb> orbs;
-    mx::VKSprite* orbSprite = nullptr;
+    mx::VKSprite *orbSprite = nullptr;
     mx::VKSprite *background = nullptr;
     Uint32 lastTime = 0;
     std::string filename;

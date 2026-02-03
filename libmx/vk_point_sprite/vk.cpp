@@ -2340,11 +2340,7 @@ namespace mx {
         if (descriptorSet == VK_NULL_HANDLE) {
             descriptorSet = createDescriptorSet(spriteImageView);
         }
-        
-        
         VkPipelineLayout layoutToUse = (customPipeline != VK_NULL_HANDLE) ? customPipelineLayout : pipelineLayout;
-        
-        
         if (customPipeline != VK_NULL_HANDLE) {
             vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, customPipeline);
         }
@@ -2381,10 +2377,7 @@ namespace mx {
                               0, sizeof(SpritePushConstants), &pc);
             
             vkCmdDrawIndexed(cmdBuffer, 6, 1, 0, 0, 0);
-        }
-        
-        
-        
+        }        
     }
     
     void VKSprite::clearQueue() {
@@ -2691,11 +2684,6 @@ namespace mx {
         VKSprite* ptr = sprite.get();
         sprites.push_back(std::move(sprite));
         return ptr;
-    }
-    
-    void VKWindow::renderSprites() {
-        
-        
     }
     
     void VKWindow::createSpriteDescriptorSetLayout() {
