@@ -11,14 +11,17 @@ public:
         : mx::VKWindow("-[ Vulkan Skeleton ]-", wx, wy, full) {
         setPath(path);
     }
-    
     virtual ~SkeletonWindow() {}
     
     void initVulkan() override {
         mx::VKWindow::initVulkan();
+        logoSprite = createSprite(util.getFilePath("data/logo.png"));
     }
     
     void proc() override {
+        if (logoSprite) {
+            logoSprite->drawSpriteRect(0, 0, getWidth(), getHeight());
+        }
         printText("Hello World", 50, 50, {255, 255, 255, 255});
     }
     
@@ -29,6 +32,7 @@ public:
     }
 
 private:
+    mx::VKSprite* logoSprite = nullptr;
 };
 
 int main(int argc, char **argv) {
