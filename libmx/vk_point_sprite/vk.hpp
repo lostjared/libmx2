@@ -217,6 +217,11 @@ namespace mx {
         int getWidth() const { return spriteWidth; }
         int getHeight() const { return spriteHeight; }
         void setDescriptorSetLayout(VkDescriptorSetLayout layout) { descriptorSetLayout = layout; }
+        void setRenderPass(VkRenderPass rp) { renderPass = rp; }
+        void setVertexShaderPath(const std::string &path) { vertexShaderPath = path; }
+        bool hasOwnPipeline() const { return customPipeline != VK_NULL_HANDLE; }
+        VkPipeline getPipeline() const { return customPipeline; }
+        VkPipelineLayout getPipelineLayout() const { return customPipelineLayout; }
         VkSampler spriteSampler = VK_NULL_HANDLE;
         
     private:
@@ -227,7 +232,8 @@ namespace mx {
         
         
         struct SpriteDrawCmd {
-            float x, y, w, h;  
+            float x, y, w, h;
+            glm::vec4 params;  // Store shader params with each draw command
         };
         
         VkDevice device = VK_NULL_HANDLE;
@@ -245,6 +251,12 @@ namespace mx {
         glm::vec4 shaderParams = glm::vec4(0.0f);
         std::vector<SpriteDrawCmd> drawQueue;  
         
+        
+        VkPipeline customPipeline = VK_NULL_HANDLE;
+        VkPipelineLayout customPipelineLayout = VK_NULL_HANDLE;
+        VkRenderPass renderPass = VK_NULL_HANDLE;
+        std::string vertexShaderPath;
+        void createCustomPipeline();
         
         VkBuffer quadVertexBuffer = VK_NULL_HANDLE;
         VkDeviceMemory quadVertexBufferMemory = VK_NULL_HANDLE;

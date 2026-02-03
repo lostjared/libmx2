@@ -1,5 +1,5 @@
-add_executable(vk_sprite ${CMAKE_SOURCE_DIR}/vk_sprite/skeleton.cpp ${CMAKE_SOURCE_DIR}/vk_sprite/vk.cpp)
-target_include_directories(vk_sprite PRIVATE 
+add_executable(vk_point_sprite ${CMAKE_SOURCE_DIR}/vk_point_sprite/skeleton.cpp ${CMAKE_SOURCE_DIR}/vk_point_sprite/vk.cpp)
+target_include_directories(vk_point_sprite PRIVATE 
     ${CMAKE_SOURCE_DIR}/libmx 
     ${CMAKE_SOURCE_DIR}/volk
     ${SDL2_INCLUDE_DIRS} 
@@ -8,10 +8,10 @@ target_include_directories(vk_sprite PRIVATE
 )
 
 if(MOLTEN)
-    target_link_directories(vk_sprite PRIVATE ${MOLTEN_LINK_DIR})
-    target_link_libraries(vk_sprite PRIVATE ${MOLTEN_FRAMEWORKS})
-    target_link_libraries(vk_sprite PUBLIC SDL2::SDL2 SDL2::SDL2main SDL2_ttf::SDL2_ttf mx ${IMG_LIB} ${GL_LIB} ${MIXER_LIB} ${VK_LIB})
+    target_link_directories(vk_point_sprite PRIVATE ${MOLTEN_LINK_DIR})
+    target_link_libraries(vk_point_sprite PRIVATE ${MOLTEN_FRAMEWORKS})
+    target_link_libraries(vk_point_sprite PUBLIC SDL2::SDL2 SDL2::SDL2main SDL2_ttf::SDL2_ttf mx ${IMG_LIB} ${GL_LIB} ${MIXER_LIB} ${VK_LIB})
 else()
-    target_link_libraries(vk_sprite PUBLIC SDL2::SDL2 SDL2::SDL2main SDL2_ttf::SDL2_ttf mx volk ${IMG_LIB} ${GL_LIB} ${MIXER_LIB} ${VK_LIB})
+    target_link_libraries(vk_point_sprite PUBLIC SDL2::SDL2 SDL2::SDL2main SDL2_ttf::SDL2_ttf mx volk ${IMG_LIB} ${GL_LIB} ${MIXER_LIB} ${VK_LIB})
 endif()
 
