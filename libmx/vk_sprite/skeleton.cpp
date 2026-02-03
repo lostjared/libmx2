@@ -27,7 +27,7 @@ public:
         int grid_h = getHeight() /  16;
         static std::random_device rd;
         static std::mt19937 gen(rd());
-        static std::uniform_int_distribution<> dis(0, 9);
+        static std::uniform_int_distribution<> dis(0, 8);
         for(int i = 0; i < grid_w; ++i) {
             for(int z = 0; z < grid_h; ++z) {
                 int blockIndex = dis(gen);
