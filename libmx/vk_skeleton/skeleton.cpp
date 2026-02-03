@@ -13,10 +13,14 @@ public:
         setPath(path);
     }
     virtual ~SkeletonWindow() {}
+
+    void setFileName(const std::string &filename) {
+        this->filename = filename;
+    }
     
     void initVulkan() override {
         mx::VKWindow::initVulkan();
-        logoSprite = createSprite(util.getFilePath("data/logo.png"));
+        logoSprite = createSprite(filename);
     }
     
     void proc() override {
@@ -53,12 +57,14 @@ private:
         int x, y, w, h;
     };
     std::vector<SpriteData> spriteData;
+    std::string filename;
 };
 
 int main(int argc, char **argv) {
     Arguments args = proc_args(argc, argv);
     try {
         SkeletonWindow window(args.path, args.width, args.height, args.fullscreen);
+        window.setFileName(args.filename);
         window.initVulkan();
         window.loop();
         window.cleanup();
