@@ -1,15 +1,11 @@
 #include "vk.hpp"
 #include "SDL.h"
 #include <random>
-
-#if defined(__APPLE__) || defined(_WIN32) || defined(__linux__)
 #include "argz.hpp"
-#endif
-
 class SkeletonWindow : public mx::VKWindow {
 public:
     SkeletonWindow(const std::string& path, int wx, int wy, bool full) 
-        : mx::VKWindow("-[ Vulkan Skeleton ]-", wx, wy, full) {
+        : mx::VKWindow("-[ Vulkan Skeleton / Random Sprites ]-", wx, wy, full) {
         setPath(path);
     }
     virtual ~SkeletonWindow() {}
@@ -19,32 +15,28 @@ public:
     }
     
     void initVulkan() override {
+        const char *szBlocks[] = {"red1.png", "red2.png", "red3.png", "green1.png", "green2.png", "green3.png", "blue1.png", "blue2.png", "blue3.png", nullptr };
         mx::VKWindow::initVulkan();
-        logoSprite = createSprite(filename);
+        for(int i = 0; szBlocks[i] != nullptr; ++i) {
+            blocks[i] = createSprite(util.path + "/data/img/" + szBlocks[i]);
+        }
     }
     
     void proc() override {
-        if (logoSprite) {
-            logoSprite->drawSpriteRect(0, 0, getWidth(), getHeight());
-            std::random_device rd;
-            std::mt19937 gen(rd());
-            std::uniform_int_distribution<> xDist(0, 1920);
-            std::uniform_int_distribution<> yDist(0, 1080);
-            std::uniform_int_distribution<> wDist(20, 100);
-            std::uniform_int_distribution<> hDist(20, 100);
-            spriteData.resize(5000);
-            for(auto& sprite : spriteData) {
-                sprite.x = xDist(gen);
-                sprite.y = yDist(gen);
-                sprite.w = wDist(gen);
-                sprite.h = hDist(gen);
-            }
-            for(const auto& sprite : spriteData) {
-                logoSprite->drawSpriteRect(sprite.x, sprite.y, sprite.w, sprite.h);
+        int grid_w = getWidth() / 32;
+        int grid_h = getHeight() /  16;
+        static std::random_device rd;
+        static std::mt19937 gen(rd());
+        static std::uniform_int_distribution<> dis(0, 9);
+        for(int i = 0; i < grid_w; ++i) {
+            for(int z = 0; z < grid_h; ++z) {
+                int blockIndex = dis(gen);
+                if(blocks[blockIndex]) {
+                    blocks[blockIndex]->drawSpriteRect(i*32, z*16, 32, 16);
+                }
             }
         }
-
-        printText("Hello World", 50, 50, {255, 255, 255, 255});
+        printText("-[ Hello World Random Sprites ]-", 50, 50, {255, 255, 255, 255});
     }
     void event(SDL_Event& e) override {
         if (e.type == SDL_QUIT || (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE)) {
@@ -52,7 +44,7 @@ public:
         }
     }
 private:
-    mx::VKSprite* logoSprite = nullptr;
+    mx::VKSprite* blocks[9];
     struct SpriteData {
         int x, y, w, h;
     };
@@ -64,7 +56,6 @@ int main(int argc, char **argv) {
     Arguments args = proc_args(argc, argv);
     try {
         SkeletonWindow window(args.path, args.width, args.height, args.fullscreen);
-        window.setFileName(args.filename);
         window.initVulkan();
         window.loop();
         window.cleanup();
