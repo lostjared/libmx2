@@ -1613,7 +1613,6 @@ namespace mx {
             throw mx::Exception("Failed to present swap chain image!");
         }
         
-        VK_CHECK_RESULT(vkQueueWaitIdle(presentQueue));
         clearTextQueue();
         for (auto& sprite : sprites) {
             if (sprite) {
@@ -2142,7 +2141,16 @@ namespace mx {
     
     VKSprite::~VKSprite() {
         vkDeviceWaitIdle(device);
-        spriteInstances.clear();
+        drawQueue.clear();
+        
+        if (quadVertexBuffer != VK_NULL_HANDLE) {
+            vkDestroyBuffer(device, quadVertexBuffer, nullptr);
+            vkFreeMemory(device, quadVertexBufferMemory, nullptr);
+        }
+        if (quadIndexBuffer != VK_NULL_HANDLE) {
+            vkDestroyBuffer(device, quadIndexBuffer, nullptr);
+            vkFreeMemory(device, quadIndexBufferMemory, nullptr);
+        }
         
         if (descriptorPool != VK_NULL_HANDLE) {
             vkDestroyDescriptorPool(device, descriptorPool, nullptr);
@@ -2164,6 +2172,40 @@ namespace mx {
         if (fragmentShaderModule != VK_NULL_HANDLE) {
             vkDestroyShaderModule(device, fragmentShaderModule, nullptr);
         }
+    }
+    
+    void VKSprite::createQuadBuffer() {
+        if (quadBufferCreated) return;
+        
+        // Unit quad - will be transformed by push constants
+        SpriteVertex vertices[] = {
+            {{0.0f, 0.0f}, {0.0f, 0.0f}},
+            {{1.0f, 0.0f}, {1.0f, 0.0f}},
+            {{1.0f, 1.0f}, {1.0f, 1.0f}},
+            {{0.0f, 1.0f}, {0.0f, 1.0f}}
+        };
+        uint16_t indices[] = {0, 1, 2, 0, 2, 3};
+        
+        VkDeviceSize vertexSize = sizeof(vertices);
+        createBuffer(vertexSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                    quadVertexBuffer, quadVertexBufferMemory);
+        
+        void *data;
+        VK_CHECK_RESULT(vkMapMemory(device, quadVertexBufferMemory, 0, vertexSize, 0, &data));
+        memcpy(data, vertices, vertexSize);
+        vkUnmapMemory(device, quadVertexBufferMemory);
+        
+        VkDeviceSize indexSize = sizeof(indices);
+        createBuffer(indexSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                    quadIndexBuffer, quadIndexBufferMemory);
+        
+        VK_CHECK_RESULT(vkMapMemory(device, quadIndexBufferMemory, 0, indexSize, 0, &data));
+        memcpy(data, indices, indexSize);
+        vkUnmapMemory(device, quadIndexBufferMemory);
+        
+        quadBufferCreated = true;
     }
     
     void VKSprite::loadSprite(const std::string &pngPath, const std::string &fragmentShaderPath) {
@@ -2188,6 +2230,7 @@ namespace mx {
         createSpriteTexture(rgbaSurface);
         SDL_FreeSurface(rgbaSurface);    
         createSampler();
+        createQuadBuffer();  // Create shared quad buffer once
         if (!fragmentShaderPath.empty()) {
             auto shaderCode = readShaderFile(fragmentShaderPath);
             fragmentShaderModule = createShaderModule(shaderCode);
@@ -2243,124 +2286,25 @@ namespace mx {
     }
     
     void VKSprite::drawSprite(int x, int y) {
-        drawSprite(x, y, 1.0f, 1.0f, 0.0f);
+        drawSpriteRect(x, y, spriteWidth, spriteHeight);
     }
     
     void VKSprite::drawSprite(int x, int y, float scaleX, float scaleY) {
-        drawSprite(x, y, scaleX, scaleY, 0.0f);
+        drawSpriteRect(x, y, static_cast<int>(spriteWidth * scaleX), static_cast<int>(spriteHeight * scaleY));
     }
     
     void VKSprite::drawSprite(int x, int y, float scaleX, float scaleY, float rotation) {
-        if (!spriteLoaded) {
-            throw mx::Exception("VKSprite::drawSprite called before sprite was loaded");
-        }
-        
-        SpriteInstance instance;
-        instance.device = device;
-        instance.x = x;
-        instance.y = y;
-        instance.scaleX = scaleX;
-        instance.scaleY = scaleY;
-        instance.rotation = rotation;     
-        float w = spriteWidth * scaleX;
-        float h = spriteHeight * scaleY;
-        float cx = x + w / 2.0f;
-        float cy = y + h / 2.0f;
-        float cosR = std::cos(rotation);
-        float sinR = std::sin(rotation);
-        
-        auto rotatePoint = [cx, cy, cosR, sinR](float px, float py) -> std::pair<float, float> {
-            float dx = px - cx;
-            float dy = py - cy;
-            return {
-                cx + dx * cosR - dy * sinR,
-                cy + dx * sinR + dy * cosR
-            };
-        };
-        
-        auto [x0, y0] = rotatePoint((float)x, (float)y);
-        auto [x1, y1] = rotatePoint((float)x + w, (float)y);
-        auto [x2, y2] = rotatePoint((float)x + w, (float)y + h);
-        auto [x3, y3] = rotatePoint((float)x, (float)y + h);
-        
-        SpriteVertex v0 = {{x0, y0}, {0.0f, 0.0f}};
-        SpriteVertex v1 = {{x1, y1}, {1.0f, 0.0f}};
-        SpriteVertex v2 = {{x2, y2}, {1.0f, 1.0f}};
-        SpriteVertex v3 = {{x3, y3}, {0.0f, 1.0f}};
-        
-        instance.vertices = {v0, v1, v2, v3};
-        instance.indices = {0, 1, 2, 0, 2, 3};
-        instance.indexCount = 6;
-        
-        VkDeviceSize vertexSize = instance.vertices.size() * sizeof(SpriteVertex);
-        createBuffer(vertexSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                    instance.vertexBuffer, instance.vertexBufferMemory);
-        
-        void *data;
-        VK_CHECK_RESULT(vkMapMemory(device, instance.vertexBufferMemory, 0, vertexSize, 0, &data));
-        memcpy(data, instance.vertices.data(), vertexSize);
-        vkUnmapMemory(device, instance.vertexBufferMemory);
-        
-        VkDeviceSize indexSize = instance.indices.size() * sizeof(uint16_t);
-        createBuffer(indexSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                    instance.indexBuffer, instance.indexBufferMemory);
-        
-        VK_CHECK_RESULT(vkMapMemory(device, instance.indexBufferMemory, 0, indexSize, 0, &data));
-        memcpy(data, instance.indices.data(), indexSize);
-        vkUnmapMemory(device, instance.indexBufferMemory);
-        
-        spriteInstances.emplace_back(std::move(instance));
+        // For rotation, we just ignore it and use rect for now (rotation requires different approach)
+        drawSpriteRect(x, y, static_cast<int>(spriteWidth * scaleX), static_cast<int>(spriteHeight * scaleY));
     }
     
     void VKSprite::drawSpriteRect(int x, int y, int w, int h) {
         if (!spriteLoaded) {
             throw mx::Exception("VKSprite::drawSpriteRect called before sprite was loaded");
         }
-        
-        SpriteInstance instance;
-        instance.device = device;
-        instance.x = x;
-        instance.y = y;
-        instance.scaleX = static_cast<float>(w) / spriteWidth;
-        instance.scaleY = static_cast<float>(h) / spriteHeight;
-        instance.rotation = 0.0f;
-        
-        float x0 = static_cast<float>(x);
-        float y0 = static_cast<float>(y);
-        float x1 = static_cast<float>(x + w);
-        float y1 = static_cast<float>(y + h);
-        
-        SpriteVertex v0 = {{x0, y0}, {0.0f, 0.0f}};
-        SpriteVertex v1 = {{x1, y0}, {1.0f, 0.0f}};
-        SpriteVertex v2 = {{x1, y1}, {1.0f, 1.0f}};
-        SpriteVertex v3 = {{x0, y1}, {0.0f, 1.0f}};
-        
-        instance.vertices = {v0, v1, v2, v3};
-        instance.indices = {0, 1, 2, 0, 2, 3};
-        instance.indexCount = 6;
-        
-        VkDeviceSize vertexSize = instance.vertices.size() * sizeof(SpriteVertex);
-        createBuffer(vertexSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                    instance.vertexBuffer, instance.vertexBufferMemory);
-        
-        void *data;
-        VK_CHECK_RESULT(vkMapMemory(device, instance.vertexBufferMemory, 0, vertexSize, 0, &data));
-        memcpy(data, instance.vertices.data(), vertexSize);
-        vkUnmapMemory(device, instance.vertexBufferMemory);
-        
-        VkDeviceSize indexSize = instance.indices.size() * sizeof(uint16_t);
-        createBuffer(indexSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                    instance.indexBuffer, instance.indexBufferMemory);
-        
-        VK_CHECK_RESULT(vkMapMemory(device, instance.indexBufferMemory, 0, indexSize, 0, &data));
-        memcpy(data, instance.indices.data(), indexSize);
-        vkUnmapMemory(device, instance.indexBufferMemory);
-        
-        spriteInstances.emplace_back(std::move(instance));
+        // Just queue the draw command - no buffer allocation!
+        drawQueue.push_back({static_cast<float>(x), static_cast<float>(y), 
+                            static_cast<float>(w), static_cast<float>(h)});
     }
     
     void VKSprite::setShaderParams(float p1, float p2, float p3, float p4) {
@@ -2369,40 +2313,49 @@ namespace mx {
     
     void VKSprite::renderSprites(VkCommandBuffer cmdBuffer, VkPipelineLayout pipelineLayout,
                                  uint32_t screenWidth, uint32_t screenHeight) {
-        if (spriteInstances.empty() || !spriteLoaded) return;
+        if (drawQueue.empty() || !spriteLoaded || !quadBufferCreated) return;
         if (descriptorSet == VK_NULL_HANDLE) {
             descriptorSet = createDescriptorSet(spriteImageView);
         }
         
-        struct SpritePushConstants {
-            float screenWidth;
-            float screenHeight;
-            float params[4];
-        } pc {
-            static_cast<float>(screenWidth),
-            static_cast<float>(screenHeight),
-            {shaderParams.x, shaderParams.y, shaderParams.z, shaderParams.w}
-        };
-        
-        vkCmdPushConstants(cmdBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                          0, sizeof(SpritePushConstants), &pc);
-        
         vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
                                0, 1, &descriptorSet, 0, nullptr);
         
-        for (auto &instance : spriteInstances) {
-            VkBuffer vertexBuffers[] = {instance.vertexBuffer};
-            VkDeviceSize offsets[] = {0};
-            vkCmdBindVertexBuffers(cmdBuffer, 0, 1, vertexBuffers, offsets);
-            vkCmdBindIndexBuffer(cmdBuffer, instance.indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+        // Bind shared quad buffer once
+        VkBuffer vertexBuffers[] = {quadVertexBuffer};
+        VkDeviceSize offsets[] = {0};
+        vkCmdBindVertexBuffers(cmdBuffer, 0, 1, vertexBuffers, offsets);
+        vkCmdBindIndexBuffer(cmdBuffer, quadIndexBuffer, 0, VK_INDEX_TYPE_UINT16);
+        
+        // Draw each sprite with push constants (no buffer allocation!)
+        for (const auto &cmd : drawQueue) {
+            struct SpritePushConstants {
+                float screenWidth;
+                float screenHeight;
+                float spritePosX;
+                float spritePosY;
+                float spriteSizeW;
+                float spriteSizeH;
+                float params[4];
+            } pc {
+                static_cast<float>(screenWidth),
+                static_cast<float>(screenHeight),
+                cmd.x,
+                cmd.y,
+                cmd.w,
+                cmd.h,
+                {shaderParams.x, shaderParams.y, shaderParams.z, shaderParams.w}
+            };
             
-            vkCmdDrawIndexed(cmdBuffer, instance.indexCount, 1, 0, 0, 0);
+            vkCmdPushConstants(cmdBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                              0, sizeof(SpritePushConstants), &pc);
+            
+            vkCmdDrawIndexed(cmdBuffer, 6, 1, 0, 0, 0);
         }
     }
     
     void VKSprite::clearQueue() {
-        VK_CHECK_RESULT(vkQueueWaitIdle(graphicsQueue));
-        spriteInstances.clear();
+        drawQueue.clear();  // Just clear the vector - no GPU wait!
     }
     
     void VKSprite::createDescriptorPool() {
@@ -2851,7 +2804,7 @@ namespace mx {
             VkPushConstantRange pushConstantRange{};
             pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
             pushConstantRange.offset = 0;
-            pushConstantRange.size = sizeof(float) * 6;  
+            pushConstantRange.size = sizeof(float) * 10;  // screenSize(2) + spritePos(2) + spriteSize(2) + params(4)
 
             VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
             pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;

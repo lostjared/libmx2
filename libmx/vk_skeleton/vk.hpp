@@ -225,63 +225,9 @@ namespace mx {
             float texCoord[2];
         };
         
-        struct SpriteInstance {
-            int x, y;
-            float scaleX, scaleY;
-            float rotation;
-            std::vector<SpriteVertex> vertices;
-            std::vector<uint16_t> indices;
-            VkBuffer vertexBuffer = VK_NULL_HANDLE;
-            VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE;
-            VkBuffer indexBuffer = VK_NULL_HANDLE;
-            VkDeviceMemory indexBufferMemory = VK_NULL_HANDLE;
-            uint32_t indexCount = 0;
-            VkDevice device = VK_NULL_HANDLE;
-            
-            SpriteInstance() = default;
-            SpriteInstance(const SpriteInstance&) = delete;
-            SpriteInstance& operator=(const SpriteInstance&) = delete;
-            SpriteInstance(SpriteInstance&& other) noexcept {
-                *this = std::move(other);
-            }
-            SpriteInstance& operator=(SpriteInstance&& other) noexcept {
-                if (this != &other) {
-                    x = other.x;
-                    y = other.y;
-                    scaleX = other.scaleX;
-                    scaleY = other.scaleY;
-                    rotation = other.rotation;
-                    vertices = std::move(other.vertices);
-                    indices = std::move(other.indices);
-                    vertexBuffer = other.vertexBuffer;
-                    vertexBufferMemory = other.vertexBufferMemory;
-                    indexBuffer = other.indexBuffer;
-                    indexBufferMemory = other.indexBufferMemory;
-                    indexCount = other.indexCount;
-                    device = other.device;
-                    
-                    other.vertexBuffer = VK_NULL_HANDLE;
-                    other.vertexBufferMemory = VK_NULL_HANDLE;
-                    other.indexBuffer = VK_NULL_HANDLE;
-                    other.indexBufferMemory = VK_NULL_HANDLE;
-                    other.indexCount = 0;
-                    other.device = VK_NULL_HANDLE;
-                }
-                return *this;
-            }
-            
-            ~SpriteInstance() {
-                if (device != VK_NULL_HANDLE) {
-                    if (vertexBuffer != VK_NULL_HANDLE) {
-                        vkDestroyBuffer(device, vertexBuffer, nullptr);
-                        vkFreeMemory(device, vertexBufferMemory, nullptr);
-                    }
-                    if (indexBuffer != VK_NULL_HANDLE) {
-                        vkDestroyBuffer(device, indexBuffer, nullptr);
-                        vkFreeMemory(device, indexBufferMemory, nullptr);
-                    }
-                }
-            }
+        // Lightweight draw command - no buffer allocation
+        struct SpriteDrawCmd {
+            float x, y, w, h;  // Screen position and size
         };
         
         VkDevice device = VK_NULL_HANDLE;
@@ -297,7 +243,16 @@ namespace mx {
         VkShaderModule fragmentShaderModule = VK_NULL_HANDLE;
         bool hasCustomShader = false;
         glm::vec4 shaderParams = glm::vec4(0.0f);
-        std::vector<SpriteInstance> spriteInstances;
+        std::vector<SpriteDrawCmd> drawQueue;  // Lightweight draw queue
+        
+        // Shared quad buffer - created once
+        VkBuffer quadVertexBuffer = VK_NULL_HANDLE;
+        VkDeviceMemory quadVertexBufferMemory = VK_NULL_HANDLE;
+        VkBuffer quadIndexBuffer = VK_NULL_HANDLE;
+        VkDeviceMemory quadIndexBufferMemory = VK_NULL_HANDLE;
+        bool quadBufferCreated = false;
+        void createQuadBuffer();
+        
         VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
         VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
         VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
