@@ -728,11 +728,20 @@ public:
     bool checkGameOver() {
         
         for (int i = 0; i < GRID_WIDTH; i++) {
-            if (matrix.grid[i][0] > 0) {
+            if (matrix.grid[i][1] > 0) {
                 return true;
             }
         }
-        return false;
+        
+        for (int i = 0; i < GRID_WIDTH; i++) {
+            for (int j = 0; j < GRID_HEIGHT; j++) {
+                if (matrix.grid[i][j] == 0) {
+                    return false;
+                }
+            }
+        }
+        
+        return true;
     }
     
     void applyDifficulty() {
