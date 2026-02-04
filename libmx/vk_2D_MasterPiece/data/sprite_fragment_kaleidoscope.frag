@@ -87,7 +87,7 @@ vec2 diamondFold(vec2 uv, vec2 c, float aspect) {
 
 void main(void) {
     vec2 iResolution = pc.screenSize;
-    float time_f = pc.params.x;
+    float time_f = pc.params.x * 0.6;
     vec4 iMouse = vec4(pc.params.yz, pc.params.w, 0.0);
     
     vec2 xuv = fragTexCoord;//1.0 - abs(1.0 - 2.0 * fragTexCoord);
