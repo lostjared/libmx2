@@ -222,7 +222,7 @@ public:
         printText(scoreStr.c_str(), centerX(scoreStr.c_str()), h/2, {255, 255, 255, 255});
         
         stream.str("");
-        stream << "Lines: " << matrix.Game.lines;
+        stream << "Tabs: " << matrix.Game.lines;
         std::string linesStr = stream.str();
         printText(linesStr.c_str(), centerX(linesStr.c_str()), h/2 + 40, {255, 255, 255, 255});
         
@@ -275,7 +275,7 @@ public:
         printText(stream.str().c_str(), (int)(200 * scaleX), (int)(60 * scaleY)-10, {255, 255, 255, 255});
         
         stream.str("");
-        stream << "Lines: " << matrix.Game.lines;
+        stream << "Tabs: " << matrix.Game.lines;
         printText(stream.str().c_str(), (int)(310 * scaleX), (int)(60 * scaleY)-10, {255, 255, 255, 255});
         
         if (paused) {
