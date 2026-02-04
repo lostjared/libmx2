@@ -233,7 +233,7 @@ namespace mx {
         
         struct SpriteDrawCmd {
             float x, y, w, h;
-            glm::vec4 params;  // Store shader params with each draw command
+            glm::vec4 params;  
         };
         
         VkDevice device = VK_NULL_HANDLE;

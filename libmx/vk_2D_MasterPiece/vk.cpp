@@ -64,6 +64,7 @@ namespace mx {
         } catch (const std::exception& e) {
             std::cerr << "Warning: Text rendering initialization failed: " << e.what() << std::endl;
             std::cerr << "Text rendering will be disabled." << std::endl;
+            textRenderer = nullptr;
         }
     }
 
@@ -1828,6 +1829,7 @@ namespace mx {
     
     void VKText::renderText(VkCommandBuffer cmdBuffer, VkPipelineLayout pipelineLayout,
                            uint32_t screenWidth, uint32_t screenHeight) {
+
         struct TextPushConstants {
             float screenWidth;
             float screenHeight;
