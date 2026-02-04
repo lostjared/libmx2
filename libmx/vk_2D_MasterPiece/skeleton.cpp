@@ -246,12 +246,12 @@ public:
         }
         
         const char* gameOverText = "GAME OVER!";
-        printText(gameOverText, centerX(gameOverText), h/2 - 40, {255, 0, 0, 255});
+        printText(gameOverText, centerX(gameOverText), h/2 - 80, {255, 0, 0, 255});
         
         std::ostringstream stream;
         stream << "Final Score: " << matrix.Game.score;
         std::string scoreStr = stream.str();
-        printText(scoreStr.c_str(), centerX(scoreStr.c_str()), h/2, {255, 255, 255, 255});
+        printText(scoreStr.c_str(), centerX(scoreStr.c_str()), h/2 - 20, {255, 255, 255, 255});
         
         stream.str("");
         stream << "Tabs: " << matrix.Game.lines;
@@ -259,7 +259,7 @@ public:
         printText(linesStr.c_str(), centerX(linesStr.c_str()), h/2 + 40, {255, 255, 255, 255});
         
         const char* returnText = "Press ENTER for Menu or Return to Quit";
-        printText(returnText, centerX(returnText), h/2 + 100, {255, 255, 0, 255});
+        printText(returnText, centerX(returnText), h/2 + 120, {255, 255, 0, 255});
     }
     
     void updateOptions() {
