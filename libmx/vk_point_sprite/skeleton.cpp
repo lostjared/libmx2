@@ -212,7 +212,7 @@ public:
         
         if (e.type == SDL_KEYDOWN) {
             if (e.key.keysym.sym == SDLK_SPACE) {
-                addRandomOrbs(10);
+                addRandomOrbs(50);
             }
             if (e.key.keysym.sym == SDLK_c) {
                 orbs.clear();
