@@ -109,6 +109,9 @@ private:
     // Bonus scoring
     int matchBonus = 0;
     
+    // Font scaling
+    int lastFontSize = 0;
+    
     
     bool flashActive = false;
     Uint32 flashStartTime = 0;
@@ -124,7 +127,7 @@ public:
     MasterPieceWindow(const std::string& path, int wx, int wy, bool full)
         : mx::VKWindow("-[ MasterPiece 2D - Vulkan ]-", wx, wy, full) {
         setPath(path);
-        setFont("font.ttf", 34);
+        updateFontSize();
         srand((unsigned int)time(0));
         lastTick = SDL_GetTicks();
     }
@@ -151,8 +154,29 @@ public:
         }
     }
     
+    void updateFontSize() {
+        int fontSize = (int)(24.0f * ((float)h / 480.0f));
+        fontSize = std::max(14, std::min(48, fontSize));  // Clamp between 14 and 48
+        if (fontSize != lastFontSize) {
+            setFont("font.ttf", fontSize);
+            lastFontSize = fontSize;
+        }
+    }
+    
+    int getCharWidth() {
+        return (int)(lastFontSize * 0.5f);
+    }
+    
+    int getMenuSpacing() {
+        return (int)(40.0f * ((float)h / 480.0f));
+    }
+    
+    int scaleY(int baseY) {
+        return (int)(baseY * ((float)h / 480.0f));
+    }
+    
     int centerX(const char* text) {
-        return w/2 - (int)(strlen(text) * 17 / 2);
+        return w/2 - (int)(strlen(text) * getCharWidth() / 2);
     }
 
     void proc() override {
@@ -195,18 +219,18 @@ public:
         if (startScreen) {
             startScreen->drawSpriteRect(0, 0, w, h);
         }
-        
-        
+        int titleY = scaleY(100);
+        int menuStartY = scaleY(180);
+        int spacing = getMenuSpacing();
         const char* title = "MasterPiece";
-        printText(title, centerX(title), 100, {255, 255, 0, 255});
-        
+        printText(title, centerX(title), titleY, {255, 255, 0, 255});
         const char* menuItems[] = {"New Game", "Options", "Credits", "Quit"};
         for (int i = 0; i < 4; i++) {
             SDL_Color col = (i == cursorPos) ? SDL_Color{255, 255, 0, 255} : SDL_Color{255, 255, 255, 255};
-            printText(menuItems[i], centerX(menuItems[i]), 200 + i * 50, col);
+            printText(menuItems[i], centerX(menuItems[i]), menuStartY + i * spacing, col);
         }
         
-        printText(">>", centerX(menuItems[cursorPos]) - 40, 200 + cursorPos * 50, {255, 255, 0, 255});
+        printText(">>", centerX(menuItems[cursorPos]) - scaleY(30), menuStartY + cursorPos * spacing, {255, 255, 0, 255});
     }
     
     void updateGame() {
@@ -242,42 +266,52 @@ public:
         if (startScreen) {
             startScreen->drawSpriteRect(0, 0, w, h);
         }
+        
+        int titleY = scaleY(100);
+        int optStartY = scaleY(180);
+        int spacing = getMenuSpacing();
+        
         const char* optTitle = "OPTIONS";
-        printText(optTitle, centerX(optTitle), 100, {255, 255, 0, 255});
+        printText(optTitle, centerX(optTitle), titleY, {255, 255, 0, 255});
         
         // Difficulty option
         const char* difficultyLabels[] = {"Easy", "Normal", "Hard"};
         std::string diffText = std::string("< Difficulty: ") + difficultyLabels[difficultySetting] + " >";
         SDL_Color diffColor = (optionsCursor == 0) ? SDL_Color{255, 255, 0, 255} : SDL_Color{255, 255, 255, 255};
-        printText(diffText.c_str(), centerX(diffText.c_str()), 180, diffColor);
+        printText(diffText.c_str(), centerX(diffText.c_str()), optStartY, diffColor);
         if (optionsCursor == 0) {
-            printText(">>", centerX(diffText.c_str()) - 40, 180, {255, 255, 0, 255});
+            printText(">>", centerX(diffText.c_str()) - scaleY(30), optStartY, {255, 255, 0, 255});
         }
         
         // Back option
         const char* backText = "Back";
         SDL_Color backColor = (optionsCursor == 1) ? SDL_Color{255, 255, 0, 255} : SDL_Color{255, 255, 255, 255};
-        printText(backText, centerX(backText), 230, backColor);
+        printText(backText, centerX(backText), optStartY + spacing, backColor);
         if (optionsCursor == 1) {
-            printText(">>", centerX(backText) - 40, 230, {255, 255, 0, 255});
+            printText(">>", centerX(backText) - scaleY(30), optStartY + spacing, {255, 255, 0, 255});
         }
         
         const char* instructions = "UP/DOWN: Select  LEFT/RIGHT: Change  ENTER: Confirm";
-        printText(instructions, centerX(instructions), 380, {200, 200, 200, 255});
+        printText(instructions, centerX(instructions), scaleY(350), {200, 200, 200, 255});
     }
     
     void updateCredits() {
         if (startScreen) {
             startScreen->drawSpriteRect(0, 0, w, h);
         }
+        
+        int titleY = scaleY(100);
+        int contentY = scaleY(180);
+        int spacing = getMenuSpacing();
+        
         const char* credTitle = "CREDITS";
         const char* cred1 = "MasterPiece Clone";
         const char* cred2 = "Vulkan Engine by Jared Bruni";
         const char* credReturn = "Press Return to return";
-        printText(credTitle, centerX(credTitle), 100, {255, 255, 0, 255});
-        printText(cred1, centerX(cred1), 180, {255, 255, 255, 255});
-        printText(cred2, centerX(cred2), 220, {255, 255, 255, 255});
-        printText(credReturn, centerX(credReturn), 320, {255, 255, 0, 255});
+        printText(credTitle, centerX(credTitle), titleY, {255, 255, 0, 255});
+        printText(cred1, centerX(cred1), contentY, {255, 255, 255, 255});
+        printText(cred2, centerX(cred2), contentY + spacing, {255, 255, 255, 255});
+        printText(credReturn, centerX(credReturn), scaleY(320), {255, 255, 0, 255});
     }
     
     void drawGame() {
@@ -685,7 +719,8 @@ public:
         matrix.block.color = matrix.nextblock.color;
         matrix.nextblock.color.randcolor();
         matrix.block.x = GRID_WIDTH / 2;
-        matrix.block.y = 0;  
+        matrix.block.y = 1;
+        matrix.block.horizontal = false;
     }
     
     bool checkGameOver() {
@@ -783,7 +818,8 @@ public:
                         matrix.init_matrix();
                         applyDifficulty();
                         matrix.block.x = GRID_WIDTH / 2;
-                        matrix.block.y = 0;  
+                        matrix.block.y = 1;
+                        matrix.block.horizontal = false;
                         currentScreen = SCREEN_GAME;
                     } else if (cursorPos == 1) {  
                         currentScreen = SCREEN_OPTIONS;
