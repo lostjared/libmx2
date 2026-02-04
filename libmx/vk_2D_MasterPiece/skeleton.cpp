@@ -222,7 +222,7 @@ public:
         int titleY = scaleY(100);
         int menuStartY = scaleY(180);
         int spacing = getMenuSpacing();
-        const char* title = "MasterPiece";
+        const char* title = "Vulkan MasterPiece";
         printText(title, centerX(title), titleY, {255, 255, 0, 255});
         const char* menuItems[] = {"New Game", "Options", "Credits", "Quit"};
         for (int i = 0; i < 4; i++) {
@@ -292,7 +292,7 @@ public:
         }
         
         const char* instructions = "UP/DOWN: Select  LEFT/RIGHT: Change  ENTER: Confirm";
-        printText(instructions, centerX(instructions), scaleY(350), {200, 200, 200, 255});
+        printText(instructions, centerX(instructions)-100, scaleY(350), {200, 200, 200, 255});
     }
     
     void updateCredits() {
