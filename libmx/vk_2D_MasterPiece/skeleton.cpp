@@ -28,7 +28,7 @@ enum {
 };
 
 
-enum ScreenState { SCREEN_INTRO, SCREEN_START, SCREEN_GAME, SCREEN_GAMEOVER, SCREEN_OPTIONS, SCREEN_CREDITS };
+enum ScreenState { SCREEN_INTRO, SCREEN_START, SCREEN_GAME, SCREEN_GAMEOVER, SCREEN_OPTIONS, SCREEN_CREDITS, SCREEN_SCORES };
 
 
 struct GameData {
@@ -94,8 +94,95 @@ struct TileMatrix {
     }
 };
 
+struct Score {
+    std::string name;
+    int score;
+    Score(std::string name_, int score_) : name(name_), score(score_) {}
+    Score() : name{}, score{0} {}
+};
+
+class HighScores {
+public:
+    HighScores() {
+        read();
+    }
+    ~HighScores() {
+        write();
+    }
+    void addScore(const std::string &name, int score) {
+        scores.push_back({name, score});
+        sort();
+        
+        if (scores.size() > 10) {
+            scores.resize(10);
+        }
+    }
+    void sort() {
+        std::sort(scores.begin(), scores.end(), [](const Score &one, const Score &two) {
+            return one.score > two.score;  
+        });
+    }
+
+    bool qualifiesForHighScore(int score) {
+        if (scores.size() < 10) return true;
+        return score > scores.back().score;
+    }
+
+    const std::vector<Score>& getScores() const {
+        return scores;
+    }
+
+    void init() {
+        scores.clear();
+        for(int i = 0; i < 10; ++i) 
+            scores.push_back(Score("Anonymous", (10 - i) * 100));
+    }
+
+    void read() {
+        std::fstream file;
+        file.open("./scores.dat", std::ios::in);
+        if(!file.is_open()) {
+            mx::system_out << "No scores file.\n";
+            init();
+            return;
+        }
+        std::string input;
+        int count = 0;
+        while(std::getline(file, input)) {
+            if(count >= 10) break;
+            if(input.length() > 0) {
+                auto pos = input.find(":");
+                if (pos != std::string::npos) {
+                    std::string left = input.substr(0, pos);
+                    std::string right = input.substr(pos + 1);
+                    scores.push_back(Score(left, std::strtol(right.c_str(), 0, 10)));
+                    count++;
+                }
+            }
+        }
+        file.close();
+        sort();
+    }
+    void write() {
+        std::fstream file;
+        file.open("./scores.dat", std::ios::out);
+        if(!file.is_open()) {
+            mx::system_err << "Could not open score file..\n";
+            return;
+        }   
+        for(auto &s : scores) {
+            file << s.name << ":" << s.score << std::endl;
+        }
+        file.close();
+    }
+private:
+
+    std::vector<Score> scores;
+};
+
 class MasterPieceWindow : public mx::VKWindow {
 private:
+    HighScores scores;
     TileMatrix matrix;
     ScreenState currentScreen = SCREEN_INTRO;
     Uint32 lastTick = 0;
@@ -106,6 +193,11 @@ private:
     int optionsCursor = 0;
     int difficultySetting = 1;    
     
+    
+    bool enteringName = false;
+    std::string playerName;
+    int finalScore = 0;
+    mx::VKSprite* scoresBackground = nullptr;
     
     int matchBonus = 0;
     
@@ -145,6 +237,7 @@ public:
         gamebg = createSprite(util.path + "/data/gamebg.png", util.path + "/data/sprite_vert_bubble.spv", fragShader);
         startScreen = createSprite(util.path + "/data/universe.png", util.path + "/data/sprite_vert_bubble.spv",util.path + "/data/sprite_electric.spv");
         introScreen = createSprite(util.path + "/data/intro.png", util.path + "/data/sprite_vert_bubble.spv", util.path + "/data/sprite_bubble.spv");
+        scoresBackground = createSprite(util.path + "/data/universe.png", util.path + "/data/sprite_vert_bubble.spv", util.path + "/data/sprite_warp.spv");
         const char* blockFiles[] = {
             "block_black.png", "block_yellow.png", "block_orange.png", "block_ltblue.png",
             "block_dblue.png", "block_purple.png", "block_pink.png", "block_gray.png",
@@ -159,7 +252,7 @@ public:
         int fontSize = (int)(24.0f * ((float)h / 480.0f));
         fontSize = std::max(14, std::min(48, fontSize));  
         if (fontSize != lastFontSize) {
-            setFont("font.ttf", fontSize);
+            setFont("font.ttf", fontSize-4);
             lastFontSize = fontSize;
         }
     }
@@ -200,6 +293,9 @@ public:
             case SCREEN_CREDITS:
                 updateCredits();
                 break;
+            case SCREEN_SCORES:
+                updateScores();
+                break;
         }
     }
     
@@ -229,8 +325,8 @@ public:
         int spacing = getMenuSpacing();
         const char* title = "Vulkan MasterPiece";
         printText(title, centerX(title), titleY, {255, 255, 0, 255});
-        const char* menuItems[] = {"New Game", "Options", "Credits", "Quit"};
-        for (int i = 0; i < 4; i++) {
+        const char* menuItems[] = {"New Game", "High Scores", "Options", "Credits", "Quit"};
+        for (int i = 0; i < 5; i++) {
             SDL_Color col = (i == cursorPos) ? SDL_Color{255, 255, 0, 255} : SDL_Color{255, 255, 255, 255};
             printText(menuItems[i], centerX(menuItems[i]), menuStartY + i * spacing, col);
         }
@@ -264,8 +360,15 @@ public:
         std::string linesStr = stream.str();
         printText(linesStr.c_str(), centerX(linesStr.c_str()), h/2 + 40, {255, 255, 255, 255});
         
-        const char* returnText = "Press ENTER for Menu or Return to Quit";
+        const char* returnText = "Press ENTER to view High Scores";
         printText(returnText, centerX(returnText), h/2 + 120, {255, 255, 0, 255});
+    }
+    
+    void goToScoresScreen() {
+        finalScore = matrix.Game.score;
+        playerName = "";
+        enteringName = scores.qualifiesForHighScore(finalScore);
+        currentScreen = SCREEN_SCORES;
     }
     
     void updateOptions() {
@@ -316,12 +419,79 @@ public:
         
         const char* credTitle = "CREDITS";
         const char* cred1 = "MasterPiece Clone";
-        const char* cred2 = "Vulkan Engine by Jared Bruni";
+        const char* cred2 = "MX2 Engine by Jared Bruni";
         const char* credReturn = "Press Return to return";
         printText(credTitle, centerX(credTitle), titleY, {255, 255, 0, 255});
         printText(cred1, centerX(cred1), contentY, {255, 255, 255, 255});
         printText(cred2, centerX(cred2), contentY + spacing, {255, 255, 255, 255});
         printText(credReturn, centerX(credReturn), scaleY(320), {255, 255, 0, 255});
+    }
+    
+    void updateScores() {
+        
+        if (scoresBackground) {
+            float time_f = static_cast<float>(SDL_GetTicks()) / 1000.0f;
+            scoresBackground->setShaderParams(time_f, 0.0f, 0.0f, 0.0f);
+            scoresBackground->drawSpriteRect(0, 0, w, h);
+        }
+        
+        int titleY = scaleY(40);
+        int listStartY = scaleY(90);
+        int lineHeight = scaleY(32);
+        
+        
+        const char* title = "HIGH SCORES";
+        printText(title, centerX(title), titleY, {255, 255, 0, 255});
+        
+        
+        const auto& scoreList = scores.getScores();
+        for (size_t i = 0; i < scoreList.size() && i < 10; ++i) {
+            std::ostringstream stream;
+            stream << (i + 1) << ". " << scoreList[i].name << "  " << scoreList[i].score;
+            std::string scoreStr = stream.str();
+            
+            SDL_Color color = {255, 255, 255, 255};
+            
+            if (enteringName && finalScore > 0) {
+                
+                int rank = 0;
+                for (size_t j = 0; j < scoreList.size(); ++j) {
+                    if (finalScore > scoreList[j].score) {
+                        rank = j;
+                        break;
+                    }
+                    rank = j + 1;
+                }
+                if ((int)i == rank) {
+                    color = {0, 255, 0, 255}; 
+                }
+            }
+            
+            printText(scoreStr.c_str(), scaleY(100), listStartY + (int)i * lineHeight, color);
+        }
+        
+        
+        if (enteringName) {
+            int entryY = scaleY(420);
+            
+            std::ostringstream stream;
+            stream << "Your Score: " << finalScore;
+            std::string yourScore = stream.str();
+            printText(yourScore.c_str(), centerX(yourScore.c_str()), entryY - lineHeight * 2, {255, 255, 0, 255});
+            
+            const char* prompt = "Enter your name:";
+            printText(prompt, centerX(prompt), entryY - lineHeight, {255, 255, 255, 255});
+            
+            
+            std::string displayName = playerName + "_";
+            printText(displayName.c_str(), centerX(displayName.c_str()), entryY, {0, 255, 255, 255});
+            
+            const char* instructions = "Type name, ENTER to confirm, BACKSPACE to delete";
+            printText(instructions, centerX(instructions), entryY + lineHeight, {200, 200, 200, 255});
+        } else {
+            const char* returnText = "Press ENTER to return to menu";
+            printText(returnText, centerX(returnText), scaleY(440), {255, 255, 0, 255});
+        }
     }
     
     void drawGame() {
@@ -819,6 +989,8 @@ public:
         }
         if (e.type == SDL_KEYDOWN) {
             gameKeypress(e.key.keysym.sym);
+        } else if (e.type == SDL_TEXTINPUT) {
+            handleTextInput(e.text.text);
         }
     }
     
@@ -831,9 +1003,9 @@ public:
                 break;
             case SCREEN_START:
                 if (key == SDLK_UP) {
-                    cursorPos = (cursorPos - 1 + 4) % 4;
+                    cursorPos = (cursorPos - 1 + 5) % 5;
                 } else if (key == SDLK_DOWN) {
-                    cursorPos = (cursorPos + 1) % 4;
+                    cursorPos = (cursorPos + 1) % 5;
                 } else if (key == SDLK_RETURN) {
                     if (cursorPos == 0) {  
                         matrix.init_matrix();
@@ -843,10 +1015,14 @@ public:
                         matrix.block.horizontal = false;
                         currentScreen = SCREEN_GAME;
                     } else if (cursorPos == 1) {  
-                        currentScreen = SCREEN_OPTIONS;
+                        finalScore = 0;
+                        enteringName = false;
+                        currentScreen = SCREEN_SCORES;
                     } else if (cursorPos == 2) {  
-                        currentScreen = SCREEN_CREDITS;
+                        currentScreen = SCREEN_OPTIONS;
                     } else if (cursorPos == 3) {  
+                        currentScreen = SCREEN_CREDITS;
+                    } else if (cursorPos == 4) {  
                         quit();
                     }
                 }
@@ -872,9 +1048,9 @@ public:
                 break;
             case SCREEN_GAMEOVER:
                 if (key == SDLK_RETURN) {
+                    goToScoresScreen();
+                } else if (key == SDLK_ESCAPE) {
                     currentScreen = SCREEN_START;
-                } else if (key == SDLK_RETURN) {
-                    quit();
                 }
                 break;
             case SCREEN_OPTIONS:
@@ -901,6 +1077,33 @@ public:
                     currentScreen = SCREEN_START;
                 }
                 break;
+            case SCREEN_SCORES:
+                if (enteringName) {
+                    if (key == SDLK_RETURN && !playerName.empty()) {
+                        
+                        scores.addScore(playerName, finalScore);
+                        enteringName = false;
+                    } else if (key == SDLK_BACKSPACE && !playerName.empty()) {
+                        playerName.pop_back();
+                    } else if (key == SDLK_ESCAPE) {
+                        
+                        enteringName = false;
+                    }
+                } else {
+                    if (key == SDLK_RETURN || key == SDLK_ESCAPE) {
+                        currentScreen = SCREEN_START;
+                    }
+                }
+                break;
+        }
+    }
+    
+    void handleTextInput(const char* text) {
+        if (currentScreen == SCREEN_SCORES && enteringName) {
+            
+            if (playerName.length() < 15) {
+                playerName += text;
+            }
         }
     }
 };
