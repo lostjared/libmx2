@@ -75,7 +75,8 @@ struct GameBlock {
     BlockColor nextcolor;
     int x, y;
     int rotation;
-    GameBlock() : x(0), y(0), rotation(0) {}
+    bool horizontal;  // false = vertical, true = horizontal
+    GameBlock() : x(0), y(0), rotation(0), horizontal(false) {}
 };
 
 struct TileMatrix {
@@ -100,6 +101,13 @@ private:
     Uint32 lastTick = 0;
     int cursorPos = 0;
     bool paused = false;
+    
+    // Options menu state
+    int optionsCursor = 0;
+    int difficultySetting = 1;    // 0=Easy, 1=Normal, 2=Hard
+    
+    // Bonus scoring
+    int matchBonus = 0;
     
     
     bool flashActive = false;
@@ -235,13 +243,27 @@ public:
             startScreen->drawSpriteRect(0, 0, w, h);
         }
         const char* optTitle = "OPTIONS";
-        const char* speed = "Speed: Normal";
-        const char* sound = "Sound: On";
-        const char* optReturn = "Press Return to return";
         printText(optTitle, centerX(optTitle), 100, {255, 255, 0, 255});
-        printText(speed, centerX(speed), 180, {255, 255, 255, 255});
-        printText(sound, centerX(sound), 220, {255, 255, 255, 255});
-        printText(optReturn, centerX(optReturn), 320, {255, 255, 0, 255});
+        
+        // Difficulty option
+        const char* difficultyLabels[] = {"Easy", "Normal", "Hard"};
+        std::string diffText = std::string("< Difficulty: ") + difficultyLabels[difficultySetting] + " >";
+        SDL_Color diffColor = (optionsCursor == 0) ? SDL_Color{255, 255, 0, 255} : SDL_Color{255, 255, 255, 255};
+        printText(diffText.c_str(), centerX(diffText.c_str()), 180, diffColor);
+        if (optionsCursor == 0) {
+            printText(">>", centerX(diffText.c_str()) - 40, 180, {255, 255, 0, 255});
+        }
+        
+        // Back option
+        const char* backText = "Back";
+        SDL_Color backColor = (optionsCursor == 1) ? SDL_Color{255, 255, 0, 255} : SDL_Color{255, 255, 255, 255};
+        printText(backText, centerX(backText), 230, backColor);
+        if (optionsCursor == 1) {
+            printText(">>", centerX(backText) - 40, 230, {255, 255, 0, 255});
+        }
+        
+        const char* instructions = "UP/DOWN: Select  LEFT/RIGHT: Change  ENTER: Confirm";
+        printText(instructions, centerX(instructions), 380, {200, 200, 200, 255});
     }
     
     void updateCredits() {
@@ -250,7 +272,7 @@ public:
         }
         const char* credTitle = "CREDITS";
         const char* cred1 = "MasterPiece Clone";
-        const char* cred2 = "Vulkan Engine by libmx2";
+        const char* cred2 = "Vulkan Engine by Jared Bruni";
         const char* credReturn = "Press Return to return";
         printText(credTitle, centerX(credTitle), 100, {255, 255, 0, 255});
         printText(cred1, centerX(cred1), 180, {255, 255, 255, 255});
@@ -310,37 +332,52 @@ public:
     }
     
     void drawblock(float scaleX, float scaleY) {
-        int bx = STARTX + matrix.block.x * (BLOCK_SIZE + BLOCK_SPACING);
-
         int c1 = matrix.block.color.c1;
         int c2 = matrix.block.color.c2;
         int c3 = matrix.block.color.c3;
 
-        
-        int y0 = matrix.block.y;
-        int y1 = matrix.block.y + 1;
-        int y2 = matrix.block.y + 2;
-        
-        if (y0 >= 0 && c1 > 0 && c1 < BLOCK_COUNT && grid_blocks[c1]) {
-            int screenY = STARTY + y0 * (BLOCK_HEIGHT + BLOCK_SPACING) + 10;
-            grid_blocks[c1]->drawSpriteRect(
-                (int)(bx * scaleX), (int)(screenY * scaleY),
-                (int)(BLOCK_SIZE * scaleX), (int)(BLOCK_HEIGHT * scaleY)
-            );
-        }
-        if (y1 >= 0 && c2 > 0 && c2 < BLOCK_COUNT && grid_blocks[c2]) {
-            int screenY = STARTY + y1 * (BLOCK_HEIGHT + BLOCK_SPACING) + 10; 
-            grid_blocks[c2]->drawSpriteRect(
-                (int)(bx * scaleX), (int)(screenY * scaleY),
-                (int)(BLOCK_SIZE * scaleX), (int)(BLOCK_HEIGHT * scaleY)
-            );
-        }
-        if (y2 >= 0 && c3 > 0 && c3 < BLOCK_COUNT && grid_blocks[c3]) {
-            int screenY = STARTY + y2 * (BLOCK_HEIGHT + BLOCK_SPACING) + 10;
-            grid_blocks[c3]->drawSpriteRect(
-                (int)(bx * scaleX), (int)(screenY * scaleY),
-                (int)(BLOCK_SIZE * scaleX), (int)(BLOCK_HEIGHT * scaleY)
-            );
+        if (matrix.block.horizontal) {
+            // Horizontal orientation - 3 blocks side by side
+            int screenY = STARTY + matrix.block.y * (BLOCK_HEIGHT + BLOCK_SPACING) + 10;
+            for (int i = 0; i < 3; i++) {
+                int color = (i == 0) ? c1 : (i == 1) ? c2 : c3;
+                int bx = STARTX + (matrix.block.x + i) * (BLOCK_SIZE + BLOCK_SPACING);
+                if (matrix.block.x + i >= 0 && matrix.block.x + i < GRID_WIDTH &&
+                    color > 0 && color < BLOCK_COUNT && grid_blocks[color]) {
+                    grid_blocks[color]->drawSpriteRect(
+                        (int)(bx * scaleX), (int)(screenY * scaleY),
+                        (int)(BLOCK_SIZE * scaleX), (int)(BLOCK_HEIGHT * scaleY)
+                    );
+                }
+            }
+        } else {
+            // Vertical orientation - 3 blocks stacked
+            int bx = STARTX + matrix.block.x * (BLOCK_SIZE + BLOCK_SPACING);
+            int y0 = matrix.block.y;
+            int y1 = matrix.block.y + 1;
+            int y2 = matrix.block.y + 2;
+            
+            if (y0 >= 0 && c1 > 0 && c1 < BLOCK_COUNT && grid_blocks[c1]) {
+                int screenY = STARTY + y0 * (BLOCK_HEIGHT + BLOCK_SPACING) + 10;
+                grid_blocks[c1]->drawSpriteRect(
+                    (int)(bx * scaleX), (int)(screenY * scaleY),
+                    (int)(BLOCK_SIZE * scaleX), (int)(BLOCK_HEIGHT * scaleY)
+                );
+            }
+            if (y1 >= 0 && c2 > 0 && c2 < BLOCK_COUNT && grid_blocks[c2]) {
+                int screenY = STARTY + y1 * (BLOCK_HEIGHT + BLOCK_SPACING) + 10; 
+                grid_blocks[c2]->drawSpriteRect(
+                    (int)(bx * scaleX), (int)(screenY * scaleY),
+                    (int)(BLOCK_SIZE * scaleX), (int)(BLOCK_HEIGHT * scaleY)
+                );
+            }
+            if (y2 >= 0 && c3 > 0 && c3 < BLOCK_COUNT && grid_blocks[c3]) {
+                int screenY = STARTY + y2 * (BLOCK_HEIGHT + BLOCK_SPACING) + 10;
+                grid_blocks[c3]->drawSpriteRect(
+                    (int)(bx * scaleX), (int)(screenY * scaleY),
+                    (int)(BLOCK_SIZE * scaleX), (int)(BLOCK_HEIGHT * scaleY)
+                );
+            }
         }
     }
     
@@ -423,11 +460,17 @@ public:
         int bx = matrix.block.x;
         int by = matrix.block.y;
         
-        
-        if (by + 3 >= GRID_HEIGHT) return false;
-        
-        
-        if (matrix.grid[bx][by + 3] > 0) return false;
+        if (matrix.block.horizontal) {
+            // Horizontal: check all 3 columns below
+            if (by + 1 >= GRID_HEIGHT) return false;
+            for (int i = 0; i < 3; i++) {
+                if (bx + i >= 0 && bx + i < GRID_WIDTH && matrix.grid[bx + i][by + 1] > 0) return false;
+            }
+        } else {
+            // Vertical: check the cell below the bottom block
+            if (by + 3 >= GRID_HEIGHT) return false;
+            if (matrix.grid[bx][by + 3] > 0) return false;
+        }
         
         return true;
     }
@@ -437,23 +480,35 @@ public:
         int bx = matrix.block.x - 1;
         int by = matrix.block.y;
         
-        
-        if (by >= 0 && by < GRID_HEIGHT && matrix.grid[bx][by] > 0) return false;
-        if (by + 1 >= 0 && by + 1 < GRID_HEIGHT && matrix.grid[bx][by + 1] > 0) return false;
-        if (by + 2 >= 0 && by + 2 < GRID_HEIGHT && matrix.grid[bx][by + 2] > 0) return false;
+        if (matrix.block.horizontal) {
+            // Horizontal: just check the leftmost cell
+            if (by >= 0 && by < GRID_HEIGHT && matrix.grid[bx][by] > 0) return false;
+        } else {
+            // Vertical: check all 3 rows to the left
+            if (by >= 0 && by < GRID_HEIGHT && matrix.grid[bx][by] > 0) return false;
+            if (by + 1 >= 0 && by + 1 < GRID_HEIGHT && matrix.grid[bx][by + 1] > 0) return false;
+            if (by + 2 >= 0 && by + 2 < GRID_HEIGHT && matrix.grid[bx][by + 2] > 0) return false;
+        }
         
         return true;
     }
     
     bool canMoveRight() {
-        if (matrix.block.x >= GRID_WIDTH - 1) return false;
-        int bx = matrix.block.x + 1;
         int by = matrix.block.y;
         
-        
-        if (by >= 0 && by < GRID_HEIGHT && matrix.grid[bx][by] > 0) return false;
-        if (by + 1 >= 0 && by + 1 < GRID_HEIGHT && matrix.grid[bx][by + 1] > 0) return false;
-        if (by + 2 >= 0 && by + 2 < GRID_HEIGHT && matrix.grid[bx][by + 2] > 0) return false;
+        if (matrix.block.horizontal) {
+            // Horizontal: check the rightmost cell (x + 2) can move right (x + 3)
+            if (matrix.block.x + 3 >= GRID_WIDTH) return false;
+            int bx = matrix.block.x + 3;
+            if (by >= 0 && by < GRID_HEIGHT && matrix.grid[bx][by] > 0) return false;
+        } else {
+            // Vertical: check all 3 rows to the right
+            if (matrix.block.x >= GRID_WIDTH - 1) return false;
+            int bx = matrix.block.x + 1;
+            if (by >= 0 && by < GRID_HEIGHT && matrix.grid[bx][by] > 0) return false;
+            if (by + 1 >= 0 && by + 1 < GRID_HEIGHT && matrix.grid[bx][by + 1] > 0) return false;
+            if (by + 2 >= 0 && by + 2 < GRID_HEIGHT && matrix.grid[bx][by + 2] > 0) return false;
+        }
         
         return true;
     }
@@ -462,45 +517,118 @@ public:
         int bx = matrix.block.x;
         int by = matrix.block.y;
         
-        if (by >= 0 && by < GRID_HEIGHT)
-            matrix.grid[bx][by] = matrix.block.color.c1;
-        if (by + 1 >= 0 && by + 1 < GRID_HEIGHT)
-            matrix.grid[bx][by + 1] = matrix.block.color.c2;
-        if (by + 2 >= 0 && by + 2 < GRID_HEIGHT)
-            matrix.grid[bx][by + 2] = matrix.block.color.c3;
+        if (matrix.block.horizontal) {
+            // Horizontal: place 3 blocks side by side
+            if (by >= 0 && by < GRID_HEIGHT) {
+                if (bx >= 0 && bx < GRID_WIDTH) matrix.grid[bx][by] = matrix.block.color.c1;
+                if (bx + 1 >= 0 && bx + 1 < GRID_WIDTH) matrix.grid[bx + 1][by] = matrix.block.color.c2;
+                if (bx + 2 >= 0 && bx + 2 < GRID_WIDTH) matrix.grid[bx + 2][by] = matrix.block.color.c3;
+            }
+        } else {
+            // Vertical: place 3 blocks stacked
+            if (by >= 0 && by < GRID_HEIGHT)
+                matrix.grid[bx][by] = matrix.block.color.c1;
+            if (by + 1 >= 0 && by + 1 < GRID_HEIGHT)
+                matrix.grid[bx][by + 1] = matrix.block.color.c2;
+            if (by + 2 >= 0 && by + 2 < GRID_HEIGHT)
+                matrix.grid[bx][by + 2] = matrix.block.color.c3;
+        }
     }
     
     bool findMatches() {
         
         memset(flashGrid, false, sizeof(flashGrid));
         bool foundMatch = false;
+        matchBonus = 0;  // Reset bonus
         
-        
+        // Check horizontal matches (3, 4, or 5 in a row)
         for (int j = 0; j < GRID_HEIGHT; j++) {
-            for (int i = 0; i < GRID_WIDTH - 2; i++) {
-                if (matrix.grid[i][j] > 0 && 
-                    matrix.grid[i][j] == matrix.grid[i+1][j] && 
-                    matrix.grid[i][j] == matrix.grid[i+2][j]) {
-                    
-                    flashGrid[i][j] = true;
-                    flashGrid[i+1][j] = true;
-                    flashGrid[i+2][j] = true;
-                    foundMatch = true;
+            for (int i = 0; i < GRID_WIDTH; i++) {
+                if (matrix.grid[i][j] > 0) {
+                    int color = matrix.grid[i][j];
+                    int count = 1;
+                    // Count consecutive blocks to the right
+                    while (i + count < GRID_WIDTH && matrix.grid[i + count][j] == color) {
+                        count++;
+                    }
+                    if (count >= 3) {
+                        for (int k = 0; k < count; k++) {
+                            flashGrid[i + k][j] = true;
+                        }
+                        foundMatch = true;
+                        // Bonus for 4 or 5+ in a row
+                        if (count == 4) matchBonus += 25;
+                        else if (count >= 5) matchBonus += 50;
+                    }
                 }
             }
         }
         
-        
+        // Check vertical matches (3, 4, or 5 in a row)
         for (int i = 0; i < GRID_WIDTH; i++) {
-            for (int j = 0; j < GRID_HEIGHT - 2; j++) {
-                if (matrix.grid[i][j] > 0 && 
-                    matrix.grid[i][j] == matrix.grid[i][j+1] && 
-                    matrix.grid[i][j] == matrix.grid[i][j+2]) {
-                    
-                    flashGrid[i][j] = true;
-                    flashGrid[i][j+1] = true;
-                    flashGrid[i][j+2] = true;
-                    foundMatch = true;
+            for (int j = 0; j < GRID_HEIGHT; j++) {
+                if (matrix.grid[i][j] > 0) {
+                    int color = matrix.grid[i][j];
+                    int count = 1;
+                    // Count consecutive blocks downward
+                    while (j + count < GRID_HEIGHT && matrix.grid[i][j + count] == color) {
+                        count++;
+                    }
+                    if (count >= 3) {
+                        for (int k = 0; k < count; k++) {
+                            flashGrid[i][j + k] = true;
+                        }
+                        foundMatch = true;
+                        // Bonus for 4 or 5+ in a row
+                        if (count == 4) matchBonus += 25;
+                        else if (count >= 5) matchBonus += 50;
+                    }
+                }
+            }
+        }
+        
+        // Check diagonal matches (top-left to bottom-right)
+        for (int i = 0; i < GRID_WIDTH; i++) {
+            for (int j = 0; j < GRID_HEIGHT; j++) {
+                if (matrix.grid[i][j] > 0) {
+                    int color = matrix.grid[i][j];
+                    int count = 1;
+                    while (i + count < GRID_WIDTH && j + count < GRID_HEIGHT && 
+                           matrix.grid[i + count][j + count] == color) {
+                        count++;
+                    }
+                    if (count >= 3) {
+                        for (int k = 0; k < count; k++) {
+                            flashGrid[i + k][j + k] = true;
+                        }
+                        foundMatch = true;
+                        // Bonus for 4 or 5+ in a row (diagonal bonus is higher)
+                        if (count == 4) matchBonus += 35;
+                        else if (count >= 5) matchBonus += 75;
+                    }
+                }
+            }
+        }
+        
+        // Check diagonal matches (top-right to bottom-left)
+        for (int i = 0; i < GRID_WIDTH; i++) {
+            for (int j = 0; j < GRID_HEIGHT; j++) {
+                if (matrix.grid[i][j] > 0) {
+                    int color = matrix.grid[i][j];
+                    int count = 1;
+                    while (i - count >= 0 && j + count < GRID_HEIGHT && 
+                           matrix.grid[i - count][j + count] == color) {
+                        count++;
+                    }
+                    if (count >= 3) {
+                        for (int k = 0; k < count; k++) {
+                            flashGrid[i - k][j + k] = true;
+                        }
+                        foundMatch = true;
+                        // Bonus for 4 or 5+ in a row (diagonal bonus is higher)
+                        if (count == 4) matchBonus += 35;
+                        else if (count >= 5) matchBonus += 75;
+                    }
                 }
             }
         }
@@ -522,6 +650,10 @@ public:
                 }
             }
         }
+        // Apply bonus points for 4+ matches
+        matrix.Game.score += matchBonus;
+        matchBonus = 0;
+        
         memset(flashGrid, false, sizeof(flashGrid));
         
         
@@ -566,6 +698,12 @@ public:
         return false;
     }
     
+    void applyDifficulty() {
+        // Set starting speed based on difficulty: Easy=30, Normal=20, Hard=10
+        int baseSpeeds[] = {30, 20, 10};
+        matrix.Game.speed = baseSpeeds[difficultySetting];
+    }
+    
     void moveBlockLeft() {
         if (canMoveLeft()) {
             matrix.block.x--;
@@ -590,8 +728,36 @@ public:
         }
     }
     
+    bool canRotate() {
+        int bx = matrix.block.x;
+        int by = matrix.block.y;
+        
+        if (matrix.block.horizontal) {
+            // Rotating from horizontal to vertical
+            // Need space for 3 blocks vertically at position bx
+            if (by + 2 >= GRID_HEIGHT) return false;
+            // Check cells below for vertical placement
+            if (by + 1 < GRID_HEIGHT && matrix.grid[bx][by + 1] > 0) return false;
+            if (by + 2 < GRID_HEIGHT && matrix.grid[bx][by + 2] > 0) return false;
+        } else {
+            // Rotating from vertical to horizontal
+            // Need space for 3 blocks horizontally at position by
+            if (bx + 2 >= GRID_WIDTH) return false;
+            // Check cells to the right for horizontal placement
+            if (bx + 1 < GRID_WIDTH && by >= 0 && by < GRID_HEIGHT && matrix.grid[bx + 1][by] > 0) return false;
+            if (bx + 2 < GRID_WIDTH && by >= 0 && by < GRID_HEIGHT && matrix.grid[bx + 2][by] > 0) return false;
+        }
+        return true;
+    }
+    
+    void rotateBlock() {
+        if (canRotate()) {
+            matrix.block.horizontal = !matrix.block.horizontal;
+        }
+    }
+    
     void event(SDL_Event& e) override {
-        if(e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE) {
+        if(currentScreen == SCREEN_START && e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE) {
             quit();
             return;
         }
@@ -615,6 +781,7 @@ public:
                 } else if (key == SDLK_RETURN) {
                     if (cursorPos == 0) {  
                         matrix.init_matrix();
+                        applyDifficulty();
                         matrix.block.x = GRID_WIDTH / 2;
                         matrix.block.y = 0;  
                         currentScreen = SCREEN_GAME;
@@ -637,10 +804,12 @@ public:
                 } else if (key == SDLK_UP) {
                     matrix.block.color.shiftcolor(true);
                 } else if (key == SDLK_SPACE) {
-                    dropBlock();
+                    rotateBlock();
+                } else if (key == SDLK_z) {
+                    matrix.block.color.shiftcolor(false);
                 } else if (key == SDLK_p) {
                     paused = !paused;
-                } else if (key == SDLK_RETURN) {
+                } else if (key == SDLK_ESCAPE) {
                     currentScreen = SCREEN_START;
                 }
                 break;
@@ -652,6 +821,24 @@ public:
                 }
                 break;
             case SCREEN_OPTIONS:
+                if (key == SDLK_UP) {
+                    optionsCursor = (optionsCursor - 1 + 2) % 2;
+                } else if (key == SDLK_DOWN) {
+                    optionsCursor = (optionsCursor + 1) % 2;
+                } else if (key == SDLK_LEFT) {
+                    if (optionsCursor == 0) {
+                        difficultySetting = (difficultySetting - 1 + 3) % 3;
+                    }
+                } else if (key == SDLK_RIGHT) {
+                    if (optionsCursor == 0) {
+                        difficultySetting = (difficultySetting + 1) % 3;
+                    }
+                } else if (key == SDLK_RETURN) {
+                    if (optionsCursor == 1) {
+                        currentScreen = SCREEN_START;
+                    }
+                }
+                break;
             case SCREEN_CREDITS:
                 if (key == SDLK_RETURN) {
                     currentScreen = SCREEN_START;
