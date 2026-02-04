@@ -141,16 +141,17 @@ public:
 
     void initGfx() {
         std::string vertShader = util.path + "/data/sprite_vert.spv";
-        gamebg = createSprite(util.path + "/data/gamebg.png", vertShader);
-        startScreen = createSprite(util.path + "/data/universe.png", vertShader);
-        introScreen = createSprite(util.path + "/data/intro.png", vertShader);
+        std::string fragShader = util.path + "/data/sprite_kaleidoscope.spv";
+        gamebg = createSprite(util.path + "/data/gamebg.png", util.path + "/data/sprite_vert_bubble.spv", fragShader);
+        startScreen = createSprite(util.path + "/data/universe.png", util.path + "/data/sprite_vert_bubble.spv",util.path + "/data/sprite_electric.spv");
+        introScreen = createSprite(util.path + "/data/intro.png", util.path + "/data/sprite_vert_bubble.spv", util.path + "/data/sprite_bubble.spv");
         const char* blockFiles[] = {
             "block_black.png", "block_yellow.png", "block_orange.png", "block_ltblue.png",
             "block_dblue.png", "block_purple.png", "block_pink.png", "block_gray.png",
             "block_red.png", "block_green.png", "block_clear.png"
         };
         for (int i = 0; i < BLOCK_COUNT; i++) {
-            grid_blocks.push_back(createSprite(util.path + "/data/" + blockFiles[i], vertShader));
+            grid_blocks.push_back(createSprite(util.path + "/data/" + blockFiles[i], vertShader, util.path + "/data/sprite_frag.spv"));
         }
     }
     
@@ -204,6 +205,8 @@ public:
     
     void updateIntro() {
         if (introScreen) {
+            float time_f = static_cast<float>(SDL_GetTicks()) / 1000.0f;
+            introScreen->setShaderParams(time_f, 0.0f, 0.0f, 0.0f);
             introScreen->drawSpriteRect(0, 0, w, h);
         }
         const char* introText = "Press ENTER to Start";
@@ -217,6 +220,8 @@ public:
     
     void updateStart() {
         if (startScreen) {
+            float time_f = static_cast<float>(SDL_GetTicks()) / 1000.0f;
+            startScreen->setShaderParams(time_f, 0.0f, 0.0f, 0.0f);
             startScreen->drawSpriteRect(0, 0, w, h);
         }
         int titleY = scaleY(100);
@@ -229,7 +234,6 @@ public:
             SDL_Color col = (i == cursorPos) ? SDL_Color{255, 255, 0, 255} : SDL_Color{255, 255, 255, 255};
             printText(menuItems[i], centerX(menuItems[i]), menuStartY + i * spacing, col);
         }
-        
         printText(">>", centerX(menuItems[cursorPos]) - scaleY(30), menuStartY + cursorPos * spacing, {255, 255, 0, 255});
     }
     
@@ -242,6 +246,8 @@ public:
     
     void updateGameOver() {
         if (gamebg) {
+            float time_f = static_cast<float>(SDL_GetTicks()) / 1000.0f;
+            gamebg->setShaderParams(time_f, 0.0f, 0.0f, 0.0f);
             gamebg->drawSpriteRect(0, 0, w, h);
         }
         
@@ -264,6 +270,8 @@ public:
     
     void updateOptions() {
         if (startScreen) {
+            float time_f = static_cast<float>(SDL_GetTicks()) / 1000.0f;
+            startScreen->setShaderParams(time_f, 0.0f, 0.0f, 0.0f);
             startScreen->drawSpriteRect(0, 0, w, h);
         }
         
@@ -297,6 +305,8 @@ public:
     
     void updateCredits() {
         if (startScreen) {
+            float time_f = static_cast<float>(SDL_GetTicks()) / 1000.0f;
+            startScreen->setShaderParams(time_f, 0.0f, 0.0f, 0.0f);
             startScreen->drawSpriteRect(0, 0, w, h);
         }
         
@@ -317,11 +327,11 @@ public:
     void drawGame() {
         float scaleX = (float)w / 640.0f;
         float scaleY = (float)h / 480.0f;
-        
         if (gamebg) {
+            float time_f = static_cast<float>(SDL_GetTicks()) / 1000.0f;
+            gamebg->setShaderParams(time_f, 0.0f, 0.0f, 0.0f);
             gamebg->drawSpriteRect(0, 0, w, h);
         }
-        
         drawmatrix(scaleX, scaleY);
         drawblock(scaleX, scaleY);
         drawnext(scaleX, scaleY);
