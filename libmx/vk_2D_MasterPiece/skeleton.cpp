@@ -473,6 +473,7 @@ public:
             } else {
                 
                 placeBlock();
+                applyGravity();
                 
                 
                 if (findMatches()) {
