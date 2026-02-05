@@ -55,12 +55,26 @@ out vec4 FragColor;
 uniform sampler2D spriteTexture;
 
 void main() {
-    float dist = length(gl_PointCoord - vec2(0.5));
+    vec2 coord = gl_PointCoord - vec2(0.5);
+    float dist = length(coord);
+    
     if (dist > 0.5) {
         discard;
     }
+    
     vec4 texColor = texture(spriteTexture, gl_PointCoord);
-    FragColor = texColor * fragColor;
+    
+    
+    float glow = 1.0 - smoothstep(0.0, 0.5, dist);
+    float core = 1.0 - smoothstep(0.0, 0.15, dist);
+    
+    
+    vec4 glowColor = fragColor * glow;
+    vec4 coreColor = vec4(1.0, 1.0, 1.0, 1.0) * core * fragColor.a;
+    
+    
+    FragColor = texColor * fragColor * glow + coreColor * 0.3;
+    FragColor.a = fragColor.a * glow;
 }
 )";
 
@@ -94,13 +108,26 @@ out vec4 FragColor;
 uniform sampler2D spriteTexture;
 
 void main() {
-    float dist = length(gl_PointCoord - vec2(0.5));
+    vec2 coord = gl_PointCoord - vec2(0.5);
+    float dist = length(coord);
+    
     if (dist > 0.5) {
         discard;
     }
-
+    
     vec4 texColor = texture(spriteTexture, gl_PointCoord);
-    FragColor = texColor * fragColor;
+    
+    
+    float glow = 1.0 - smoothstep(0.0, 0.5, dist);
+    float core = 1.0 - smoothstep(0.0, 0.15, dist);
+    
+    
+    vec4 glowColor = fragColor * glow;
+    vec4 coreColor = vec4(1.0, 1.0, 1.0, 1.0) * core * fragColor.a;
+    
+    
+    FragColor = texColor * fragColor * glow + coreColor * 0.3;
+    FragColor.a = fragColor.a * glow;
 }
 )";
 #endif
@@ -292,7 +319,7 @@ public:
         
         glBindVertexArray(exhaustVAO);
         glDrawArrays(GL_POINTS, 0, static_cast<GLsizei>(exhaustParticles.size()));
-        CHECK_GL_ERROR(); // Add this line to check for errors after drawing
+        CHECK_GL_ERROR(); 
     }
 };
 
@@ -305,28 +332,109 @@ float generateRandomFloat(float min, float max) {
 
 class StarField : public gl::GLObject {
 public:
+    
+    enum class StarType { NORMAL, BRIGHT, BLUE, ORANGE, RED, YELLOW };
+    
     struct Particle {
         float x, y, z;   
         float vx, vy, vz; 
         float life;
         float twinkle;
+        float twinklePhase;    
+        StarType type;          
+        int layer;              
+        int textureIndex;       
+        float pulseSpeed;       
+        float baseSize;         
     };
 
-    static constexpr int NUM_PARTICLES = 2500;
+    
+    struct LayerConfig {
+        float zMin, zMax;
+        float speedMultiplier;
+        float sizeMultiplier;
+        int count;
+    };
+
+    static constexpr int NUM_PARTICLES = 50000;  
+    static constexpr int NUM_LAYERS = 3;
+    
     gl::ShaderProgram program;
     GLuint VAO, VBO[3];
-    GLuint texture;
+    GLuint texture1, texture2;  
     std::vector<Particle> particles;
     Uint32 lastUpdateTime = 0;
     float cameraZoom = 3.0f;   
-    float cameraRotation = 0.0f; 
+    float cameraRotation = 0.0f;
+    float globalTime = 0.0f;
+    
+    
+    LayerConfig layers[NUM_LAYERS] = {
+        { -12.0f, -6.0f, 0.2f, 0.6f, 28000 },  
+        { -6.0f, -3.0f, 0.5f, 1.0f, 14000 },   
+        { -3.0f, -1.0f, 1.0f, 1.6f, 8000 }     
+    };
+
+    
+    glm::vec4 getStarColor(StarType type, float brightness) {
+        switch(type) {
+            case StarType::BLUE:
+                return glm::vec4(0.6f * brightness, 0.8f * brightness, 1.0f * brightness, 1.0f);
+            case StarType::ORANGE:
+                return glm::vec4(1.0f * brightness, 0.7f * brightness, 0.3f * brightness, 1.0f);
+            case StarType::RED:
+                return glm::vec4(1.0f * brightness, 0.4f * brightness, 0.4f * brightness, 1.0f);
+            case StarType::YELLOW:
+                return glm::vec4(1.0f * brightness, 1.0f * brightness, 0.6f * brightness, 1.0f);
+            case StarType::BRIGHT:
+                return glm::vec4(1.0f * brightness, 1.0f * brightness, 1.0f * brightness, 1.0f);
+            case StarType::NORMAL:
+            default:
+                return glm::vec4(0.9f * brightness, 0.9f * brightness, 1.0f * brightness, 1.0f);
+        }
+    }
+
+    StarType randomStarType() {
+        float r = generateRandomFloat(0.0f, 1.0f);
+        if (r < 0.50f) return StarType::NORMAL;      
+        if (r < 0.65f) return StarType::BLUE;        
+        if (r < 0.75f) return StarType::YELLOW;      
+        if (r < 0.85f) return StarType::ORANGE;      
+        if (r < 0.92f) return StarType::RED;         
+        return StarType::BRIGHT;                      
+    }
 
     StarField() : particles(NUM_PARTICLES) {}
 
     ~StarField() override {
         glDeleteVertexArrays(1, &VAO);
         glDeleteBuffers(3, VBO);
-        glDeleteTextures(1, &texture);
+        glDeleteTextures(1, &texture1);
+        glDeleteTextures(1, &texture2);
+    }
+
+    void initParticle(Particle& p, int layer) {
+        const auto& cfg = layers[layer];
+        p.layer = layer;
+        p.x = generateRandomFloat(-4.0f, 4.0f);
+        p.y = generateRandomFloat(-4.0f, 4.0f);
+        p.z = generateRandomFloat(cfg.zMin, cfg.zMax);
+        
+        
+        p.vx = generateRandomFloat(-0.01f, 0.01f) * cfg.speedMultiplier;
+        p.vy = generateRandomFloat(-0.01f, 0.01f) * cfg.speedMultiplier;
+        p.vz = generateRandomFloat(0.15f, 0.35f) * cfg.speedMultiplier;
+        
+        p.life = generateRandomFloat(0.7f, 1.0f);
+        p.twinkle = generateRandomFloat(2.0f, 8.0f);
+        p.twinklePhase = generateRandomFloat(0.0f, 6.28f);
+        p.type = randomStarType();
+        p.textureIndex = (generateRandomFloat(0.0f, 1.0f) > 0.5f) ? 1 : 0;
+        p.pulseSpeed = generateRandomFloat(0.5f, 3.0f);
+        
+        
+        float typeMultiplier = (p.type == StarType::BRIGHT) ? 2.0f : 1.0f;
+        p.baseSize = generateRandomFloat(12.0f, 28.0f) * cfg.sizeMultiplier * typeMultiplier;
     }
 
     void load(gl::GLWindow *win) override {
@@ -334,23 +442,24 @@ public:
             throw mx::Exception("Error loading shader");
         }
 
-        for (auto& p : particles) {
-            p.x = generateRandomFloat(-1.0f, 1.0f);
-            p.y = generateRandomFloat(-1.0f, 1.0f);
-            p.z = generateRandomFloat(-5.0f, -2.0f); 
-            p.vx = generateRandomFloat(-0.02f, 0.02f); 
-            p.vy = generateRandomFloat(-0.02f, 0.02f); 
-            p.vz = generateRandomFloat(0.2f, 0.5f);    
-            p.life = generateRandomFloat(0.6f, 1.0f);
-            p.twinkle = generateRandomFloat(1.0f, 5.0f);
+        
+        int particleIndex = 0;
+        for (int layer = 0; layer < NUM_LAYERS; ++layer) {
+            int count = layers[layer].count;
+            for (int i = 0; i < count && particleIndex < NUM_PARTICLES; ++i, ++particleIndex) {
+                initParticle(particles[particleIndex], layer);
+                
+                particles[particleIndex].z = generateRandomFloat(layers[layer].zMin, 0.0f);
+            }
         }
+
         glGenVertexArrays(1, &VAO);
         glGenBuffers(3, VBO);
         glBindVertexArray(VAO);
         glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
         glBufferData(GL_ARRAY_BUFFER, NUM_PARTICLES * 3 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);\
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
         glBindBuffer(GL_ARRAY_BUFFER, VBO[1]);
         glBufferData(GL_ARRAY_BUFFER, NUM_PARTICLES * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
         glEnableVertexAttribArray(1);
@@ -359,7 +468,11 @@ public:
         glBufferData(GL_ARRAY_BUFFER, NUM_PARTICLES * 4 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
         glEnableVertexAttribArray(2);
         glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, 0, (void*)0);
-        texture = gl::loadTexture(win->util.getFilePath("data/star.png"));
+        
+        
+        texture1 = gl::loadTexture(win->util.getFilePath("data/star.png"));
+        texture2 = gl::loadTexture(win->util.getFilePath("data/star2.png"));
+        
         cameraRotation = 356.0f;
         cameraZoom = 0.09f;
         lastUpdateTime = SDL_GetTicks();
@@ -374,10 +487,13 @@ public:
         glEnable(GL_PROGRAM_POINT_SIZE);
 #endif
         glDisable(GL_DEPTH_TEST);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE);  
 
         Uint32 currentTime = SDL_GetTicks();
-        float deltaTime = (currentTime - lastUpdateTime) / 1000.0f; // seconds
+        float deltaTime = (currentTime - lastUpdateTime) / 1000.0f;
         lastUpdateTime = currentTime;
+        globalTime += deltaTime;
 
         update(deltaTime);
 
@@ -398,53 +514,82 @@ public:
             cameraZoom * cos(glm::radians(cameraRotation))  
         );
         glm::vec3 target(0.0f, 0.0f, 0.0f); 
-        glm::vec3 up(0.0f, 1.0f, 0.0f);     \
+        glm::vec3 up(0.0f, 1.0f, 0.0f);
         glm::mat4 view = glm::lookAt(cameraPos, target, up);
         glm::mat4 model = glm::mat4(1.0f);  
         glm::mat4 MVP = projection * view * model;
         program.setUniform("MVP", MVP);
         program.setUniform("spriteTexture", 0);
+        
+        
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texture);
+        glBindTexture(GL_TEXTURE_2D, texture1);
         glBindVertexArray(VAO);
         glDrawArrays(GL_POINTS, 0, NUM_PARTICLES);
+        
         CHECK_GL_ERROR();
+        
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  
     }
 
     void update(float deltaTime) {
         if(deltaTime > 0.1f) 
             deltaTime = 0.1f;
+            
         std::vector<float> positions;
         std::vector<float> sizes;
         std::vector<float> colors;
         positions.reserve(NUM_PARTICLES * 3);
         sizes.reserve(NUM_PARTICLES);
         colors.reserve(NUM_PARTICLES * 4);
+        
+        float time = globalTime;
+        
         for (auto& p : particles) {
+            
             p.x += p.vx * deltaTime;
             p.y += p.vy * deltaTime;
             p.z += p.vz * deltaTime;
+            
+            
             if (p.z > 0.0f) {
-                p.x = generateRandomFloat(-1.0f, 1.0f);
-                p.y = generateRandomFloat(-1.0f, 1.0f);
-                p.z = generateRandomFloat(-5.0f, -2.0f); 
-                p.vx = generateRandomFloat(-0.02f, 0.02f); 
-                p.vy = generateRandomFloat(-0.02f, 0.02f); 
-                p.vz = generateRandomFloat(0.2f, 0.5f);    
-                p.life = generateRandomFloat(0.6f, 1.0f);
-                p.twinkle = generateRandomFloat(1.0f, 5.0f);
+                initParticle(p, p.layer);
             }
-            float twinkleFactor = 0.5f * (1.0f + sin(SDL_GetTicks() * 0.001f * p.twinkle));
-            float brightness = p.life * twinkleFactor;
+            
+            
+            if (p.x > 4.0f) p.x = -4.0f;
+            if (p.x < -4.0f) p.x = 4.0f;
+            if (p.y > 4.0f) p.y = -4.0f;
+            if (p.y < -4.0f) p.y = 4.0f;
+            
+            
+            float twinkle1 = 0.5f * (1.0f + sin(time * p.twinkle + p.twinklePhase));
+            float twinkle2 = 0.3f * (1.0f + sin(time * p.pulseSpeed * 2.0f + p.twinklePhase * 1.5f));
+            float twinkleFactor = 0.5f + 0.3f * twinkle1 + 0.2f * twinkle2;
+            
+            
+            float depthFactor = 1.0f - (p.z / layers[p.layer].zMin);
+            depthFactor = glm::clamp(depthFactor, 0.3f, 1.0f);
+            
+            float brightness = p.life * twinkleFactor * depthFactor;
+            
+            
+            glm::vec4 color = getStarColor(p.type, brightness);
+            
             positions.push_back(p.x);
             positions.push_back(p.y);
             positions.push_back(p.z);
-            float size = 10.0f * p.life;
+            
+            
+            float sizePulse = 1.0f + 0.2f * sin(time * p.pulseSpeed + p.twinklePhase);
+            float size = p.baseSize * sizePulse * depthFactor;
             sizes.push_back(size);
-            float alpha = p.life;
-            colors.push_back(brightness);
-            colors.push_back(brightness);
-            colors.push_back(brightness);
+            
+            
+            float alpha = p.life * glm::clamp(depthFactor + 0.2f, 0.0f, 1.0f);
+            colors.push_back(color.r);
+            colors.push_back(color.g);
+            colors.push_back(color.b);
             colors.push_back(alpha);
         }
 
@@ -869,7 +1014,7 @@ public:
 #endif
     void draw(gl::GLWindow *win) override {
         shaderProgram.useProgram();
-        CHECK_GL_ERROR(); // Add this line to check for errors before drawing
+        CHECK_GL_ERROR(); 
 #ifndef __EMSCRIPTEN__
         Uint32 currentTime = SDL_GetTicks();
 #else
@@ -880,14 +1025,9 @@ public:
             deltaTime = 0.1f;
         lastUpdateTime = currentTime;
         update(win, deltaTime);     
-        /// draw objects
+        
         glDisable(GL_DEPTH_TEST);
-        /*starsShader.useProgram();
-        glBindVertexArray(starsVAO);
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        glDrawArrays(GL_POINTS, 0, numStars);
-        glBindVertexArray(0);*/
+        
         field.draw(win);
         glEnable(GL_DEPTH_TEST);
         shaderProgram.useProgram();
@@ -1432,7 +1572,7 @@ public:
 
                 for (int ei = (int)enemies.size() - 1; ei >= 0; ei--) {
                     if(enemies[ei]->isSpinning == true) break;
-                    float enemyRadius = 1.0f; // default
+                    float enemyRadius = 1.0f; 
                     switch (enemies[ei]->getType()) {
                         case EnemyType::SHIP:
                             enemyRadius = shipRadius;
@@ -1483,7 +1623,7 @@ public:
                 }
                 if (isSpinning == false && isColliding(ship_pos, playerRadius, enemy->object_pos, enemyRadius)) {
                     isSpinning = true;
-                    //enemy->explosion->trigger(enemy->object_pos);
+                    
                     return;
                 }
             }
@@ -1562,16 +1702,16 @@ public:
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
         CHECK_GL_ERROR();
         
-        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW); // Line 1391
+        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW); 
         CHECK_GL_ERROR();
         
-        // Position attribute
+        
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
         CHECK_GL_ERROR();
         glEnableVertexAttribArray(0);
         CHECK_GL_ERROR();
         
-        // Texture coord attribute
+        
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
         CHECK_GL_ERROR();
         glEnableVertexAttribArray(1);

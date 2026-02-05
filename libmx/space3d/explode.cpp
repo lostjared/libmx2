@@ -45,7 +45,7 @@ void main() {
 
 const char *s_vSource = R"(#version 300 es
 
-// Declare high precision for floating-point types
+
 precision highp float;
 
 layout(location = 0) in vec3 aPos;
@@ -66,7 +66,7 @@ void main() {
 
 const char *s_fSource = R"(#version 300 es
 
-// Declare medium precision for floating-point types
+
 precision mediump float;
 
 in vec4 particleColor;
@@ -85,7 +85,7 @@ void main() {
 
 #endif
 
-    Explosion::Explosion(unsigned int max, bool isBoss) : maxParticles(max), VAO(0), VBO(0), isBoss(isBoss) { // Modified constructor
+    Explosion::Explosion(unsigned int max, bool isBoss) : maxParticles(max), VAO(0), VBO(0), isBoss(isBoss) { 
 
     }
 
