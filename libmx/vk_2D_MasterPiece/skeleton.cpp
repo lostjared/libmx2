@@ -217,7 +217,7 @@ private:
     
 public:
     MasterPieceWindow(const std::string& path, int wx, int wy, bool full)
-        : mx::VKWindow("-[ MasterPiece 2D - Vulkan ]-", wx, wy, full) {
+        : mx::VKWindow("-[ Acid Drop - Vulkan ]-", wx, wy, full) {
         setPath(path);
         updateFontSize();
         srand((unsigned int)time(0));
@@ -337,7 +337,7 @@ public:
         int titleY = scaleY(100);
         int menuStartY = scaleY(180);
         int spacing = getMenuSpacing();
-        const char* title = "Vulkan MasterPiece";
+        const char* title = "Liquid Acid Drop";
         printText(title, centerX(title), titleY, {255, 255, 0, 255});
         const char* menuItems[] = {"New Game", "High Scores", "Options", "Credits", "Quit"};
         for (int i = 0; i < 5; i++) {
@@ -436,7 +436,7 @@ public:
         int spacing = getMenuSpacing();
         
         const char* credTitle = "CREDITS";
-        const char* cred1 = "MasterPiece Clone";
+        const char* cred1 = "Acid Drop Clone";
         const char* cred2 = "MX2 Engine by Jared Bruni";
         const char* credReturn = "Press Return to return";
         printText(credTitle, centerX(credTitle), titleY, {255, 255, 0, 255});
