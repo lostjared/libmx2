@@ -175,6 +175,9 @@ namespace mx {
     }
 
     VkSurfaceFormatKHR VKWindow::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) {
+        if (availableFormats.empty()) {
+            throw mx::Exception("No available surface formats!");
+        }
         for (const auto& availableFormat : availableFormats) {
             if (availableFormat.format == VK_FORMAT_R8G8B8A8_UNORM &&
                 availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
@@ -1521,7 +1524,7 @@ namespace mx {
         vkDeviceWaitIdle(device);
         
         if (textRenderer != nullptr) {
-            textRenderer.release();
+            textRenderer.reset();
         }
         
         sprites.clear();

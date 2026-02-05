@@ -540,7 +540,9 @@ public:
         
         for (int i = 0; i < GRID_WIDTH; i++) {
             for (int j = 0; j < GRID_HEIGHT; j++) {
-                if (matrix.grid[i][j] > 0 && matrix.grid[i][j] < BLOCK_COUNT) {
+                int blockType = matrix.grid[i][j];
+                if (blockType > 0 && blockType < BLOCK_COUNT && 
+                    static_cast<size_t>(blockType) < grid_blocks.size()) {
                     int x = STARTX + i * (BLOCK_SIZE + BLOCK_SPACING);
                     int y = STARTY + j * (BLOCK_HEIGHT + BLOCK_SPACING) + 10;
                     
@@ -549,8 +551,8 @@ public:
                         continue;
                     }
                     
-                    if (grid_blocks[matrix.grid[i][j]]) {
-                        grid_blocks[matrix.grid[i][j]]->drawSpriteRect(
+                    if (grid_blocks[blockType]) {
+                        grid_blocks[blockType]->drawSpriteRect(
                             (int)(x * scaleX), (int)(y * scaleY) + 10, 
                             (int)(BLOCK_SIZE * scaleX), (int)(BLOCK_HEIGHT * scaleY)
                         );
