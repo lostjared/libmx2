@@ -6,10 +6,18 @@ layout(location = 0) out vec4 outColor;
 layout(binding = 0) uniform sampler2D samp;
 
 layout(push_constant) uniform PushConstants {
-    vec2 screenSize;
-    vec2 spritePos;
-    vec2 spriteSize;
-    vec4 params;  // x: time_f, y: mouseX, z: mouseY, w: mouseClick
+    float screenWidth;
+    float screenHeight;
+    float spritePosX;
+    float spritePosY;
+    float spriteSizeW;
+    float spriteSizeH;
+    float padding1;
+    float padding2;
+    float param0;  // time_f
+    float param1;  // mouseX
+    float param2;  // mouseY
+    float param3;  // mouseClick
 } pc;
 
 const float PI = 3.1415926535897932384626433832795;
@@ -54,20 +62,22 @@ vec2 fractalFold(vec2 uv, float zoom, float t, vec2 c, float aspect) {
 
 vec3 tentBlur3(sampler2D img, vec2 uv, vec2 res) {
     vec2 ts = 1.0 / res;
-    vec3 s00 = textureGrad(img, uv + ts * vec2(-1.0, -1.0), dFdx(uv), dFdy(uv)).rgb;
-    vec3 s10 = textureGrad(img, uv + ts * vec2(0.0, -1.0), dFdx(uv), dFdy(uv)).rgb;
-    vec3 s20 = textureGrad(img, uv + ts * vec2(1.0, -1.0), dFdx(uv), dFdy(uv)).rgb;
-    vec3 s01 = textureGrad(img, uv + ts * vec2(-1.0, 0.0), dFdx(uv), dFdy(uv)).rgb;
-    vec3 s11 = textureGrad(img, uv, dFdx(uv), dFdy(uv)).rgb;
-    vec3 s21 = textureGrad(img, uv + ts * vec2(1.0, 0.0), dFdx(uv), dFdy(uv)).rgb;
-    vec3 s02 = textureGrad(img, uv + ts * vec2(-1.0, 1.0), dFdx(uv), dFdy(uv)).rgb;
-    vec3 s12 = textureGrad(img, uv + ts * vec2(0.0, 1.0), dFdx(uv), dFdy(uv)).rgb;
-    vec3 s22 = textureGrad(img, uv + ts * vec2(1.0, 1.0), dFdx(uv), dFdy(uv)).rgb;
+    // Use simple texture() instead of textureGrad with derivatives
+    // to avoid Vulkan driver issues with derivative calculations
+    vec3 s00 = texture(img, uv + ts * vec2(-1.0, -1.0)).rgb;
+    vec3 s10 = texture(img, uv + ts * vec2(0.0, -1.0)).rgb;
+    vec3 s20 = texture(img, uv + ts * vec2(1.0, -1.0)).rgb;
+    vec3 s01 = texture(img, uv + ts * vec2(-1.0, 0.0)).rgb;
+    vec3 s11 = texture(img, uv).rgb;
+    vec3 s21 = texture(img, uv + ts * vec2(1.0, 0.0)).rgb;
+    vec3 s02 = texture(img, uv + ts * vec2(-1.0, 1.0)).rgb;
+    vec3 s12 = texture(img, uv + ts * vec2(0.0, 1.0)).rgb;
+    vec3 s22 = texture(img, uv + ts * vec2(1.0, 1.0)).rgb;
     return (s00 + 2.0 * s10 + s20 + 2.0 * s01 + 4.0 * s11 + 2.0 * s21 + s02 + 2.0 * s12 + s22) / 16.0;
 }
 
 vec3 preBlendColor(vec2 uv) {
-    vec3 tex = tentBlur3(samp, uv, pc.screenSize);
+    vec3 tex = tentBlur3(samp, uv, vec2(pc.screenWidth, pc.screenHeight));
     // Darkened texture return
     return tex * 0.7; 
 }
@@ -86,9 +96,9 @@ vec2 diamondFold(vec2 uv, vec2 c, float aspect) {
 }
 
 void main(void) {
-    vec2 iResolution = pc.screenSize;
-    float time_f = pc.params.x * 0.6;
-    vec4 iMouse = vec4(pc.params.yz, pc.params.w, 0.0);
+    vec2 iResolution = vec2(pc.screenWidth, pc.screenHeight);
+    float time_f = pc.param0 * 0.6;
+    vec4 iMouse = vec4(pc.param1, pc.param2, pc.param3, 0.0);
     
     vec2 xuv = fragTexCoord;//1.0 - abs(1.0 - 2.0 * fragTexCoord);
     //xuv = xuv - floor(xuv);    

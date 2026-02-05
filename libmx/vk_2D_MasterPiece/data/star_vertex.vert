@@ -20,7 +20,6 @@ layout(push_constant) uniform PushConstants {
 void main() {
     vec2 screenPos = vec2(pc.spritePosX, pc.spritePosY) + inPosition * vec2(pc.spriteSizeW, pc.spriteSizeH);
     vec2 ndc = (screenPos / vec2(pc.screenWidth, pc.screenHeight)) * 2.0 - 1.0;
-    
     gl_Position = vec4(ndc, 0.0, 1.0);
     fragTexCoord = inTexCoord;
 }

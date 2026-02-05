@@ -198,7 +198,7 @@ private:
     std::string playerName;
     int finalScore = 0;
     mx::VKSprite* scoresBackground = nullptr;
-    
+    mx::VKSprite* creditScreen = nullptr;
     int matchBonus = 0;
     
     
@@ -241,17 +241,19 @@ public:
     void initGfx() {
         std::string vertShader = util.path + "/data/sprite_vert.spv";
         std::string fragShader = util.path + "/data/sprite_kaleidoscope.spv";
-        gamebg = createSprite(util.path + "/data/gamebg.png", util.path + "/data/sprite_vert_bubble.spv", fragShader);
-        startScreen = createSprite(util.path + "/data/universe.png", util.path + "/data/sprite_vert_bubble.spv",util.path + "/data/sprite_electric.spv");
-        introScreen = createSprite(util.path + "/data/intro.png", util.path + "/data/sprite_vert_bubble.spv", util.path + "/data/sprite_bubble.spv");
-        scoresBackground = createSprite(util.path + "/data/universe.png", util.path + "/data/sprite_vert_bubble.spv", util.path + "/data/sprite_warp.spv");
+        gamebg = createSprite(util.path + "/data/gamebg.png", util.path + "/data/sprite_vert.spv", fragShader);
+        introScreen = createSprite(util.path + "/data/intro.png", util.path + "/data/sprite_vert.spv", util.path + "/data/sprite_bubble.spv");
+        startScreen = createSprite(util.path + "/data/universe.png", util.path + "/data/sprite_vert.spv", fragShader);
+        creditScreen = createSprite(util.path + "/data/logo.png", util.path + "/data/sprite_vert.spv", util.path + "/data/sprite_time.spv");
+        scoresBackground = createSprite(util.path + "/data/bg.png", util.path + "/data/sprite_vert.spv", util.path + "/data/sprite_time.spv");
+
         const char* blockFiles[] = {
             "block_black.png", "block_yellow.png", "block_orange.png", "block_ltblue.png",
             "block_dblue.png", "block_purple.png", "block_pink.png", "block_gray.png",
             "block_red.png", "block_green.png", "block_clear.png"
         };
         for (int i = 0; i < BLOCK_COUNT; i++) {
-            grid_blocks.push_back(createSprite(util.path + "/data/" + blockFiles[i], vertShader, util.path + "/data/sprite_frag.spv"));
+            grid_blocks.push_back(createSprite(util.path + "/data/" + blockFiles[i], util.path + "/data/sprite_vert.spv", util.path + "/data/sprite_frag.spv"));
         }
     }
     
@@ -314,7 +316,7 @@ public:
     void updateIntro() {
         if (introScreen) {
             float time_f = static_cast<float>(SDL_GetTicks()) / 1000.0f;
-            introScreen->setShaderParams(time_f, 0.0f, 0.0f, 0.0f);
+            introScreen->setShaderParams(time_f, 1.0f, 0.8f, 1.2f);
             introScreen->drawSpriteRect(0, 0, w, h);
         }
         const char* introText = "Press ENTER to Start";
@@ -423,10 +425,10 @@ public:
     }
     
     void updateCredits() {
-        if (startScreen) {
+        if (creditScreen) {
             float time_f = static_cast<float>(SDL_GetTicks()) / 1000.0f;
-            startScreen->setShaderParams(time_f, 0.0f, 0.0f, 0.0f);
-            startScreen->drawSpriteRect(0, 0, w, h);
+            creditScreen->setShaderParams(time_f, 0.0f, 0.0f, 0.0f);
+            creditScreen->drawSpriteRect(0, 0, w, h);
         }
         
         int titleY = scaleY(100);
