@@ -231,6 +231,13 @@ public:
         initGfx();
     }
 
+    void onResize() override {
+        vkDeviceWaitIdle(device);
+        clearTextQueue();
+        lastFontSize = 0;
+        updateFontSize();
+    }
+
     void initGfx() {
         std::string vertShader = util.path + "/data/sprite_vert.spv";
         std::string fragShader = util.path + "/data/sprite_kaleidoscope.spv";
@@ -249,11 +256,12 @@ public:
     }
     
     void updateFontSize() {
-        int fontSize = (int)(24.0f * ((float)h / 480.0f));
-        fontSize = std::max(14, std::min(48, fontSize));  
+        int fontSize = (int)(20.0f * ((float)h / 480.0f));
+        fontSize = std::max(16, std::min(128, fontSize)); 
         if (fontSize != lastFontSize) {
-            setFont("font.ttf", fontSize-4);
             lastFontSize = fontSize;
+            setFont("font.ttf", fontSize);
+            clearTextQueue();
         }
     }
     
@@ -270,6 +278,10 @@ public:
     }
     
     int centerX(const char* text) {
+        int width, height;
+        if (getTextDimensions(text, width, height)) {
+            return w/2 - width/2;
+        }
         return w/2 - (int)(strlen(text) * getCharWidth() / 2);
     }
 
@@ -391,7 +403,9 @@ public:
         SDL_Color diffColor = (optionsCursor == 0) ? SDL_Color{255, 255, 0, 255} : SDL_Color{255, 255, 255, 255};
         printText(diffText.c_str(), centerX(diffText.c_str()), optStartY, diffColor);
         if (optionsCursor == 0) {
-            printText(">>", centerX(diffText.c_str()) - scaleY(30), optStartY, {255, 255, 0, 255});
+            int diffWidth, diffHeight;
+            getTextDimensions(diffText.c_str(), diffWidth, diffHeight);
+            printText(">>", w/2 - diffWidth/2 - scaleY(30), optStartY, {255, 255, 0, 255});
         }
         
         
@@ -399,11 +413,13 @@ public:
         SDL_Color backColor = (optionsCursor == 1) ? SDL_Color{255, 255, 0, 255} : SDL_Color{255, 255, 255, 255};
         printText(backText, centerX(backText), optStartY + spacing, backColor);
         if (optionsCursor == 1) {
-            printText(">>", centerX(backText) - scaleY(30), optStartY + spacing, {255, 255, 0, 255});
+            int backWidth, backHeight;
+            getTextDimensions(backText, backWidth, backHeight);
+            printText(">>", w/2 - backWidth/2 - scaleY(30), optStartY + spacing, {255, 255, 0, 255});
         }
         
         const char* instructions = "UP/DOWN: Select  LEFT/RIGHT: Change  ENTER: Confirm";
-        printText(instructions, centerX(instructions)-100, scaleY(350), {200, 200, 200, 255});
+        printText(instructions, centerX(instructions), scaleY(350), {200, 200, 200, 255});
     }
     
     void updateCredits() {
@@ -505,14 +521,13 @@ public:
         drawmatrix(scaleX, scaleY);
         drawblock(scaleX, scaleY);
         drawnext(scaleX, scaleY);
-        
         std::ostringstream stream;
-        stream << "Score: " << matrix.Game.score;
-        printText(stream.str().c_str(), (int)(200 * scaleX), (int)(60 * scaleY)-10, {255, 255, 255, 255});
+        stream << "Score:" << matrix.Game.score;
+        printText(stream.str().c_str(), (int)(200 * scaleX), (int)(80 * scaleY) - (lastFontSize+(lastFontSize/4)), {255, 255, 255, 255});
         
         stream.str("");
-        stream << "Tabs: " << matrix.Game.lines;
-        printText(stream.str().c_str(), (int)(310 * scaleX), (int)(60 * scaleY)-10, {255, 255, 255, 255});
+        stream << "Tabs:" << matrix.Game.lines;
+        printText(stream.str().c_str(), (int)(310 * scaleX), (int)(80 * scaleY) - (lastFontSize+(lastFontSize/4)), {255, 255, 255, 255});
         
         if (paused) {
             printText("PAUSED - Press P to Continue", w/2 - 120, h/2, {255, 255, 0, 255});
@@ -983,7 +998,13 @@ public:
     }
     
     void event(SDL_Event& e) override {
-        if(currentScreen == SCREEN_START && e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE) {
+
+        if (e.type == SDL_WINDOWEVENT) {
+            if (e.window.event == SDL_WINDOWEVENT_RESIZED || e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+                recreateSwapChain();
+            }
+        }
+        if(e.type == SDL_QUIT || (currentScreen == SCREEN_START && e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE)) {
             quit();
             return;
         }

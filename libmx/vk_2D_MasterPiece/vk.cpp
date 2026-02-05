@@ -14,7 +14,7 @@ namespace mx {
         if(full)
             window = SDL_CreateWindow(title.c_str(),SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,width, height,SDL_WINDOW_VULKAN | SDL_WINDOW_FULLSCREEN_DESKTOP);
         else
-            window = SDL_CreateWindow(title.c_str(),SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,width, height,SDL_WINDOW_VULKAN);
+            window = SDL_CreateWindow(title.c_str(),SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,width, height,SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
             
         if (!window) {
             throw mx::Exception("failure to create window: " + std::string(SDL_GetError()));
@@ -30,6 +30,9 @@ namespace mx {
     void VKWindow::setFont(const std::string &font, const int size) {
         this->font = font;
         this->font_size = size;
+        if (textRenderer) {
+            textRenderer->setFont(util.getFilePath(font), size);
+        }
     }
 
     void VKWindow::initVulkan() {
@@ -459,6 +462,8 @@ namespace mx {
         
         swapChainImageFormat = surfaceFormat.format;
         swapChainExtent = extent;
+        w = static_cast<int>(swapChainExtent.width);
+        h = static_cast<int>(swapChainExtent.height);
     }
 
     void VKWindow::createImageViews() {
@@ -1459,7 +1464,7 @@ namespace mx {
         if (textRenderer && textPipeline != VK_NULL_HANDLE) {
             try {
                 vkCmdBindPipeline(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, textPipeline);
-                textRenderer->renderText(commandBuffers[imageIndex], textPipelineLayout, 
+                textRenderer->renderText(commandBuffers[imageIndex], textPipelineLayout,
                                        swapChainExtent.width, swapChainExtent.height);
             } catch (const std::exception& e) {
 
@@ -1601,9 +1606,8 @@ namespace mx {
     }
     void VKWindow::recreateSwapChain() {
         vkDeviceWaitIdle(device);
-
-        SDL_Vulkan_GetDrawableSize(window, &w, &h);
-        
+        if(window)
+            SDL_Vulkan_GetDrawableSize(window, &w, &h);
         cleanupSwapChain();
         createSwapChain();
         createImageViews();
@@ -1611,8 +1615,10 @@ namespace mx {
         createRenderPass();
         createVertexBuffer();
         createGraphicsPipeline();
+        createTextPipeline();
         createFramebuffers();
         createCommandBuffers();
+        onResize();
     }
     
     VKText::VKText(VkDevice dev, VkPhysicalDevice physDev, VkQueue gQueue, 
@@ -1701,7 +1707,7 @@ namespace mx {
         if (!font) {
             throw mx::Exception("Failed to load font: " + std::string(TTF_GetError()));
         }
-        
+
         VkSamplerCreateInfo samplerInfo{};
         samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
         samplerInfo.magFilter = VK_FILTER_LINEAR;
@@ -1717,6 +1723,20 @@ namespace mx {
         samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
         
         VK_CHECK_RESULT(vkCreateSampler(device, &samplerInfo, nullptr, &fontSampler));
+    }
+
+    void VKText::setFont(const std::string &fontPath, int fontSize) {
+        vkDeviceWaitIdle(device);
+        clearQueue();
+        if (font) {
+            TTF_CloseFont(font);
+            font = nullptr;
+        }
+        if (fontSampler != VK_NULL_HANDLE) {
+            vkDestroySampler(device, fontSampler, nullptr);
+            fontSampler = VK_NULL_HANDLE;
+        }
+        initFont(fontPath, fontSize);
     }
     
     SDL_Surface* VKText::convertToRGBA(SDL_Surface* surface) {
@@ -1829,7 +1849,7 @@ namespace mx {
     
     void VKText::renderText(VkCommandBuffer cmdBuffer, VkPipelineLayout pipelineLayout,
                            uint32_t screenWidth, uint32_t screenHeight) {
-
+                        
         struct TextPushConstants {
             float screenWidth;
             float screenHeight;
@@ -1877,6 +1897,19 @@ namespace mx {
         
         VK_CHECK_RESULT(vkAllocateMemory(device, &allocInfo, nullptr, &bufferMemory));
         VK_CHECK_RESULT(vkBindBufferMemory(device, buffer, bufferMemory, 0));
+    }
+    
+    bool VKText::getTextDimensions(const std::string &text, int& width, int& height) {
+        if (text.empty() || !font) {
+            width = 0;
+            height = 0;
+            return false;
+        }
+        
+        if (TTF_SizeText(font, text.c_str(), &width, &height) == 0) {
+            return true;
+        }
+        return false;
     }
     
     uint32_t VKText::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
@@ -2895,6 +2928,15 @@ namespace mx {
         if (textRenderer != nullptr) {
             textRenderer->clearQueue();
         }
+    }
+
+    bool VKWindow::getTextDimensions(const std::string &text, int& width, int& height) {
+        if (textRenderer != nullptr) {
+            return textRenderer->getTextDimensions(text, width, height);
+        }
+        width = 0;
+        height = 0;
+        return false;
     }
     
     void VKWindow::createTextDescriptorSetLayout() {

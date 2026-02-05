@@ -82,8 +82,9 @@ namespace mx {
                        uint32_t screenWidth, uint32_t screenHeight);
         void clearQueue();
         void setDescriptorSetLayout(VkDescriptorSetLayout layout) { descriptorSetLayout = layout; }
+        void setFont(const std::string &fontPath, int fontSize);
+        bool getTextDimensions(const std::string &text, int& width, int& height);
         VkSampler fontSampler = VK_NULL_HANDLE;
-        
         private:
         struct TextVertex {
             float pos[2];
@@ -304,6 +305,7 @@ namespace mx {
         virtual void cleanup();
         virtual void event(SDL_Event &e) = 0;
         virtual void draw(); 
+        virtual void onResize() {}
         virtual bool shouldRender3D() { return true; } 
         void createGraphicsPipeline(); 
         VkShaderModule createShaderModule(const std::vector<char>& code);
@@ -315,6 +317,7 @@ namespace mx {
         void updateTexture(void* pixels, VkDeviceSize imageSize);
         void printText(const std::string &text, int x, int y, const SDL_Color &col);
         void clearTextQueue();
+        bool getTextDimensions(const std::string &text, int& width, int& height);
         VKSprite* createSprite(const std::string &pngPath, const std::string &vertexShader, const std::string &fragmentShaderPath = "");
         VKSprite* createSprite(SDL_Surface* surface, const std::string &vertexShader, const std::string &fragmentShaderPath = "");
         int getWidth() const { return w; }
