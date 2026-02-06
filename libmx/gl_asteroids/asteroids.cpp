@@ -451,7 +451,7 @@ public:
         int count;
     };
 
-    static constexpr int NUM_PARTICLES = 80000;
+    static constexpr int NUM_PARTICLES = 15000;
     static constexpr int NUM_LAYERS = 3;
 
     gl::ShaderProgram program;
@@ -467,9 +467,9 @@ public:
     float starFieldRadius = 30.0f;
 
     LayerConfig layers[NUM_LAYERS] = {
-        { 20.0f, 30.0f, 0.3f, 0.5f, 48000 },   
-        { 10.0f, 20.0f, 0.6f, 1.0f, 22000 },    
-        { 4.0f,  10.0f, 1.0f, 1.5f, 10000 }     
+        { 20.0f, 30.0f, 0.3f, 0.5f, 9000 },   
+        { 10.0f, 20.0f, 0.6f, 1.0f, 4000 },    
+        { 4.0f,  10.0f, 1.0f, 1.5f, 2000 }     
     };
 
     glm::vec4 getStarColor(StarType type, float brightness) {
@@ -636,14 +636,10 @@ public:
             float twinkle1 = 0.5f * (1.0f + sin(time * p.twinkle + p.twinklePhase));
             float twinkle2 = 0.3f * (1.0f + sin(time * p.pulseSpeed * 2.0f + p.twinklePhase * 1.5f));
             float twinkleFactor = 0.5f + 0.3f * twinkle1 + 0.2f * twinkle2;
-
-            
-            float depthFactor = 1.0f - (distance / (cfg.radiusMax * 1.1f));
-            depthFactor = glm::clamp(depthFactor, 0.3f, 1.0f);
-
+            float layerRange = cfg.radiusMax - cfg.radiusMin;
+            float depthFactor = 1.0f - ((distance - cfg.radiusMin) / layerRange);
+            depthFactor = glm::clamp(depthFactor, 0.2f, 1.0f);
             float brightness = p.life * twinkleFactor * depthFactor;
-
-            
             glm::vec4 color = getStarColor(p.type, brightness);
 
             positions.push_back(p.x);
