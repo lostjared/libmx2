@@ -256,12 +256,23 @@ out vec4 FragColor;
 uniform sampler2D spriteTexture;
 
 void main() {
-    float dist = length(gl_PointCoord - vec2(0.5));
+    vec2 coord = gl_PointCoord - vec2(0.5);
+    float dist = length(coord);
+    
     if (dist > 0.5) {
         discard;
     }
+    
     vec4 texColor = texture(spriteTexture, gl_PointCoord);
-    FragColor = texColor * fragColor;
+    
+    float glow = 1.0 - smoothstep(0.0, 0.5, dist);
+    float core = 1.0 - smoothstep(0.0, 0.15, dist);
+    
+    vec4 glowColor = fragColor * glow;
+    vec4 coreColor = vec4(1.0, 1.0, 1.0, 1.0) * core * fragColor.a;
+    
+    FragColor = texColor * fragColor * glow + coreColor * 0.3;
+    FragColor.a = fragColor.a * glow;
 }
 )";
 
@@ -295,13 +306,23 @@ out vec4 FragColor;
 uniform sampler2D spriteTexture;
 
 void main() {
-    float dist = length(gl_PointCoord - vec2(0.5));
+    vec2 coord = gl_PointCoord - vec2(0.5);
+    float dist = length(coord);
+    
     if (dist > 0.5) {
         discard;
     }
-
+    
     vec4 texColor = texture(spriteTexture, gl_PointCoord);
-    FragColor = texColor * fragColor;
+    
+    float glow = 1.0 - smoothstep(0.0, 0.5, dist);
+    float core = 1.0 - smoothstep(0.0, 0.15, dist);
+    
+    vec4 glowColor = fragColor * glow;
+    vec4 coreColor = vec4(1.0, 1.0, 1.0, 1.0) * core * fragColor.a;
+    
+    FragColor = texColor * fragColor * glow + coreColor * 0.3;
+    FragColor.a = fragColor.a * glow;
 }
 )";
 #endif
@@ -409,25 +430,75 @@ protected:
 
 class StarField : public gl::GLObject {
 public:
+    enum class StarType { NORMAL, BRIGHT, BLUE, ORANGE, RED, YELLOW };
+
     struct Particle {
-        float x, y, z;   
-        float vx, vy, vz; 
+        float x, y, z;
+        float vx, vy, vz;
         float life;
         float twinkle;
+        float twinklePhase;
+        StarType type;
+        int layer;
+        float pulseSpeed;
+        float baseSize;
     };
 
-    static constexpr int NUM_PARTICLES = 2500;
+    struct LayerConfig {
+        float radiusMin, radiusMax;
+        float speedMultiplier;
+        float sizeMultiplier;
+        int count;
+    };
+
+    static constexpr int NUM_PARTICLES = 80000;
+    static constexpr int NUM_LAYERS = 3;
+
     gl::ShaderProgram program;
     GLuint VAO, VBO[3];
     GLuint texture;
     std::vector<Particle> particles;
     Uint32 lastUpdateTime = 0;
-    float cameraZoom = 3.0f;   
-    float cameraRotation = 0.0f; 
+    float cameraZoom = 3.0f;
+    float cameraRotation = 0.0f;
+    float globalTime = 0.0f;
 
-    
     glm::vec3 lastCameraPos{0.0f, 0.0f, 0.0f};
-    float starFieldRadius = 30.0f; 
+    float starFieldRadius = 30.0f;
+
+    LayerConfig layers[NUM_LAYERS] = {
+        { 20.0f, 30.0f, 0.3f, 0.5f, 48000 },   
+        { 10.0f, 20.0f, 0.6f, 1.0f, 22000 },    
+        { 4.0f,  10.0f, 1.0f, 1.5f, 10000 }     
+    };
+
+    glm::vec4 getStarColor(StarType type, float brightness) {
+        switch(type) {
+            case StarType::BLUE:
+                return glm::vec4(0.6f * brightness, 0.8f * brightness, 1.0f * brightness, 1.0f);
+            case StarType::ORANGE:
+                return glm::vec4(1.0f * brightness, 0.7f * brightness, 0.3f * brightness, 1.0f);
+            case StarType::RED:
+                return glm::vec4(1.0f * brightness, 0.4f * brightness, 0.4f * brightness, 1.0f);
+            case StarType::YELLOW:
+                return glm::vec4(1.0f * brightness, 1.0f * brightness, 0.6f * brightness, 1.0f);
+            case StarType::BRIGHT:
+                return glm::vec4(1.0f * brightness, 1.0f * brightness, 1.0f * brightness, 1.0f);
+            case StarType::NORMAL:
+            default:
+                return glm::vec4(0.9f * brightness, 0.9f * brightness, 1.0f * brightness, 1.0f);
+        }
+    }
+
+    StarType randomStarType() {
+        float r = generateRandomFloat(0.0f, 1.0f);
+        if (r < 0.50f) return StarType::NORMAL;
+        if (r < 0.65f) return StarType::BLUE;
+        if (r < 0.75f) return StarType::YELLOW;
+        if (r < 0.85f) return StarType::ORANGE;
+        if (r < 0.92f) return StarType::RED;
+        return StarType::BRIGHT;
+    }
 
     StarField() : particles(NUM_PARTICLES) {}
 
@@ -437,32 +508,48 @@ public:
         glDeleteTextures(1, &texture);
     }
 
+    void initParticle(Particle& p, int layer, const glm::vec3& center) {
+        const auto& cfg = layers[layer];
+        p.layer = layer;
+        float radius = generateRandomFloat(cfg.radiusMin, cfg.radiusMax);
+        float theta = generateRandomFloat(0.0f, 2.0f * M_PI);
+        float phi = generateRandomFloat(0.0f, M_PI);
+        p.x = center.x + radius * sin(phi) * cos(theta);
+        p.y = center.y + radius * sin(phi) * sin(theta);
+        p.z = center.z + radius * cos(phi);
+        p.vx = generateRandomFloat(-0.01f, 0.01f) * cfg.speedMultiplier;
+        p.vy = generateRandomFloat(-0.01f, 0.01f) * cfg.speedMultiplier;
+        p.vz = generateRandomFloat(-0.01f, 0.01f) * cfg.speedMultiplier;
+        p.life = generateRandomFloat(0.7f, 1.0f);
+        p.twinkle = generateRandomFloat(2.0f, 8.0f);
+        p.twinklePhase = generateRandomFloat(0.0f, 6.28f);
+        p.type = randomStarType();
+        p.pulseSpeed = generateRandomFloat(0.5f, 3.0f);
+        float typeMultiplier = (p.type == StarType::BRIGHT) ? 2.0f : 1.0f;
+        p.baseSize = generateRandomFloat(8.0f, 22.0f) * cfg.sizeMultiplier * typeMultiplier;
+    }
+
     void load(gl::GLWindow *win) override {
         if(!program.loadProgramFromText(vertSource, fragSource)) {
             throw mx::Exception("Error loading shader");
         }
 
-        for (auto& p : particles) {
-            float radius = generateRandomFloat(10.0f, 30.0f);
-            float theta = generateRandomFloat(0.0f, 2.0f * M_PI);
-            float phi = generateRandomFloat(0.0f, M_PI);
-            p.x = radius * sin(phi) * cos(theta);
-            p.y = radius * sin(phi) * sin(theta);
-            p.z = radius * cos(phi);
-            p.vx = generateRandomFloat(-0.01f, 0.01f);
-            p.vy = generateRandomFloat(-0.01f, 0.01f);
-            p.vz = generateRandomFloat(-0.01f, 0.01f);
-            
-            p.life = generateRandomFloat(0.6f, 1.0f);
-            p.twinkle = generateRandomFloat(1.0f, 5.0f);
+        glm::vec3 center(0.0f);
+        int particleIndex = 0;
+        for (int layer = 0; layer < NUM_LAYERS; ++layer) {
+            int count = layers[layer].count;
+            for (int i = 0; i < count && particleIndex < NUM_PARTICLES; ++i, ++particleIndex) {
+                initParticle(particles[particleIndex], layer, center);
+            }
         }
+
         glGenVertexArrays(1, &VAO);
         glGenBuffers(3, VBO);
         glBindVertexArray(VAO);
         glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
         glBufferData(GL_ARRAY_BUFFER, NUM_PARTICLES * 3 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);\
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
         glBindBuffer(GL_ARRAY_BUFFER, VBO[1]);
         glBufferData(GL_ARRAY_BUFFER, NUM_PARTICLES * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
         glEnableVertexAttribArray(1);
@@ -490,8 +577,9 @@ public:
         glBlendFunc(GL_SRC_ALPHA, GL_ONE);
 
         Uint32 currentTime = SDL_GetTicks();
-        float deltaTime = (currentTime - lastUpdateTime) / 1000.0f; 
+        float deltaTime = (currentTime - lastUpdateTime) / 1000.0f;
         lastUpdateTime = currentTime;
+        globalTime += deltaTime;
 
         update(deltaTime);
 
@@ -499,7 +587,8 @@ public:
 
         program.useProgram();
 
-        glm::mat4 MVP = projectionMatrix * viewMatrix * glm::mat4(1.0f);
+        glm::mat4 viewRotOnly = glm::mat4(glm::mat3(viewMatrix));
+        glm::mat4 MVP = projectionMatrix * viewRotOnly * glm::mat4(1.0f);
         program.setUniform("MVP", MVP);
         program.setUniform("spriteTexture", 0);
         glActiveTexture(GL_TEXTURE0);
@@ -508,22 +597,13 @@ public:
         glDrawArrays(GL_POINTS, 0, NUM_PARTICLES);
         CHECK_GL_ERROR();
 
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glDisable(GL_BLEND);
     }
 
     void update(float deltaTime) {
-        if(deltaTime > 0.1f) 
+        if(deltaTime > 0.1f)
             deltaTime = 0.1f;
-            
-        
-        glm::mat4 invView = glm::inverse(viewMatrix);
-        glm::vec3 cameraPos = glm::vec3(invView[3]);
-        glm::vec3 cameraForward = -glm::vec3(invView[2]); 
-        
-        float cameraMoveDistance = glm::length(cameraPos - lastCameraPos);
-        if (cameraMoveDistance > 0.5f) {
-            lastCameraPos = cameraPos;
-        }
 
         CHECK_GL_ERROR();
 
@@ -533,62 +613,57 @@ public:
         positions.reserve(NUM_PARTICLES * 3);
         sizes.reserve(NUM_PARTICLES);
         colors.reserve(NUM_PARTICLES * 4);
-          
+
+        float time = globalTime;
+        glm::vec3 origin(0.0f);
+
         for (auto& p : particles) {
             
-            glm::vec3 starPos(p.x, p.y, p.z);
-            glm::vec3 relativePos = starPos - cameraPos;
-            float dotProduct = glm::dot(relativePos, cameraForward);
-            float distance = glm::length(relativePos);
-            bool needsRespawn = distance > starFieldRadius || 
-                               (dotProduct < -0.7f && distance > starFieldRadius * 0.5f);
-                               
-            if (needsRespawn) {
-                float forwardDistance = generateRandomFloat(starFieldRadius * 0.5f, starFieldRadius * 0.9f);
-                float lateralDistance = generateRandomFloat(0.0f, starFieldRadius * 0.7f);
-                float verticalDistance = generateRandomFloat(-starFieldRadius * 0.6f, starFieldRadius * 0.6f);
-                glm::vec3 cameraRight = glm::vec3(invView[0]);
-                glm::vec3 cameraUp = glm::vec3(invView[1]);
-                float angle = generateRandomFloat(0.0f, 2.0f * M_PI);
-                
-                glm::vec3 newPos = cameraPos + 
-                                   cameraForward * forwardDistance +
-                                   cameraRight * (lateralDistance * cos(angle)) +
-                                   cameraUp * (lateralDistance * sin(angle) + verticalDistance);
-                
-                p.x = newPos.x;
-                p.y = newPos.y;
-                p.z = newPos.z;
-                
-                p.life = generateRandomFloat(0.6f, 1.0f);
-                p.twinkle = generateRandomFloat(1.0f, 5.0f);
+            p.x += p.vx * deltaTime;
+            p.y += p.vy * deltaTime;
+            p.z += p.vz * deltaTime;
+
+            
+            float distance = glm::length(glm::vec3(p.x, p.y, p.z));
+            const auto& cfg = layers[p.layer];
+
+            
+            if (distance > cfg.radiusMax * 1.1f || distance < cfg.radiusMin * 0.5f) {
+                initParticle(p, p.layer, origin);
             }
+
             
-            float twinkleFactor = 0.8f * (1.0f + sin(SDL_GetTicks() * 0.002f * p.twinkle));
-            float brightness = 1.3f * p.life * twinkleFactor;
-            float distFactor = 1.0f - (distance / starFieldRadius * 0.7f);
-            distFactor = glm::clamp(distFactor, 0.3f, 1.0f);
-            brightness *= distFactor;
+            float twinkle1 = 0.5f * (1.0f + sin(time * p.twinkle + p.twinklePhase));
+            float twinkle2 = 0.3f * (1.0f + sin(time * p.pulseSpeed * 2.0f + p.twinklePhase * 1.5f));
+            float twinkleFactor = 0.5f + 0.3f * twinkle1 + 0.2f * twinkle2;
+
             
+            float depthFactor = 1.0f - (distance / (cfg.radiusMax * 1.1f));
+            depthFactor = glm::clamp(depthFactor, 0.3f, 1.0f);
+
+            float brightness = p.life * twinkleFactor * depthFactor;
+
+            
+            glm::vec4 color = getStarColor(p.type, brightness);
+
             positions.push_back(p.x);
             positions.push_back(p.y);
             positions.push_back(p.z);
+
             
-            float size = 10.0f * p.life * (0.8f + 0.2f * distFactor);
+            float sizePulse = 1.0f + 0.2f * sin(time * p.pulseSpeed + p.twinklePhase);
+            float size = p.baseSize * sizePulse * depthFactor;
             sizes.push_back(size);
-            
-            float alpha = p.life * distFactor * 1.2f;
-            alpha = glm::clamp(alpha, 0.0f, 1.0f);
-            
-            float colorVar = 0.15f * sin(SDL_GetTicks() * 0.0015f * p.twinkle + 2.0f);
-            colors.push_back(brightness + colorVar);
-            colors.push_back(brightness);
-            colors.push_back(brightness + colorVar * 0.5f);
+
+            float alpha = p.life * glm::clamp(depthFactor + 0.2f, 0.0f, 1.0f);
+            colors.push_back(color.r);
+            colors.push_back(color.g);
+            colors.push_back(color.b);
             colors.push_back(alpha);
         }
 
         if (positions.empty() || sizes.empty() || colors.empty()) {
-            return; 
+            return;
         }
 
         CHECK_GL_ERROR();
@@ -611,13 +686,12 @@ public:
     }
 
     void repositionStarsAroundCamera(const glm::vec3& cameraPos) {
-        for (auto& p : particles) {
-            float radius = generateRandomFloat(10.0f, starFieldRadius);
-            float theta = generateRandomFloat(0.0f, 2.0f * M_PI);
-            float phi = generateRandomFloat(0.0f, M_PI);    
-            p.x = cameraPos.x + radius * sin(phi) * cos(theta);
-            p.y = cameraPos.y + radius * sin(phi) * sin(theta);
-            p.z = cameraPos.z + radius * cos(phi);
+        int particleIndex = 0;
+        for (int layer = 0; layer < NUM_LAYERS; ++layer) {
+            int count = layers[layer].count;
+            for (int i = 0; i < count && particleIndex < NUM_PARTICLES; ++i, ++particleIndex) {
+                initParticle(particles[particleIndex], layer, cameraPos);
+            }
         }
         lastCameraPos = cameraPos;
     }
@@ -2671,7 +2745,7 @@ void eventProc() {
 int main(int argc, char **argv) {
     mx::system_out << "MX2 Asteroids " << ASTEROIDS_VERSION << "\n";
     mx::system_out << "MX2 Engine: v" << PROJECT_VERSION_MAJOR << "." << PROJECT_VERSION_MINOR << "\n";
-    mx::system_out << "https://lostsidedead.biz\n"; 
+    mx::system_out << "https://lostsidedead.biz\n";
 #ifdef __EMSCRIPTEN__
     try {
         MainWindow main_window("", 1920, 1080);
