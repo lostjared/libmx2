@@ -1,0 +1,40 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+use Cwd 'abs_path';
+use File::Basename;
+
+my $root = dirname(abs_path($0));
+my $build_dir = "$root/build";
+my $source_dir = "$root/libmx";
+
+my $program = shift @ARGV;
+
+unless ($program) {
+    print "Usage: ./run <program_name> [extra args...]\n\n";
+    print "Available programs:\n";
+    opendir(my $dh, $build_dir) or die "Cannot open $build_dir: $!\n";
+    my @progs;
+    while (my $entry = readdir($dh)) {
+        next if $entry =~ /^\./;
+        my $exe = "$build_dir/$entry/$entry";
+        push @progs, $entry if -x $exe;
+    }
+    closedir($dh);
+    for my $p (sort @progs) {
+        print "  $p\n";
+    }
+    exit 1;
+}
+
+my $exe = "$build_dir/$program/$program";
+die "Error: Executable not found: $exe\n" unless -x $exe;
+
+my $data = "$source_dir/$program";
+die "Error: Source directory not found: $data\n" unless -d $data;
+
+chdir("$build_dir/$program") or die "Cannot cd to $build_dir/$program: $!\n";
+
+my @cmd = ("./$program", "-p", $data, @ARGV);
+print ">> @cmd\n";
+exec(@cmd) or die "Failed to exec $program: $!\n";
