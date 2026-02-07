@@ -5,6 +5,7 @@ use Cwd 'abs_path';
 use File::Basename;
 
 my $root = dirname(abs_path($0));
+my $parent = dirname($root);
 my $build_dir = "$root/build";
 my $source_dir = "$root/libmx";
 
@@ -25,16 +26,19 @@ unless ($program) {
     closedir($dh);
 
     # Check for standalone project directories with their own build/
-    opendir(my $rh, $root) or die "Cannot open $root: $!\n";
-    while (my $entry = readdir($rh)) {
-        next if $entry =~ /^\./;
-        next if $entry eq 'build' || $entry eq 'libmx';
-        my $exe = "$root/$entry/build/$entry";
-        push @progs, $entry if -x $exe;
+    for my $base ($root, $parent) {
+        opendir(my $rh, $base) or next;
+        while (my $entry = readdir($rh)) {
+            next if $entry =~ /^\./;
+            next if $entry eq 'build' || $entry eq 'libmx';
+            my $exe = "$base/$entry/build/$entry";
+            push @progs, $entry if -x $exe;
+        }
+        closedir($rh);
     }
-    closedir($rh);
 
-    for my $p (sort @progs) {
+    my %seen;
+    for my $p (sort grep { !$seen{$_}++ } @progs) {
         print "  $p\n";
     }
     exit 1;
@@ -51,17 +55,17 @@ if (-x $exe && -d $data) {
     exec(@cmd) or die "Failed to exec $program: $!\n";
 }
 
-# Then check standalone project directory (<name>/build/<name>)
-my $standalone_exe = "$root/$program/build/$program";
-my $standalone_data = "$root/$program";
+# Check standalone project directories (inside libmx2/ or sibling ../)
+for my $base ($root, $parent) {
+    my $standalone_exe = "$base/$program/build/$program";
+    my $standalone_data = "$base/$program";
 
-if (-x $standalone_exe && -d $standalone_data) {
-    chdir("$root/$program/build") or die "Cannot cd to $root/$program/build: $!\n";
-    my @cmd = ("./$program", "-p", $standalone_data, @ARGV);
-    print ">> @cmd\n";
-    exec(@cmd) or die "Failed to exec $program: $!\n";
+    if (-x $standalone_exe && -d $standalone_data) {
+        chdir("$base/$program/build") or die "Cannot cd to $base/$program/build: $!\n";
+        my @cmd = ("./$program", "-p", $standalone_data, @ARGV);
+        print ">> @cmd\n";
+        exec(@cmd) or die "Failed to exec $program: $!\n";
+    }
 }
 
-die "Error: Could not find executable for '$program'\n"
-  . "  Checked: $exe\n"
-  . "  Checked: $standalone_exe\n";
+die "Error: Could not find executable for '$program'\n";
