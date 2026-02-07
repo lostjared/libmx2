@@ -70,6 +70,13 @@ make -j$(nproc)
    sudo make install
    ```
 
+or
+
+````bash
+cmake -B . -S ../libmx -DVULKAN=ON -DOPENGL=OFF
+make -j$(nproc)
+````
+
 4. Build as a static library:
 
    ```bash
