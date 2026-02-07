@@ -6,7 +6,9 @@ use File::Basename;
 use File::Path qw(make_path);
 
 my $root = dirname(abs_path($0));
-my $aciddrop_dir = dirname($root) . "/AcidDrop";
+my $parent = dirname($root);
+my $aciddrop_dir = "$parent/AcidDrop";
+my $aciddrop_repo = "https://github.com/lostjared/AcidDrop.git";
 my $nproc = `nproc 2>/dev/null` || 4;
 chomp $nproc;
 
@@ -17,6 +19,25 @@ sub run_cmd {
     if ($rc != 0) {
         die "!! [$label] Command failed (exit code: " . ($rc >> 8) . ")\n";
     }
+}
+
+sub clone_aciddrop {
+    print "=" x 60, "\n";
+    print "  Cloning AcidDrop from GitHub\n";
+    print "=" x 60, "\n\n";
+    print ">> Target directory: $parent\n\n";
+
+    chdir($parent) or die "Cannot cd to $parent: $!\n";
+    
+    if (-d "AcidDrop") {
+        print ">> Removing existing AcidDrop directory...\n";
+        run_cmd("rm", "rm -rf AcidDrop");
+    }
+    
+    run_cmd("git", "git clone $aciddrop_repo");
+    run_cmd("git", "git config --global --add safe.directory $aciddrop_dir");
+    
+    print "\n>> [AcidDrop] Repository cloned to: $aciddrop_dir\n\n";
 }
 
 sub build_libmx2 {
@@ -45,6 +66,12 @@ sub build_aciddrop {
     print "=" x 60, "\n";
     print "  Building AcidDrop\n";
     print "=" x 60, "\n\n";
+
+    # Clone if needed
+    unless (-d $aciddrop_dir && -f "$aciddrop_dir/CMakeLists.txt") {
+        print ">> AcidDrop not found or incomplete, cloning...\n\n";
+        clone_aciddrop();
+    }
 
     die "Error: AcidDrop source not found at $aciddrop_dir\n" unless -d $aciddrop_dir;
 
