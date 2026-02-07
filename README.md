@@ -29,9 +29,19 @@ while using an approach I prefer, an Object Oriented Design. I have experimented
 
 ### Prerequisites
 
-- C++20 compatible compiler (e.g., GCC 10+, Clang 10+, MSVC 2019+
-- SDL2/SDL2_ttf/SDL2_mixer, libpng, zlib installed
-- Optional: OpenGL/GLM includes GLAD or Vulkan/MoletnVK
+- C++20 compatible compiler (e.g., GCC 10+, Clang 10+, MSVC 2019+)
+- SDL2, SDL2_ttf, SDL2_mixer, libpng, zlib installed
+- Optional: OpenGL/GLM (includes GLAD) or Vulkan/MoltenVK
+
+### Quick Compile
+
+From the repo root directory (`libmx2/`), run:
+
+```bash
+mkdir build && cd build
+cmake -B . -S ../libmx
+make -j$(nproc)
+```
 
 ### Installation
 
@@ -39,33 +49,42 @@ while using an approach I prefer, an Object Oriented Design. I have experimented
 
    ```bash
    git clone https://github.com/lostjared/libmx2.git
+   cd libmx2
    ```
 
-2. Navigate to the project directory:
+2. Create a build directory and compile:
 
    ```bash
-   cd libmx2/libmx
-   ```
-
-3. Build the library using CMake:
-
-   ```bash
-   mkdir build
-   cd build
-   cmake ..
-   make -j4
+   mkdir build && cd build
+   cmake -B . -S ../libmx
+   make -j$(nproc)
    sudo make install
    ```
 
-Optionally you can build as a static library
-
+3. Build with Vulkan support (no OpenGL):
 
    ```bash
-   mkdir build
-   cd build
-   cmake .. -DBUILD_STATIC_LIB=ON
-   make -j4
+   mkdir build && cd build
+   cmake -B . -S ../libmx -DVULKAN=ON -DOPENGL=OFF -DCMAKE_INSTALL_PREFIX=/usr/local/mxvk
+   make -j$(nproc)
    sudo make install
+   ```
+
+4. Build as a static library:
+
+   ```bash
+   mkdir build && cd build
+   cmake -B . -S ../libmx -DBUILD_STATIC_LIB=ON
+   make -j$(nproc)
+   sudo make install
+   ```
+
+To do a clean rebuild, remove the build directory first:
+
+   ```bash
+   rm -rf build && mkdir build && cd build
+   cmake -B . -S ../libmx
+   make -j$(nproc)
    ```
 Current Options:
 
@@ -76,7 +95,6 @@ Current Options:
 * -DVULKAN=ON optionally compile Vulkan support into the library ON  or OFF
 * -DMOLTEN=ON optionally compile with MoltenVK
 * -DMOLTEN_PATH=/usr/local/opt/molten-vk  (or path you installed molten-vk)
-
 
 # WebAssembly Demos
 
@@ -175,17 +193,17 @@ Refer to the `examples` directory for sample usage scenarios. Also various subfo
 ## How to Run the Examples
 
 The examples require the resources for each instance to be within the same directory as the executable or to pass the path of that directory to the program with the -p or --path argument.
-If you created the build directory an example to run gl_pong from build/gl_pong would be
+If you created the build directory at the repo root, to run gl_pong from `build/gl_pong/` would be:
 
 ```bash
-./gl_pong -p ../../gl_pong/v4
+./gl_pong -p ../../libmx/gl_pong/v4
 ```
-or to run space:
+or to run space from `build/space/`:
 
 ```bash
-./space -p ../../space
+./space -p ../../libmx/space
 ```
-If you are using Windows and MSYS/MINGW64 its a requirement to copy the libmx.dll file into the same directory as the EXE file. From inside say the build/gl_pong directory
+If you are using Windows and MSYS/MINGW64 it's a requirement to copy the libmx.dll file into the same directory as the EXE file. From inside say the `build/gl_pong/` directory:
 
 ```bash
 cp ../libmx/libmx.dll .
