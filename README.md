@@ -35,6 +35,17 @@ while using an approach I prefer, an Object Oriented Design. I have experimented
 
 ### Quick Compile
 
+```bash
+./compile.pl
+```
+
+then run with
+```bash
+./run program_name
+```
+
+or
+
 From the repo root directory (`libmx2/`), run:
 
 ```bash
