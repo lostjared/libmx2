@@ -66,10 +66,10 @@ namespace mx {
         alignas(16) glm::mat4 model;
         alignas(16) glm::mat4 view;
         alignas(16) glm::mat4 proj;
-        alignas(16) glm::vec4 params;      // x=time, y=unused, z=unused, w=unused
+        alignas(16) glm::vec4 params;      
         alignas(16) glm::vec4 color;  
-        alignas(16) glm::vec4 playerPos;   // x=posX, y=posZ, z=dirX, w=dirZ
-        alignas(16) glm::vec4 playerPlane; // x=planeX, y=planeZ, z=screenW, w=screenH
+        alignas(16) glm::vec4 playerPos;   
+        alignas(16) glm::vec4 playerPlane; 
     };
 
     class VKText {
@@ -223,7 +223,7 @@ namespace mx {
         void printText(const std::string &text, int x, int y, const SDL_Color &col);
         void clearTextQueue();
         
-        // Raycaster player data (set by derived class, used by draw())
+        
         struct {
             float posX = 8.0f, posY = 2.0f;
             float dirX = 0.0f, dirY = 1.0f;

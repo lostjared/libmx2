@@ -20,23 +20,79 @@ layout(binding = 1) uniform UniformBufferObject {
     vec4 playerPlane;
 } ubo;
 
-const int MAP_WIDTH = 16;
-const int MAP_HEIGHT = 16;
+const int MAP_WIDTH = 32;
+const int MAP_HEIGHT = 32;
+
+const int worldMap[1024] = int[](
+    // row 0  — top boundary
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    // row 1
+    1,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+    // row 2
+    1,0,2,0,0,2,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,2,0,0,0,2,0,1,
+    // row 3
+    1,0,0,0,0,0,0,0,0,0,2,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+    // row 4
+    1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,2,0,0,0,0,2,0,0,0,1,
+    // row 5
+    1,0,2,0,0,2,0,1,0,0,2,0,0,2,0,1,0,0,0,0,0,0,0,0,0,2,0,0,0,2,0,1,
+    // row 6
+    1,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+    // row 7
+    1,1,1,1,0,1,1,1,1,1,1,0,1,1,1,1,1,0,1,1,1,1,1,1,1,1,0,1,1,1,1,1,
+    // row 8
+    1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,0,0,0,0,0,0,1,
+    // row 9
+    1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,0,0,0,0,0,0,1,
+    // row 10
+    1,0,0,0,2,0,0,0,2,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,2,0,0,0,1,
+    // row 11
+    1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+    // row 12
+    1,0,0,0,2,0,0,0,2,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,2,0,0,0,1,
+    // row 13
+    1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,0,0,0,0,0,0,1,
+    // row 14
+    1,1,1,1,1,1,0,1,1,1,1,1,1,0,1,1,1,1,1,1,1,0,1,1,1,1,1,1,0,1,1,1,
+    // row 15
+    1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+    // row 16
+    1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+    // row 17
+    1,0,0,0,2,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,2,0,0,0,0,0,1,
+    // row 18
+    1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+    // row 19
+    1,0,0,0,2,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,2,0,0,0,0,0,1,
+    // row 20
+    1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+    // row 21
+    1,1,1,0,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,0,1,1,1,1,
+    // row 22
+    1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+    // row 23
+    1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+    // row 24
+    1,0,0,0,2,0,0,0,0,2,0,0,0,2,0,0,0,0,0,0,2,0,0,0,0,0,2,0,0,0,0,1,
+    // row 25
+    1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+    // row 26
+    1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+    // row 27
+    1,0,0,0,2,0,0,0,0,2,0,0,0,2,0,0,0,3,0,0,2,0,0,0,0,0,2,0,0,0,0,1,
+    // row 28
+    1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+    // row 29
+    1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+    // row 30
+    1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+    // row 31 — bottom boundary
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
+);
 
 int getMap(int x, int y) {
-    if (x <= 0 || x >= MAP_WIDTH-1 || y <= 0 || y >= MAP_HEIGHT-1) return 1;
-    if ((x == 4 && y == 4) || (x == 4 && y == 11) ||
-        (x == 11 && y == 4) || (x == 11 && y == 11)) return 2;
-    
-    if ((x == 7 && y == 7) || (x == 7 && y == 8) ||
-        (x == 8 && y == 7) || (x == 8 && y == 8)) return 3;
-    
-    if (x == 4 && y == 7) return 4;
-    if (x == 11 && y == 7) return 4;
-    if (x == 7 && y == 4) return 5;
-    if (x == 8 && y == 11) return 5;
-    
-    return 0;
+    if (x < 0 || x >= MAP_WIDTH || y < 0 || y >= MAP_HEIGHT) return 1;
+    return worldMap[y * MAP_WIDTH + x];
 }
 
 vec3 getWallColor(int wallType, int side) {
@@ -103,7 +159,7 @@ void main() {
     int side = 0;
     int wallType = 0;
     
-    for (int i = 0; i < 64; i++) {
+    for (int i = 0; i < 128; i++) {
         if (sideDistX < sideDistY) {
             sideDistX += deltaDistX;
             mapX += stepX;
@@ -180,13 +236,19 @@ void main() {
             float floorX = posX + currentDist * rayDirX;
             float floorY = posY + currentDist * rayDirY;
             
-            int tileX = int(floor(floorX));
-            int tileY = int(floor(floorY));
-            int checker = (tileX + tileY) & 1;
+            vec2 ceilUV = vec2(fract(floorX), fract(floorY));
+            float time_f = ubo.params.x;
+            vec2 uv_c = 1.0 - abs(1.0 - 2.0 * ceilUV);
+            uv_c = uv_c - floor(uv_c);
+            float len_c = length(uv_c);
+            float time_tc = pingPong(time_f, 10.0);
+            float bubble_c = smoothstep(0.8, 1.0, 1.0 - len_c);
+            bubble_c = sin(bubble_c * time_tc);
+            vec2 distort_c = uv_c * (1.0 + 0.1 * sin(time_f + len_c * 20.0));
+            distort_c = sin(distort_c * time_tc);
+            vec3 texColor_c = texture(texSampler, distort_c * 0.5 + 0.5).rgb;
+            col = mix(texColor_c, vec3(0.7, 0.7, 0.9), bubble_c);
             
-            vec3 ceilColor1 = vec3(0.25, 0.25, 0.35);
-            vec3 ceilColor2 = vec3(0.35, 0.35, 0.45);
-            col = (checker == 0) ? ceilColor1 : ceilColor2;
             col *= 1.0 / (1.0 + currentDist * currentDist * 0.02);
         } else {
             float currentDist = screenH / (2.0 * y - screenH);
@@ -215,12 +277,20 @@ void main() {
             float currentDist = screenH / (screenH - 2.0 * y);
             float floorX = posX + currentDist * rayDirX;
             float floorY = posY + currentDist * rayDirY;
-            int tileX = int(floor(floorX));
-            int tileY = int(floor(floorY));
-            int checker = (tileX + tileY) & 1;
-            vec3 ceilColor1 = vec3(0.25, 0.25, 0.35);
-            vec3 ceilColor2 = vec3(0.35, 0.35, 0.45);
-            col = (checker == 0) ? ceilColor1 : ceilColor2;
+            
+            vec2 ceilUV2 = vec2(fract(floorX), fract(floorY));
+            float time_f2 = ubo.params.x;
+            vec2 uv_c2 = 1.0 - abs(1.0 - 2.0 * ceilUV2);
+            uv_c2 = uv_c2 - floor(uv_c2);
+            float len_c2 = length(uv_c2);
+            float time_tc2 = pingPong(time_f2, 10.0);
+            float bubble_c2 = smoothstep(0.8, 1.0, 1.0 - len_c2);
+            bubble_c2 = sin(bubble_c2 * time_tc2);
+            vec2 distort_c2 = uv_c2 * (1.0 + 0.1 * sin(time_f2 + len_c2 * 20.0));
+            distort_c2 = sin(distort_c2 * time_tc2);
+            vec3 texColor_c2 = texture(texSampler, distort_c2 * 0.5 + 0.5).rgb;
+            col = mix(texColor_c2, vec3(0.7, 0.7, 0.9), bubble_c2);
+            
             col *= 1.0 / (1.0 + currentDist * currentDist * 0.02);
         } else {
             float currentDist = screenH / (2.0 * y - screenH);
