@@ -16,5 +16,3 @@ add_custom_command(TARGET gl_mxmod POST_BUILD
 
 install(TARGETS gl_mxmod
         RUNTIME DESTINATION bin)
-install(DIRECTORY data/
-        DESTINATION bin/data)
