@@ -4,6 +4,6 @@ target_include_directories(gl_stars3d PRIVATE
     ${SDL2_INCLUDE_DIRS} 
     ${SDL2_TTF_INCLUDE_DIRS}
 )
-target_link_libraries(gl_stars3d PRIVATE mx ${SDL2_LIBRARIES} ${SDL2_TTF_LIBRARIES})
+target_link_libraries(gl_stars3d PRIVATE mxgl ${SDL2_LIBRARIES} ${SDL2_TTF_LIBRARIES})
 
 

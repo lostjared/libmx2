@@ -4,7 +4,7 @@ target_include_directories(gl_asteroids PRIVATE
     ${SDL2_INCLUDE_DIRS} 
     ${SDL2_TTF_INCLUDE_DIRS}
 )
-target_link_libraries(gl_asteroids PRIVATE mx ${SDL2_LIBRARIES} ${SDL2_TTF_LIBRARIES})
+target_link_libraries(gl_asteroids PRIVATE mxgl ${SDL2_LIBRARIES} ${SDL2_TTF_LIBRARIES})
 if(MINGW)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -mwindows")
 endif()

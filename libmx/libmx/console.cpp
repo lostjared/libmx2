@@ -1,5 +1,7 @@
 #include"console.hpp"
+#ifdef WITH_GL
 #include"gl.hpp"
+#endif
 
 namespace console {
    

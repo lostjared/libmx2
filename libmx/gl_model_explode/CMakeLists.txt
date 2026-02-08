@@ -4,4 +4,4 @@ target_include_directories(gl_model_explode PRIVATE
     ${SDL2_INCLUDE_DIRS} 
     ${SDL2_TTF_INCLUDE_DIRS}
 )
-target_link_libraries(gl_model_explode PRIVATE mx ${SDL2_LIBRARIES} ${SDL2_TTF_LIBRARIES})
+target_link_libraries(gl_model_explode PRIVATE mxgl ${SDL2_LIBRARIES} ${SDL2_TTF_LIBRARIES})

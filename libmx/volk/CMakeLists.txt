@@ -1,5 +1,6 @@
 
-add_library(volk STATIC volk.c)
+add_library(volk STATIC volk.cpp)
+set_target_properties(volk PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 target_include_directories(volk PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
@@ -12,3 +13,9 @@ if(NOT WIN32)
 endif()
 
 add_library(libmx2::volk ALIAS volk)
+
+install(TARGETS volk
+    EXPORT libmx2Targets
+    ARCHIVE DESTINATION ${INSTALL_LIB_DIR}
+    INCLUDES DESTINATION ${INSTALL_INCLUDE_DIR}/volk
+)

@@ -6,4 +6,4 @@ target_include_directories(gl_glitch_cube PRIVATE
     /usr/include
     /usr/local/include
 )
-target_link_libraries(gl_glitch_cube PRIVATE mx ${SDL2_LIBRARIES} ${SDL2_TTF_LIBRARIES})
+target_link_libraries(gl_glitch_cube PRIVATE mxgl ${SDL2_LIBRARIES} ${SDL2_TTF_LIBRARIES})

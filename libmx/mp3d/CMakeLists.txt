@@ -18,4 +18,4 @@ target_include_directories(mp3d PRIVATE
     ${LIBCMD_INCLUDE_DIRS}
     ${LIBCMD_INCLUDE_DIRS}/mxcmd
 )
-target_link_libraries(mp3d PRIVATE libmx2::mx libmxcmd::mxcmd ${SDL2_LIBRARIES} ${SDL2_TTF_LIBRARIES})
+target_link_libraries(mp3d PRIVATE libmx2::mxgl libmxcmd::mxcmd ${SDL2_LIBRARIES} ${SDL2_TTF_LIBRARIES})

@@ -165,7 +165,6 @@ public:
 
         float ms = moveSpeed * deltaTime;
         float rs = rotSpeed  * deltaTime;
-
         
         if (keyW) {
             float newX = posX + dirX * ms;

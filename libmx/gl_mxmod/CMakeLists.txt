@@ -4,7 +4,7 @@ target_include_directories(gl_mxmod PRIVATE
     ${SDL2_INCLUDE_DIRS} 
     ${SDL2_TTF_INCLUDE_DIRS}
 )
-target_link_libraries(gl_mxmod PRIVATE mx ${SDL2_LIBRARIES} ${SDL2_TTF_LIBRARIES})
+target_link_libraries(gl_mxmod PRIVATE mxgl ${SDL2_LIBRARIES} ${SDL2_TTF_LIBRARIES})
 
 # Copy data directory to build output
 add_custom_command(TARGET gl_mxmod POST_BUILD
