@@ -9,6 +9,7 @@
 #include <climits>
 #include <cstring>
 #include "argz.hpp"
+#include "input.hpp"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -124,14 +125,6 @@ public:
     void initVulkan() override {
         mx::VKWindow::initVulkan();
         
-        SDL_Surface *whiteSurf = SDL_CreateRGBSurfaceWithFormat(0, 2, 2, 32, SDL_PIXELFORMAT_RGBA32);
-        SDL_FillRect(whiteSurf, nullptr, SDL_MapRGBA(whiteSurf->format, 255, 255, 255, 255));
-        pixel = createSprite(whiteSurf,
-                             util.path + "/data/sprite_vert.spv",
-                             util.path + "/data/solid_frag.spv");
-        SDL_FreeSurface(whiteSurf);
-        
-        
         SDL_Surface *starSurf = SDL_CreateRGBSurfaceWithFormat(0, 4, 4, 32, SDL_PIXELFORMAT_RGBA32);
         Uint32 *pixels = (Uint32*)starSurf->pixels;
         for (int y = 0; y < 4; y++) {
@@ -147,6 +140,13 @@ public:
                                   util.path + "/data/sprite_vert.spv",
                                   util.path + "/data/sprite_frag.spv");
         SDL_FreeSurface(starSurf);
+
+        SDL_Surface *whiteSurf = SDL_CreateRGBSurfaceWithFormat(0, 2, 2, 32, SDL_PIXELFORMAT_RGBA32);
+        SDL_FillRect(whiteSurf, nullptr, SDL_MapRGBA(whiteSurf->format, 255, 255, 255, 255));
+        pixel = createSprite(whiteSurf,
+                     util.path + "/data/sprite_vert.spv",
+                     util.path + "/data/solid_frag.spv");
+        SDL_FreeSurface(whiteSurf);
 
         initGame();
     }
@@ -178,6 +178,8 @@ public:
 
         updateFontSize();
 
+        pollController();
+
         
         const Uint8 *keys = SDL_GetKeyboardState(nullptr);
 
@@ -192,7 +194,7 @@ public:
             break;
         case STATE_PLAYING:
             
-            if (keys[SDL_SCANCODE_SPACE] && canFire()) {
+            if ((keys[SDL_SCANCODE_SPACE] || joyFire) && canFire()) {
                 fireProjectile(ship.x, ship.y, ship.angle);
             }
             updateShip();
@@ -215,12 +217,26 @@ public:
 
     
     void event(SDL_Event &e) override {
+        if (controller.connectEvent(e)) {
+            mx::system_out << "Controller connected: " << controller.name()
+                           << " (index " << controller.controllerIndex() << ")\n";
+            joyRestLX = 0;
+            joyRestLY = 0;
+        }
+        if (e.type == SDL_CONTROLLERDEVICEREMOVED) {
+            mx::system_out << "Controller disconnected.\n";
+            joyRestLX = 0;
+            joyRestLY = 0;
+        }
         switch (e.type) {
         case SDL_QUIT:
             quit();
             break;
         case SDL_KEYDOWN:
-            if (e.key.keysym.sym == SDLK_ESCAPE)
+        
+            if (e.key.keysym.sym == SDLK_ESCAPE) {
+                            quit();
+                        } else if (e.key.keysym.sym == SDLK_ESCAPE)
                 quit();
             if (e.key.keysym.sym == SDLK_SPACE && state == STATE_GAMEOVER) {
                 restartGame();
@@ -238,7 +254,84 @@ public:
                 if (e.key.keysym.sym == SDLK_UP)    keyThrust = false;
             }
             break;
+        case SDL_CONTROLLERBUTTONDOWN:
+            handleControllerButton(e.cbutton.button);
+            break;
+        case SDL_CONTROLLERBUTTONUP:
+            handleControllerButtonUp(e.cbutton.button);
+            break;
         }
+    }
+
+    void handleControllerButton(Uint8 button) {
+        switch (state) {
+        case STATE_GAMEOVER:
+            if (button == SDL_CONTROLLER_BUTTON_A || button == SDL_CONTROLLER_BUTTON_START) {
+                restartGame();
+            }
+            break;
+        case STATE_PLAYING:
+            if (button == SDL_CONTROLLER_BUTTON_A) {
+                joyFire = true;
+            } else if (button == SDL_CONTROLLER_BUTTON_B || button == SDL_CONTROLLER_BUTTON_BACK) {
+                
+            } else if (button == SDL_CONTROLLER_BUTTON_START) {
+                
+            }
+            break;
+        default:
+            break;
+        }
+    }
+
+    void handleControllerButtonUp(Uint8 button) {
+        if (state == STATE_PLAYING) {
+            if (button == SDL_CONTROLLER_BUTTON_A) {
+                joyFire = false;
+            }
+        }
+    }
+
+    void pollController() {
+        if (!controller.active()) {
+            joyLeft = joyRight = joyThrust = joyFire = false;
+            joyCenterStable = 0;
+            return;
+        }
+
+        if(controller.getButton(mx::Input_Button::BTN_START)) {
+            quit();
+            return;
+        }
+
+        if (state != STATE_PLAYING || ship.exploding) {
+            joyLeft = joyRight = joyThrust = joyFire = false;
+            return;
+        }
+
+        Sint16 rawLX = controller.getAxis(SDL_CONTROLLER_AXIS_LEFTX);
+        Sint16 rawLY = controller.getAxis(SDL_CONTROLLER_AXIS_LEFTY);
+
+        if (abs(rawLX) < JOY_RECENTER_ZONE && abs(rawLY) < JOY_RECENTER_ZONE) {
+            if (joyCenterStable < JOY_RECENTER_FRAMES) {
+                joyCenterStable++;
+            }
+            if (joyCenterStable >= JOY_RECENTER_FRAMES) {
+                joyRestLX = rawLX;
+                joyRestLY = rawLY;
+            }
+        } else {
+            joyCenterStable = 0;
+        }
+
+        
+        int lx = static_cast<int>(rawLX) - static_cast<int>(joyRestLX);
+        int ly = static_cast<int>(rawLY) - static_cast<int>(joyRestLY);
+        joyLeft  = (lx < -JOY_ROTATE_ZONE);
+        joyRight = (lx >  JOY_ROTATE_ZONE);
+        joyThrust = (ly < -JOY_THRUST_ZONE);
+        Sint16 rt = controller.getAxis(SDL_CONTROLLER_AXIS_TRIGGERRIGHT);
+        joyFire = (rt > JOY_THRUST_ZONE) || controller.getButton(mx::Input_Button::BTN_A);
     }
 
 private:
@@ -261,7 +354,18 @@ private:
 
     GameState state = STATE_COUNTDOWN;
     bool keyLeft = false, keyRight = false, keyThrust = false;
+    bool keyFire = false;
+    bool joyLeft = false, joyRight = false, joyThrust = false;
+    bool joyFire = false;
     bool wasExploding = false;
+
+    mx::Input controller;
+    static constexpr Sint16 JOY_ROTATE_ZONE = 16000;
+    static constexpr Sint16 JOY_THRUST_ZONE = 12000;
+    static constexpr Sint16 JOY_RECENTER_ZONE = 8000;
+    static constexpr int JOY_RECENTER_FRAMES = 12;
+    Sint16 joyRestLX = 0, joyRestLY = 0;
+    int joyCenterStable = 0;
 
     
     int countdownTimer = 0;
@@ -461,9 +565,9 @@ private:
     
     void updateShip() {
         if (ship.exploding) return;
-        if (keyLeft)  ship.angle -= 0.15f;
-        if (keyRight) ship.angle += 0.15f;
-        if (keyThrust) {
+        if (keyLeft || joyLeft)   ship.angle -= 0.15f;
+        if (keyRight || joyRight) ship.angle += 0.15f;
+        if (keyThrust || joyThrust) {
             float thrust = 0.2f;
             ship.vx += sinf(ship.angle) * thrust;
             ship.vy += -cosf(ship.angle) * thrust;
@@ -487,7 +591,8 @@ private:
     }
 
     void updateFireTimer(const Uint8 *keys) {
-        if (keys[SDL_SCANCODE_SPACE] && !ship.overheated) {
+        bool firing = keys[SDL_SCANCODE_SPACE] || joyFire;
+        if (firing && !ship.overheated) {
             ship.continuous_fire_timer++;
             ship.overheat_cooldown = 0;
             if (ship.continuous_fire_timer >= 180) {
@@ -496,7 +601,7 @@ private:
                 ship.continuous_fire_timer = 0;
                 ship.burst_count = 0;
             }
-        } else if (keys[SDL_SCANCODE_SPACE] && ship.overheated) {
+        } else if (firing && ship.overheated) {
             ship.overheat_cooldown = 0;
         } else {
             if (ship.overheated) {
@@ -802,7 +907,8 @@ private:
         ship.angle = 0;
         ship.exploding = false;
         ship.explosion_timer = 0;
-        keyLeft = keyRight = keyThrust = false;
+        keyLeft = keyRight = keyThrust = keyFire = false;
+        joyLeft = joyRight = joyThrust = joyFire = false;
         state = STATE_COUNTDOWN;
         countdownTimer = 0;
         countdownNumber = 3;
@@ -831,6 +937,10 @@ private:
         }
         if (launchTimer >= launchDuration) {
             state = STATE_PLAYING;
+            if (controller.active()) {
+                joyRestLX = controller.getAxis(SDL_CONTROLLER_AXIS_LEFTX);
+                joyRestLY = controller.getAxis(SDL_CONTROLLER_AXIS_LEFTY);
+            }
         }
     }
 
@@ -952,7 +1062,7 @@ private:
         drawLine(cc_x, cc_y, ce_x, ce_y);
 
         
-        if (keyThrust) {
+        if (keyThrust || joyThrust) {
             float f1x, f1y, f2x, f2y, f3x, f3y;
             rot(-6, 18, f1x, f1y);
             rot(0, 22, f2x, f2y);
@@ -1168,7 +1278,7 @@ private:
 int main(int argc, char **argv) {
     Arguments args = proc_args(argc, argv);
     try {
-        SpaceRoxWindow window(args.path, args.width, args.height, args.fullscreen);
+        SpaceRoxWindow window(args.path, args.width, args.height, true);
         window.initVulkan();
         window.loop();
         window.cleanup();
