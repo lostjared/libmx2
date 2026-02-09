@@ -81,15 +81,11 @@ if(OPENGL)
     install(FILES include/KHR/khrplatform.h DESTINATION ${INSTALL_INCLUDE_DIR}/KHR)
 endif()
 
-# ─── Vulkan library: mxvk ────────────────────────────────────────────────────
+# ─── Vulkan library: mxvk (always static to share volk symbol table) ─────────
 if(VULKAN OR MOLTEN)
-    if(BUILD_STATIC_LIB)
-        add_library(mxvk STATIC vk.cpp)
-        message(STATUS "Building mxvk (Vulkan) as a static library.")
-    else()
-        add_library(mxvk SHARED vk.cpp)
-        message(STATUS "Building mxvk (Vulkan) as a shared library.")
-    endif()
+    add_library(mxvk STATIC vk.cpp vk_text.cpp vk_sprite.cpp)
+    set_target_properties(mxvk PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    message(STATUS "Building mxvk (Vulkan) as a static library.")
 
     target_include_directories(mxvk PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>

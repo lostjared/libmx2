@@ -22,6 +22,9 @@
 #include <fstream>
 #include <algorithm>
 #include <array>
+#include "vk_text.hpp"
+#include "vk_sprite.hpp"
+
 
 #define VK_CHECK_RESULT(f) { \
     VkResult res = (f); \
