@@ -2,16 +2,11 @@
 #if defined(__APPLE__) || defined(_WIN32) || defined(__linux__)
 #include"argz.hpp"
 #endif
-#ifdef __EMSCRIPTEN__
-#include <emscripten/emscripten.h>
-#include <GLES3/gl3.h>
-#endif
 
 #include<ctime>
 #include<cstdlib>
 #include<tuple>
 #include<memory>
-
 #include"gl.hpp"
 #include"loadpng.hpp"
 #include"model.hpp"
@@ -909,6 +904,15 @@ public:
         snd_crash = win->mixer.loadWav(win->util.getFilePath("data/sound/crash.wav"));
         snd_takeoff = win->mixer.loadWav(win->util.getFilePath("data/sound/takeoff.wav"));
 
+        for (int i = 0; i < SDL_NumJoysticks(); i++) {
+            if (SDL_IsGameController(i)) {
+                if (stick.open(i)) {
+                    mx::system_out << "Space3D: Opened controller: " << stick.name() << "\n";
+                }
+                break;
+            }
+        }
+
         shaderProgram.useProgram();
         float aspectRatio = (float)win->w / (float)win->h;
         float fov = glm::radians(45.0f); 
@@ -1006,6 +1010,7 @@ public:
         });
         
         win->console.print("Space3D MX2\nLostSideDead Software\nhttps://lostsidedead.biz\n");
+        stick.open(0);
     }
 #ifndef __EMSCRIPTEN__
     Uint32 lastUpdateTime = SDL_GetTicks();
@@ -1283,11 +1288,13 @@ public:
     
     void checkInput(gl::GLWindow *win, float deltaTime) {
 
+        if(stick.getButton(mx::Input_Button::BTN_START)) {
+            win->quit();
+            return;
+        }
 
-
-     
         if(game_over == true) {
-            if(stick.getButton(mx::Input_Button::BTN_START)) {
+            if(stick.getButton(mx::Input_Button::BTN_A)) {
                 newGame();
                 launch_ship = true;
             }
@@ -1303,7 +1310,7 @@ public:
                 ship_pos = glm::vec3(0.0f, -20.0f, -70.0f);
             }
 
-            if(stick.getButton(mx::Input_Button::BTN_X) && wait_explode == false) {
+            if(stick.getButton(mx::Input_Button::BTN_A) && wait_explode == false) {
                 launch_ship = false;
 
                 if(!wait_explode && !win->mixer.isPlaying(0))
@@ -1319,7 +1326,7 @@ public:
         double currentTime = emscripten_get_now();
 #endif
         if(currentTime - fireTime >= 175) {
-            if(stick.getButton(mx::Input_Button::BTN_A) && wait_explode == false) {
+            if(stick.getButton(mx::Input_Button::BTN_B) && wait_explode == false) {
                 std::tuple<glm::vec3, glm::vec3> shots;
                 std::get<0>(shots) = ship_pos;
                 std::get<0>(shots).x -= 1.5f;
@@ -1340,7 +1347,7 @@ public:
                 float moveX = 0.0f;
                 float moveY = 0.0f; 
 
-                if (!isBarrelRolling && stick.getButton(mx::Input_Button::BTN_B)) {
+                if (!isBarrelRolling && stick.getButton(mx::Input_Button::BTN_Y)) {
                         isBarrelRolling = true;
                         barrelRollAngle = 0.0f;
                     }
@@ -1358,6 +1365,20 @@ public:
                 }
                 if (stick.getButton(mx::Input_Button::BTN_D_DOWN)) {
                     moveY -= 50.0f; 
+                }
+                const Sint16 deadZone = 8000;
+                if (stick.active()) {
+                    Sint16 axisX = stick.getAxis(SDL_CONTROLLER_AXIS_LEFTX);
+                    Sint16 axisY = stick.getAxis(SDL_CONTROLLER_AXIS_LEFTY);
+                    if (axisX < -deadZone || axisX > deadZone) {
+                        float normalized = static_cast<float>(axisX) / 32767.0f;
+                        moveX += normalized * 50.0f;
+                        shipRotation = glm::clamp(shipRotation - normalized * rotationSpeed * deltaTime, -maxTiltAngle, maxTiltAngle);
+                    }
+                    if (axisY < -deadZone || axisY > deadZone) {
+                        float normalized = static_cast<float>(axisY) / 32767.0f;
+                        moveY -= normalized * 50.0f;
+                    }
                 }
                 if (moveX != 0.0f || moveY != 0.0f) {
                     float magnitude = glm::sqrt(moveX * moveX + moveY * moveY);
@@ -1807,8 +1828,12 @@ void IntroScreen::draw(gl::GLWindow *win) {
 
 class MainWindow : public gl::GLWindow {
 public:
-    MainWindow(std::string path, int tw, int th) : gl::GLWindow("Space3D", tw, th) {
+    MainWindow(std::string path, int tw, int th, bool fullscreen = false) : gl::GLWindow("Space3D", tw, th) {
         setPath(path);
+        if(fullscreen) {
+            SDL_ShowCursor(SDL_FALSE);
+            setFullScreen(true);
+        }
         mixer.init();
         setObject(new IntroScreen());
         object->load(this);
@@ -1856,12 +1881,9 @@ int main(int argc, char **argv) {
     emscripten_set_main_loop(eventProc, 0, 1);
 #elif defined(__APPLE__) || defined(_WIN32) || defined(__linux__)
     Arguments args = proc_args(argc, argv);
+    args.fullscreen = true;
     try {
-        MainWindow main_window(args.path, args.width, args.height);
-        if(args.fullscreen) {
-            SDL_ShowCursor(SDL_FALSE);
-            main_window.setFullScreen(true);
-        }
+        MainWindow main_window(args.path, args.width, args.height, args.fullscreen);
         main_window.loop();
         if(args.fullscreen) {
             SDL_ShowCursor(SDL_TRUE);
