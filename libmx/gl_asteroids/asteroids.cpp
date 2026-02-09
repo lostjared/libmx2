@@ -406,12 +406,29 @@ public:
 
         intro.initSize(win->w, win->h);
         intro.loadTexture(&shader, win->util.getFilePath("data/intro.png"), 0.0f, 0.0f, win->w, win->h);
+
+        for (int i = 0; i < SDL_NumJoysticks(); i++) {
+            if (SDL_IsGameController(i)) {
+                if(intro_controller.open(i)) {
+                    mx::system_out << "Intro: Opened controller: " << intro_controller.name() << "\n";
+                }
+                break;
+            }
+        }
     }
 
     virtual void draw(gl::GLWindow *win);
     virtual void event(gl::GLWindow *win, SDL_Event &e) {
+        intro_controller.connectEvent(e);
         if((e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_SPACE) || (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_RETURN)) {
             fade = 0.01f;
+        }
+        if(intro_controller.getButton(SDL_CONTROLLER_BUTTON_A)) {
+            fade = 0.01f;
+        }
+        if(intro_controller.getButton(SDL_CONTROLLER_BUTTON_BACK) || intro_controller.getButton(SDL_CONTROLLER_BUTTON_START)) {
+            win->quit();
+            return;
         }
     }
 
@@ -426,6 +443,7 @@ protected:
     Uint32 lastUpdateTime = 0;
     float fade = 1.0f;
     mx::Font font;
+    mx::Controller intro_controller;
 };
 
 class StarField : public gl::GLObject {
@@ -1686,8 +1704,8 @@ public:
     glm::vec3 velocity{0.0f, 0.0f, 0.0f};
     
     float speed = 10.0f;         
-    float turnSpeed = 100.0f;    
-    float maxSpeed = 20.0f;      
+    float turnSpeed = 140.0f;    
+    float maxSpeed = 25.0f;      
     float drag = 0.95f;
     
     float cameraDistance = 5.0f;
@@ -1695,6 +1713,13 @@ public:
     float cameraLag = 0.1f;
     glm::vec3 cameraPosition{0.0f, 0.0f, 0.0f};
     
+    glm::vec3 getForward() const {
+        glm::mat4 rot(1.0f);
+        rot = glm::rotate(rot, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+        rot = glm::rotate(rot, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+        return glm::normalize(glm::vec3(rot * glm::vec4(0.0f, 0.0f, -1.0f, 0.0f)));
+    }
+
     void load(gl::GLWindow *win) {
         if(!model.openModel(win->util.getFilePath("data/bird.mxmod.z"))) {
             throw mx::Exception("Failed to load model");
@@ -1722,16 +1747,7 @@ public:
     }
 
     void moveForward(float deltaTime) {
-        glm::mat4 rotationMatrix(1.0f);
-        rotationMatrix = glm::rotate(rotationMatrix, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f)); 
-        rotationMatrix = glm::rotate(rotationMatrix, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
-        
-        glm::vec3 forward = glm::normalize(glm::vec3(
-            -sin(glm::radians(rotation.y)),
-            sin(glm::radians(rotation.x)),
-            -cos(glm::radians(rotation.y)) * cos(glm::radians(rotation.x))
-        ));
-        
+        glm::vec3 forward = getForward();
         velocity += forward * speed * deltaTime;
         float currentSpeed = glm::length(velocity);
         if (currentSpeed > maxSpeed) {
@@ -1740,12 +1756,7 @@ public:
     }
     
     void moveBackward(float deltaTime) {
-        glm::vec3 forward = glm::normalize(glm::vec3(
-            -sin(glm::radians(rotation.y)),
-            sin(glm::radians(rotation.x)),
-            -cos(glm::radians(rotation.y)) * cos(glm::radians(rotation.x))
-        ));
-        
+        glm::vec3 forward = getForward();
         velocity -= forward * speed * deltaTime;
         
         float currentSpeed = glm::length(velocity);
@@ -1755,14 +1766,7 @@ public:
     }
     
     void yaw(float amount, float deltaTime) {
-        float absPitch = fabs(rotation.x);
-        if (absPitch >= 75.0f) {
-             float rollDirection = (rotation.x > 0) ? -1.0f : 1.0f;
-             roll(amount * rollDirection * turnSpeed * deltaTime, deltaTime);
-        } else {
-             rotation.y += amount * turnSpeed * deltaTime;
-        }
-        
+        rotation.y += amount * turnSpeed * deltaTime;
         while (rotation.y >= 360.0f) rotation.y -= 360.0f;
         while (rotation.y < 0.0f) rotation.y += 360.0f;
     }
@@ -1786,11 +1790,7 @@ public:
     }
 
     void update(float deltaTime) {
-        glm::vec3 forward = glm::normalize(glm::vec3(
-            -sin(glm::radians(rotation.y)),
-            sin(glm::radians(rotation.x)),
-            -cos(glm::radians(rotation.y)) * cos(glm::radians(rotation.x))
-        ));
+        glm::vec3 forward = getForward();
 
         if(pause == false) {
             velocity = forward * currentSpeed;
@@ -1835,12 +1835,7 @@ public:
     }
     
     void updateCamera(float deltaTime) {
-        
-        glm::vec3 forward = glm::normalize(glm::vec3(
-            -sin(glm::radians(rotation.y)),
-            sin(glm::radians(rotation.x)),
-            -cos(glm::radians(rotation.y)) * cos(glm::radians(rotation.x))
-        ));
+        glm::vec3 forward = getForward();
         
         glm::vec3 idealCameraPos = position - forward * cameraDistance + glm::vec3(0.0f, cameraHeight, 0.0f);
         
@@ -1902,13 +1897,8 @@ public:
     }
 
     void fireProjectile() {
-        glm::vec3 forward = glm::normalize(glm::vec3(
-            -sin(glm::radians(rotation.y)),
-            sin(glm::radians(rotation.x)),
-            -cos(glm::radians(rotation.y)) * cos(glm::radians(rotation.x))
-        ));
-        
-        glm::vec3 projectilePos = position + forward * 0.6f;
+        glm::vec3 forward = getForward();
+        glm::vec3 projectilePos = position + forward * 1.2f;
         projectiles.fire(projectilePos, forward, 80.0f + currentSpeed);
     }
 
@@ -1984,8 +1974,7 @@ public:
     }
 
     void load(gl::GLWindow *win) {
-        static bool loaded = false;
-        if(loaded == false) {
+        if(!shader) {
             models[0] = std::make_unique<mx::Model>();
             if(!models[0]->openModel(win->util.getFilePath("data/asteroid.mxmod.z"))) {
                     throw mx::Exception("Failed to load planet model");
@@ -2024,7 +2013,6 @@ public:
             models[0]->setShaderProgram(shader.get(), "texture1");
             models[1]->setShaderProgram(shader.get(), "texture1");
             models[2]->setShaderProgram(shader.get(), "texture1");
-            loaded = true;
             
         }
         planet_type = 3;
@@ -2189,7 +2177,7 @@ class Game : public gl::GLObject {
     const float SHIP_EXPLOSION_DURATION = 2.5f;
     int lives = 5;
     int score = 0;
-    bool inverted_controls = true;
+    bool inverted_controls = false;
 public:
     Game() = default;
     virtual ~Game() override {
@@ -2248,6 +2236,15 @@ public:
             } 
             return window->console.procDefaultCommands(args);
         });
+
+        for (int i = 0; i < SDL_NumJoysticks(); i++) {
+            if (SDL_IsGameController(i)) {
+                if(controller.open(i)) {
+                    mx::system_out << "Game: Opened controller: " << controller.name() << "\n";
+                }
+                break;
+            }
+        }
     }
     
     void randomizePlanetPositions() {
@@ -2426,9 +2423,9 @@ public:
          win->text.printText_Solid(font, win->w-250.0f, 100.0f, "Asteroids: " + std::to_string(numPlanets));
          win->text.printText_Solid(font, win->w-250.0f, 125.0f, "[F1 for Debug]");
          if(inverted_controls) {
-            win->text.printText_Solid(font, win->w-250.0f, 150.0f, "[F2 invert controls]");
+            win->text.printText_Solid(font, win->w-250.0f, 150.0f, "[Inverted] F2/Y");
          } else {
-            win->text.printText_Solid(font, win->w-250.0f, 150.0f, "[F2 restore controls]");
+            win->text.printText_Solid(font, win->w-250.0f, 150.0f, "[Arcade] F2/Y");
          }
          win->text.printText_Solid(font, win->w-250.0f, 175.0f, "[F3 for Console]");
 
@@ -2466,169 +2463,150 @@ public:
     }
     
     void handleInput(gl::GLWindow* win, float deltaTime) {
+        const Sint16 DEAD_ZONE = 8000;
+        const float AXIS_MAX = 32767.0f;
 
         if(win->console_visible == true) {
             return;
         }
 
+        if(controller.getButton(SDL_CONTROLLER_BUTTON_BACK) || controller.getButton(SDL_CONTROLLER_BUTTON_START)) {
+            win->quit();
+            return;
+        }
+
         const Uint8* state = SDL_GetKeyboardState(NULL);
         Uint32 currentTime = SDL_GetTicks();
+
+        
         if (state[SDL_SCANCODE_SPACE]) {
             if (currentTime - lastFireTime >= FIRE_COOLDOWN) {
                 ship.fireProjectile();
                 lastFireTime = currentTime;
             }
         }
-        if (controller.getButton(SDL_CONTROLLER_BUTTON_A)) {
-            if (currentTime - lastFireTime >= FIRE_COOLDOWN) {        
+        if (controller.getButton(SDL_CONTROLLER_BUTTON_A) || controller.getAxis(SDL_CONTROLLER_AXIS_TRIGGERRIGHT) > DEAD_ZONE) {
+            if (currentTime - lastFireTime >= FIRE_COOLDOWN) {
                 ship.fireProjectile();
                 lastFireTime = currentTime;
             }
-        } 
-        if(controller.getButton(SDL_CONTROLLER_BUTTON_LEFTSHOULDER)) {
-            ship.increaseSpeed(deltaTime); 
-        }
-        else if(controller.getButton(SDL_CONTROLLER_BUTTON_RIGHTSHOULDER)) {
-            ship.decreaseSpeed(deltaTime); 
-        }
-        if (state[SDL_SCANCODE_UP]) {
-            ship.increaseSpeed(deltaTime); 
-        }
-        else if (state[SDL_SCANCODE_DOWN]) {
-            ship.decreaseSpeed(deltaTime); 
-        }
-        else {   
-            if (ship.currentSpeed > 5.0f) {
-                ship.decreaseSpeed(deltaTime * 0.5f);
-            }
-            else if (ship.currentSpeed < 5.0f) {
-                ship.increaseSpeed(deltaTime * 0.5f);
-            }
         }
 
-        bool rollingInput = false;
-
-        if (state[SDL_SCANCODE_LEFT]) {
-            ship.yaw(1.0f, deltaTime);
-            
-                      
-            float targetRoll = -30.0f; 
-            float rollInput;
-            
-            if (ship.rotation.z > targetRoll + 5.0f) {
-                
-                rollInput = -1.0f;
-            } else if (ship.rotation.z < targetRoll - 5.0f) {
-                
-                rollInput = 0.5f;
-            } else {
-                
-                rollInput = (targetRoll - ship.rotation.z) * 0.05f;
-            }
-            
-            ship.roll(rollInput, deltaTime);
-            rollingInput = true;
-        }
-        else if (state[SDL_SCANCODE_RIGHT]) {
-            ship.yaw(-1.0f, deltaTime);
-            
-            float targetRoll = 30.0f; 
-            float rollInput;
-            
-            if (ship.rotation.z < targetRoll - 5.0f) {
-                
-                rollInput = 1.0f;
-            } else if (ship.rotation.z > targetRoll + 5.0f) {
-                
-                rollInput = -0.5f;
-            } else {
-                rollInput = (targetRoll - ship.rotation.z) * 0.05f;
-            }
-            
-            ship.roll(rollInput, deltaTime);
-            rollingInput = true;
-        }
-
-        if(controller.getAxis(SDL_CONTROLLER_AXIS_LEFTX) > 0.5f) {
-            ship.yaw(-1.0f, deltaTime);
-            
-            float targetRoll = 30.0f; 
-            float rollInput;
-            
-            if (ship.rotation.z < targetRoll - 5.0f) {
-                rollInput = 1.0f;
-            } else if (ship.rotation.z > targetRoll + 5.0f) {
-                rollInput = -0.5f;
-            } else {
-                rollInput = (targetRoll - ship.rotation.z) * 0.05f;
-            }
-            
-            ship.roll(rollInput, deltaTime);
-            rollingInput = true;
-        }
-        else if(controller.getAxis(SDL_CONTROLLER_AXIS_LEFTX) < -0.5f) {
-            ship.yaw(1.0f, deltaTime);
-            
-            float targetRoll = -30.0f; 
-            float rollInput;
-            
-            if (ship.rotation.z > targetRoll + 5.0f) {
-                rollInput = -1.0f;
-            } else if (ship.rotation.z < targetRoll - 5.0f) {
-                rollInput = 0.5f;
-            } else {
-                rollInput = (targetRoll - ship.rotation.z) * 0.05f;
-            }
-            
-            ship.roll(rollInput, deltaTime);
-            rollingInput = true;
-        }
-
-        if (!rollingInput) {
-            while (ship.rotation.z > 180.0f) ship.rotation.z -= 360.0f;
-            while (ship.rotation.z < -180.0f) ship.rotation.z += 360.0f;    
-            float wingLevelingSpeed = 2.0f;
-            ship.rotation.z = glm::mix(ship.rotation.z, 0.0f, wingLevelingSpeed * deltaTime);
-        }
         
-        if(inverted_controls) {
-            if (state[SDL_SCANCODE_W]) {
-                ship.pitch(-1.0f, deltaTime); 
+        bool speedInput = false;
+        if (state[SDL_SCANCODE_UP] || controller.getButton(SDL_CONTROLLER_BUTTON_RIGHTSHOULDER)
+            || controller.getButton(SDL_CONTROLLER_BUTTON_DPAD_UP)) {
+            ship.increaseSpeed(deltaTime);
+            speedInput = true;
+        }
+        if (state[SDL_SCANCODE_DOWN] || controller.getButton(SDL_CONTROLLER_BUTTON_LEFTSHOULDER)
+                 || controller.getButton(SDL_CONTROLLER_BUTTON_DPAD_DOWN)) {
+            ship.decreaseSpeed(deltaTime);
+            speedInput = true;
+        }
+
+        
+        Sint16 leftTrig = controller.getAxis(SDL_CONTROLLER_AXIS_TRIGGERLEFT);
+        if (leftTrig > DEAD_ZONE) {
+            float boostAmount = static_cast<float>(leftTrig) / AXIS_MAX;
+            ship.increaseSpeed(deltaTime * (1.0f + boostAmount * 2.0f));
+            speedInput = true;
+        }
+
+        
+        if (!speedInput) {
+            float cruiseSpeed = 5.0f;
+            if (ship.currentSpeed > cruiseSpeed + 0.5f) {
+                ship.decreaseSpeed(deltaTime * 0.3f);
+            } else if (ship.currentSpeed < cruiseSpeed - 0.5f) {
+                ship.increaseSpeed(deltaTime * 0.3f);
             }
-            if (state[SDL_SCANCODE_S]) {
-                ship.pitch(1.0f, deltaTime); 
-            }
+        }
+
+        
+        float yawAmount = 0.0f;
+        float pitchAmount = 0.0f;
+
+        
+        Sint16 leftX = controller.getAxis(SDL_CONTROLLER_AXIS_LEFTX);
+        if (abs(leftX) > DEAD_ZONE) {
+            yawAmount = -static_cast<float>(leftX) / AXIS_MAX;
+        }
+
+        
+        Sint16 leftY = controller.getAxis(SDL_CONTROLLER_AXIS_LEFTY);
+        if (abs(leftY) > DEAD_ZONE) {
+            float stickVal = static_cast<float>(leftY) / AXIS_MAX;
+            pitchAmount = inverted_controls ? stickVal : -stickVal;
+        }
+
+        
+        if (state[SDL_SCANCODE_LEFT]) {
+            yawAmount = 1.0f;
+        } else if (state[SDL_SCANCODE_RIGHT]) {
+            yawAmount = -1.0f;
+        }
+
+        
+        if (inverted_controls) {
+            if (state[SDL_SCANCODE_W]) { pitchAmount = -1.0f; }
+            if (state[SDL_SCANCODE_S]) { pitchAmount = 1.0f; }
         } else {
-            if (state[SDL_SCANCODE_S]) {
-                ship.pitch(-1.0f, deltaTime); 
-            }
-            if (state[SDL_SCANCODE_W]) {
-                ship.pitch(1.0f, deltaTime); 
-            }
+            if (state[SDL_SCANCODE_W]) { pitchAmount = 1.0f; }
+            if (state[SDL_SCANCODE_S]) { pitchAmount = -1.0f; }
+        }
+
+        
+        if (controller.getButton(SDL_CONTROLLER_BUTTON_DPAD_LEFT)) {
+            yawAmount = 1.0f;
+        } else if (controller.getButton(SDL_CONTROLLER_BUTTON_DPAD_RIGHT)) {
+            yawAmount = -1.0f;
+        }
+
+        
+        if (fabs(yawAmount) > 0.01f) {
+            ship.yaw(yawAmount, deltaTime);
+            float targetRoll = -yawAmount * 35.0f;
+            float rollDiff = targetRoll - ship.rotation.z;
+            ship.rotation.z += rollDiff * 5.0f * deltaTime;
+        }
+
+        
+        if (fabs(pitchAmount) > 0.01f) {
+            ship.pitch(pitchAmount, deltaTime);
+        }
+
+        
+        Sint16 rightX = controller.getAxis(SDL_CONTROLLER_AXIS_RIGHTX);
+        if (abs(rightX) > DEAD_ZONE) {
+            float rollVal = static_cast<float>(rightX) / AXIS_MAX;
+            ship.roll(rollVal, deltaTime);
+        }
+
+        
+        Sint16 rightY = controller.getAxis(SDL_CONTROLLER_AXIS_RIGHTY);
+        if (abs(rightY) > DEAD_ZONE) {
+            float stickVal = static_cast<float>(rightY) / AXIS_MAX;
+            float finePitch = inverted_controls ? stickVal : -stickVal;
+            ship.pitch(finePitch * 0.6f, deltaTime);
+        }
+
+        
+        if (fabs(yawAmount) < 0.01f && abs(rightX) <= DEAD_ZONE) {
+            while (ship.rotation.z > 180.0f) ship.rotation.z -= 360.0f;
+            while (ship.rotation.z < -180.0f) ship.rotation.z += 360.0f;
+            float wingLevelingSpeed = 3.0f;
+            ship.rotation.z = glm::mix(ship.rotation.z, 0.0f, wingLevelingSpeed * deltaTime);
         }
 
         if (state[SDL_SCANCODE_RETURN]) {
             randomizePlanetPositions();
             emiter.reset();
         }
-        if(inverted_controls) {
-            if(controller.getAxis(SDL_CONTROLLER_AXIS_RIGHTY) < -0.5f) {
-                ship.pitch(-1.0f, deltaTime); 
-            }
-            else if(controller.getAxis(SDL_CONTROLLER_AXIS_RIGHTY) > 0.5f) {
-                ship.pitch(1.0f, deltaTime);  
-            }
-        } else {
-            if(controller.getAxis(SDL_CONTROLLER_AXIS_RIGHTY) < -0.5f) {
-                ship.pitch(1.0f, deltaTime); 
-            }
-            else if(controller.getAxis(SDL_CONTROLLER_AXIS_RIGHTY) > 0.5f) {
-                ship.pitch(-1.0f, deltaTime);  
-            }
-        }
     }
     
     void event(gl::GLWindow *win, SDL_Event &e) override {
+        controller.connectEvent(e);
 
         if (e.type == SDL_KEYDOWN) {
             if (e.key.keysym.sym == SDLK_ESCAPE) {
@@ -2650,7 +2628,23 @@ public:
                 else
                     win->console.hide();
             }
-        }   
+        }
+        if (e.type == SDL_CONTROLLERBUTTONDOWN) {
+            if (e.cbutton.button == SDL_CONTROLLER_BUTTON_BACK || e.cbutton.button == SDL_CONTROLLER_BUTTON_START) {
+                win->quit();
+                return;
+            }
+            if (e.cbutton.button == SDL_CONTROLLER_BUTTON_X) {
+                debug_menu = !debug_menu;
+            }
+            if (e.cbutton.button == SDL_CONTROLLER_BUTTON_Y) {
+                inverted_controls = !inverted_controls;
+            }
+            if (e.cbutton.button == SDL_CONTROLLER_BUTTON_B) {
+                randomizePlanetPositions();
+                emiter.reset();
+            }
+        }
     }
     
     virtual void resize(gl::GLWindow *win, int w, int h) override {
@@ -2670,8 +2664,12 @@ private:
 
 class MainWindow : public gl::GLWindow {
 public:
-    MainWindow(std::string path, int tw, int th) : gl::GLWindow("3D Asteroids", tw, th) {
+    MainWindow(std::string path, int tw, int th, bool fullscreen = false) : gl::GLWindow("3D Asteroids", tw, th) {
         setPath(path);
+        if(fullscreen) {
+            SDL_ShowCursor(SDL_DISABLE);
+            setFullScreen(true);
+        }
         SDL_Surface *ico = png::LoadPNG(util.getFilePath("data/asteroids_icon.png").c_str());
         if(ico) {         
             setWindowIcon(ico);
@@ -2754,14 +2752,10 @@ int main(int argc, char **argv) {
     }
 #else
     Arguments args = proc_args(argc, argv);
+    args.fullscreen = true;
     try {
-        MainWindow main_window(args.path, args.width, args.height);
-        if(args.fullscreen) {
-		    main_window.setFullScreen(true);
-            SDL_ShowCursor(SDL_DISABLE);
-        }
+        MainWindow main_window(args.path, args.width, args.height, args.fullscreen);
         main_window.loop();
-  
         if(args.fullscreen) 
             SDL_ShowCursor(SDL_ENABLE);
     } catch(const mx::Exception &e) {
