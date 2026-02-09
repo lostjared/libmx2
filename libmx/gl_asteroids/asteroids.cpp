@@ -2675,9 +2675,11 @@ public:
             setWindowIcon(ico);
             SDL_FreeSurface(ico);
         }
+        setFullScreen(true);
         setObject(new Intro());
         object->load(this);
         activateConsole(util.getFilePath("data/font.ttf"), 16, {255, 255, 255, 255});
+	
     }   
     
     ~MainWindow() override {}
