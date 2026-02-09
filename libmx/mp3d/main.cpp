@@ -226,7 +226,9 @@ public:
         font.loadFont(win->util.getFilePath("data/font.ttf"), 24);
         resize(win, win->w, win->h);
         mouse_x = mouse_y = 0;
-      
+        if(stick.open(0)) {
+            mx::system_out << "Controller initialized: " << stick.name() << "\n";
+        }
         
         new_game = [win,this](const std::vector<std::string> &args, std::istream &in, std::ostream &output) -> int {
             mp.newGame();
@@ -420,7 +422,6 @@ public:
                         }
                         previous_time = current_time;
                     } else if(mp.drop == false) {
-                        // Game over
                         win->setObject(new GameOver(mp.score, mp.level));
                         win->object->load(win);
                         return;
@@ -487,6 +488,33 @@ public:
                 }
             }
         }
+        
+        if(stick.active() && fade_in == false && !win->console_visible && !mp.drop) {
+            Uint32 now = SDL_GetTicks();
+            Sint16 lx = stick.getAxis(SDL_CONTROLLER_AXIS_LEFTX);
+            Sint16 ly = stick.getAxis(SDL_CONTROLLER_AXIS_LEFTY);
+            if(now - lastLeftStickMove >= MOVE_REPEAT_MS) {
+                if(lx < -AXIS_DEADZONE) {
+                    mp.grid.game_piece.moveLeft();
+                    lastLeftStickMove = now;
+                } else if(lx > AXIS_DEADZONE) {
+                    mp.grid.game_piece.moveRight();
+                    lastLeftStickMove = now;
+                }
+                if(ly > AXIS_DEADZONE) {
+                    mp.grid.game_piece.moveDown();
+                    lastLeftStickMove = now;
+                }
+            }
+            Sint16 rx = stick.getAxis(SDL_CONTROLLER_AXIS_RIGHTX);
+            Sint16 ry = stick.getAxis(SDL_CONTROLLER_AXIS_RIGHTY);
+            if(rx < -AXIS_DEADZONE || rx > AXIS_DEADZONE) {
+                rotateY += (static_cast<float>(rx) / 32767.0f) * ROTATE_SPEED;
+            }
+            if(ry < -AXIS_DEADZONE || ry > AXIS_DEADZONE) {
+                rotateX += (static_cast<float>(ry) / 32767.0f) * ROTATE_SPEED;
+            }
+        }
         if(fade_in == false)  {
             win->text.setColor({255, 255, 255, 255});
             win->text.printText_Solid(font, 25.0f, 25.0f, "Score: " + std::to_string(mp.score));
@@ -526,6 +554,10 @@ public:
         }
     }
     virtual void event(gl::GLWindow *win, SDL_Event &e) override {
+        if(stick.connectEvent(e)) {
+            mx::system_out << "Controller: " << stick.name() << "\n";
+        }
+
         if(win->console_visible) {    
             if(e.type == SDL_KEYDOWN) {
                 if(e.key.keysym.sym == SDLK_c && (e.key.keysym.mod & KMOD_CTRL)) {
@@ -539,9 +571,60 @@ public:
                     return;          
                 }
             }
+            
+            if(e.type == SDL_CONTROLLERBUTTONDOWN && e.cbutton.button == SDL_CONTROLLER_BUTTON_START) {
+                win->console_visible = false;
+                win->console.hide();
+            }
             return;
         }
         
+        if(e.type == SDL_CONTROLLERBUTTONDOWN) {
+            Uint32 now = SDL_GetTicks();
+            switch(e.cbutton.button) {
+                case SDL_CONTROLLER_BUTTON_A:
+                    mp.grid.game_piece.shiftDirection();
+                    break;
+                case SDL_CONTROLLER_BUTTON_B:
+                    mp.grid.game_piece.shiftColors();
+                    break;
+                case SDL_CONTROLLER_BUTTON_X:
+                    dropPiece();
+                    break;
+                case SDL_CONTROLLER_BUTTON_Y:
+                    mp.newGame();
+                    break;
+                case SDL_CONTROLLER_BUTTON_START:
+                    win->console_visible = true;
+                    win->console.show();
+                    break;
+                case SDL_CONTROLLER_BUTTON_BACK:
+                    win->quit();
+                    return;
+                case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
+                    zoom -= 0.5f;
+                    break;
+                case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
+                    zoom += 0.5f;
+                    break;
+                case SDL_CONTROLLER_BUTTON_DPAD_LEFT:
+                    mp.grid.game_piece.moveLeft();
+                    lastDpadMove = now;
+                    break;
+                case SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
+                    mp.grid.game_piece.moveRight();
+                    lastDpadMove = now;
+                    break;
+                case SDL_CONTROLLER_BUTTON_DPAD_DOWN:
+                    mp.grid.game_piece.moveDown();
+                    lastDpadMove = now;
+                    break;
+                case SDL_CONTROLLER_BUTTON_DPAD_UP:
+                    mp.grid.game_piece.shiftColors();
+                    break;
+            }
+        }
+
             switch(e.type) {
             case SDL_KEYUP:
                 if(!win->console_visible && e.key.keysym.sym == SDLK_RETURN) {
@@ -600,9 +683,6 @@ public:
                     case SDLK_MINUS:
                         zoom -= 0.5f;
                         win->console.printf("Zoom: %f ",zoom);
-                    break;
-                    case SDLK_k:
-                    //std::cout << "ZOOM: " << zoom << " X,Y,Z" << rotateX << "," << rotateY << "," << rotateZ << std::endl;
                     break;
                 }
                 break;
@@ -728,6 +808,12 @@ private:
     bool fade_in = false;
     float fade = 0.0f;
     float deltaTime = 0.0f;
+    mx::Controller stick;
+    static constexpr Sint16 AXIS_DEADZONE = 12000;
+    static constexpr Uint32 MOVE_REPEAT_MS = 150;
+    Uint32 lastLeftStickMove = 0;
+    Uint32 lastDpadMove = 0;
+    static constexpr float ROTATE_SPEED = 1.5f;
 };
 
 void Intro::draw(gl::GLWindow *win) {
@@ -764,7 +850,7 @@ void Start::load_shader() {
 }
 
 void Start::event(gl::GLWindow *win, SDL_Event &e) {
-    if(fade_in == true && (e.type == SDL_KEYDOWN || e.type == SDL_FINGERUP || e.type == SDL_MOUSEBUTTONUP)) {
+    if(fade_in == true && (e.type == SDL_KEYDOWN || e.type == SDL_FINGERUP || e.type == SDL_MOUSEBUTTONUP || e.type == SDL_CONTROLLERBUTTONDOWN)) {
         fade = 1.0f;
         fade_in = false;
         return;
@@ -772,7 +858,7 @@ void Start::event(gl::GLWindow *win, SDL_Event &e) {
 }
 
 void Intro::event(gl::GLWindow *win, SDL_Event &e) {
-    if(e.type == SDL_KEYDOWN || e.type == SDL_FINGERUP || e.type == SDL_MOUSEBUTTONUP) {
+    if(e.type == SDL_KEYDOWN || e.type == SDL_FINGERUP || e.type == SDL_MOUSEBUTTONUP || e.type == SDL_CONTROLLERBUTTONDOWN) {
         win->setObject(new Start());
         win->object->load(win);
         return;
@@ -804,7 +890,7 @@ void GameOver::draw(gl::GLWindow *win) {
 }
 
 void GameOver::event(gl::GLWindow *win, SDL_Event &e) {
-    if((e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_RETURN) || (e.type == SDL_FINGERUP) || (e.type == SDL_MOUSEBUTTONUP)) {
+    if((e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_RETURN) || (e.type == SDL_FINGERUP) || (e.type == SDL_MOUSEBUTTONUP) || (e.type == SDL_CONTROLLERBUTTONDOWN)) {
         win->setObject(new Intro());
         win->object->load(win);
         return;
@@ -861,6 +947,7 @@ int main(int argc, char **argv) {
 #else
 #if defined(_WIN32) || defined(__linux__) || defined(__APPLE__)
     Arguments args = proc_args(argc, argv);
+    args.fullscreen = true;
     try {
         MainWindow main_window(args.path, args.width, args.height);
         if(args.fullscreen)
