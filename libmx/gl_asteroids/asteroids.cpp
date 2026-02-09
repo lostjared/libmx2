@@ -2540,20 +2540,31 @@ public:
             pitchAmount = inverted_controls ? stickVal : -stickVal;
         }
 
-        
-        if (state[SDL_SCANCODE_LEFT]) {
+        // A/D keys = yaw
+        if (state[SDL_SCANCODE_A]) {
             yawAmount = 1.0f;
-        } else if (state[SDL_SCANCODE_RIGHT]) {
+        } else if (state[SDL_SCANCODE_D]) {
             yawAmount = -1.0f;
         }
 
-        
+        // W/S keys = pitch
         if (inverted_controls) {
             if (state[SDL_SCANCODE_W]) { pitchAmount = -1.0f; }
             if (state[SDL_SCANCODE_S]) { pitchAmount = 1.0f; }
         } else {
             if (state[SDL_SCANCODE_W]) { pitchAmount = 1.0f; }
             if (state[SDL_SCANCODE_S]) { pitchAmount = -1.0f; }
+        }
+
+        // Arrow Left/Right = roll
+        float keyboardRoll = 0.0f;
+        if (state[SDL_SCANCODE_LEFT]) {
+            keyboardRoll = -1.0f;
+        } else if (state[SDL_SCANCODE_RIGHT]) {
+            keyboardRoll = 1.0f;
+        }
+        if (fabs(keyboardRoll) > 0.01f) {
+            ship.roll(keyboardRoll, deltaTime);
         }
 
         
@@ -2592,7 +2603,8 @@ public:
         }
 
         
-        if (fabs(yawAmount) < 0.01f && abs(rightX) <= DEAD_ZONE) {
+        if (fabs(yawAmount) < 0.01f && abs(rightX) <= DEAD_ZONE
+            && !state[SDL_SCANCODE_LEFT] && !state[SDL_SCANCODE_RIGHT]) {
             while (ship.rotation.z > 180.0f) ship.rotation.z -= 360.0f;
             while (ship.rotation.z < -180.0f) ship.rotation.z += 360.0f;
             float wingLevelingSpeed = 3.0f;
