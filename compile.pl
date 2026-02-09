@@ -42,7 +42,7 @@ sub clone_aciddrop {
 
 sub build_libmx2 {
     print "=" x 60, "\n";
-    print "  Building libmx2 (Vulkan=ON, OpenGL=OFF)\n";
+    print "  Building libmx2 (Vulkan=ON, OpenGL=ON)\n";
     print "=" x 60, "\n\n";
 
     my $build = "$root/build";
@@ -53,7 +53,7 @@ sub build_libmx2 {
     make_path($build) unless -d $build;
     chdir($build) or die "Cannot cd to $build: $!\n";
 
-    run_cmd("libmx2", "cmake -B . -S $source -DVULKAN=ON -DOPENGL=OFF");
+    run_cmd("libmx2", "cmake -B . -S $source -DVULKAN=ON -DOPENGL=ON");
     run_cmd("libmx2", "make -j$nproc");
 
     print "\n>> [libmx2] Installing...\n";

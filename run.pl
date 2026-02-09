@@ -21,7 +21,20 @@ unless ($program) {
     while (my $entry = readdir($dh)) {
         next if $entry =~ /^\./;
         my $exe = "$build_dir/$entry/$entry";
-        push @progs, $entry if -x $exe;
+        if (-x $exe) {
+            push @progs, $entry;
+        } elsif (-d "$build_dir/$entry") {
+            # Check for any executable in the subdirectory
+            opendir(my $sh, "$build_dir/$entry");
+            while (my $f = readdir($sh)) {
+                next if $f =~ /^\./;
+                if (-f "$build_dir/$entry/$f" && -x "$build_dir/$entry/$f") {
+                    push @progs, $entry;
+                    last;
+                }
+            }
+            closedir($sh);
+        }
     }
     closedir($dh);
 
@@ -48,11 +61,26 @@ unless ($program) {
 my $exe = "$build_dir/$program/$program";
 my $data = "$source_dir/$program";
 
+# If exact match not found, search for any executable in the build subdirectory
+if (!-x $exe && -d "$build_dir/$program") {
+    opendir(my $bh, "$build_dir/$program");
+    while (my $f = readdir($bh)) {
+        next if $f =~ /^\./;
+        my $candidate = "$build_dir/$program/$f";
+        if (-f $candidate && -x $candidate) {
+            $exe = $candidate;
+            last;
+        }
+    }
+    closedir($bh);
+}
+
 if (-x $exe && -d $data) {
+    my $exe_name = basename($exe);
     chdir("$build_dir/$program") or die "Cannot cd to $build_dir/$program: $!\n";
-    my @cmd = ("./$program", "-p", $data, @ARGV);
+    my @cmd = ("./$exe_name", "-p", $data, @ARGV);
     print ">> @cmd\n";
-    exec(@cmd) or die "Failed to exec $program: $!\n";
+    exec(@cmd) or die "Failed to exec $exe_name: $!\n";
 }
 
 # Check standalone project directories (inside libmx2/ or sibling ../)
