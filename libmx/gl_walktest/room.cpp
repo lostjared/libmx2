@@ -2192,7 +2192,12 @@ public:
 class Game : public gl::GLObject {
 public:
     Game() = default;
-    virtual ~Game() override {}
+    virtual ~Game() override {
+        if (gameController) {
+            SDL_GameControllerClose(gameController);
+            gameController = nullptr;
+        }
+    }
 
     void load(gl::GLWindow *win) override {
         font.loadFont(win->util.getFilePath("data/font.ttf"), 20);
@@ -2212,6 +2217,17 @@ public:
         pitch = 0.0f;
         
         updateCameraVectors();
+
+        // Open the first available game controller
+        for (int i = 0; i < SDL_NumJoysticks(); ++i) {
+            if (SDL_IsGameController(i)) {
+                gameController = SDL_GameControllerOpen(i);
+                if (gameController) {
+                    std::cout << "Game controller connected: " << SDL_GameControllerName(gameController) << "\n";
+                    break;
+                }
+            }
+        }
     }
     
     void updateCameraVectors() {
@@ -2260,7 +2276,7 @@ public:
         
         win->text.setColor({255, 255, 255, 255});
         win->text.printText_Solid(font, 25.0f, 25.0f, 
-                               "3D Room - [Escape to Release Mouse] WASD to move, Mouse to look around, Left Click to shoot");
+                               "3D Room - WASD/Left Stick move, Mouse/Right Stick look, Click/RB shoot, Back/Start quit");
         
         if (showFPS) {
             float fps = 1.0f / deltaTime;
@@ -2273,6 +2289,10 @@ public:
     
     void event(gl::GLWindow *win, SDL_Event &e) override {
         if (e.type == SDL_MOUSEMOTION && mouseCapture) {
+            if (firstMouse) {
+                firstMouse = false;
+                return;
+            }
             float xoffset = e.motion.xrel * mouseSensitivity;
             float yoffset = e.motion.yrel * mouseSensitivity;
             
@@ -2304,10 +2324,60 @@ public:
             glm::vec3 fireDirection = cameraFront;
             projectiles.fire(firePosition, fireDirection);
         }
+        else if (e.type == SDL_CONTROLLERDEVICEADDED) {
+            if (!gameController) {
+                gameController = SDL_GameControllerOpen(e.cdevice.which);
+                if (gameController) {
+                    std::cout << "Game controller connected: " << SDL_GameControllerName(gameController) << "\n";
+                }
+            }
+        }
+        else if (e.type == SDL_CONTROLLERDEVICEREMOVED) {
+            if (gameController && e.cdevice.which == SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(gameController))) {
+                SDL_GameControllerClose(gameController);
+                gameController = nullptr;
+                std::cout << "Game controller disconnected\n";
+            }
+        }
+        else if (e.type == SDL_CONTROLLERBUTTONDOWN) {
+            if (e.cbutton.button == SDL_CONTROLLER_BUTTON_BACK || e.cbutton.button == SDL_CONTROLLER_BUTTON_START) {
+                win->quit();
+            }
+            else if (e.cbutton.button == SDL_CONTROLLER_BUTTON_RIGHTSHOULDER) {
+                glm::vec3 firePosition = game_floor.getCameraPosition();
+                glm::vec3 fireDirection = cameraFront;
+                projectiles.fire(firePosition, fireDirection);
+            }
+            else if (e.cbutton.button == SDL_CONTROLLER_BUTTON_A) {
+                glm::vec3 cPos = game_floor.getCameraPosition();
+                if (cPos.y <= 1.71f) {
+                    jumpVelocity = 0.3f;
+                }
+            }
+        }
     }
     
     void update(float deltaTime) {
         this->deltaTime = deltaTime;
+        
+        // Controller right stick camera look
+        if (gameController) {
+            int rightX = SDL_GameControllerGetAxis(gameController, SDL_CONTROLLER_AXIS_RIGHTX);
+            int rightY = SDL_GameControllerGetAxis(gameController, SDL_CONTROLLER_AXIS_RIGHTY);
+            
+            if (abs(rightX) > STICK_DEAD_ZONE || abs(rightY) > STICK_DEAD_ZONE) {
+                float normRX = (abs(rightX) > STICK_DEAD_ZONE) ? rightX / 32768.0f : 0.0f;
+                float normRY = (abs(rightY) > STICK_DEAD_ZONE) ? rightY / 32768.0f : 0.0f;
+                
+                yaw += normRX * controllerLookSensitivity;
+                pitch -= normRY * controllerLookSensitivity;
+                
+                if (pitch > 89.0f) pitch = 89.0f;
+                if (pitch < -89.0f) pitch = -89.0f;
+                
+                updateCameraVectors();
+            }
+        }
         
         const Uint8 *keys = SDL_GetKeyboardState(NULL);
         
@@ -2322,6 +2392,9 @@ public:
         glm::vec3 cameraRight = glm::normalize(glm::cross(horizontalFront, glm::vec3(0.0f, 1.0f, 0.0f)));
         
         isSprinting = keys[SDL_SCANCODE_LSHIFT];
+        if (gameController && SDL_GameControllerGetButton(gameController, SDL_CONTROLLER_BUTTON_LEFTSTICK)) {
+            isSprinting = true;
+        }
         isCrouching = keys[SDL_SCANCODE_LCTRL];
         
         glm::vec3 newPos = cameraPos;
@@ -2337,6 +2410,22 @@ public:
         }
         if (keys[SDL_SCANCODE_D]) {
             newPos += cameraSpeed * cameraRight;
+        }
+        
+        // Controller left stick movement
+        if (gameController) {
+            int leftX = SDL_GameControllerGetAxis(gameController, SDL_CONTROLLER_AXIS_LEFTX);
+            int leftY = SDL_GameControllerGetAxis(gameController, SDL_CONTROLLER_AXIS_LEFTY);
+            float stickSpeed = isSprinting ? cameraSpeed * 2.0f : cameraSpeed;
+            
+            if (abs(leftX) > STICK_DEAD_ZONE) {
+                float normX = leftX / 32768.0f;
+                newPos += stickSpeed * normX * cameraRight;
+            }
+            if (abs(leftY) > STICK_DEAD_ZONE) {
+                float normY = leftY / 32768.0f;
+                newPos -= stickSpeed * normY * horizontalFront;
+            }
         }
         
         if (!game_walls.checkCollision(newPos, playerRadius) && 
@@ -2381,6 +2470,7 @@ private:
     float yaw = -90.0f; 
     float pitch = 0.0f;
     bool mouseCapture = true;
+    bool firstMouse = true;
     float mouseSensitivity = 0.15f;
     bool showFPS = true;
     float deltaTime =  0.0f;
@@ -2388,11 +2478,14 @@ private:
     const float gravity = 0.015f;
     bool isCrouching = false;  
     bool isSprinting = false;
+    SDL_GameController* gameController = nullptr;
+    static constexpr int STICK_DEAD_ZONE = 8000;
+    float controllerLookSensitivity = 2.0f;
 };
 
 class MainWindow : public gl::GLWindow {
 public:
-    MainWindow(std::string path, int tw, int th) : gl::GLWindow("Room", tw, th) {
+    MainWindow(std::string path, int tw, int th) : gl::GLWindow("Room", tw, th, true) {
         setPath(path);
         setObject(new Game());
         object->load(this);
@@ -2434,6 +2527,7 @@ int main(int argc, char **argv) {
     Arguments args = proc_args(argc, argv);
     try {
         MainWindow main_window(args.path, args.width, args.height);
+        main_window.setFullScreen(true);
         main_window.loop();
     } catch(const mx::Exception &e) {
         mx::system_err << "mx: Exception: " << e.text() << "\n";
