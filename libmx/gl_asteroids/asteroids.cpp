@@ -2670,16 +2670,18 @@ private:
 
 class MainWindow : public gl::GLWindow {
 public:
-    MainWindow(std::string path, int tw, int th) : gl::GLWindow("3D Asteroids", tw, th) {
+    MainWindow(std::string path, int tw, int th) : gl::GLWindow("3D Asteroids", tw, th, true) {
         setPath(path);
         SDL_Surface *ico = png::LoadPNG(util.getFilePath("data/asteroids_icon.png").c_str());
         if(ico) {         
             setWindowIcon(ico);
             SDL_FreeSurface(ico);
         }
+        setFullScreen(true);
         setObject(new Intro());
         object->load(this);
         activateConsole(util.getFilePath("data/font.ttf"), 16, {255, 255, 255, 255});
+	
     }   
     
     ~MainWindow() override {}
