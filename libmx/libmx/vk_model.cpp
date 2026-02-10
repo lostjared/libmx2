@@ -5,81 +5,177 @@ namespace mx {
     struct Vec2 { float x, y; };
     struct Vec3 { float x, y, z; };
 
+    static bool ends_with(const std::string &s, const std::string &suf) {
+        return s.size() >= suf.size() && s.compare(s.size() - suf.size(), suf.size(), suf) == 0;
+    }
+
+    void MXModel::compressIndices() {
+        if (vertices_.empty()) return;
+        std::vector<VKVertex> unique;
+        std::unordered_map<VKVertex, uint32_t, VKVertexHash> map;
+        std::vector<uint32_t> newIdx;
+        newIdx.reserve(vertices_.size());
+
+        for (auto &v : vertices_) {
+            auto it = map.find(v);
+            if (it != map.end()) {
+                newIdx.push_back(it->second);
+            } else {
+                uint32_t idx = static_cast<uint32_t>(unique.size());
+                unique.push_back(v);
+                map[v] = idx;
+                newIdx.push_back(idx);
+            }
+        }
+
+        size_t before = vertices_.size();
+        vertices_ = std::move(unique);
+        indices_ = std::move(newIdx);
+        std::cout << ">> MXModel::compressIndices: " << before << " verts -> "
+                  << vertices_.size() << " unique, " << indices_.size() << " indices\n";
+    }
+
     void MXModel::load(const std::string &path, float positionScale) {
-        std::ifstream f(path);
-        if (!f.is_open())
-            throw mx::Exception("MXModel::load: failed to open file: " + path);
+        std::string text;
+        if (ends_with(path, ".mxmod.z")) {
+            auto buffer = mx::readFile(path);
+            if (buffer.empty())
+                throw mx::Exception("MXModel::load: failed to read file: " + path);
+            text = mx::decompressString(buffer.data(), static_cast<unsigned long>(buffer.size()));
+        } else {
+            std::ifstream f(path);
+            if (!f.is_open())
+                throw mx::Exception("MXModel::load: failed to open file: " + path);
+            std::ostringstream ss;
+            ss << f.rdbuf();
+            text = ss.str();
+        }
 
-        auto readHeader = [&](const char *expectedTag, int &countOut) {
+        
+        if (text.size() >= 3 &&
+            (unsigned char)text[0] == 0xEF &&
+            (unsigned char)text[1] == 0xBB &&
+            (unsigned char)text[2] == 0xBF) {
+            text.erase(0, 3);
+        }
+
+        std::istringstream file(text);
+        auto trim = [](std::string &s) {
+            size_t b = s.find_first_not_of(" \t\r\n");
+            if (b == std::string::npos) { s.clear(); return; }
+            size_t e = s.find_last_not_of(" \t\r\n");
+            s = s.substr(b, e - b + 1);
+        };
+
+        std::vector<Vec3> pos;
+        std::vector<Vec2> uv;
+        std::vector<Vec3> nrm;
+        std::vector<uint32_t> fileIndices;
+
+        int type = -1;
+        size_t count = 0;
+        std::string line;
+
+        while (std::getline(file, line)) {
+            if (line.empty()) continue;
+            size_t commentPos = line.find('#');
+            if (commentPos != std::string::npos) line = line.substr(0, commentPos);
+            trim(line);
+            if (line.empty()) continue;
+
+            
+            if (line.size() >= 3 &&
+                (unsigned char)line[0] == 0xEF &&
+                (unsigned char)line[1] == 0xBB &&
+                (unsigned char)line[2] == 0xBF) {
+                line.erase(0, 3);
+                trim(line);
+                if (line.empty()) continue;
+            }
+
+            std::istringstream s(line);
+
+            
+            char c = line[line.find_first_not_of(" \t")];
+            bool isData = (c >= '0' && c <= '9') || c == '-' || c == '+' || c == '.';
+
+            if (isData) {
+                float x = 0, y = 0, z = 0;
+                switch (type) {
+                    case 0: 
+                        if (s >> x >> y >> z)
+                            pos.push_back({x * positionScale, y * positionScale, z * positionScale});
+                        break;
+                    case 1: 
+                        if (s >> x >> y)
+                            uv.push_back({x, y});
+                        break;
+                    case 2: 
+                        if (s >> x >> y >> z)
+                            nrm.push_back({x, y, z});
+                        break;
+                    case 5: { 
+                        uint32_t idx;
+                        while (s >> idx) fileIndices.push_back(idx);
+                    } break;
+                    default:
+                        break;
+                }
+                continue;
+            }
+
             std::string tag;
-            if (!(f >> tag >> countOut))
-                throw mx::Exception(std::string("MXModel::load: missing header: ") + expectedTag);
-            if (tag != expectedTag)
-                throw mx::Exception(std::string("MXModel::load: expected header '") + expectedTag + "', got '" + tag + "'");
-        }; 
-        {
-            std::string triTag;
-            int a = 0, b = 0;
-            if (!(f >> triTag >> a >> b))
-                throw mx::Exception("MXModel::load: missing tri header");
-            if (triTag != "tri")
-                throw mx::Exception("MXModel::load: expected 'tri' header");
-        }
-        int vcount = 0;
-        readHeader("vert", vcount);
-        if (vcount <= 0)
-            throw mx::Exception("MXModel::load: invalid vert count");
+            s >> tag;
+            if (tag.empty()) continue;
 
-        std::vector<Vec3> pos(vcount);
-        for (int i = 0; i < vcount; ++i) {
-            if (!(f >> pos[i].x >> pos[i].y >> pos[i].z))
-                throw mx::Exception("MXModel::load: failed reading vertex positions");
-            pos[i].x *= positionScale;
-            pos[i].y *= positionScale;
-            pos[i].z *= positionScale;
+            if (tag == "tri") {
+                uint32_t st = 0, ti = 0;
+                s >> st >> ti;
+                textureIndex_ = ti;
+                type = -1;
+                continue;
+            }
+            if (tag == "vert") { s >> count; type = 0; continue; }
+            if (tag == "tex")  { s >> count; type = 1; continue; }
+            if (tag == "norm") { s >> count; type = 2; continue; }
+            if (tag == "indices") { s >> count; type = 5; continue; }
         }
 
-        int tcount = 0;
-        readHeader("tex", tcount);
-        if (tcount != vcount)
-            throw mx::Exception("MXModel::load: tex count != vert count");
+        if (pos.empty())
+            throw mx::Exception("MXModel::load: no vertices found in " + path);
 
-        std::vector<Vec2> uv(vcount);
-        for (int i = 0; i < vcount; ++i) {
-            if (!(f >> uv[i].x >> uv[i].y))
-                throw mx::Exception("MXModel::load: failed reading texcoords");
-        }
-
-        int ncount = 0;
-        readHeader("norm", ncount);
-        if (ncount != vcount)
-            throw mx::Exception("MXModel::load: norm count != vert count");
-
-        std::vector<Vec3> nrm(vcount);
-        for (int i = 0; i < vcount; ++i) {
-            if (!(f >> nrm[i].x >> nrm[i].y >> nrm[i].z))
-                throw mx::Exception("MXModel::load: failed reading normals");
-        }
+        
+        int vcount = static_cast<int>(pos.size());
         vertices_.clear();
-        vertices_.reserve(static_cast<size_t>(vcount));
+        vertices_.reserve(vcount);
 
         for (int i = 0; i < vcount; ++i) {
             VKVertex v{};
-            v.pos[0]      = pos[i].x;
-            v.pos[1]      = pos[i].y;
-            v.pos[2]      = pos[i].z;
-            v.texCoord[0] = uv[i].x;
-            v.texCoord[1] = uv[i].y;
-            v.normal[0]   = nrm[i].x;
-            v.normal[1]   = nrm[i].y;
-            v.normal[2]   = nrm[i].z;
+            v.pos[0] = pos[i].x;
+            v.pos[1] = pos[i].y;
+            v.pos[2] = pos[i].z;
+            if (i < (int)uv.size()) {
+                v.texCoord[0] = uv[i].x;
+                v.texCoord[1] = uv[i].y;
+            }
+            if (i < (int)nrm.size()) {
+                v.normal[0] = nrm[i].x;
+                v.normal[1] = nrm[i].y;
+                v.normal[2] = nrm[i].z;
+            }
             vertices_.push_back(v);
         }
 
-        indices_.clear();
-        indices_.reserve(static_cast<size_t>(vcount));
-        for (uint32_t i = 0; i < static_cast<uint32_t>(vcount); ++i)
-            indices_.push_back(i);
+        if (!fileIndices.empty()) {
+            indices_ = std::move(fileIndices);
+            std::cout << ">> MXModel: loaded " << vcount << " verts, " << indices_.size() << " indices from file\n";
+        } else {
+            indices_.clear();
+            indices_.reserve(vcount);
+            for (uint32_t i = 0; i < static_cast<uint32_t>(vcount); ++i)
+                indices_.push_back(i);
+            compressIndices();
+        }
     }
 
     void MXModel::upload(VkDevice device, VkPhysicalDevice physicalDevice,

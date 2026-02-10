@@ -387,6 +387,7 @@ struct Arguments {
 	std::string path;
 	bool fullscreen;
 	std::string filename;
+	std::string texture;
 };
 
 inline Arguments proc_args(int &argc, char **argv) {
@@ -400,6 +401,7 @@ inline Arguments proc_args(int &argc, char **argv) {
         .addOptionSingle('f', "fullscreen")
         .addOptionDouble('F', "fullscreen", "fullscreen")
 		.addOptionDoubleValue(256, "filename", "input filename")
+		.addOptionDoubleValue(257, "texture", "texture file (.png or .tex)")
 		;
 
     Argument<std::string> arg;
@@ -408,11 +410,15 @@ inline Arguments proc_args(int &argc, char **argv) {
     int tw = 1280, th = 720;
     bool fullscreen = false;
 	std::string filename;
+	std::string texture;
     try {
         while((value = parser.proc(arg)) != -1) {
             switch(value) {
 				case 256:
 					filename = arg.arg_value;
+					break;
+				case 257:
+					texture = arg.arg_value;
 					break;
                 case 'h':
                 case 'v':
@@ -461,6 +467,7 @@ inline Arguments proc_args(int &argc, char **argv) {
 	args.path = path;
 	args.fullscreen = fullscreen;
 	args.filename = filename;
+	args.texture = texture;
 	return args;
 }
 
