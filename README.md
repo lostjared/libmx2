@@ -25,6 +25,16 @@ while using an approach I prefer, an Object Oriented Design. I have experimented
 - **Modular Architecture**: Offers a flexible structure to accommodate various project needs.
 - **Optional OpenGL/GLAD/GLM support**: You can compile in support for these libraries with examples
 - **Optional Vulkan**: You can compile in support for Vulkan or MoltenVK
+
+## Modular Library Design
+
+libmx2 is split into three separate library modules that are built independently:
+
+- **mx** — The core module. Provides SDL2 window management, input handling, font rendering, PNG/JPEG loading, audio (SDL2_mixer), configuration, and general utilities. This module has no dependency on any graphics API and is always built.
+- **mxgl** — The OpenGL module. Contains OpenGL/GLAD initialization, GL shader helpers, 3D model loading, and the in-app console overlay. Built only when `-DOPENGL=ON` (the default). Links against the core `mx` library.
+- **mxvk** — The Vulkan module. Contains Vulkan initialization (via volk), Vulkan pipeline/shader helpers, Vulkan-based model rendering, text rendering, and sprite batching. Built as a static library only when `-DVULKAN=ON`. Links against the core `mx` library.
+
+This separation means you can build a project that uses only the core SDL2 features, or opt in to OpenGL, Vulkan, or both. OpenGL and Vulkan never depend on each other — they share only the common `mx` core.
 ## Getting Started
 
 ### Prerequisites
@@ -76,7 +86,7 @@ make -j$(nproc)
 
    ```bash
    mkdir build && cd build
-   cmake -B . -S ../libmx -DVULKAN=ON -DOPENGL=OFF -DCMAKE_INSTALL_PREFIX=/usr/local/mxvk
+   cmake -B . -S ../libmx -DVULKAN=ON -DOPENGL=OFF 
    make -j$(nproc)
    sudo make install
    ```
@@ -190,23 +200,97 @@ Refer to the `examples` directory for sample usage scenarios. Also various subfo
 * space shooter
 
 ## OpenGL Examples
-* Basic GL Window
-* Triangle
-* Skeleton (Hello, World!)
-* 3D Texture Mapped Cube
-* 3D Texture Mapped Animated Cube
-* 3D Pyramid with Lighting
-* GL Pong with Lighting
-* 3D Breakout ( https://lostsidedead.biz/game/3DBreak )
-* MXMOD Format/3D Model Viewer
-* Space3D: Attack of the Drones ( https://lostsidedead.biz/game/Space3D )
-* Four Point Sprite Examples ( gl_ps, gl_ps2, gl_ps3, gl_ps4 https://lostsidedead.biz/point-sprites )
-* 3D Snow Particle Demo ( https://lostsidedead.biz/holiday/3d.html )
+
+* gl_window — Basic GL Window with Sprite
+* gl_example — Hello Triangle
+* gl_skeleton — OpenGL Skeleton Template
+* gl_es3 — OpenGL ES 3.0 Skeleton
+* gl_cube — Lit 3D Cube
+* gl_animated_cube — Animated Textured Cube
+* gl_cubemap — Cubemap Textured Cube
+* gl_texture_map — Texture Mapping with Distortion Shaders
+* gl_pyramid — Textured 3D Pyramid
+* gl_pong — 3D Pong Game
+* gl_breakout — Breakout Game ( https://lostsidedead.biz/game/3DBreak )
+* gl_asteroids — Asteroids 3D Game ( https://lostsidedead.biz/Asteroids3D )
+* gl_ship — Star Fighter Space Game
+* gl_mxmod — MX Model Viewer
+* gl_blank_model — Blank Model Viewer Template
+* gl_object — Spinning Kaleidoscope Model
+* gl_warp_model — Model Vertex Warping
+* gl_about — Interactive Shader Gallery
+* gl_animation — Shader Animation Player
+* gl_blend_shader — Shader Blend Demo
+* gl_intro_screen — 3D Intro Splash Screen
+* gl_shade1 — Phong Shading (Saturn)
+* gl_shade2 — Phong Shading (Torus)
+* gl_shadow — Shadow Mapping Demo ( https://lostsidedead.biz/Shadow )
+* gl_stencil_test — Stencil Buffer Test
+* gl_framebuffer — Framebuffer Screenshot Demo
+* gl_surface_test — SDL Surface to GL Texture Test
+* gl_fog — Fog Effect Room
+* gl_curve — Interactive Bezier Curve Editor
+* gl_console — Console Overlay Demo
+* gl_console_full — Console with Shader Effects
+* gl_console_skeleton — Console Skeleton Template
+* gl_matrix — Matrix Rain 3D
+* gl_matrix_glitch — Matrix Glitch Model
+* gl_matrix_psyche — Psychedelic Matrix Model
+* gl_matrix_room — Matrix Room Scene
+* gl_glitch — 3D Model Glitch Effect
+* gl_glitch_cube — Glitch Cube v1
+* gl_glitch_cube2 — Glitch Cube v2
+* gl_glitch_cube3 — Glitch Cube v3 (Vertex Warp)
+* gl_glitch_ex — Model Glitch + Explosion
+* gl_model_glitch — Model Glitch + Particle Burst
+* gl_model_explode — Model Particle Explosion
+* gl_obj_explode — Planet Explosion Demo
+* gl_explode — Particle Explosion Effect
+* gl_ps — 2D Particle System ( https://lostsidedead.biz/point-sprites )
+* gl_ps2 — Holiday Particle Effect
+* gl_ps3 — Spiral Particle Effect
+* gl_ps3d — 3D Particle System
+* gl_ps4 — Image Dissolve Particles
+* gl_fire — Fire Particle Emitter ( https://lostsidedead.biz/Fire )
+* gl_rain — Rain Particle Simulation ( https://lostsidedead.biz/Rain )
+* gl_snow — Snowfall Simulation
+* gl_water — Water Particle Fountain
+* gl_stars3d — 3D Starfield
+* gl_work — Starfield with Constellations
+* gl_skybox — Skybox Viewer ( https://lostsidedead.biz/Skybox )
+* gl_skybox2 — Skybox Viewer (Shader Files)
+* gl_skybox3 — Animated Skybox with Effects
+* gl_room — 3D Room with Models
+* gl_walk — First-Person Walkthrough ( https://lostsidedead.biz/3DWalk )
+* gl_walktest — 3D Room Walkthrough
+* space3d — Space3D: Attack of the Drones ( https://lostsidedead.biz/game/Space3D )
 
 ## Vulkan Examples
-* Basic Triangle/Shader
-* 3D Cube
-* 3D texture Mapped Cube
+
+* vk_skeleton — Vulkan App Template
+* vk_cube — Rotating Colored Cube
+* vk_tex_cube — Textured Cube with Background
+* vk_tex_pyramid — Textured Pyramid with Phong Lighting
+* vk_frag — Fragment Shader Lighting Demo
+* vk_data — Texture Upload Example
+* vk_image — Animated Image Shader
+* vk_text — Vulkan Text Rendering
+* vk_sprite — 2D Sprite Batch Demo
+* vk_wire — Wireframe Model Renderer
+* vk_skybox — Cubemap Skybox Viewer
+* vk_point_sprite — Glowing Light Orbs (Point Sprites)
+* vk_stars — 3D Star Renderer
+* vk_cross_stars — 3D Starfield Simulation
+* vk_matrix — 3D Digital Rain
+* vk_matrix_ray — Raycasting Engine with Matrix Walls
+* vk_matrix_cv — Raycaster with OpenCV Webcam Textures
+* vk_raycast — First-Person Raycasting Engine
+* vk_fractal — Interactive Mandelbrot Explorer
+* vk_pong — 3D Pong Game
+* vk_spacerox — Asteroids Arcade Game
+* vk_2D_MasterPiece — MasterPiece 2D Puzzle Game
+* vk_mxmodel — MX Model Viewer & Space Game
+* vk_borg — Textured 3D Model with Shader Effects
 
 ## How to Run the Examples
 
