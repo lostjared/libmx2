@@ -63,12 +63,12 @@ namespace mx {
     void SkyboxViewer::loadCubemapTexture() {
         
         std::vector<std::string> faces = {
-            util.getFilePath("cm_right.png"),
-            util.getFilePath("cm_left.png"),
-            util.getFilePath("cm_top.png"),
-            util.getFilePath("cm_bottom.png"),
-            util.getFilePath("cm_back.png"),
-            util.getFilePath("cm_front.png")
+            util.getFilePath("ACMX2.Snapshot-2026.01.28-02.41.41-1280x720-0.png"),
+            util.getFilePath("ACMX2.Snapshot-2026.01.28-02.41.43-1280x720-1.png"),
+            util.getFilePath("ACMX2.Snapshot-2026.01.28-02.41.44-1280x720-2.png"),
+            util.getFilePath("ACMX2.Snapshot-2026.01.28-02.41.48-1280x720-3.png"),
+            util.getFilePath("ACMX2.Snapshot-2026.01.28-02.41.55-1280x720-4.png"),
+            util.getFilePath("ACMX2.Snapshot-2026.01.28-02.41.58-1280x720-5.png")
         };
 
         
