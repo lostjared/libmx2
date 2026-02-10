@@ -289,7 +289,7 @@ Refer to the `examples` directory for sample usage scenarios. Also various subfo
 * vk_pong — 3D Pong Game
 * vk_spacerox — Asteroids Arcade Game
 * vk_2D_MasterPiece — MasterPiece 2D Puzzle Game
-* vk_mxmodel — MX Model Viewer & Space Game
+* vk_mxmodel — MX Model Viewer 
 * vk_borg — Textured 3D Model with Shader Effects
 
 ## How to Run the Examples
