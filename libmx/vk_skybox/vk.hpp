@@ -13,6 +13,7 @@
 #include "exception.hpp"
 #include "util.hpp"
 #include "vk_model.hpp"
+#include "joystick.hpp"
 
 #include <iostream>
 #include <stdexcept>
@@ -59,6 +60,14 @@ namespace mx {
         alignas(16) glm::mat4 view;
         alignas(16) glm::mat4 proj;
         alignas(16) glm::vec4 params; 
+    };
+
+    struct FractalPushConstants {
+        double centerX;
+        double centerY;
+        double zoom;
+        int maxIterations;
+        float time;
     };
 
     class SkyboxViewer {
@@ -133,6 +142,12 @@ namespace mx {
         int lastMouseX = 0, lastMouseY = 0;
         float mouseSensitivity = 0.15f;
 
+        double fractalCenterX = -0.5;
+        double fractalCenterY = 0.0;
+        double fractalZoom = 0.5;
+        int fractalMaxIter = 256;
+
+        mx::Controller controller;
         SDL_Window *window = nullptr;
 
         void createInstance();

@@ -8,8 +8,16 @@ namespace mx {
     }
 
     void SkyboxViewer::initWindow(const std::string &title, int width, int height, bool full) {
-        if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0)
+        if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER) != 0)
             throw mx::Exception("SDL_Init: " + std::string(SDL_GetError()));
+        for (int i = 0; i < SDL_NumJoysticks(); ++i) {
+            if (SDL_IsGameController(i)) {
+                if (controller.open(i)) {
+                    std::cout << ">> Game controller opened: " << controller.name() << "\n";
+                    break;
+                }
+            }
+        }
         Uint32 flags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE;
         if (full) flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
         window = SDL_CreateWindow(title.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, flags);
@@ -167,6 +175,9 @@ namespace mx {
 
     void SkyboxViewer::event(SDL_Event &e) {
         if (e.type == SDL_QUIT) { quit(); return; }
+        if (controller.connectEvent(e)) {
+            std::cout << ">> Controller connected: " << controller.name() << "\n";
+        }
         if (e.type == SDL_KEYDOWN) {
             switch (e.key.keysym.sym) {
                 case SDLK_ESCAPE: quit(); break;
@@ -180,6 +191,30 @@ namespace mx {
                     } else {
                         SDL_ShowCursor(SDL_ENABLE);
                     }
+                    break;
+                case SDLK_r:
+                    fractalCenterX = -0.5;
+                    fractalCenterY = 0.0;
+                    fractalZoom = 1.0;
+                    fractalMaxIter = 256;
+                    break;
+                case SDLK_1:
+                    fractalCenterX = -0.745;
+                    fractalCenterY = 0.113;
+                    fractalZoom = 50.0;
+                    break;
+                case SDLK_2:
+                    fractalCenterX = 0.275;
+                    fractalCenterY = 0.0;
+                    fractalZoom = 10.0;
+                    break;
+                case SDLK_3:
+                    fractalCenterX = -0.761574;
+                    fractalCenterY = -0.0847596;
+                    fractalZoom = 200.0;
+                    break;
+                case SDLK_4:
+                    fractalMaxIter += 25;
                     break;
             }
         }
@@ -251,6 +286,36 @@ namespace mx {
             pitch += 60.0f * deltaTime;
         if (keystate[SDL_SCANCODE_UP])
             pitch -= 60.0f * deltaTime;
+
+        // Fractal navigation: WASD to pan, Z/X to zoom
+        double panSpeed = 0.5 / fractalZoom * (double)deltaTime;
+        if (keystate[SDL_SCANCODE_A])
+            fractalCenterX -= panSpeed;
+        if (keystate[SDL_SCANCODE_D])
+            fractalCenterX += panSpeed;
+        if (keystate[SDL_SCANCODE_W])
+            fractalCenterY -= panSpeed;
+        if (keystate[SDL_SCANCODE_S])
+            fractalCenterY += panSpeed;
+        if (keystate[SDL_SCANCODE_Z])
+            fractalZoom *= 1.0 + 1.0 * (double)deltaTime;
+        if (keystate[SDL_SCANCODE_X])
+            fractalZoom *= 1.0 - 1.0 * (double)deltaTime;
+
+        if (controller.active()) {
+            const int deadzone = 8000;
+            Sint16 axisX = controller.getAxis(SDL_CONTROLLER_AXIS_LEFTX);
+            Sint16 axisY = controller.getAxis(SDL_CONTROLLER_AXIS_LEFTY);
+            if (axisX < -deadzone)
+                yaw -= 60.0f * deltaTime * (float)(-axisX) / 32767.0f;
+            else if (axisX > deadzone)
+                yaw += 60.0f * deltaTime * (float)(axisX) / 32767.0f;
+            if (axisY < -deadzone)
+                pitch -= 60.0f * deltaTime * (float)(-axisY) / 32767.0f;
+            else if (axisY > deadzone)
+                pitch += 60.0f * deltaTime * (float)(axisY) / 32767.0f;
+        }
+
         pitch = glm::clamp(pitch, -89.0f, 89.0f);
 
         
@@ -274,6 +339,14 @@ namespace mx {
 
         if (!descriptorSets.empty())
             vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[imageIndex], 0, nullptr);
+
+        FractalPushConstants pc{};
+        pc.centerX = fractalCenterX;
+        pc.centerY = fractalCenterY;
+        pc.zoom = fractalZoom;
+        pc.maxIterations = fractalMaxIter;
+        pc.time = time;
+        vkCmdPushConstants(commandBuffers[imageIndex], pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(FractalPushConstants), &pc);
 
         model.draw(commandBuffers[imageIndex]);
         vkCmdEndRenderPass(commandBuffers[imageIndex]);
@@ -758,10 +831,17 @@ namespace mx {
         cb.attachmentCount = 1;
         cb.pAttachments = &blend;
 
+        VkPushConstantRange pushRange{};
+        pushRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        pushRange.offset = 0;
+        pushRange.size = sizeof(FractalPushConstants);
+
         VkPipelineLayoutCreateInfo layoutInfo{};
         layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         layoutInfo.setLayoutCount = 1;
         layoutInfo.pSetLayouts = &descriptorSetLayout;
+        layoutInfo.pushConstantRangeCount = 1;
+        layoutInfo.pPushConstantRanges = &pushRange;
         if (vkCreatePipelineLayout(device, &layoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
             throw mx::Exception("Failed to create pipeline layout!");
 
@@ -1081,6 +1161,7 @@ namespace mx {
 #ifndef WITH_MOLTEN
         volkFinalize();
 #endif
+        controller.close();
         if (window) { SDL_DestroyWindow(window); SDL_Quit(); }
     }
 
