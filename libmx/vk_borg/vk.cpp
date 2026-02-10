@@ -685,19 +685,16 @@ namespace mx {
     }
 
     void VKWindow::createVertexBuffer() {
-        // Clean up old model buffers
         model.cleanup(device);
 
         if (!model.indexCount()) {
             model.load(util.getFilePath("lattice.mxmod"), 1.0f);
         }
-
         model.upload(device, physicalDevice, commandPool, graphicsQueue);
-
         vertexBuffer       = model.vertexBuffer();
-        vertexBufferMemory = VK_NULL_HANDLE; // owned by MXModel
+        vertexBufferMemory = VK_NULL_HANDLE; 
         indexBuffer        = model.indexBuffer();
-        indexBufferMemory  = VK_NULL_HANDLE; // owned by MXModel
+        indexBufferMemory  = VK_NULL_HANDLE; 
         indexCount         = model.indexCount();
     }
     void VKWindow::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory) {

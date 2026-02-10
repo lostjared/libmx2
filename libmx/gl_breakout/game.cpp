@@ -335,7 +335,41 @@ void BreakoutGame::event(gl::GLWindow *win, SDL_Event &e)  {
     if(stick.connectEvent(e)) {
         mx::system_out << "Controller " << stick.name() <<"\n";
     }
-    
+
+    if(e.type == SDL_CONTROLLERBUTTONDOWN) {
+        switch(e.cbutton.button) {
+            case SDL_CONTROLLER_BUTTON_START:
+                win->quit();
+                return;
+            case SDL_CONTROLLER_BUTTON_BACK:
+                win->setObject(new Intro());
+                win->object->load(win);
+                return;
+            case SDL_CONTROLLER_BUTTON_X:
+                if(GameBall.Stuck) {
+                    GameBall.Stuck = false;
+                }
+                break;
+            case SDL_CONTROLLER_BUTTON_Y:
+                resetGame();
+                score = 0;
+                for(auto &b : Blocks) {
+                    b.Destroyed = false;
+                    b.Rotating = false;
+                    b.CurrentRotation = 0.0f;
+                }
+                break;
+            case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
+                gridRotation = -33.4f;
+                gridYRotation = -18.4f;
+                break;
+            case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
+                gridRotation = -21.4f;
+                gridYRotation = 31.15f;
+                break;
+        }
+    }
+
     if (e.type == SDL_FINGERDOWN) {
         Uint32 currentTapTime = SDL_GetTicks(); 
 

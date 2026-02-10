@@ -55,6 +55,7 @@ int main(int argc, char **argv) {
     emscripten_set_main_loop(eventProc, 0, 1);
 #elif defined(_WIN32) || defined(__linux__) || defined(__APPLE__)
     Arguments args = proc_args(argc, argv);
+    args.fullscreen = true;
     try {
         MainWindow main_window(args.path, args.width, args.height);
         if (args.fullscreen)

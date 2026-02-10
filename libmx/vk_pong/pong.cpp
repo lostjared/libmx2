@@ -1,5 +1,6 @@
 #include "vk.hpp"
 #include "SDL.h"
+#include "SDL_gamecontroller.h"
 #include "loadpng.hpp"
 #include <cmath>
 #include <algorithm>
@@ -222,6 +223,12 @@ public:
     int lastMouseY = 0;
     float mouseSensitivity = 0.5f;
     
+    // Controller support
+    SDL_GameController* gameController = nullptr;
+    SDL_JoystickID controllerInstanceID = -1;
+    static constexpr float CONTROLLER_DEADZONE = 8000.0f;
+    static constexpr float CONTROLLER_MAX = 32767.0f;
+    
     VkPipeline pongPipeline = VK_NULL_HANDLE;
     VkPipeline pongPipelineWireframe = VK_NULL_HANDLE;
     VkPipelineLayout pongPipelineLayout = VK_NULL_HANDLE;
@@ -244,9 +251,32 @@ public:
         cameraSpeed = 5.0f;
         lastFrameTime = SDL_GetPerformanceCounter();
         ball.resetBall();
+        
+        // Initialize game controller subsystem
+        if (SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER) < 0) {
+            std::cerr << "Warning: Could not init game controller subsystem: " << SDL_GetError() << std::endl;
+        } else {
+            // Open the first available game controller
+            for (int i = 0; i < SDL_NumJoysticks(); ++i) {
+                if (SDL_IsGameController(i)) {
+                    gameController = SDL_GameControllerOpen(i);
+                    if (gameController) {
+                        controllerInstanceID = SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(gameController));
+                        std::cout << ">> [Controller] Opened: " << SDL_GameControllerName(gameController) << std::endl;
+                        break;
+                    }
+                }
+            }
+        }
     }
     
-    virtual ~PongWindow() {}
+    virtual ~PongWindow() {
+        if (gameController) {
+            SDL_GameControllerClose(gameController);
+            gameController = nullptr;
+        }
+        SDL_QuitSubSystem(SDL_INIT_GAMECONTROLLER);
+    }
     
     void cleanup() override {
         if (device != VK_NULL_HANDLE) {
@@ -732,6 +762,67 @@ public:
             paddle1.position.y = -normalizedY;
             clampPaddle(paddle1);
         }
+        
+        // Controller connected
+        if (e.type == SDL_CONTROLLERDEVICEADDED) {
+            if (!gameController) {
+                gameController = SDL_GameControllerOpen(e.cdevice.which);
+                if (gameController) {
+                    controllerInstanceID = SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(gameController));
+                    std::cout << ">> [Controller] Connected: " << SDL_GameControllerName(gameController) << std::endl;
+                }
+            }
+        }
+        
+        // Controller disconnected
+        if (e.type == SDL_CONTROLLERDEVICEREMOVED) {
+            if (gameController && e.cdevice.which == controllerInstanceID) {
+                std::cout << ">> [Controller] Disconnected" << std::endl;
+                SDL_GameControllerClose(gameController);
+                gameController = nullptr;
+                controllerInstanceID = -1;
+            }
+        }
+        
+        // Controller button presses
+        if (e.type == SDL_CONTROLLERBUTTONDOWN) {
+            switch (e.cbutton.button) {
+                case SDL_CONTROLLER_BUTTON_A:
+                    // Reset game
+                    score1 = 0;
+                    score2 = 0;
+                    ball.resetBall();
+                    paddle1.position.y = 0.0f;
+                    paddle2.position.y = 0.0f;
+                    break;
+                case SDL_CONTROLLER_BUTTON_B:
+                    // Toggle wireframe/solid
+                    if (currentPolygonMode == VK_POLYGON_MODE_FILL) {
+                        currentPolygonMode = VK_POLYGON_MODE_LINE;
+                    } else {
+                        currentPolygonMode = VK_POLYGON_MODE_FILL;
+                    }
+                    break;
+                case SDL_CONTROLLER_BUTTON_Y:
+                    // Reset camera
+                    cameraZ = 5.0f;
+                    cameraX = 0.0f;
+                    cameraY = 0.0f;
+                    cameraYaw = -90.0f;
+                    cameraPitch = 0.0f;
+                    gridRotation = 0.0f;
+                    gridYRotation = 0.0f;
+                    break;
+                case SDL_CONTROLLER_BUTTON_START:
+                    quit();
+                    break;
+                case SDL_CONTROLLER_BUTTON_BACK:
+                    // Reset rotation
+                    gridRotation = 0;
+                    gridYRotation = 0;
+                    break;
+            }
+        }
     }
     
     void clampPaddle(Paddle &paddle) {
@@ -812,6 +903,54 @@ public:
         }
         
         
+        if (gameController) {
+            float leftY = static_cast<float>(SDL_GameControllerGetAxis(gameController, SDL_CONTROLLER_AXIS_LEFTY));
+            if (std::abs(leftY) > CONTROLLER_DEADZONE) {
+                float normalizedY = leftY / CONTROLLER_MAX;
+                paddle1.position.y -= normalizedY * speed * deltaTime;
+                clampPaddle(paddle1);
+            }
+            
+            if (SDL_GameControllerGetButton(gameController, SDL_CONTROLLER_BUTTON_DPAD_UP)) {
+                if (paddle1.position.y + paddle1.size.y / 2 < 1.0f)
+                    paddle1.position.y += speed * deltaTime;
+            }
+            if (SDL_GameControllerGetButton(gameController, SDL_CONTROLLER_BUTTON_DPAD_DOWN)) {
+                if (paddle1.position.y - paddle1.size.y / 2 > -1.0f)
+                    paddle1.position.y -= speed * deltaTime;
+            }
+            
+            float rightX = static_cast<float>(SDL_GameControllerGetAxis(gameController, SDL_CONTROLLER_AXIS_RIGHTX));
+            float rightY = static_cast<float>(SDL_GameControllerGetAxis(gameController, SDL_CONTROLLER_AXIS_RIGHTY));
+            if (std::abs(rightX) > CONTROLLER_DEADZONE) {
+                gridYRotation += (rightX / CONTROLLER_MAX) * rotationSpeed * deltaTime;
+            }
+            if (std::abs(rightY) > CONTROLLER_DEADZONE) {
+                gridRotation += (rightY / CONTROLLER_MAX) * rotationSpeed * deltaTime;
+            }
+            
+            float leftTrigger = static_cast<float>(SDL_GameControllerGetAxis(gameController, SDL_CONTROLLER_AXIS_TRIGGERLEFT));
+            float rightTrigger = static_cast<float>(SDL_GameControllerGetAxis(gameController, SDL_CONTROLLER_AXIS_TRIGGERRIGHT));
+            if (leftTrigger > CONTROLLER_DEADZONE) {
+                cameraZ += (leftTrigger / CONTROLLER_MAX) * 3.0f * deltaTime;
+                if (cameraZ > 20.0f) cameraZ = 20.0f;
+            }
+            if (rightTrigger > CONTROLLER_DEADZONE) {
+                cameraZ -= (rightTrigger / CONTROLLER_MAX) * 3.0f * deltaTime;
+                if (cameraZ < 1.0f) cameraZ = 1.0f;
+            }
+            
+            if (SDL_GameControllerGetButton(gameController, SDL_CONTROLLER_BUTTON_LEFTSHOULDER)) {
+                cameraZ += 3.0f * deltaTime;
+                if (cameraZ > 20.0f) cameraZ = 20.0f;
+            }
+            if (SDL_GameControllerGetButton(gameController, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER)) {
+                cameraZ -= 3.0f * deltaTime;
+                if (cameraZ < 1.0f) cameraZ = 1.0f;
+            }
+        }
+        
+        
         float paddleSpeed = 0.015f;
         if (ball.position.y > paddle2.position.y + paddle2.size.y / 4 &&
             paddle2.position.y + paddle2.size.y / 2 < 1.0f) {
@@ -821,7 +960,6 @@ public:
             paddle2.position.y - paddle2.size.y / 2 > -1.0f) {
             paddle2.position.y -= paddleSpeed;
         }
-        
         
         paddle1.update(deltaTime);
         paddle2.update(deltaTime);
@@ -834,7 +972,6 @@ public:
         if (ball.hitPaddle2) {
             spawnBurst(ball.lastImpactPos, glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec4(1.0f, 0.3f, 0.3f, 1.0f));
         }
-        
         
         updateParticles(deltaTime);
        
@@ -865,9 +1002,11 @@ public:
         fpsStream << std::fixed << std::setprecision(1) << "FPS: " << fps;
         std::string fpsText = fpsStream.str();
         std::string polygonMode = (currentPolygonMode == VK_POLYGON_MODE_LINE) ? "WIREFRAME" : "SOLID";
+        std::string controllerStatus = gameController ? "Controller: Connected" : "Controller: None";
         printText("Vulkan Pong", 50, 50, white);
         printText(scoreText, 50, 80, yellow);
         printText(fpsText + " | Mode: " + polygonMode, 50, 110, white);
+        printText(controllerStatus, 50, 140, white);
     }
     
     void draw() override {
@@ -1123,6 +1262,7 @@ int main(int argc, char **argv) {
 #if defined(__APPLE__) || defined(_WIN32) || defined(_WIN64) || defined(__linux__)
 #ifndef __ANDROID__
     Arguments args = proc_args(argc, argv);
+    args.fullscreen = true;
     try {
         PongWindow window(args.path, args.width, args.height, args.fullscreen);
         window.initVulkan();

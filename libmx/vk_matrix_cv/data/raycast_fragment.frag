@@ -114,6 +114,37 @@ float pingPong(float x, float length) {
     return modVal <= length ? modVal : length * 2.0 - modVal;
 }
 
+// Bubble distortion effect applied to UV coordinates
+vec2 applyBubbleDistort(vec2 uv) {
+    float time_f = ubo.params.x;
+    vec2 centered = uv * 2.0 - 1.0;
+    float len = length(centered);
+    float time_t = pingPong(time_f, 10.0);
+    vec2 distort = centered * (1.0 + 0.1 * sin(time_f + len * 20.0));
+    distort = sin(distort * time_t);
+    return distort * 0.5 + 0.5;
+}
+
+float bubbleMix(vec2 uv) {
+    float time_f = ubo.params.x;
+    vec2 centered = uv * 2.0 - 1.0;
+    float len = length(centered);
+    float time_t = pingPong(time_f, 10.0);
+    float bubble = smoothstep(0.8, 1.0, 1.0 - len);
+    return sin(bubble * time_t);
+}
+
+vec3 sampleWithBubble(vec2 uv) {
+    bool useBubble = ubo.params.y > 0.5;
+    if (!useBubble) {
+        return texture(texSampler, uv).rgb;
+    }
+    vec2 distUV = applyBubbleDistort(uv);
+    vec3 texColor = texture(texSampler, distUV).rgb;
+    float b = bubbleMix(uv);
+    return mix(texColor, vec3(1.0), b);
+}
+
 void main() {
     float screenW = ubo.playerPlane.z;
     float screenH = ubo.playerPlane.w;
@@ -204,9 +235,9 @@ void main() {
             
             float wallY = (y - drawStart) / (drawEnd - drawStart);
             
-            // Simple matrix rain texture mapping (flip Y for correct rain direction)
-            vec2 texUV = vec2(wallX, 1.0 - wallY);
-            vec3 texColor = texture(texSampler, texUV).rgb;
+            // Simple matrix rain texture mapping (flipped)
+            vec2 texUV = vec2(wallX, wallY);
+            vec3 texColor = sampleWithBubble(texUV);
             
             // Apply side shading
             if (side == 1) texColor *= 0.7;
@@ -218,9 +249,9 @@ void main() {
             float floorX = posX + currentDist * rayDirX;
             float floorY = posY + currentDist * rayDirY;
             
-            // Map matrix rain texture to ceiling
-            vec2 ceilUV = vec2(fract(floorX), fract(floorY));
-            vec3 texColor = texture(texSampler, ceilUV).rgb;
+            // Map matrix rain texture to ceiling (flipped)
+            vec2 ceilUV = vec2(fract(floorX), 1.0 - fract(floorY));
+            vec3 texColor = sampleWithBubble(ceilUV);
             
             // Apply distance fog
             col = texColor * (1.0 / (1.0 + currentDist * currentDist * 0.02));
@@ -230,9 +261,9 @@ void main() {
             float floorX = posX + currentDist * rayDirX;
             float floorY = posY + currentDist * rayDirY;
             
-            // Map matrix rain texture to floor
-            vec2 floorUV = vec2(fract(floorX), fract(floorY));
-            vec3 texColor = texture(texSampler, floorUV).rgb;
+            // Map matrix rain texture to floor (flipped)
+            vec2 floorUV = vec2(fract(floorX), 1.0 - fract(floorY));
+            vec3 texColor = sampleWithBubble(floorUV);
             
             // Apply distance fog
             col = texColor * (1.0 / (1.0 + currentDist * currentDist * 0.02));
@@ -244,18 +275,18 @@ void main() {
             float floorX = posX + currentDist * rayDirX;
             float floorY = posY + currentDist * rayDirY;
             
-            // Map matrix rain texture to ceiling
-            vec2 ceilUV = vec2(fract(floorX), fract(floorY));
-            vec3 texColor = texture(texSampler, ceilUV).rgb;
+            // Map matrix rain texture to ceiling (flipped)
+            vec2 ceilUV = vec2(fract(floorX), 1.0 - fract(floorY));
+            vec3 texColor = sampleWithBubble(ceilUV);
             col = texColor * (1.0 / (1.0 + currentDist * currentDist * 0.02));
         } else {
             float currentDist = screenH / (2.0 * y - screenH);
             float floorX = posX + currentDist * rayDirX;
             float floorY = posY + currentDist * rayDirY;
             
-            // Map matrix rain texture to floor
-            vec2 floorUV = vec2(fract(floorX), fract(floorY));
-            vec3 texColor = texture(texSampler, floorUV).rgb;
+            // Map matrix rain texture to floor (flipped)
+            vec2 floorUV = vec2(fract(floorX), 1.0 - fract(floorY));
+            vec3 texColor = sampleWithBubble(floorUV);
             col = texColor * (1.0 / (1.0 + currentDist * currentDist * 0.02));
         }
     }

@@ -213,11 +213,21 @@ public:
     std::string filename;
     cv::VideoCapture cap;
     bool draw_glyph = false;
+    bool bubble_effect = false;
 
     void setFile(const std::string &filen) {
         filename = filen;
         if(cap.open(filename)) {
             std::cout << "cv: Opened capture device.\n";
+        } else {
+            throw mx::Exception("Camera not able to be opened");
+        }
+    }
+    void setCamera(int index) {
+        if(cap.open(index)) {
+            std::cout << "cv: Opened Camera at: " << index << std::endl;
+        } else {
+            throw mx::Exception("Camera not able to be opened");
         }
     }
     
@@ -315,6 +325,7 @@ public:
         raycastPlayer.dirY = dirY;
         raycastPlayer.planeX = planeX;
         raycastPlayer.planeY = planeY;
+        raycastPlayer.bubbleEffect = bubble_effect ? 1.0f : 0.0f;
         printText("WASD: Move  Arrow Keys: Turn  ESC: Quit", 10, 10, {255, 255, 255, 255});        
         std::string posStr = std::format("Pos: {}, {}", posX, posY);
         printText(posStr, 10, 40, {200, 200, 200, 255});
@@ -335,6 +346,9 @@ public:
                 case SDLK_RIGHT: keyRight = true; break;
                 case SDLK_SPACE: 
                     draw_glyph = !draw_glyph;
+                break;
+                case SDLK_b:
+                    bubble_effect = !bubble_effect;
                 break;
             }
         }
@@ -483,7 +497,7 @@ int main(int argc, char **argv) {
     Arguments args = proc_args(argc, argv);
     try {
         RaycastWindow window(args.path, args.width, args.height, args.fullscreen);
-        window.setFile(args.filename);
+        window.setCamera(0);
         window.initVulkan();
         window.loop();
         window.cleanup();

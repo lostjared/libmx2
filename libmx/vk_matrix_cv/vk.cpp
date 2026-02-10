@@ -1558,7 +1558,7 @@ namespace mx {
 
         UniformBufferObject ubo{};
         float time = SDL_GetTicks() / 1000.0f;
-        ubo.params = glm::vec4(time, 0.0f, 0.0f, 0.0f);
+        ubo.params = glm::vec4(time, raycastPlayer.bubbleEffect, 0.0f, 0.0f);
         ubo.color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
         ubo.model = glm::mat4(1.0f);
         ubo.playerPos = glm::vec4(raycastPlayer.posX, raycastPlayer.posY, 

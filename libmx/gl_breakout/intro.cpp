@@ -112,6 +112,9 @@ const char *fSource = R"(#version 330 core
     sprite.initSize(win->w, win->h);
     sprite.loadTexture(&program, win->util.getFilePath("data/bluecrystal.png"), 0.0f, 0.0f, win->w, win->h);
 
+    if(stick.open(0)) {
+        mx::system_out << ">> [Controller] Intro initialized: " << stick.name() << "\n";
+    }
 }
 
 void Intro::draw(gl::GLWindow *win) {
@@ -155,15 +158,23 @@ void Intro::draw(gl::GLWindow *win) {
     cube.drawArrays();
     glBindVertexArray(0);
 
-    if(stick.getButton(SDL_CONTROLLER_BUTTON_A)) {
+    if(stick.getButton(SDL_CONTROLLER_BUTTON_A) || stick.getButton(SDL_CONTROLLER_BUTTON_START)) {
         win->setObject(new BreakoutGame());
         win->object->load(win);
+        return;
+    }
+
+    if(stick.getButton(SDL_CONTROLLER_BUTTON_BACK)) {
+        win->quit();
         return;
     }
 
     glDisable(GL_DEPTH_TEST);
     win->text.setColor({255,255,255,255});
     win->text.printText_Solid(font, 25.0f, 25.0f, "Press Enter or Tap to Start");
+    if(stick.active()) {
+        win->text.printText_Solid(font, 25.0f, 55.0f, "Controller: A/Start to Play, Back to Quit");
+    }
     
 }
 
@@ -177,5 +188,17 @@ void Intro::event(gl::GLWindow *win, SDL_Event &e) {
         win->setObject(new BreakoutGame());
         win->object->load(win);
         return;
+    }
+
+    if(e.type == SDL_CONTROLLERBUTTONDOWN) {
+        if(e.cbutton.button == SDL_CONTROLLER_BUTTON_A || e.cbutton.button == SDL_CONTROLLER_BUTTON_START) {
+            win->setObject(new BreakoutGame());
+            win->object->load(win);
+            return;
+        }
+        if(e.cbutton.button == SDL_CONTROLLER_BUTTON_BACK) {
+            win->quit();
+            return;
+        }
     }
 }

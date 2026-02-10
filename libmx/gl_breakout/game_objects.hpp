@@ -128,6 +128,13 @@ public:
         if (analogInput > analogThreshold) {
             Position.x += speed * deltaTime * (std::abs(analogInput) / 32768.0f); 
         }
+        // D-pad left/right for paddle movement
+        if (stick.getButton(SDL_CONTROLLER_BUTTON_DPAD_LEFT)) {
+            Position.x -= speed * deltaTime;
+        }
+        if (stick.getButton(SDL_CONTROLLER_BUTTON_DPAD_RIGHT)) {
+            Position.x += speed * deltaTime;
+        }
         Position.x = glm::clamp(Position.x, -5.0f, 5.0f);
     }
 
