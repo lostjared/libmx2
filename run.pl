@@ -11,89 +11,54 @@ my $source_dir = "$root/libmx";
 
 my $program = shift @ARGV;
 
-unless ($program) {
+if (!$program) {
     print "Usage: ./run <program_name> [extra args...]\n\n";
     print "Available programs:\n";
 
-    # List programs from the main build directory
-    opendir(my $dh, $build_dir) or die "Cannot open $build_dir: $!\n";
-    my @progs;
-    while (my $entry = readdir($dh)) {
-        next if $entry =~ /^\./;
-        my $exe = "$build_dir/$entry/$entry";
-        if (-x $exe) {
-            push @progs, $entry;
-        } elsif (-d "$build_dir/$entry") {
-            # Check for any executable in the subdirectory
-            opendir(my $sh, "$build_dir/$entry");
-            while (my $f = readdir($sh)) {
-                next if $f =~ /^\./;
-                if (-f "$build_dir/$entry/$f" && -x "$build_dir/$entry/$f") {
-                    push @progs, $entry;
-                    last;
-                }
-            }
-            closedir($sh);
-        }
-    }
-    closedir($dh);
-
-    # Check for standalone project directories with their own build/
-    for my $base ($root, $parent) {
-        opendir(my $rh, $base) or next;
-        while (my $entry = readdir($rh)) {
+    my %progs;
+    if (-d $build_dir) {
+        opendir(my $dh, $build_dir);
+        while (my $entry = readdir($dh)) {
             next if $entry =~ /^\./;
-            next if $entry eq 'build' || $entry eq 'libmx';
-            my $exe = "$base/$entry/build/$entry";
-            push @progs, $entry if -x $exe;
+            $progs{$entry} = 1 if -d "$build_dir/$entry";
         }
-        closedir($rh);
+        closedir($dh);
     }
-
-    my %seen;
-    for my $p (sort grep { !$seen{$_}++ } @progs) {
+    
+    for my $p (sort keys %progs) {
         print "  $p\n";
     }
     exit 1;
 }
 
-# First check the main build directory (build/<name>/<name>)
-my $exe = "$build_dir/$program/$program";
-my $data = "$source_dir/$program";
+my $data_path = "$source_dir/$program";
+my $exe_path = "$build_dir/$program/$program";
 
-# If exact match not found, search for any executable in the build subdirectory
-if (!-x $exe && -d "$build_dir/$program") {
-    opendir(my $bh, "$build_dir/$program");
-    while (my $f = readdir($bh)) {
-        next if $f =~ /^\./;
-        my $candidate = "$build_dir/$program/$f";
-        if (-f $candidate && -x $candidate) {
-            $exe = $candidate;
+if (!-x $exe_path) {
+    for my $base ($root, $parent) {
+        my $alt_exe = "$base/$program/build/$program";
+        if (-x $alt_exe) {
+            $exe_path = $alt_exe;
+            $data_path = "$base/$program"; 
             last;
         }
     }
-    closedir($bh);
 }
 
-if (-x $exe && -d $data) {
-    my $exe_name = basename($exe);
-    chdir("$build_dir/$program") or die "Cannot cd to $build_dir/$program: $!\n";
-    my @cmd = ("./$exe_name", "-p", $data, @ARGV);
-    print ">> @cmd\n";
-    exec(@cmd) or die "Failed to exec $exe_name: $!\n";
-}
+if (-x $exe_path) {
+    my $exe_dir = dirname($exe_path);
+    my $exe_name = basename($exe_path);
 
-# Check standalone project directories (inside libmx2/ or sibling ../)
-for my $base ($root, $parent) {
-    my $standalone_exe = "$base/$program/build/$program";
-    my $standalone_data = "$base/$program";
+    chdir($exe_dir) or die "Cannot cd to $exe_dir: $!\n";
 
-    if (-x $standalone_exe && -d $standalone_data) {
-        chdir("$base/$program/build") or die "Cannot cd to $base/$program/build: $!\n";
-        my @cmd = ("./$program", "-p", $standalone_data, @ARGV);
-        print ">> @cmd\n";
-        exec(@cmd) or die "Failed to exec $program: $!\n";
+    if (!-d $data_path) {
+        warn "Warning: Data directory '$data_path' not found.\n";
     }
-}
 
-die "Error: Could not find executable for '$program'\n";
+    my @cmd = ("./$exe_name", "-p", $data_path, @ARGV);
+    
+    print ">> Executing: @cmd\n";
+    exec(@cmd) or die "Failed to exec $exe_name: $!\n";
+} else {
+    die "Error: Could not find executable for '$program' at $exe_path\n";
+}
