@@ -7,5 +7,5 @@ target_include_directories(vk_matrix_cv PRIVATE
     ${OpenCV_INCLUDE_DIRS}
 )
 
-target_link_libraries(vk_matrix_cv PUBLIC SDL2::SDL2main mxvk volk ${OpenCV_LIBS})
+target_link_libraries(vk_matrix_cv PUBLIC SDL2::SDL2main mxvk $<$<NOT:$<BOOL:${MOLTEN}>>:volk> ${OpenCV_LIBS})
 

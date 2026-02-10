@@ -42,5 +42,5 @@ target_include_directories(vk_fractal PRIVATE
     ${FFMPEG_INCLUDE_DIRS}
 )
 
-target_link_libraries(vk_fractal PUBLIC SDL2::SDL2main mxvk volk MXWrite::mxwrite ${FFMPEG_LIBRARIES} Threads::Threads)
+target_link_libraries(vk_fractal PUBLIC SDL2::SDL2main mxvk $<$<NOT:$<BOOL:${MOLTEN}>>:volk> MXWrite::mxwrite ${FFMPEG_LIBRARIES} Threads::Threads)
 
