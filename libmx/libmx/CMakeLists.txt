@@ -119,7 +119,7 @@ if(VULKAN OR MOLTEN)
         INCLUDES DESTINATION ${INSTALL_INCLUDE_DIR}
     )
 
-    install(FILES vk.hpp vk_model.hpp DESTINATION ${INSTALL_INCLUDE_DIR})
+    install(FILES vk.hpp vk_model.hpp vk_text.hpp vk_sprite.hpp DESTINATION ${INSTALL_INCLUDE_DIR})
     install(FILES include/volk/volk.h DESTINATION ${INSTALL_INCLUDE_DIR}/volk)
 endif()
 
