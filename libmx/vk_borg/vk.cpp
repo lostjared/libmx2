@@ -680,147 +680,25 @@ namespace mx {
         std::cout << ">> [DepthResources] Created depth buffer (" << swapChainExtent.width << "x" << swapChainExtent.height << ")\n";
     }
 
-    struct Vec2 { float x, y; };
-    struct Vec3 { float x, y, z; };
-\
-    static void loadMXMOD(
-        const std::string& path,
-        std::vector<Vertex>& outVertices,
-        std::vector<uint32_t>& outIndices,
-        float positionScale = 1.0f
-    ) {
-        std::ifstream f(path);
-        if (!f.is_open()) throw std::runtime_error("loadMXMOD: failed to open file: " + path);
-
-        auto readHeader = [&](const char* expectedTag, int& countOut) {
-            std::string tag;
-            if (!(f >> tag >> countOut)) throw std::runtime_error(std::string("loadMXMOD: missing header: ") + expectedTag);
-            if (tag != expectedTag) throw std::runtime_error(std::string("loadMXMOD: expected header '") + expectedTag + "', got '" + tag + "'");
-        };
-
-        {
-            std::string triTag;
-            int a = 0, b = 0;
-            if (!(f >> triTag >> a >> b)) throw std::runtime_error("loadMXMOD: missing tri header");
-            if (triTag != "tri") throw std::runtime_error("loadMXMOD: expected 'tri' header");
-        }
-
-        int vcount = 0;
-        readHeader("vert", vcount);
-        if (vcount <= 0) throw std::runtime_error("loadMXMOD: invalid vert count");
-
-        std::vector<Vec3> pos(vcount);
-        for (int i = 0; i < vcount; ++i) {
-            if (!(f >> pos[i].x >> pos[i].y >> pos[i].z)) throw std::runtime_error("loadMXMOD: failed reading vertex positions");
-            pos[i].x *= positionScale;
-            pos[i].y *= positionScale;
-            pos[i].z *= positionScale;
-        }
-
-        int tcount = 0;
-        readHeader("tex", tcount);
-        if (tcount != vcount) throw std::runtime_error("loadMXMOD: tex count != vert count");
-
-        std::vector<Vec2> uv(vcount);
-        for (int i = 0; i < vcount; ++i) {
-            if (!(f >> uv[i].x >> uv[i].y)) throw std::runtime_error("loadMXMOD: failed reading texcoords");
-        }
-
-        int ncount = 0;
-        readHeader("norm", ncount);
-        if (ncount != vcount) throw std::runtime_error("loadMXMOD: norm count != vert count");
-
-        std::vector<Vec3> nrm(vcount);
-        for (int i = 0; i < vcount; ++i) {
-            if (!(f >> nrm[i].x >> nrm[i].y >> nrm[i].z)) throw std::runtime_error("loadMXMOD: failed reading normals");
-        }
-
-        outVertices.clear();
-        outVertices.reserve((size_t)vcount);
-
-        for (int i = 0; i < vcount; ++i) {
-            Vertex v{};
-            v.pos[0] = pos[i].x;
-            v.pos[1] = pos[i].y;
-            v.pos[2] = pos[i].z;
-            v.texCoord[0] = uv[i].x;
-            v.texCoord[1] = uv[i].y;
-            v.normal[0] = nrm[i].x;
-            v.normal[1] = nrm[i].y;
-            v.normal[2] = nrm[i].z;
-            outVertices.push_back(v);
-        }
-
-        outIndices.clear();
-        outIndices.reserve((size_t)vcount);
-        for (uint32_t i = 0; i < (uint32_t)vcount; ++i) outIndices.push_back(i);
+    void VKWindow::loadModel(const std::string &path, float scale) {
+        model.load(path, scale);
     }
 
     void VKWindow::createVertexBuffer() {
-        if (vertexBuffer != VK_NULL_HANDLE) {
-            vkDestroyBuffer(device, vertexBuffer, nullptr);
-            vkFreeMemory(device, vertexBufferMemory, nullptr);
-            vertexBuffer = VK_NULL_HANDLE;
-            vertexBufferMemory = VK_NULL_HANDLE;
-        }
-        if (indexBuffer != VK_NULL_HANDLE) {
-            vkDestroyBuffer(device, indexBuffer, nullptr);
-            vkFreeMemory(device, indexBufferMemory, nullptr);
-            indexBuffer = VK_NULL_HANDLE;
-            indexBufferMemory = VK_NULL_HANDLE;
+        // Clean up old model buffers
+        model.cleanup(device);
+
+        if (!model.indexCount()) {
+            model.load(util.getFilePath("lattice.mxmod"), 1.0f);
         }
 
-        std::vector<Vertex> vertices;
-        std::vector<uint32_t> indices;
+        model.upload(device, physicalDevice, commandPool, graphicsQueue);
 
-        loadMXMOD(util.getFilePath("lattice.mxmod"), vertices, indices, 1.0f);
-
-        VkDeviceSize vertexBufferSize = sizeof(vertices[0]) * vertices.size();
-        VkDeviceSize indexBufferSize  = sizeof(indices[0])  * indices.size();
-
-        VkBuffer stagingVertexBuffer;
-        VkDeviceMemory stagingVertexBufferMemory;
-        createBuffer(vertexBufferSize,
-                    VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                    stagingVertexBuffer, stagingVertexBufferMemory);
-
-        VkBuffer stagingIndexBuffer;
-        VkDeviceMemory stagingIndexBufferMemory;
-        createBuffer(indexBufferSize,
-                    VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                    stagingIndexBuffer, stagingIndexBufferMemory);
-
-        void* vertexData = nullptr;
-        vkMapMemory(device, stagingVertexBufferMemory, 0, vertexBufferSize, 0, &vertexData);
-        memcpy(vertexData, vertices.data(), (size_t)vertexBufferSize);
-        vkUnmapMemory(device, stagingVertexBufferMemory);
-
-        void* indexData = nullptr;
-        vkMapMemory(device, stagingIndexBufferMemory, 0, indexBufferSize, 0, &indexData);
-        memcpy(indexData, indices.data(), (size_t)indexBufferSize);
-        vkUnmapMemory(device, stagingIndexBufferMemory);
-
-        createBuffer(vertexBufferSize,
-                    VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                    vertexBuffer, vertexBufferMemory);
-
-        createBuffer(indexBufferSize,
-                    VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                    indexBuffer, indexBufferMemory);
-
-        copyBuffer(stagingVertexBuffer, vertexBuffer, vertexBufferSize);
-        copyBuffer(stagingIndexBuffer, indexBuffer, indexBufferSize);
-
-        vkDestroyBuffer(device, stagingVertexBuffer, nullptr);
-        vkFreeMemory(device, stagingVertexBufferMemory, nullptr);
-        vkDestroyBuffer(device, stagingIndexBuffer, nullptr);
-        vkFreeMemory(device, stagingIndexBufferMemory, nullptr);
-
-        indexCount = static_cast<uint32_t>(indices.size());
+        vertexBuffer       = model.vertexBuffer();
+        vertexBufferMemory = VK_NULL_HANDLE; // owned by MXModel
+        indexBuffer        = model.indexBuffer();
+        indexBufferMemory  = VK_NULL_HANDLE; // owned by MXModel
+        indexCount         = model.indexCount();
     }
     void VKWindow::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory) {
         VkBufferCreateInfo bufferInfo{};
@@ -1574,10 +1452,9 @@ namespace mx {
         vkDestroyImage(device, textureImage, nullptr);
         vkFreeMemory(device, textureImageMemory, nullptr);
 
-        vkDestroyBuffer(device, vertexBuffer, nullptr);
-        vkFreeMemory(device, vertexBufferMemory, nullptr);
-        vkDestroyBuffer(device, indexBuffer, nullptr);
-        vkFreeMemory(device, indexBufferMemory, nullptr);
+        model.cleanup(device);
+        vertexBuffer = VK_NULL_HANDLE;
+        indexBuffer = VK_NULL_HANDLE;
 
         vkDestroyDescriptorPool(device, descriptorPool, nullptr);
         vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);

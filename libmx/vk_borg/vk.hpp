@@ -24,6 +24,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include "vk_model.hpp"
 
 #define VK_CHECK_RESULT(f) { \
     VkResult res = (f); \
@@ -34,11 +35,7 @@
 
 namespace mx {
     
-    struct Vertex {
-        float pos[3];
-        float texCoord[2];
-        float normal[3];
-    };
+    using Vertex = VKVertex;
 
     struct QueueFamilyIndices {
         std::optional<uint32_t> graphicsFamily;
@@ -119,6 +116,7 @@ namespace mx {
         VkBuffer indexBuffer = VK_NULL_HANDLE;
         VkDeviceMemory indexBufferMemory = VK_NULL_HANDLE;
         uint32_t indexCount;
+        MXModel model;
 
         VkImage textureImage = VK_NULL_HANDLE;
         VkDeviceMemory textureImageMemory = VK_NULL_HANDLE;
@@ -176,7 +174,8 @@ namespace mx {
         void createDescriptorSets();
         void updateDescriptorSets();
         void recreateSwapChain();
-        void setupTextureImage(uint32_t w, uint32_t h);        
+        void setupTextureImage(uint32_t w, uint32_t h);
+        void loadModel(const std::string &path, float scale = 1.0f);
     };
 
 }
