@@ -319,42 +319,55 @@ mingw-deploy -i gl_pong.exe -o .
 
 ## WebAssembly Makefiles
 
-To compile the WebAssembly makefiles is a little more difficult you will first need to create a folder for libpng16 zlib and libmx to be installed to you will need to edit the Makefile and place
-the path to this folder
+The project includes `Makefile.em` files for building with Emscripten. The modern Makefiles use Emscripten's built-in port system for zlib and libpng, so you **no longer need to manually compile or install** those libraries. Emscripten handles them automatically via flags:
 
-```
-LIBS_PATH = /home/jared/emscripten-libs
+```makefile
+-s USE_ZLIB=1
+-s USE_LIBPNG=1
+-s USE_SDL=2
+-s USE_SDL_TTF=2
+-s USE_SDL_MIXER=2
+-s USE_WEBGL2=1
+-s FULL_ES3
 ```
 
-then install libpng16, zlib by compiling them with emscripten and placing the files in this location
-you will also need to install GLM on your host system use  your package manager to get it  something like
-```
-sudo pacman -S glm
+The only thing you need to install on your host system is GLM:
+
+```bash
+sudo pacman -S glm        # Arch Linux
+# or your distro's equivalent
 ```
 
-the paths in the Makefile look like this
+### Building the Library for Emscripten
 
+First, build and install the `libmx` static library for Emscripten. The Makefile installs headers and the archive to `$(HOME)/emscripten-libs/mx2/`:
+
+```bash
+cd libmx/libmx
+make -f Makefile.em
+make -f Makefile.em install
 ```
-ZLIB_INCLUDE = -I$(LIBS_PATH)/zlib/include
-PNG_INCLUDE = -I$(LIBS_PATH)/libpng/include
+
+This places the headers in `~/emscripten-libs/mx2/include/` and `libmx.a` in `~/emscripten-libs/mx2/lib/`.
+
+### Building an Example Project
+
+Each example's `Makefile.em` automatically finds the installed library at `$(HOME)/emscripten-libs/mx2/`:
+
+```makefile
+LIBS_PATH = $(HOME)/emscripten-libs
 MX_INCLUDE = -I$(LIBS_PATH)/mx2/include -I/usr/include/glm
-ZLIB_LIB = $(LIBS_PATH)/zlib/lib/libz.a
-PNG_LIB = $(LIBS_PATH)/libpng/lib/libpng.a
+LIBMX_LIB = $(LIBS_PATH)/mx2/lib/libmx.a
 ```
 
-then enter the libmx directory edit the Makefile for the path
-and
+To build any example:
 
 ```bash
-make -f Makefile.em
-sudo make -f Makefile.em install
-```
-
-then you should be able to build the projects with emscripten after setting the path in each Makefile.em using
-
-```bash
+cd libmx/gl_breakout    # or any example directory
 make -f Makefile.em
 ```
+
+This produces an `.html` file along with `.wasm`, `.js`, and `.data` files (assets bundled via `--preload-file data`) that can be served from any web server.
 
 ## Playing the Example games in WebAssembly
 
