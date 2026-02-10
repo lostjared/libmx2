@@ -509,10 +509,18 @@ public:
             Sint16 rx = stick.getAxis(SDL_CONTROLLER_AXIS_RIGHTX);
             Sint16 ry = stick.getAxis(SDL_CONTROLLER_AXIS_RIGHTY);
             if(rx < -AXIS_DEADZONE || rx > AXIS_DEADZONE) {
-                rotateY += (static_cast<float>(rx) / 32767.0f) * ROTATE_SPEED;
+                rotateY += (static_cast<float>(rx) / 32767.0f) * ROTATE_SPEED * deltaTime;
             }
             if(ry < -AXIS_DEADZONE || ry > AXIS_DEADZONE) {
-                rotateX += (static_cast<float>(ry) / 32767.0f) * ROTATE_SPEED;
+                rotateX += (static_cast<float>(ry) / 32767.0f) * ROTATE_SPEED * deltaTime;
+            }
+            Sint16 lt = stick.getAxis(SDL_CONTROLLER_AXIS_TRIGGERLEFT);
+            Sint16 rt = stick.getAxis(SDL_CONTROLLER_AXIS_TRIGGERRIGHT);
+            if(lt > TRIGGER_DEADZONE) {
+                zoom -= (static_cast<float>(lt) / 32767.0f) * ZOOM_SPEED * deltaTime;
+            }
+            if(rt > TRIGGER_DEADZONE) {
+                zoom += (static_cast<float>(rt) / 32767.0f) * ZOOM_SPEED * deltaTime;
             }
         }
         if(fade_in == false)  {
@@ -622,6 +630,12 @@ public:
                 case SDL_CONTROLLER_BUTTON_DPAD_UP:
                     mp.grid.game_piece.shiftColors();
                     break;
+                case SDL_CONTROLLER_BUTTON_RIGHTSTICK:
+                    rotateX = INIT_ROTATE_X;
+                    rotateY = INIT_ROTATE_Y;
+                    rotateZ = INIT_ROTATE_Z;
+                    zoom = INIT_ZOOM;
+                    break;
             }
         }
 
@@ -683,6 +697,13 @@ public:
                     case SDLK_MINUS:
                         zoom -= 0.5f;
                         win->console.printf("Zoom: %f ",zoom);
+                    break;
+                    case SDLK_r:
+                        rotateX = INIT_ROTATE_X;
+                        rotateY = INIT_ROTATE_Y;
+                        rotateZ = INIT_ROTATE_Z;
+                        zoom = INIT_ZOOM;
+                        win->console.print("View Reset\n");
                     break;
                 }
                 break;
@@ -810,10 +831,16 @@ private:
     float deltaTime = 0.0f;
     mx::Controller stick;
     static constexpr Sint16 AXIS_DEADZONE = 12000;
+    static constexpr Sint16 TRIGGER_DEADZONE = 3000;
     static constexpr Uint32 MOVE_REPEAT_MS = 150;
     Uint32 lastLeftStickMove = 0;
     Uint32 lastDpadMove = 0;
-    static constexpr float ROTATE_SPEED = 1.5f;
+    static constexpr float ROTATE_SPEED = 50.0f;
+    static constexpr float ZOOM_SPEED = 8.0f;
+    static constexpr float INIT_ROTATE_X = 0.0f;
+    static constexpr float INIT_ROTATE_Y = 0.0f;
+    static constexpr float INIT_ROTATE_Z = -0.5f;
+    static constexpr float INIT_ZOOM = -14.0f;
 };
 
 void Intro::draw(gl::GLWindow *win) {
@@ -854,6 +881,25 @@ void Start::event(gl::GLWindow *win, SDL_Event &e) {
         fade = 1.0f;
         fade_in = false;
         return;
+    }
+    if(fade_in == false && fade >= 1.0f) {
+        if(e.type == SDL_KEYDOWN || e.type == SDL_FINGERUP || e.type == SDL_MOUSEBUTTONUP) {
+            fade_in = false;
+            fade = 0.9f;
+            return;
+        }
+        if(e.type == SDL_CONTROLLERBUTTONDOWN) {
+            switch(e.cbutton.button) {
+                case SDL_CONTROLLER_BUTTON_A:
+                case SDL_CONTROLLER_BUTTON_B:
+                case SDL_CONTROLLER_BUTTON_X:
+                case SDL_CONTROLLER_BUTTON_Y:
+                case SDL_CONTROLLER_BUTTON_START:
+                    fade_in = false;
+                    fade = 0.9f;
+                    return;
+            }
+        }
     }
 }
 
