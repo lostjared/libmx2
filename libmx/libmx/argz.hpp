@@ -407,7 +407,7 @@ inline Arguments proc_args(int &argc, char **argv) {
     int value = 0;
     int tw = 1280, th = 720;
     bool fullscreen = false;
-	std::string filename = "input.mp4";
+	std::string filename;
     try {
         while((value = parser.proc(arg)) != -1) {
             switch(value) {

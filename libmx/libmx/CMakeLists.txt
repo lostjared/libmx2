@@ -83,7 +83,7 @@ endif()
 
 # ─── Vulkan library: mxvk (always static to share volk symbol table) ─────────
 if(VULKAN OR MOLTEN)
-    add_library(mxvk STATIC vk.cpp vk_text.cpp vk_sprite.cpp)
+    add_library(mxvk STATIC vk.cpp vk_model.cpp vk_text.cpp vk_sprite.cpp)
     set_target_properties(mxvk PROPERTIES POSITION_INDEPENDENT_CODE ON)
     message(STATUS "Building mxvk (Vulkan) as a static library.")
 
@@ -119,7 +119,7 @@ if(VULKAN OR MOLTEN)
         INCLUDES DESTINATION ${INSTALL_INCLUDE_DIR}
     )
 
-    install(FILES vk.hpp DESTINATION ${INSTALL_INCLUDE_DIR})
+    install(FILES vk.hpp vk_model.hpp DESTINATION ${INSTALL_INCLUDE_DIR})
     install(FILES include/volk/volk.h DESTINATION ${INSTALL_INCLUDE_DIR}/volk)
 endif()
 
