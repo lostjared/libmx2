@@ -109,19 +109,40 @@ namespace mx {
                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
                     persistentStagingBuffer, persistentStagingMemory);
         
-        VK_CHECK_RESULT(vkMapMemory(device, persistentStagingMemory, 0, size, 0, &persistentStagingMapped));
-        persistentStagingSize = size;
-        VkCommandBufferAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandPool = commandPool;
-        allocInfo.commandBufferCount = 1;
-        VK_CHECK_RESULT(vkAllocateCommandBuffers(device, &allocInfo, &uploadCmdBuffer));
-        VkFenceCreateInfo fenceInfo{};
-        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT; 
-        VK_CHECK_RESULT(vkCreateFence(device, &fenceInfo, nullptr, &uploadFence));
-        stagingResourcesCreated = true;
+        try {
+            VK_CHECK_RESULT(vkMapMemory(device, persistentStagingMemory, 0, size, 0, &persistentStagingMapped));
+            persistentStagingSize = size;
+            VkCommandBufferAllocateInfo allocInfo{};
+            allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+            allocInfo.commandPool = commandPool;
+            allocInfo.commandBufferCount = 1;
+            VK_CHECK_RESULT(vkAllocateCommandBuffers(device, &allocInfo, &uploadCmdBuffer));
+            VkFenceCreateInfo fenceInfo{};
+            fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+            fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT; 
+            VK_CHECK_RESULT(vkCreateFence(device, &fenceInfo, nullptr, &uploadFence));
+            stagingResourcesCreated = true;
+        } catch (...) {
+            if (uploadCmdBuffer != VK_NULL_HANDLE) {
+                vkFreeCommandBuffers(device, commandPool, 1, &uploadCmdBuffer);
+                uploadCmdBuffer = VK_NULL_HANDLE;
+            }
+            if (persistentStagingMapped) {
+                vkUnmapMemory(device, persistentStagingMemory);
+                persistentStagingMapped = nullptr;
+            }
+            if (persistentStagingBuffer != VK_NULL_HANDLE) {
+                vkDestroyBuffer(device, persistentStagingBuffer, nullptr);
+                persistentStagingBuffer = VK_NULL_HANDLE;
+            }
+            if (persistentStagingMemory != VK_NULL_HANDLE) {
+                vkFreeMemory(device, persistentStagingMemory, nullptr);
+                persistentStagingMemory = VK_NULL_HANDLE;
+            }
+            persistentStagingSize = 0;
+            throw;
+        }
     }
 
     void VKSprite::destroyStagingResources() {
@@ -482,7 +503,6 @@ namespace mx {
             }
             updateSpriteTexture(packed.data(), width, height);
         } else {
-            // Wait for any in-flight GPU upload to finish before destroying resources
             if (stagingResourcesCreated && uploadFence != VK_NULL_HANDLE) {
                 vkWaitForFences(device, 1, &uploadFence, VK_TRUE, UINT64_MAX);
             }
@@ -614,6 +634,10 @@ namespace mx {
     }
     
     void VKSprite::createSampler() {
+        if (spriteSampler != VK_NULL_HANDLE) {
+            vkDestroySampler(device, spriteSampler, nullptr);
+            spriteSampler = VK_NULL_HANDLE;
+        }
         VkSamplerCreateInfo samplerInfo{};
         samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
         samplerInfo.magFilter = VK_FILTER_LINEAR;

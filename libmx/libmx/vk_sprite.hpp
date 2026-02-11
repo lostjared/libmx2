@@ -37,6 +37,11 @@ namespace mx {
         VKSprite(VkDevice device, VkPhysicalDevice physicalDevice, VkQueue graphicsQueue,
                  VkCommandPool commandPool);
         ~VKSprite();
+
+        VKSprite(const VKSprite&) = delete;
+        VKSprite& operator=(const VKSprite&) = delete;
+        VKSprite(VKSprite&&) = delete;
+        VKSprite& operator=(VKSprite&&) = delete;
         
         void loadSprite(const std::string &pngPath, const std::string &fragmentShaderPath = "");
         void loadSprite(SDL_Surface* surface, const std::string &fragmentShaderPath = "");
