@@ -97,7 +97,7 @@ namespace mx {
         return result;
     }
 
-    ConfigFile::ConfigFile(const std::string &filex) {
+    ConfigFile::ConfigFile(const std::string &filex) : filename(filex) {
         loadFile(filex);
     }
 
