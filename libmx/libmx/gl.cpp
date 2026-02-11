@@ -949,6 +949,10 @@ namespace gl {
 
 
     GLSprite::~GLSprite() {
+        if (texture != 0 && SDL_GL_GetCurrentContext()) {
+            glDeleteTextures(1, &texture);
+            texture = 0;
+        }
         release();
     }
 

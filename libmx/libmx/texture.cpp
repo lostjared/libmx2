@@ -16,10 +16,14 @@ namespace mx {
  
 
     Texture &Texture::operator=(Texture &&tex) {
-        texture = tex.texture;
-        tex.texture = nullptr;
-        width_ = tex.width_;
-        height_ = tex.height_;
+        if (this != &tex) {
+            if (texture)
+                SDL_DestroyTexture(texture);
+            texture = tex.texture;
+            tex.texture = nullptr;
+            width_ = tex.width_;
+            height_ = tex.height_;
+        }
         return *this;
     }
 
