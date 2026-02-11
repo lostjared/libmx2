@@ -1144,9 +1144,9 @@ public:
 #endif
 
         if(game_over == true) {
-            textTexture = createTextTexture("Double Tap or Press Button Start or Enter Key to Start New Game Your Score: " + std::to_string(score), font.wrapper().unwrap(), white, textWidth, textHeight);
+            textTexture = createTextTexture("Double Tap or Press Start Button or A Key to Start New Game Your Score: " + std::to_string(score), font.wrapper().unwrap(), white, textWidth, textHeight);
         } else if(launch_ship == true) {
-            textTexture = createTextTexture("Double Tap or Press X Button or Z Key to Launch Ship", font.wrapper().unwrap(), white, textWidth, textHeight);
+            textTexture = createTextTexture("Double Tap or Press A Button or A Key to Launch Ship", font.wrapper().unwrap(), white, textWidth, textHeight);
         } else {
             std::string text;
             if(boss.active == false)
