@@ -19,11 +19,6 @@ public:
         if (!sprite) {
             return;
         }
-        int sw = sprite->getWidth();
-        int sh = sprite->getHeight();
-        if (sw <= 0 || sh <= 0) {
-            return;
-        }
         sprite->drawSpriteRect(0, 0, getWidth(), getHeight());
         printText("Hello World", 15, 15, {255, 255, 255, 255});
     }
@@ -46,6 +41,7 @@ int main(int argc, char **argv) {
         window.cleanup();
     } catch (mx::Exception &e) {
         SDL_Log("mx: Exception: %s\n", e.text().c_str());
+        return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
 }
