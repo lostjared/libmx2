@@ -1,4 +1,4 @@
-add_executable(vk_spacerox ${CMAKE_SOURCE_DIR}/vk_spacerox/space.cpp ${CMAKE_SOURCE_DIR}/vk_spacerox/vk.cpp)
+add_executable(vk_spacerox ${CMAKE_SOURCE_DIR}/vk_spacerox/space.cpp)
 target_include_directories(vk_spacerox PRIVATE 
     ${CMAKE_SOURCE_DIR}/libmx 
     ${SDL2_INCLUDE_DIRS} 
