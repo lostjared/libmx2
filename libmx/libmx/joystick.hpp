@@ -12,6 +12,12 @@ namespace mx {
     public:
         Joystick();
         ~Joystick();
+
+        Joystick(const Joystick&) = delete;
+        Joystick& operator=(const Joystick&) = delete;
+        Joystick(Joystick&&) = delete;
+        Joystick& operator=(Joystick&&) = delete;
+
         bool open(int index);
         std::string name() const;
         void close();
@@ -43,6 +49,12 @@ namespace mx {
     public:
         Controller();
         ~Controller();
+
+        Controller(const Controller&) = delete;
+        Controller& operator=(const Controller&) = delete;
+        Controller(Controller&&) = delete;
+        Controller& operator=(Controller&&) = delete;
+
         bool open(int index);
         bool connectEvent(SDL_Event &e);
         std::string name() const;

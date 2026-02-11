@@ -76,6 +76,11 @@ namespace console {
         ConsoleChars();
         ~ConsoleChars();
 
+        ConsoleChars(const ConsoleChars&) = delete;
+        ConsoleChars& operator=(const ConsoleChars&) = delete;
+        ConsoleChars(ConsoleChars&&) = delete;
+        ConsoleChars& operator=(ConsoleChars&&) = delete;
+
         void load(const std::string &fnt, int size, const SDL_Color &c);
         void clear();
 
@@ -96,6 +101,12 @@ namespace console {
     public:
         Console();
         ~Console();
+
+        Console(const Console&) = delete;
+        Console& operator=(const Console&) = delete;
+        Console(Console&&) = delete;
+        Console& operator=(Console&&) = delete;
+
         friend class GLConsole;
         mx::mxUtil *util;
         void create(int x, int y, int w, int h);
@@ -221,6 +232,12 @@ namespace console {
     public:
         GLConsole();
         ~GLConsole();
+
+        GLConsole(const GLConsole&) = delete;
+        GLConsole& operator=(const GLConsole&) = delete;
+        GLConsole(GLConsole&&) = delete;
+        GLConsole& operator=(GLConsole&&) = delete;
+
         void release();
         friend class Console;
         void load(gl::GLWindow *win, const SDL_Rect &rc, const std::string &fnt, int size, const SDL_Color &col);

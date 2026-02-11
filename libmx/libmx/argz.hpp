@@ -35,6 +35,7 @@ struct Argument {
 	String arg_value;
 	ArgType arg_type;
 	String desc;
+	~Argument() = default;
 	Argument() : arg_name{}, arg_letter{}, arg_value{}, arg_type{}, desc{} {}
 	Argument(const Argument &a) : arg_name{a.arg_name}, arg_letter{a.arg_letter}, arg_value{a.arg_value}, arg_type{a.arg_type}, desc{a.desc} {}
 	Argument &operator=(const Argument<String> &a) {
@@ -52,6 +53,7 @@ template <StringType String>
 struct ArgumentData {
 	std::vector<String> args;
 	int argc;
+	~ArgumentData() = default;
 	ArgumentData() = default;
 	ArgumentData(const ArgumentData<String> &a) : args{a.args}, argc{a.argc} {}
 	ArgumentData &operator=(const ArgumentData<String> &a) {
@@ -84,6 +86,7 @@ private:
 template <StringType String>
 class Argz {
 public:
+	~Argz() = default;
 	Argz() = default;
 	Argz(int argc, char **argv) { initArgs(argc, argv); }
 	Argz(const Argz<String> &a) : arg_data{a.arg_data}, arg_info{a.arg_info}, index{a.index}, cindex{a.cindex} {}

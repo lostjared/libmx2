@@ -14,6 +14,13 @@ namespace mx {
     class Input : public Controller {
     public:
         Input() = default;
+        ~Input() = default;
+
+        Input(const Input&) = delete;
+        Input& operator=(const Input&) = delete;
+        Input(Input&&) = delete;
+        Input& operator=(Input&&) = delete;
+
         bool getButton(Input_Button b);
     };
 

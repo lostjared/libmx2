@@ -93,6 +93,12 @@ namespace gl {
     public:
         GLSprite();
         ~GLSprite();
+
+        GLSprite(const GLSprite&) = delete;
+        GLSprite& operator=(const GLSprite&) = delete;
+        GLSprite(GLSprite&&) = delete;
+        GLSprite& operator=(GLSprite&&) = delete;
+
         void release();
         void initSize(float w, float h);
         void setName(const std::string &name);
@@ -130,6 +136,12 @@ namespace gl {
         }
         GLWindow(int width, int height, GLMode mode);
         virtual ~GLWindow();
+
+        GLWindow(const GLWindow&) = delete;
+        GLWindow& operator=(const GLWindow&) = delete;
+        GLWindow(GLWindow&&) = delete;
+        GLWindow& operator=(GLWindow&&) = delete;
+
         void initGL(const std::string &title, int width, int height, bool resize_ = true);
         void initGL(int width, int height);
         void updateViewport();

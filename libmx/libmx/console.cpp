@@ -875,6 +875,8 @@ namespace console {
     }
 
     void GLConsole::release() {
+        // Release font/TTF resources before TTF_Quit
+        console.clear();
         if (!SDL_GL_GetCurrentContext()) {
             texture = 0;
             sprite.reset();

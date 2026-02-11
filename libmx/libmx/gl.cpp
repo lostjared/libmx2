@@ -18,9 +18,7 @@ namespace gl {
         if(object) {
             object.reset();  
         }
-         if(console_active) {
-            console.release();
-        }
+        console.release();
         if (glContext) {
             SDL_GL_DeleteContext(glContext);
             glContext = nullptr;

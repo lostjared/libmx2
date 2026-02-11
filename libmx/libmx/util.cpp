@@ -183,9 +183,12 @@ namespace mx {
     }
 
     void mxUtil::closeJoystick() {
-        for(int i = 0; i < SDL_NumJoysticks(); ++i) {
-            SDL_JoystickClose(stick[i]);
+        for(size_t i = 0; i < stick.size(); ++i) {
+            if(stick[i]) {
+                SDL_JoystickClose(stick[i]);
+            }
         }
+        stick.clear();
     }
 
 }
