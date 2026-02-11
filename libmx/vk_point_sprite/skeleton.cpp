@@ -34,12 +34,25 @@ struct LightOrb {
         strobeTimer += dt;
         if (strobeTimer >= strobeInterval) {
             strobeTimer = 0.0f;
-            std::uniform_int_distribution<int> hueDist(0, 359);
+            static std::uniform_int_distribution<int> hueDist(0, 359);
             hue = static_cast<float>(hueDist(rng));
             updateColorFromHue();
         }
+        if(dir) {
+            size ++;
+            if(size >= 128) {
+                dir = false;
+            } 
+        } else {
+            size --;
+            if(size <= 64) {
+                dir = true;
+            }
+        }
     }
     
+    bool dir;  
+
     void updateColorFromHue() {
         
         float h = hue / 60.0f;
@@ -159,12 +172,16 @@ public:
     }
     
     void createOrbSprite() {
-        SDL_Surface* star = generateStarSurface(128);
-        orbSprite = createSprite(star,
+        orbSprite = createSprite(util.path + "/data/mstar.png",
             util.getFilePath("data/sprite_vert.spv"), 
             util.getFilePath("data/sprite_fragment_frag.spv")
         );
-        SDL_FreeSurface(star);
+        // Enable instanced rendering for all orbs — one draw call instead of N
+        orbSprite->enableInstancing(
+            1024, // max instances (grows automatically if needed)
+            util.getFilePath("data/sprite_instance_vertex_vert.spv"),
+            util.getFilePath("data/sprite_instance_fragment_frag.spv")
+        );
     }
 
     void proc() override {
@@ -181,11 +198,11 @@ public:
             orb.update(dt, w, h, gen);
         }
         
+        float currentTimeSec = static_cast<float>(currentTime) / 1000.0f;
         
         for (const auto& orb : orbs) {
             if (orbSprite) {
-                
-                orbSprite->setShaderParams(orb.r, orb.g, orb.b, orb.brightness);
+                orbSprite->setShaderParams(orb.r, orb.g, orb.b, currentTimeSec);
                 
                 float scale = orb.size / 64.0f;  
                 orbSprite->drawSprite(
@@ -247,6 +264,7 @@ public:
             orb.vx = velDist(gen);
             orb.vy = velDist(gen);
             orb.size = sizeDist(gen);
+            orb.dir = (rand()%2 == 0) ? true : false;
             orb.hue = static_cast<float>(hueDist(gen));
             orb.hueSpeed = 0.0f;  
             orb.pulsePhase = phaseDist(gen);
