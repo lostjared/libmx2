@@ -104,8 +104,10 @@ namespace mx {
         bool getTextDimensions(const std::string &text, int& width, int& height);
         VKSprite* createSprite(const std::string &pngPath, const std::string &vertexShader, const std::string &fragmentShaderPath = "");
         VKSprite* createSprite(SDL_Surface* surface, const std::string &vertexShader, const std::string &fragmentShaderPath = "");
+        VKSprite* createSprite(int width, int height, const std::string &vertexShader = "", const std::string &fragmentShaderPath = "");
         int getWidth() const { return w; }
         int getHeight() const { return h; }
+        void resizeWindow(int width, int height);
         struct {
             float posX = 8.0f, posY = 2.0f;
             float dirX = 0.0f, dirY = 1.0f;

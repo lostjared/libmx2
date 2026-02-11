@@ -662,6 +662,7 @@ if(EXAMPLES)
 #     add_subdirectory(ss420)
      if(CV)
         add_subdirectory(vk_matrix_cv)
+	add_subdirectory(vk_opencv)
      endif()
   endif()
 

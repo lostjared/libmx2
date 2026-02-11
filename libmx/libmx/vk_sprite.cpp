@@ -11,6 +11,8 @@ namespace mx {
         vkDeviceWaitIdle(device);
         drawQueue.clear();
         
+        destroyStagingResources();
+        
         if (quadVertexBuffer != VK_NULL_HANDLE) {
             vkDestroyBuffer(device, quadVertexBuffer, nullptr);
             vkFreeMemory(device, quadVertexBufferMemory, nullptr);
@@ -51,6 +53,8 @@ namespace mx {
     }
 
     void VKSprite::destroySpriteResources() {
+        destroyStagingResources();
+        
         if (descriptorPool != VK_NULL_HANDLE) {
             vkDestroyDescriptorPool(device, descriptorPool, nullptr);
             descriptorPool = VK_NULL_HANDLE;
@@ -93,6 +97,55 @@ namespace mx {
 
         hasCustomShader = false;
         spriteLoaded = false;
+    }
+
+    void VKSprite::createStagingResources(VkDeviceSize size) {
+        if (stagingResourcesCreated && persistentStagingSize >= size) {
+            return; 
+        }
+        destroyStagingResources();
+        
+        createBuffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                    persistentStagingBuffer, persistentStagingMemory);
+        
+        VK_CHECK_RESULT(vkMapMemory(device, persistentStagingMemory, 0, size, 0, &persistentStagingMapped));
+        persistentStagingSize = size;
+        VkCommandBufferAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocInfo.commandPool = commandPool;
+        allocInfo.commandBufferCount = 1;
+        VK_CHECK_RESULT(vkAllocateCommandBuffers(device, &allocInfo, &uploadCmdBuffer));
+        VkFenceCreateInfo fenceInfo{};
+        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT; 
+        VK_CHECK_RESULT(vkCreateFence(device, &fenceInfo, nullptr, &uploadFence));
+        stagingResourcesCreated = true;
+    }
+
+    void VKSprite::destroyStagingResources() {
+        if (!stagingResourcesCreated) return;
+        
+        if (uploadFence != VK_NULL_HANDLE) {
+            vkWaitForFences(device, 1, &uploadFence, VK_TRUE, UINT64_MAX);
+            vkDestroyFence(device, uploadFence, nullptr);
+            uploadFence = VK_NULL_HANDLE;
+        }
+        if (uploadCmdBuffer != VK_NULL_HANDLE) {
+            vkFreeCommandBuffers(device, commandPool, 1, &uploadCmdBuffer);
+            uploadCmdBuffer = VK_NULL_HANDLE;
+        }
+        if (persistentStagingBuffer != VK_NULL_HANDLE) {
+            vkUnmapMemory(device, persistentStagingMemory);
+            vkDestroyBuffer(device, persistentStagingBuffer, nullptr);
+            vkFreeMemory(device, persistentStagingMemory, nullptr);
+            persistentStagingBuffer = VK_NULL_HANDLE;
+            persistentStagingMemory = VK_NULL_HANDLE;
+            persistentStagingMapped = nullptr;
+            persistentStagingSize = 0;
+        }
+        stagingResourcesCreated = false;
     }
     
     void VKSprite::createCustomPipeline() {
@@ -307,7 +360,231 @@ namespace mx {
         }
         spriteLoaded = true;
     }
+
+    void VKSprite::createEmptySprite(int width, int height, const std::string &vertexShaderPath, const std::string &fragmentShaderPath) {
+        if (width <= 0 || height <= 0) {
+            throw mx::Exception("VKSprite::createEmptySprite invalid dimensions");
+        }
+        if (spriteLoaded || spriteImage != VK_NULL_HANDLE || fragmentShaderModule != VK_NULL_HANDLE) {
+            destroySpriteResources();
+        }
+        spriteWidth = width;
+        spriteHeight = height;
+        
+        if (!vertexShaderPath.empty()) {
+            setVertexShaderPath(vertexShaderPath);
+        }
+        
+        createImage(width, height, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
+                   VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, spriteImage, spriteImageMemory);
+        
+        VkBuffer stagingBuffer;
+        VkDeviceMemory stagingMemory;
+        VkDeviceSize imageSize = static_cast<VkDeviceSize>(width) * height * 4;
+        
+        createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                    stagingBuffer, stagingMemory);
+        
+        void *data;
+        VK_CHECK_RESULT(vkMapMemory(device, stagingMemory, 0, imageSize, 0, &data));
+        memset(data, 0, imageSize);
+        vkUnmapMemory(device, stagingMemory);
+        
+        transitionImageLayout(spriteImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        copyBufferToImage(stagingBuffer, spriteImage, width, height);
+        transitionImageLayout(spriteImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        
+        vkDestroyBuffer(device, stagingBuffer, nullptr);
+        vkFreeMemory(device, stagingMemory, nullptr);
+        
+        spriteImageView = createImageView(spriteImage, VK_FORMAT_R8G8B8A8_UNORM);
+        createSampler();
+        createQuadBuffer();
+        createDescriptorPool();
     
+        createStagingResources(imageSize);
+        
+        if (!fragmentShaderPath.empty()) {
+            auto shaderCode = readShaderFile(fragmentShaderPath);
+            fragmentShaderModule = createShaderModule(shaderCode);
+            hasCustomShader = true;
+            
+            if (renderPass != VK_NULL_HANDLE && descriptorSetLayout != VK_NULL_HANDLE) {
+                createCustomPipeline();
+            }
+        }
+        
+        spriteLoaded = true;
+    }
+
+    void VKSprite::updateTexture(SDL_Surface* surface) {
+        if (!surface) {
+            throw mx::Exception("VKSprite::updateTexture called with null surface");
+        }
+        if (!spriteLoaded) {
+            throw mx::Exception("VKSprite::updateTexture called before sprite was loaded");
+        }
+        SDL_Surface* rgbaSurface = convertToRGBA(surface);
+        if (!rgbaSurface) {
+            throw mx::Exception("Failed to convert surface to RGBA in updateTexture");
+        }
+        if (rgbaSurface->w == spriteWidth && rgbaSurface->h == spriteHeight) {
+            updateSpriteTexture(rgbaSurface->pixels, rgbaSurface->w, rgbaSurface->h);
+        } else {
+            if (stagingResourcesCreated && uploadFence != VK_NULL_HANDLE) {
+                vkWaitForFences(device, 1, &uploadFence, VK_TRUE, UINT64_MAX);
+            }
+            if (spriteImageView != VK_NULL_HANDLE) {
+                vkDestroyImageView(device, spriteImageView, nullptr);
+                spriteImageView = VK_NULL_HANDLE;
+            }
+            if (spriteImage != VK_NULL_HANDLE) {
+                vkDestroyImage(device, spriteImage, nullptr);
+                spriteImage = VK_NULL_HANDLE;
+            }
+            if (spriteImageMemory != VK_NULL_HANDLE) {
+                vkFreeMemory(device, spriteImageMemory, nullptr);
+                spriteImageMemory = VK_NULL_HANDLE;
+            }
+            spriteWidth = rgbaSurface->w;
+            spriteHeight = rgbaSurface->h;
+            createSpriteTexture(rgbaSurface);
+            if (descriptorPool != VK_NULL_HANDLE) {
+                vkDestroyDescriptorPool(device, descriptorPool, nullptr);
+                descriptorPool = VK_NULL_HANDLE;
+                descriptorSet = VK_NULL_HANDLE;
+            }
+            createDescriptorPool();
+        }
+        SDL_FreeSurface(rgbaSurface);
+    }
+
+    void VKSprite::updateTexture(const void* pixels, int width, int height, int pitch) {
+        if (!pixels) {
+            throw mx::Exception("VKSprite::updateTexture called with null pixel data");
+        }
+        if (!spriteLoaded) {
+            throw mx::Exception("VKSprite::updateTexture called before sprite was loaded");
+        }
+        if (width <= 0 || height <= 0) {
+            throw mx::Exception("VKSprite::updateTexture invalid dimensions");
+        }
+        int srcPitch = (pitch > 0) ? pitch : width * 4;
+        if (width == spriteWidth && height == spriteHeight && srcPitch == width * 4) {
+            updateSpriteTexture(pixels, width, height);
+        } else if (width == spriteWidth && height == spriteHeight) {
+            std::vector<uint8_t> packed(width * height * 4);
+            const uint8_t* src = static_cast<const uint8_t*>(pixels);
+            for (int row = 0; row < height; ++row) {
+                memcpy(packed.data() + row * width * 4, src + row * srcPitch, width * 4);
+            }
+            updateSpriteTexture(packed.data(), width, height);
+        } else {
+            // Wait for any in-flight GPU upload to finish before destroying resources
+            if (stagingResourcesCreated && uploadFence != VK_NULL_HANDLE) {
+                vkWaitForFences(device, 1, &uploadFence, VK_TRUE, UINT64_MAX);
+            }
+            if (spriteImageView != VK_NULL_HANDLE) {
+                vkDestroyImageView(device, spriteImageView, nullptr);
+                spriteImageView = VK_NULL_HANDLE;
+            }
+            if (spriteImage != VK_NULL_HANDLE) {
+                vkDestroyImage(device, spriteImage, nullptr);
+                spriteImage = VK_NULL_HANDLE;
+            }
+            if (spriteImageMemory != VK_NULL_HANDLE) {
+                vkFreeMemory(device, spriteImageMemory, nullptr);
+                spriteImageMemory = VK_NULL_HANDLE;
+            }
+            spriteWidth = width;
+            spriteHeight = height;
+            std::vector<uint8_t> packed;
+            const void* texData = pixels;
+            if (srcPitch != width * 4) {
+                packed.resize(width * height * 4);
+                const uint8_t* src = static_cast<const uint8_t*>(pixels);
+                for (int row = 0; row < height; ++row) {
+                    memcpy(packed.data() + row * width * 4, src + row * srcPitch, width * 4);
+                }
+                texData = packed.data();
+            }
+            SDL_Surface* tmpSurface = SDL_CreateRGBSurfaceFrom(
+                const_cast<void*>(texData), width, height, 32, width * 4,
+                0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000);
+            if (!tmpSurface) {
+                throw mx::Exception("VKSprite::updateTexture failed to create temp surface");
+            }
+            createSpriteTexture(tmpSurface);
+            SDL_FreeSurface(tmpSurface);
+            if (descriptorPool != VK_NULL_HANDLE) {
+                vkDestroyDescriptorPool(device, descriptorPool, nullptr);
+                descriptorPool = VK_NULL_HANDLE;
+                descriptorSet = VK_NULL_HANDLE;
+            }
+            createDescriptorPool();
+        }
+    }
+
+    void VKSprite::updateSpriteTexture(const void* pixels, uint32_t width, uint32_t height) {
+        VkDeviceSize imageSize = static_cast<VkDeviceSize>(width) * height * 4;
+    
+        createStagingResources(imageSize);
+        VK_CHECK_RESULT(vkWaitForFences(device, 1, &uploadFence, VK_TRUE, UINT64_MAX));
+        VK_CHECK_RESULT(vkResetFences(device, 1, &uploadFence));
+        memcpy(persistentStagingMapped, pixels, imageSize);
+        VK_CHECK_RESULT(vkResetCommandBuffer(uploadCmdBuffer, 0));
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        VK_CHECK_RESULT(vkBeginCommandBuffer(uploadCmdBuffer, &beginInfo));
+        VkImageMemoryBarrier barrier{};
+        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        barrier.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.image = spriteImage;
+        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        barrier.subresourceRange.baseMipLevel = 0;
+        barrier.subresourceRange.levelCount = 1;
+        barrier.subresourceRange.baseArrayLayer = 0;
+        barrier.subresourceRange.layerCount = 1;
+        barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        vkCmdPipelineBarrier(uploadCmdBuffer, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                            0, 0, nullptr, 0, nullptr, 1, &barrier);
+    
+        VkBufferImageCopy region{};
+        region.bufferOffset = 0;
+        region.bufferRowLength = 0;
+        region.bufferImageHeight = 0;
+        region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        region.imageSubresource.mipLevel = 0;
+        region.imageSubresource.baseArrayLayer = 0;
+        region.imageSubresource.layerCount = 1;
+        region.imageOffset = {0, 0, 0};
+        region.imageExtent = {width, height, 1};
+        vkCmdCopyBufferToImage(uploadCmdBuffer, persistentStagingBuffer, spriteImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+        
+        barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        vkCmdPipelineBarrier(uploadCmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                            0, 0, nullptr, 0, nullptr, 1, &barrier);
+        
+        VK_CHECK_RESULT(vkEndCommandBuffer(uploadCmdBuffer));
+        
+        
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &uploadCmdBuffer;
+        VK_CHECK_RESULT(vkQueueSubmit(graphicsQueue, 1, &submitInfo, uploadFence));
+    }
+
     void VKSprite::createSpriteTexture(SDL_Surface* surface) {
         createImage(surface->w, surface->h, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
                    VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
@@ -315,7 +592,7 @@ namespace mx {
         
         VkBuffer stagingBuffer;
         VkDeviceMemory stagingMemory;
-        VkDeviceSize imageSize = surface->w * surface->h * 4;
+        VkDeviceSize imageSize = static_cast<VkDeviceSize>(surface->w) * surface->h * 4;
         
         createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -547,6 +824,11 @@ namespace mx {
             barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
             sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
             destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        } else if (oldLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+            barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+            barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            sourceStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+            destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
         } else {
             throw std::invalid_argument("unsupported layout transition!");
         }

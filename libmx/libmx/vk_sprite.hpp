@@ -40,10 +40,13 @@ namespace mx {
         
         void loadSprite(const std::string &pngPath, const std::string &fragmentShaderPath = "");
         void loadSprite(SDL_Surface* surface, const std::string &fragmentShaderPath = "");
+        void createEmptySprite(int width, int height, const std::string &vertexShaderPath = "", const std::string &fragmentShaderPath = "");
         void drawSprite(int x, int y);
         void drawSprite(int x, int y, float scaleX, float scaleY);
         void drawSprite(int x, int y, float scaleX, float scaleY, float rotation);
         void drawSpriteRect(int x, int y, int w, int h);
+        void updateTexture(SDL_Surface* surface);
+        void updateTexture(const void* pixels, int width, int height, int pitch = 0);
         void setShaderParams(float p1 = 0.0f, float p2 = 0.0f, float p3 = 0.0f, float p4 = 0.0f);
         void renderSprites(VkCommandBuffer cmdBuffer, VkPipelineLayout pipelineLayout,
                           uint32_t screenWidth, uint32_t screenHeight);
@@ -103,6 +106,16 @@ namespace mx {
         void createDescriptorPool();
         VkDescriptorSet createDescriptorSet(VkImageView imageView);
         void destroySpriteResources();
+        
+        VkBuffer persistentStagingBuffer = VK_NULL_HANDLE;
+        VkDeviceMemory persistentStagingMemory = VK_NULL_HANDLE;
+        void* persistentStagingMapped = nullptr;
+        VkDeviceSize persistentStagingSize = 0;
+        VkFence uploadFence = VK_NULL_HANDLE;
+        VkCommandBuffer uploadCmdBuffer = VK_NULL_HANDLE;
+        bool stagingResourcesCreated = false;
+        void createStagingResources(VkDeviceSize size);
+        void destroyStagingResources();
         void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
                          VkMemoryPropertyFlags properties, VkBuffer& buffer,
                          VkDeviceMemory& bufferMemory);
@@ -118,6 +131,7 @@ namespace mx {
         void createSampler();
         SDL_Surface* convertToRGBA(SDL_Surface* surface);
         void createSpriteTexture(SDL_Surface* surface);
+        void updateSpriteTexture(const void* pixels, uint32_t width, uint32_t height);
         VkShaderModule createShaderModule(const std::vector<char>& code);
         std::vector<char> readShaderFile(const std::string& filename);
     };
