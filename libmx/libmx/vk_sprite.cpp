@@ -258,33 +258,31 @@ namespace mx {
         
         VkPipelineShaderStageCreateInfo shaderStages[] = { vertStageInfo, fragStageInfo };
         
-        // Binding 0: per-vertex quad data
-        // Binding 1: per-instance sprite data
         std::array<VkVertexInputBindingDescription, 2> bindingDescs{};
         bindingDescs[0].binding = 0;
-        bindingDescs[0].stride = sizeof(float) * 4; // pos(2) + texcoord(2)
+        bindingDescs[0].stride = sizeof(float) * 4; 
         bindingDescs[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         bindingDescs[1].binding = 1;
-        bindingDescs[1].stride = sizeof(SpriteInstanceData); // 32 bytes
+        bindingDescs[1].stride = sizeof(SpriteInstanceData);
         bindingDescs[1].inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
         
         std::array<VkVertexInputAttributeDescription, 4> attrDescs{};
-        // location 0: vertex position
+    
         attrDescs[0].binding = 0;
         attrDescs[0].location = 0;
         attrDescs[0].format = VK_FORMAT_R32G32_SFLOAT;
         attrDescs[0].offset = 0;
-        // location 1: vertex texcoord
+    
         attrDescs[1].binding = 0;
         attrDescs[1].location = 1;
         attrDescs[1].format = VK_FORMAT_R32G32_SFLOAT;
         attrDescs[1].offset = sizeof(float) * 2;
-        // location 2: instance posSize (x,y,w,h)
+    
         attrDescs[2].binding = 1;
         attrDescs[2].location = 2;
         attrDescs[2].format = VK_FORMAT_R32G32B32A32_SFLOAT;
         attrDescs[2].offset = 0;
-        // location 3: instance params (r,g,b,time)
+    
         attrDescs[3].binding = 1;
         attrDescs[3].location = 3;
         attrDescs[3].format = VK_FORMAT_R32G32B32A32_SFLOAT;
@@ -350,7 +348,6 @@ namespace mx {
         colorBlending.attachmentCount = 1;
         colorBlending.pAttachments = &colorBlendAttachment;
         
-        // Push constants: only screen size (2 floats) for instanced path
         VkPushConstantRange pushConstantRange{};
         pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
         pushConstantRange.offset = 0;
@@ -909,16 +906,16 @@ namespace mx {
             descriptorSet = createDescriptorSet(spriteImageView);
         }
         
-        // ---- Instanced fast path: one draw call for all sprites ----
+        
         if (instancingEnabled && instancedPipeline != VK_NULL_HANDLE && instanceBuffer != VK_NULL_HANDLE) {
             uint32_t instanceCount = static_cast<uint32_t>(drawQueue.size());
             
-            // Grow instance buffer if needed
+        
             if (instanceCount > instanceBufferCapacity) {
                 ensureInstanceBuffer(instanceCount * 2);
             }
             
-            // Upload all instance data in one memcpy
+        
             SpriteInstanceData* dst = static_cast<SpriteInstanceData*>(instanceBufferMapped);
             for (uint32_t i = 0; i < instanceCount; ++i) {
                 const auto &cmd = drawQueue[i];
@@ -936,23 +933,23 @@ namespace mx {
             vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, instancedPipelineLayout,
                                    0, 1, &descriptorSet, 0, nullptr);
             
-            // Bind quad vertices (binding 0) and instance buffer (binding 1)
+        
             VkBuffer buffers[] = {quadVertexBuffer, instanceBuffer};
             VkDeviceSize bufOffsets[] = {0, 0};
             vkCmdBindVertexBuffers(cmdBuffer, 0, 2, buffers, bufOffsets);
             vkCmdBindIndexBuffer(cmdBuffer, quadIndexBuffer, 0, VK_INDEX_TYPE_UINT16);
             
-            // Push only screen size
+        
             float screenSize[2] = {(float)screenWidth, (float)screenHeight};
             vkCmdPushConstants(cmdBuffer, instancedPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
                               0, sizeof(screenSize), screenSize);
             
-            // Single instanced draw call!
+        
             vkCmdDrawIndexed(cmdBuffer, 6, instanceCount, 0, 0, 0);
             return;
         }
         
-        // ---- Original per-draw-call path ----
+        
         VkPipelineLayout layoutToUse = (customPipeline != VK_NULL_HANDLE) ? customPipelineLayout : pipelineLayout;
         if (customPipeline != VK_NULL_HANDLE) {
             vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, customPipeline);

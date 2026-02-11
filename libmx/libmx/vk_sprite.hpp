@@ -65,8 +65,6 @@ namespace mx {
         VkPipeline getPipeline() const { return customPipeline; }
         VkPipelineLayout getPipelineLayout() const { return customPipelineLayout; }
         VkSampler spriteSampler = VK_NULL_HANDLE;
-        
-        // Instanced rendering — batches all queued draws into one draw call
         void enableInstancing(uint32_t maxInstances,
                               const std::string &instanceVertShaderPath,
                               const std::string &instanceFragShaderPath);
