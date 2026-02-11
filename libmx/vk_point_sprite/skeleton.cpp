@@ -136,49 +136,13 @@ public:
         lastTime = SDL_GetTicks();
     }
 
-    SDL_Surface* generateStarSurface(int size, float coreRadiusFrac = 0.18f, float glowRadiusFrac = 0.48f) {
-        SDL_Surface* surf = SDL_CreateRGBSurfaceWithFormat(0, size, size, 32, SDL_PIXELFORMAT_RGBA32);
-        if (!surf) return nullptr;
-
-        Uint32* pixels = (Uint32*)surf->pixels;
-        int cx = size / 2, cy = size / 2;
-        float maxDist = size * glowRadiusFrac;
-        float coreDist = size * coreRadiusFrac;
-
-        for (int y = 0; y < size; ++y) {
-            for (int x = 0; x < size; ++x) {
-                float dx = x - cx, dy = y - cy;
-                float dist = std::sqrt(dx*dx + dy*dy);
-
-                float intensity = 0.0f;
-                if (dist < coreDist) {
-                    intensity = 1.0f;
-                } else if (dist < maxDist) {
-                    float glow = 1.0f - (dist - coreDist) / (maxDist - coreDist);
-                    intensity = std::pow(glow, 2.5f); 
-                }
-                float angle = std::atan2(dy, dx);
-                float spike = 0.15f * std::pow(std::cos(angle * 6.0f), 12.0f);
-                intensity += spike * (1.0f - dist / maxDist);
-                intensity = std::min(1.0f, std::max(0.0f, intensity));
-                Uint8 r = static_cast<Uint8>(255 * intensity);
-                Uint8 g = static_cast<Uint8>(220 * intensity);
-                Uint8 b = static_cast<Uint8>(180 * intensity);
-                Uint8 a = static_cast<Uint8>(255 * intensity);
-                pixels[y * size + x] = SDL_MapRGBA(surf->format, r, g, b, a);
-            }
-        }
-        return surf;
-    }
-    
     void createOrbSprite() {
         orbSprite = createSprite(util.path + "/data/mstar.png",
             util.getFilePath("data/sprite_vert.spv"), 
             util.getFilePath("data/sprite_fragment_frag.spv")
         );
-        // Enable instanced rendering for all orbs — one draw call instead of N
         orbSprite->enableInstancing(
-            1024, // max instances (grows automatically if needed)
+            1024, 
             util.getFilePath("data/sprite_instance_vertex_vert.spv"),
             util.getFilePath("data/sprite_instance_fragment_frag.spv")
         );
@@ -254,8 +218,8 @@ public:
         std::uniform_real_distribution<float> minBrightDist(0.2f, 0.5f);
         std::uniform_real_distribution<float> maxBrightDist(0.8f, 1.5f);
         std::uniform_int_distribution<int> hueDist(0, 359);
-        std::uniform_real_distribution<float> strobeIntervalDist(1.0f, 3.0f);  // Slower strobe: 1-3 seconds
-        std::uniform_real_distribution<float> strobeTimerDist(0.0f, 3.0f);     // Random offset up to 3 seconds
+        std::uniform_real_distribution<float> strobeIntervalDist(1.0f, 3.0f);
+        std::uniform_real_distribution<float> strobeTimerDist(0.0f, 3.0f);
         
         for (int i = 0; i < count; i++) {
             LightOrb orb;
@@ -264,7 +228,7 @@ public:
             orb.vx = velDist(gen);
             orb.vy = velDist(gen);
             orb.size = sizeDist(gen);
-            orb.dir = (rand()%2 == 0) ? true : false;
+            orb.dir = std::uniform_int_distribution<int>(0, 1)(gen) == 0;
             orb.hue = static_cast<float>(hueDist(gen));
             orb.hueSpeed = 0.0f;  
             orb.pulsePhase = phaseDist(gen);
@@ -288,8 +252,8 @@ public:
         std::uniform_real_distribution<float> pulseSpeedDist(1.0f, 4.0f);
         std::uniform_real_distribution<float> minBrightDist(0.2f, 0.5f);
         std::uniform_real_distribution<float> maxBrightDist(0.8f, 1.5f);
-        std::uniform_real_distribution<float> strobeIntervalDist(1.0f, 3.0f);  // Slower strobe: 1-3 seconds
-        std::uniform_real_distribution<float> strobeTimerDist(0.0f, 3.0f);     // Random offset up to 3 seconds
+        std::uniform_real_distribution<float> strobeIntervalDist(1.0f, 3.0f);
+        std::uniform_real_distribution<float> strobeTimerDist(0.0f, 3.0f);
         
         LightOrb orb;
         orb.x = px;
