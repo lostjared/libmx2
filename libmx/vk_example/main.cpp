@@ -1,9 +1,7 @@
 #include "vk.hpp"
 #include "SDL.h"
-
-#if defined(__APPLE__) || defined(_WIN32) || defined(__linux__)
 #include "argz.hpp"
-#endif
+
 
 class ExampleWindow : public mx::VKWindow {
 public:
