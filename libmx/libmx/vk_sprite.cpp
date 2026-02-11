@@ -50,6 +50,8 @@ namespace mx {
         if (customPipelineLayout != VK_NULL_HANDLE) {
             vkDestroyPipelineLayout(device, customPipelineLayout, nullptr);
         }
+        
+        destroyInstanceResources();
     }
 
     void VKSprite::destroySpriteResources() {
@@ -169,6 +171,223 @@ namespace mx {
         stagingResourcesCreated = false;
     }
     
+    void VKSprite::destroyInstanceResources() {
+        if (instanceBuffer != VK_NULL_HANDLE) {
+            if (instanceBufferMapped) {
+                vkUnmapMemory(device, instanceBufferMemory);
+                instanceBufferMapped = nullptr;
+            }
+            vkDestroyBuffer(device, instanceBuffer, nullptr);
+            vkFreeMemory(device, instanceBufferMemory, nullptr);
+            instanceBuffer = VK_NULL_HANDLE;
+            instanceBufferMemory = VK_NULL_HANDLE;
+            instanceBufferCapacity = 0;
+        }
+        if (instancedPipeline != VK_NULL_HANDLE) {
+            vkDestroyPipeline(device, instancedPipeline, nullptr);
+            instancedPipeline = VK_NULL_HANDLE;
+        }
+        if (instancedPipelineLayout != VK_NULL_HANDLE) {
+            vkDestroyPipelineLayout(device, instancedPipelineLayout, nullptr);
+            instancedPipelineLayout = VK_NULL_HANDLE;
+        }
+        instancingEnabled = false;
+    }
+
+    void VKSprite::ensureInstanceBuffer(uint32_t count) {
+        if (instanceBufferCapacity >= count && instanceBuffer != VK_NULL_HANDLE) return;
+        
+        if (instanceBuffer != VK_NULL_HANDLE) {
+            if (instanceBufferMapped) {
+                vkUnmapMemory(device, instanceBufferMemory);
+                instanceBufferMapped = nullptr;
+            }
+            vkDestroyBuffer(device, instanceBuffer, nullptr);
+            vkFreeMemory(device, instanceBufferMemory, nullptr);
+            instanceBuffer = VK_NULL_HANDLE;
+            instanceBufferMemory = VK_NULL_HANDLE;
+        }
+        
+        VkDeviceSize size = sizeof(SpriteInstanceData) * count;
+        createBuffer(size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                    instanceBuffer, instanceBufferMemory);
+        
+        VK_CHECK_RESULT(vkMapMemory(device, instanceBufferMemory, 0, size, 0, &instanceBufferMapped));
+        instanceBufferCapacity = count;
+    }
+
+    void VKSprite::enableInstancing(uint32_t maxInstances,
+                                    const std::string &instanceVertShaderPath,
+                                    const std::string &instanceFragShaderPath) {
+        if (renderPass == VK_NULL_HANDLE || descriptorSetLayout == VK_NULL_HANDLE) {
+            throw mx::Exception("VKSprite::enableInstancing called before renderPass/descriptorSetLayout set");
+        }
+        ensureInstanceBuffer(maxInstances);
+        createQuadBuffer();
+        createInstancedPipeline(instanceVertShaderPath, instanceFragShaderPath);
+        instancingEnabled = true;
+    }
+
+    void VKSprite::createInstancedPipeline(const std::string &vertPath, const std::string &fragPath) {
+        if (instancedPipeline != VK_NULL_HANDLE) {
+            vkDestroyPipeline(device, instancedPipeline, nullptr);
+            instancedPipeline = VK_NULL_HANDLE;
+        }
+        if (instancedPipelineLayout != VK_NULL_HANDLE) {
+            vkDestroyPipelineLayout(device, instancedPipelineLayout, nullptr);
+            instancedPipelineLayout = VK_NULL_HANDLE;
+        }
+        
+        auto vertShaderCode = readShaderFile(vertPath);
+        auto fragShaderCode = readShaderFile(fragPath);
+        VkShaderModule vertModule = createShaderModule(vertShaderCode);
+        VkShaderModule fragModule = createShaderModule(fragShaderCode);
+        
+        VkPipelineShaderStageCreateInfo vertStageInfo{};
+        vertStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        vertStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+        vertStageInfo.module = vertModule;
+        vertStageInfo.pName = "main";
+        
+        VkPipelineShaderStageCreateInfo fragStageInfo{};
+        fragStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        fragStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+        fragStageInfo.module = fragModule;
+        fragStageInfo.pName = "main";
+        
+        VkPipelineShaderStageCreateInfo shaderStages[] = { vertStageInfo, fragStageInfo };
+        
+        // Binding 0: per-vertex quad data
+        // Binding 1: per-instance sprite data
+        std::array<VkVertexInputBindingDescription, 2> bindingDescs{};
+        bindingDescs[0].binding = 0;
+        bindingDescs[0].stride = sizeof(float) * 4; // pos(2) + texcoord(2)
+        bindingDescs[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        bindingDescs[1].binding = 1;
+        bindingDescs[1].stride = sizeof(SpriteInstanceData); // 32 bytes
+        bindingDescs[1].inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
+        
+        std::array<VkVertexInputAttributeDescription, 4> attrDescs{};
+        // location 0: vertex position
+        attrDescs[0].binding = 0;
+        attrDescs[0].location = 0;
+        attrDescs[0].format = VK_FORMAT_R32G32_SFLOAT;
+        attrDescs[0].offset = 0;
+        // location 1: vertex texcoord
+        attrDescs[1].binding = 0;
+        attrDescs[1].location = 1;
+        attrDescs[1].format = VK_FORMAT_R32G32_SFLOAT;
+        attrDescs[1].offset = sizeof(float) * 2;
+        // location 2: instance posSize (x,y,w,h)
+        attrDescs[2].binding = 1;
+        attrDescs[2].location = 2;
+        attrDescs[2].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+        attrDescs[2].offset = 0;
+        // location 3: instance params (r,g,b,time)
+        attrDescs[3].binding = 1;
+        attrDescs[3].location = 3;
+        attrDescs[3].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+        attrDescs[3].offset = sizeof(float) * 4;
+        
+        VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+        vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescs.size());
+        vertexInputInfo.pVertexBindingDescriptions = bindingDescs.data();
+        vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attrDescs.size());
+        vertexInputInfo.pVertexAttributeDescriptions = attrDescs.data();
+        
+        VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+        inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+        inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        inputAssembly.primitiveRestartEnable = VK_FALSE;
+        
+        std::vector<VkDynamicState> dynamicStates = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+        VkPipelineDynamicStateCreateInfo dynamicState{};
+        dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
+        dynamicState.pDynamicStates = dynamicStates.data();
+        
+        VkPipelineViewportStateCreateInfo viewportState{};
+        viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+        viewportState.viewportCount = 1;
+        viewportState.scissorCount = 1;
+        
+        VkPipelineRasterizationStateCreateInfo rasterizer{};
+        rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+        rasterizer.depthClampEnable = VK_FALSE;
+        rasterizer.rasterizerDiscardEnable = VK_FALSE;
+        rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+        rasterizer.lineWidth = 1.0f;
+        rasterizer.cullMode = VK_CULL_MODE_NONE;
+        rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        rasterizer.depthBiasEnable = VK_FALSE;
+        
+        VkPipelineMultisampleStateCreateInfo multisampling{};
+        multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+        multisampling.sampleShadingEnable = VK_FALSE;
+        multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+        
+        VkPipelineDepthStencilStateCreateInfo depthStencil{};
+        depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+        depthStencil.depthTestEnable = VK_FALSE;
+        depthStencil.depthWriteEnable = VK_FALSE;
+        
+        VkPipelineColorBlendAttachmentState colorBlendAttachment{};
+        colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+            VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        colorBlendAttachment.blendEnable = VK_TRUE;
+        colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+        colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+        colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+        
+        VkPipelineColorBlendStateCreateInfo colorBlending{};
+        colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+        colorBlending.logicOpEnable = VK_FALSE;
+        colorBlending.attachmentCount = 1;
+        colorBlending.pAttachments = &colorBlendAttachment;
+        
+        // Push constants: only screen size (2 floats) for instanced path
+        VkPushConstantRange pushConstantRange{};
+        pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        pushConstantRange.offset = 0;
+        pushConstantRange.size = sizeof(float) * 2;
+        
+        VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+        pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        pipelineLayoutInfo.setLayoutCount = 1;
+        pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
+        pipelineLayoutInfo.pushConstantRangeCount = 1;
+        pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
+        
+        VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &instancedPipelineLayout));
+        
+        VkGraphicsPipelineCreateInfo pipelineInfo{};
+        pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        pipelineInfo.stageCount = 2;
+        pipelineInfo.pStages = shaderStages;
+        pipelineInfo.pVertexInputState = &vertexInputInfo;
+        pipelineInfo.pInputAssemblyState = &inputAssembly;
+        pipelineInfo.pViewportState = &viewportState;
+        pipelineInfo.pRasterizationState = &rasterizer;
+        pipelineInfo.pMultisampleState = &multisampling;
+        pipelineInfo.pDepthStencilState = &depthStencil;
+        pipelineInfo.pColorBlendState = &colorBlending;
+        pipelineInfo.pDynamicState = &dynamicState;
+        pipelineInfo.layout = instancedPipelineLayout;
+        pipelineInfo.renderPass = renderPass;
+        pipelineInfo.subpass = 0;
+        pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+        
+        VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &instancedPipeline));
+        
+        vkDestroyShaderModule(device, vertModule, nullptr);
+        vkDestroyShaderModule(device, fragModule, nullptr);
+    }
+
     void VKSprite::createCustomPipeline() {
         if (!hasCustomShader || fragmentShaderModule == VK_NULL_HANDLE) return;
         if (renderPass == VK_NULL_HANDLE || descriptorSetLayout == VK_NULL_HANDLE) return;
@@ -689,6 +908,51 @@ namespace mx {
         if (descriptorSet == VK_NULL_HANDLE) {
             descriptorSet = createDescriptorSet(spriteImageView);
         }
+        
+        // ---- Instanced fast path: one draw call for all sprites ----
+        if (instancingEnabled && instancedPipeline != VK_NULL_HANDLE && instanceBuffer != VK_NULL_HANDLE) {
+            uint32_t instanceCount = static_cast<uint32_t>(drawQueue.size());
+            
+            // Grow instance buffer if needed
+            if (instanceCount > instanceBufferCapacity) {
+                ensureInstanceBuffer(instanceCount * 2);
+            }
+            
+            // Upload all instance data in one memcpy
+            SpriteInstanceData* dst = static_cast<SpriteInstanceData*>(instanceBufferMapped);
+            for (uint32_t i = 0; i < instanceCount; ++i) {
+                const auto &cmd = drawQueue[i];
+                dst[i].posX = cmd.x;
+                dst[i].posY = cmd.y;
+                dst[i].sizeW = cmd.w;
+                dst[i].sizeH = cmd.h;
+                dst[i].params[0] = cmd.params.x;
+                dst[i].params[1] = cmd.params.y;
+                dst[i].params[2] = cmd.params.z;
+                dst[i].params[3] = cmd.params.w;
+            }
+            
+            vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, instancedPipeline);
+            vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, instancedPipelineLayout,
+                                   0, 1, &descriptorSet, 0, nullptr);
+            
+            // Bind quad vertices (binding 0) and instance buffer (binding 1)
+            VkBuffer buffers[] = {quadVertexBuffer, instanceBuffer};
+            VkDeviceSize bufOffsets[] = {0, 0};
+            vkCmdBindVertexBuffers(cmdBuffer, 0, 2, buffers, bufOffsets);
+            vkCmdBindIndexBuffer(cmdBuffer, quadIndexBuffer, 0, VK_INDEX_TYPE_UINT16);
+            
+            // Push only screen size
+            float screenSize[2] = {(float)screenWidth, (float)screenHeight};
+            vkCmdPushConstants(cmdBuffer, instancedPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
+                              0, sizeof(screenSize), screenSize);
+            
+            // Single instanced draw call!
+            vkCmdDrawIndexed(cmdBuffer, 6, instanceCount, 0, 0, 0);
+            return;
+        }
+        
+        // ---- Original per-draw-call path ----
         VkPipelineLayout layoutToUse = (customPipeline != VK_NULL_HANDLE) ? customPipelineLayout : pipelineLayout;
         if (customPipeline != VK_NULL_HANDLE) {
             vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, customPipeline);

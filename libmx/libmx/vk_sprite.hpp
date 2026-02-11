@@ -66,6 +66,12 @@ namespace mx {
         VkPipelineLayout getPipelineLayout() const { return customPipelineLayout; }
         VkSampler spriteSampler = VK_NULL_HANDLE;
         
+        // Instanced rendering — batches all queued draws into one draw call
+        void enableInstancing(uint32_t maxInstances,
+                              const std::string &instanceVertShaderPath,
+                              const std::string &instanceFragShaderPath);
+        bool isInstancingEnabled() const { return instancingEnabled; }
+        
     private:
         struct SpriteVertex {
             float pos[2];
@@ -139,6 +145,22 @@ namespace mx {
         void updateSpriteTexture(const void* pixels, uint32_t width, uint32_t height);
         VkShaderModule createShaderModule(const std::vector<char>& code);
         std::vector<char> readShaderFile(const std::string& filename);
+        
+        // Instanced rendering internals
+        struct SpriteInstanceData {
+            float posX, posY, sizeW, sizeH;
+            float params[4];
+        };
+        VkBuffer instanceBuffer = VK_NULL_HANDLE;
+        VkDeviceMemory instanceBufferMemory = VK_NULL_HANDLE;
+        void* instanceBufferMapped = nullptr;
+        uint32_t instanceBufferCapacity = 0;
+        bool instancingEnabled = false;
+        VkPipeline instancedPipeline = VK_NULL_HANDLE;
+        VkPipelineLayout instancedPipelineLayout = VK_NULL_HANDLE;
+        void createInstancedPipeline(const std::string &vertPath, const std::string &fragPath);
+        void ensureInstanceBuffer(uint32_t count);
+        void destroyInstanceResources();
     };
 
 }
