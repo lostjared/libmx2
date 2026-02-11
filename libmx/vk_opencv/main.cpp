@@ -34,9 +34,10 @@ public:
         }
         camera_width = static_cast<int>(cap.get(cv::CAP_PROP_FRAME_WIDTH));
         camera_height = static_cast<int>(cap.get(cv::CAP_PROP_FRAME_HEIGHT));
-        //resizeWindow(camera_width, camera_height);
+        resizeWindow(camera_width, camera_height);
         sprite = createSprite(camera_width, camera_height, util.path + "/data/sprite_vert.spv", util.path + "/data/sprite_frag.spv");
     }
+    
     void proc() override {
         if (!sprite) {
             return;
