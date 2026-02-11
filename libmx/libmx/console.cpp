@@ -59,7 +59,7 @@ namespace console {
                 }
             }
             characters.clear();
-            font.release();
+            font.reset();
         }
     }
 

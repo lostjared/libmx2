@@ -49,10 +49,64 @@ namespace mx {
             vkDestroyPipelineLayout(device, customPipelineLayout, nullptr);
         }
     }
+
+    void VKSprite::destroySpriteResources() {
+        if (descriptorPool != VK_NULL_HANDLE) {
+            vkDestroyDescriptorPool(device, descriptorPool, nullptr);
+            descriptorPool = VK_NULL_HANDLE;
+            descriptorSet = VK_NULL_HANDLE;
+        }
+
+        if (spriteSampler != VK_NULL_HANDLE) {
+            vkDestroySampler(device, spriteSampler, nullptr);
+            spriteSampler = VK_NULL_HANDLE;
+        }
+
+        if (spriteImageView != VK_NULL_HANDLE) {
+            vkDestroyImageView(device, spriteImageView, nullptr);
+            spriteImageView = VK_NULL_HANDLE;
+        }
+
+        if (spriteImage != VK_NULL_HANDLE) {
+            vkDestroyImage(device, spriteImage, nullptr);
+            spriteImage = VK_NULL_HANDLE;
+        }
+        if (spriteImageMemory != VK_NULL_HANDLE) {
+            vkFreeMemory(device, spriteImageMemory, nullptr);
+            spriteImageMemory = VK_NULL_HANDLE;
+        }
+
+        if (fragmentShaderModule != VK_NULL_HANDLE) {
+            vkDestroyShaderModule(device, fragmentShaderModule, nullptr);
+            fragmentShaderModule = VK_NULL_HANDLE;
+        }
+
+        if (customPipeline != VK_NULL_HANDLE) {
+            vkDestroyPipeline(device, customPipeline, nullptr);
+            customPipeline = VK_NULL_HANDLE;
+        }
+
+        if (customPipelineLayout != VK_NULL_HANDLE) {
+            vkDestroyPipelineLayout(device, customPipelineLayout, nullptr);
+            customPipelineLayout = VK_NULL_HANDLE;
+        }
+
+        hasCustomShader = false;
+        spriteLoaded = false;
+    }
     
     void VKSprite::createCustomPipeline() {
         if (!hasCustomShader || fragmentShaderModule == VK_NULL_HANDLE) return;
         if (renderPass == VK_NULL_HANDLE || descriptorSetLayout == VK_NULL_HANDLE) return;
+
+        if (customPipeline != VK_NULL_HANDLE) {
+            vkDestroyPipeline(device, customPipeline, nullptr);
+            customPipeline = VK_NULL_HANDLE;
+        }
+        if (customPipelineLayout != VK_NULL_HANDLE) {
+            vkDestroyPipelineLayout(device, customPipelineLayout, nullptr);
+            customPipelineLayout = VK_NULL_HANDLE;
+        }
         
         std::string vertPath = vertexShaderPath.empty() ? "data/sprite_vert.spv" : vertexShaderPath;
         auto vertShaderCode = readShaderFile(vertPath);
@@ -228,6 +282,9 @@ namespace mx {
     void VKSprite::loadSprite(SDL_Surface* surface, const std::string &fragmentShaderPath) {
         if (!surface) {
             throw mx::Exception("VKSprite::loadSprite called with null surface");
+        }
+        if (spriteLoaded || spriteImage != VK_NULL_HANDLE || fragmentShaderModule != VK_NULL_HANDLE) {
+            destroySpriteResources();
         }
         SDL_Surface* rgbaSurface = convertToRGBA(surface);
         if (!rgbaSurface) {

@@ -102,6 +102,7 @@ namespace mx {
         VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
         void createDescriptorPool();
         VkDescriptorSet createDescriptorSet(VkImageView imageView);
+        void destroySpriteResources();
         void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
                          VkMemoryPropertyFlags properties, VkBuffer& buffer,
                          VkDeviceMemory& bufferMemory);
