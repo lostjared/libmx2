@@ -4,6 +4,7 @@
 #include"SDL.h"
 #include<string>
 #include<iostream>
+#include<vector>
 #include"tee_stream.hpp"
 #include<optional>
 #include"wrapper.hpp"
@@ -46,19 +47,19 @@ namespace mx {
         }
 
         static SDL_Surface* flipSurface(SDL_Surface* surface) {
-            SDL_LockSurface(surface);
+            if (SDL_LockSurface(surface) != 0) {
+                return surface;
+            }
             Uint8* pixels = (Uint8*)surface->pixels;
             int pitch = surface->pitch;
-            Uint8* tempRow = new Uint8[pitch];
+            std::vector<Uint8> tempRow(pitch);
             for (int y = 0; y < surface->h / 2; ++y) {
                 Uint8* row1 = pixels + y * pitch;
                 Uint8* row2 = pixels + (surface->h - y - 1) * pitch;
-                memcpy(tempRow, row1, pitch);
+                memcpy(tempRow.data(), row1, pitch);
                 memcpy(row1, row2, pitch);
-                memcpy(row2, tempRow, pitch);
+                memcpy(row2, tempRow.data(), pitch);
             }
-            
-            delete[] tempRow;
             SDL_UnlockSurface(surface);
             return surface;
         }

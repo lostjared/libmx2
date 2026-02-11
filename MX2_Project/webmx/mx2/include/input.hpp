@@ -8,7 +8,7 @@ namespace mx {
 
     enum class Input_Button {
         BTN_A=0, BTN_B, BTN_X, BTN_Y, BTNL_L, BTN_R,
-        BTN_D_UP, BTN_D_DOWN, BTN_D_LEFT, BTN_D_RIGHT, BTN_START,
+        BTN_D_UP, BTN_D_DOWN, BTN_D_LEFT, BTN_D_RIGHT, BTN_START, BTN_BACK,
     };
 
     class Input : public Controller {

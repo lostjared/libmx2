@@ -1,4 +1,4 @@
-/* Argument Parser, supports Unicode */
+
 
 #ifndef _ARGZ_HPP_X
 #define _ARGZ_HPP_X
@@ -386,6 +386,8 @@ struct Arguments {
 	int width, height;
 	std::string path;
 	bool fullscreen;
+	std::string filename;
+	std::string texture;
 };
 
 inline Arguments proc_args(int &argc, char **argv) {
@@ -397,15 +399,27 @@ inline Arguments proc_args(int &argc, char **argv) {
         .addOptionSingleValue('r',"Resolution WidthxHeight")
         .addOptionDoubleValue('R',"resolution", "Resolution WidthxHeight")
         .addOptionSingle('f', "fullscreen")
-        .addOptionDouble('F', "fullscreen", "fullscreen");
+        .addOptionDouble('F', "fullscreen", "fullscreen")
+		.addOptionDoubleValue(256, "filename", "input filename")
+		.addOptionDoubleValue(257, "texture", "texture file (.png or .tex)")
+		;
+
     Argument<std::string> arg;
     std::string path;
     int value = 0;
     int tw = 1280, th = 720;
     bool fullscreen = false;
+	std::string filename;
+	std::string texture;
     try {
         while((value = parser.proc(arg)) != -1) {
             switch(value) {
+				case 256:
+					filename = arg.arg_value;
+					break;
+				case 257:
+					texture = arg.arg_value;
+					break;
                 case 'h':
                 case 'v':
                     parser.help(std::cout);
@@ -452,6 +466,8 @@ inline Arguments proc_args(int &argc, char **argv) {
 	args.height = th;	
 	args.path = path;
 	args.fullscreen = fullscreen;
+	args.filename = filename;
+	args.texture = texture;
 	return args;
 }
 
