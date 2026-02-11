@@ -214,6 +214,7 @@ public:
     cv::VideoCapture cap;
     bool draw_glyph = false;
     bool bubble_effect = false;
+    bool kaleido_effect = false;
 
     void setFile(const std::string &filen) {
         filename = filen;
@@ -326,6 +327,7 @@ public:
         raycastPlayer.planeX = planeX;
         raycastPlayer.planeY = planeY;
         raycastPlayer.bubbleEffect = bubble_effect ? 1.0f : 0.0f;
+        raycastPlayer.kaleidoEffect = kaleido_effect ? 1.0f : 0.0f;
         printText("WASD: Move  Arrow Keys: Turn  ESC: Quit", 10, 10, {255, 255, 255, 255});        
         std::string posStr = std::format("Pos: {}, {}", posX, posY);
         printText(posStr, 10, 40, {200, 200, 200, 255});
@@ -349,6 +351,9 @@ public:
                 break;
                 case SDLK_b:
                     bubble_effect = !bubble_effect;
+                break;
+                case SDLK_k:
+                    kaleido_effect = !kaleido_effect;
                 break;
             }
         }

@@ -105,6 +105,7 @@ namespace mx {
             float dirX = 0.0f, dirY = 1.0f;
             float planeX = 0.66f, planeY = 0.0f;
             float bubbleEffect = 0.0f;
+            float kaleidoEffect = 0.0f;
         } raycastPlayer;
         
     protected:
