@@ -33,6 +33,15 @@ sub run_cmd {
     }
 }
 
+sub clone_aciddrop {
+    chdir($parent) or die "Cannot cd to $parent: $!\n";
+    if (-d "AcidDrop") {
+        run_cmd("rm", "rm -rf AcidDrop");
+    }
+    run_cmd("git", "git clone $aciddrop_repo");
+    run_cmd("git", "git config --global --add safe.directory $aciddrop_dir");
+}
+
 sub build_libmx2 {
     my $build = "$root/build";
     my $source = "$root/libmx";
@@ -49,4 +58,19 @@ sub build_libmx2 {
     #run_cmd("libmx2", "sudo make install");
 }
 
+sub build_aciddrop {
+    unless (-d $aciddrop_dir && -f "$aciddrop_dir/CMakeLists.txt") {
+        clone_aciddrop();
+    }
+    die "Error: AcidDrop source not found at $aciddrop_dir\n" unless -d $aciddrop_dir;
+
+    my $build = "$aciddrop_dir/build";
+    make_path($build) unless -d $build;
+    chdir($build) or die "Cannot cd to $build: $!\n";
+
+    run_cmd("AcidDrop", "cmake -B . -S $aciddrop_dir");
+    run_cmd("AcidDrop", "make -j$nproc");
+}
+
 build_libmx2();
+build_aciddrop();
