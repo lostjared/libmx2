@@ -1010,6 +1010,7 @@ namespace gl {
             ndcX,       ndcY - h,   0.0f, 0.0f, 0.0f,  
             ndcX + w,   ndcY - h,   0.0f, 1.0f, 0.0f   
         };
+        release();
         glGenVertexArrays(1, &VAO);
         glGenBuffers(1, &VBO);
         glBindVertexArray(VAO);
@@ -1047,6 +1048,7 @@ namespace gl {
             ndcX,       ndcY - h,   0.0f, 0.0f, 0.0f,  
             ndcX + w,   ndcY - h,   0.0f, 1.0f, 0.0f   
         };
+        release();
         glGenVertexArrays(1, &VAO);
         glGenBuffers(1, &VBO);
         glBindVertexArray(VAO);
