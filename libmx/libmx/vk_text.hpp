@@ -34,6 +34,11 @@ namespace mx {
         VKText(VkDevice device, VkPhysicalDevice physicalDevice, VkQueue graphicsQueue, 
                VkCommandPool commandPool, const std::string &fontPath, int fontSize = 24);
         ~VKText();
+
+        VKText(const VKText&) = delete;
+        VKText& operator=(const VKText&) = delete;
+        VKText(VKText&&) = delete;
+        VKText& operator=(VKText&&) = delete;
         void printTextG_Solid(const std::string &text, int x, int y, const SDL_Color &col);
         void renderText(VkCommandBuffer cmdBuffer, VkPipelineLayout pipelineLayout, 
                        uint32_t screenWidth, uint32_t screenHeight);

@@ -79,6 +79,10 @@ namespace mx {
         VKWindow() = default;
         VKWindow(const std::string &title, int width, int height, bool full = false);
         virtual ~VKWindow() { }
+        VKWindow(const VKWindow&) = delete;
+        VKWindow& operator=(const VKWindow&) = delete;
+        VKWindow(VKWindow&&) = delete;
+        VKWindow& operator=(VKWindow&&) = delete;
         void initWindow(const std::string &title, int width, int height, bool full = false);
         void setFont(const std::string &font, const int size = 24);
         virtual void initVulkan();
