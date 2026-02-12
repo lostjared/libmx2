@@ -253,6 +253,63 @@ vec3 computeBubbleKaleido(vec2 tc, vec2 iResolution, float time_f, vec3 sceneCol
     return finalRGB;
 }
 
+// 3D rotating droste kaleidoscope applied per-tile (T key -> params.w)
+mat3 drosteRotX(float a){float s=sin(a),c=cos(a);return mat3(1,0,0, 0,c,-s, 0,s,c);}
+mat3 drosteRotY(float a){float s=sin(a),c=cos(a);return mat3(c,0,s, 0,1,0, -s,0,c);}
+mat3 drosteRotZ(float a){float s=sin(a),c=cos(a);return mat3(c,-s,0, s,c,0, 0,0,1);}
+
+vec3 sampleWithDroste(vec2 uv) {
+    if (ubo.params.w < 0.5) {
+        return texture(texSampler, uv).rgb;
+    }
+    float time_f = ubo.params.x;
+    float screenW = ubo.playerPlane.z;
+    float screenH = ubo.playerPlane.w;
+    float aspect = screenW / screenH;
+    vec2 ar = vec2(aspect, 1.0);
+    vec2 m = vec2(0.5);
+
+    // 3D perspective rotation
+    vec2 p = (uv - m) * ar;
+    vec3 v = vec3(p, 1.0);
+    float ax = 0.25 * sin(time_f * 0.7);
+    float ay = 0.25 * cos(time_f * 0.6);
+    float az = 0.4 * time_f;
+    mat3 R = drosteRotZ(az) * drosteRotY(ay) * drosteRotX(ax);
+    vec3 r = R * v;
+    float persp = 0.6;
+    float zf = 1.0 / (1.0 + r.z * persp);
+    vec2 q = r.xy * zf;
+
+    // Droste spiral
+    float eps = 1e-6;
+    float base_d = 1.72;
+    float period_d = log(base_d);
+    float t = time_f * 0.5;
+    float rad = length(q) + eps;
+    float ang = atan(q.y, q.x) + t * 0.3;
+    float k = fract((log(rad) - t) / period_d);
+    float rw = exp(k * period_d);
+    vec2 qwrap = vec2(cos(ang), sin(ang)) * rw;
+
+    // Kaleidoscope fold
+    float N = 8.0;
+    float stepA = 6.28318530718 / N;
+    float a = atan(qwrap.y, qwrap.x) + time_f * 0.05;
+    a = mod(a, stepA);
+    a = abs(a - stepA * 0.5);
+    vec2 kdir = vec2(cos(a), sin(a));
+    vec2 kaleido = kdir * length(qwrap);
+
+    vec2 finalUV = kaleido / ar + m;
+    finalUV = fract(finalUV);
+
+    vec3 texColor = texture(texSampler, finalUV).rgb;
+    // Blend with original
+    vec3 origTex = texture(texSampler, uv).rgb;
+    return mix(origTex * 0.3, texColor, 0.85);
+}
+
 // Kaleidoscope applied per-tile when toggled on (K key -> params.z)
 vec3 sampleWithKaleido(vec2 uv) {
     if (ubo.params.z < 0.5) {
@@ -322,6 +379,124 @@ vec3 sampleWithKaleido(vec2 uv) {
     float blendFactor = pingPong(glow * PI, 5.0) * 0.6;
 
     return mix(origTex * 0.8, outCol, blendFactor);
+}
+
+// Mirror-droste effect applied per-tile (Q key -> color.x)
+vec3 sampleWithMirrorDroste(vec2 uv) {
+    if (ubo.color.x < 0.5) {
+        return texture(texSampler, uv).rgb;
+    }
+    float time_f = ubo.params.x;
+    float screenW = ubo.playerPlane.z;
+    float screenH = ubo.playerPlane.w;
+    float aspect = screenW / screenH;
+    vec2 ar = vec2(aspect, 1.0);
+    vec2 m = vec2(0.5);
+
+    // Mirror fold
+    vec2 cv = 1.0 - abs(1.0 - 2.0 * uv);
+    cv = cv - floor(cv);
+
+    // 3D perspective rotation
+    vec2 p = (cv - m) * ar;
+    vec3 v = vec3(p, 1.0);
+    float ax = 0.25 * sin(time_f * 0.7);
+    float ay = 0.25 * cos(time_f * 0.6);
+    float az = 0.4 * time_f;
+    mat3 R = drosteRotZ(az) * drosteRotY(ay) * drosteRotX(ax);
+    vec3 r = R * v;
+    float persp = 0.6;
+    float zf = 1.0 / (1.0 + r.z * persp);
+    vec2 q = r.xy * zf;
+
+    // Droste spiral
+    float eps = 1e-6;
+    float base_d = 1.72;
+    float period_d = log(base_d);
+    float t = time_f * 0.5;
+    float rad = length(q) + eps;
+    float ang = atan(q.y, q.x) + t * 0.3;
+    float k = fract((log(rad) - t) / period_d);
+    float rw = exp(k * period_d);
+    vec2 qwrap = vec2(cos(ang), sin(ang)) * rw;
+
+    // Kaleidoscope fold
+    float N = 8.0;
+    float stepA = 6.28318530718 / N;
+    float a = atan(qwrap.y, qwrap.x) + time_f * 0.05;
+    a = mod(a, stepA);
+    a = abs(a - stepA * 0.5);
+    vec2 kdir = vec2(cos(a), sin(a));
+    vec2 kaleido = kdir * length(qwrap);
+
+    vec2 finalUV = kaleido / ar + m;
+    finalUV = fract(finalUV);
+
+    vec3 texColor = texture(texSampler, finalUV).rgb;
+    vec3 origTex = texture(texSampler, uv).rgb;
+    return mix(origTex * 0.3, texColor, 0.85);
+}
+
+// Combined sampler: applies effects in chain
+vec3 sampleWithEffects(vec2 uv) {
+    // Apply droste first, then mirror-droste, then kaleido
+    vec3 col = sampleWithDroste(uv);
+    if (ubo.color.x >= 0.5) {
+        col = sampleWithMirrorDroste(uv);
+        // If droste is also on, blend them
+        if (ubo.params.w >= 0.5) {
+            vec3 drosteCol = sampleWithDroste(uv);
+            col = mix(drosteCol, col, 0.5);
+        }
+    }
+    if (ubo.params.z >= 0.5) {
+        // Re-run kaleido logic on the droste output by sampling through kaleido path
+        // but we need to work with the UV, so apply kaleido UV transform then sample
+        float time_f = ubo.params.x;
+        float screenW = ubo.playerPlane.z;
+        float screenH = ubo.playerPlane.w;
+        float aspect = screenW / screenH;
+        vec2 m = vec2(0.5);
+        vec2 ar = vec2(aspect, 1.0);
+
+        float seg = 4.0 + 2.0 * sin(time_f * 0.33);
+        vec2 kUV = reflectUV(uv, seg, m, aspect);
+        kUV = diamondFold(kUV, m, aspect);
+        float foldZoom = 1.15 + 0.15 * sin(time_f * 0.42);
+        kUV = fractalFold(kUV, foldZoom, time_f, m, aspect);
+        kUV = rotateUV(kUV, time_f * 0.23, m, aspect);
+        kUV = diamondFold(kUV, m, aspect);
+
+        vec2 p = (kUV - m) * ar;
+        vec2 q = abs(p);
+        if (q.y > q.x) q = q.yx;
+
+        float base = 1.82 + 0.18 * pingPong(sin(time_f * 0.2) * (PI * time_f), 5.0);
+        float period = log(base) * pingPong(time_f * PI, 5.0);
+        float tz = time_f * 0.65;
+
+        float rD = diamondRadius(p) + 1e-6;
+        float ang = atan(q.y, q.x) + tz * 0.35 + 0.35 * sin(rD * 18.0 + time_f * 0.6);
+        float k = fract((log(rD) - tz) / period);
+        float rw = exp(k * period);
+        vec2 pwrap = vec2(cos(ang), sin(ang)) * rw * 0.5;
+
+        vec2 u0 = fract(pwrap / ar + m);
+        float pulse = 0.5 + 0.5 * sin(time_f * 2.0 + rD * 28.0 + k * 12.0);
+        float vign = 1.0 - smoothstep(0.75, 1.2, length((uv - m) * ar));
+        vign = mix(0.9, 1.15, vign);
+
+        vec3 kaleidoCol = sampleWithDroste(u0);
+        kaleidoCol *= (0.6 + 0.4 * pulse);
+        kaleidoCol *= vign;
+        kaleidoCol = clamp(kaleidoCol, vec3(0.0), vec3(1.0));
+
+        vec2 centered = uv * 2.0 - 1.0;
+        float glow = pingPong(sin(length(centered) * time_f), 5.0);
+        float blendFactor = pingPong(glow * PI, 5.0) * 0.6;
+        col = mix(col * 0.8, kaleidoCol, blendFactor);
+    }
+    return col;
 }
 
 void main() {
@@ -416,7 +591,7 @@ void main() {
             
             // Simple matrix rain texture mapping (flipped)
             vec2 texUV = vec2(wallX, wallY);
-            vec3 texColor = sampleWithKaleido(texUV);
+            vec3 texColor = sampleWithEffects(texUV);
             
             // Apply side shading
             if (side == 1) texColor *= 0.7;
@@ -430,7 +605,7 @@ void main() {
             
             // Map matrix rain texture to ceiling (flipped)
             vec2 ceilUV = vec2(fract(floorX), 1.0 - fract(floorY));
-            vec3 texColor = sampleWithKaleido(ceilUV);
+            vec3 texColor = sampleWithEffects(ceilUV);
             
             // Apply distance fog
             col = texColor * (1.0 / (1.0 + currentDist * currentDist * 0.02));
@@ -442,7 +617,7 @@ void main() {
             
             // Map matrix rain texture to floor (flipped)
             vec2 floorUV = vec2(fract(floorX), 1.0 - fract(floorY));
-            vec3 texColor = sampleWithKaleido(floorUV);
+            vec3 texColor = sampleWithEffects(floorUV);
             
             // Apply distance fog
             col = texColor * (1.0 / (1.0 + currentDist * currentDist * 0.02));
@@ -456,7 +631,7 @@ void main() {
             
             // Map matrix rain texture to ceiling (flipped)
             vec2 ceilUV = vec2(fract(floorX), 1.0 - fract(floorY));
-            vec3 texColor = sampleWithKaleido(ceilUV);
+            vec3 texColor = sampleWithEffects(ceilUV);
             col = texColor * (1.0 / (1.0 + currentDist * currentDist * 0.02));
         } else {
             float currentDist = screenH / (2.0 * y - screenH);
@@ -465,7 +640,7 @@ void main() {
             
             // Map matrix rain texture to floor (flipped)
             vec2 floorUV = vec2(fract(floorX), 1.0 - fract(floorY));
-            vec3 texColor = sampleWithKaleido(floorUV);
+            vec3 texColor = sampleWithEffects(floorUV);
             col = texColor * (1.0 / (1.0 + currentDist * currentDist * 0.02));
         }
     }

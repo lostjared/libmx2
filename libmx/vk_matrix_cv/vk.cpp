@@ -14,7 +14,7 @@ namespace mx {
         if(full)
             window = SDL_CreateWindow(title.c_str(),SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,width, height,SDL_WINDOW_VULKAN | SDL_WINDOW_FULLSCREEN_DESKTOP);
         else
-            window = SDL_CreateWindow(title.c_str(),SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,width, height,SDL_WINDOW_VULKAN);
+            window = SDL_CreateWindow(title.c_str(),SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,width, height,SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
             
         if (!window) {
             throw mx::Exception("failure to create window: " + std::string(SDL_GetError()));
@@ -1558,8 +1558,8 @@ namespace mx {
 
         UniformBufferObject ubo{};
         float time = SDL_GetTicks() / 1000.0f;
-        ubo.params = glm::vec4(time, raycastPlayer.bubbleEffect, raycastPlayer.kaleidoEffect, 0.0f);
-        ubo.color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+        ubo.params = glm::vec4(time, raycastPlayer.bubbleEffect, raycastPlayer.kaleidoEffect, raycastPlayer.drosteEffect);
+        ubo.color = glm::vec4(raycastPlayer.mirrorDrosteEffect, 1.0f, 1.0f, 1.0f);
         ubo.model = glm::mat4(1.0f);
         ubo.playerPos = glm::vec4(raycastPlayer.posX, raycastPlayer.posY, 
                                    raycastPlayer.dirX, raycastPlayer.dirY);

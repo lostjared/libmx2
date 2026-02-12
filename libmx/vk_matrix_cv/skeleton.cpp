@@ -215,6 +215,8 @@ public:
     bool draw_glyph = false;
     bool bubble_effect = false;
     bool kaleido_effect = false;
+    bool droste_effect = false;
+    bool mirror_droste_effect = false;
 
     void setFile(const std::string &filen) {
         filename = filen;
@@ -328,6 +330,8 @@ public:
         raycastPlayer.planeY = planeY;
         raycastPlayer.bubbleEffect = bubble_effect ? 1.0f : 0.0f;
         raycastPlayer.kaleidoEffect = kaleido_effect ? 1.0f : 0.0f;
+        raycastPlayer.drosteEffect = droste_effect ? 1.0f : 0.0f;
+        raycastPlayer.mirrorDrosteEffect = mirror_droste_effect ? 1.0f : 0.0f;
         printText("WASD: Move  Arrow Keys: Turn  ESC: Quit", 10, 10, {255, 255, 255, 255});        
         std::string posStr = std::format("Pos: {}, {}", posX, posY);
         printText(posStr, 10, 40, {200, 200, 200, 255});
@@ -354,6 +358,12 @@ public:
                 break;
                 case SDLK_k:
                     kaleido_effect = !kaleido_effect;
+                break;
+                case SDLK_t:
+                    droste_effect = !droste_effect;
+                break;
+                case SDLK_q:
+                    mirror_droste_effect = !mirror_droste_effect;
                 break;
             }
         }
