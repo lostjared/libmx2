@@ -674,6 +674,7 @@ if(CROSS)
    add_subdirectory(cross)
    add_subdirectory(moon)
    add_subdirectory(vk_cross_stars)
+   add_subdirectory(vk_cross_stars_frag)
 endif()
 
 add_subdirectory(mxmod_compress)
