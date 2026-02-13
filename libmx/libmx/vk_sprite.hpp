@@ -53,6 +53,8 @@ namespace mx {
         void updateTexture(SDL_Surface* surface);
         void updateTexture(const void* pixels, int width, int height, int pitch = 0);
         void setShaderParams(float p1 = 0.0f, float p2 = 0.0f, float p3 = 0.0f, float p4 = 0.0f);
+        void setEffectsEnabled(bool enabled) { effectsEnabled = enabled; }
+        bool getEffectsEnabled() const { return effectsEnabled; }
         void renderSprites(VkCommandBuffer cmdBuffer, VkPipelineLayout pipelineLayout,
                           uint32_t screenWidth, uint32_t screenHeight);
         void clearQueue();
@@ -94,6 +96,7 @@ namespace mx {
         VkShaderModule fragmentShaderModule = VK_NULL_HANDLE;
         bool hasCustomShader = false;
         glm::vec4 shaderParams = glm::vec4(0.0f);
+        bool effectsEnabled = true;
         std::vector<SpriteDrawCmd> drawQueue;  
         
         VkPipeline customPipeline = VK_NULL_HANDLE;

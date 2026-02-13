@@ -971,13 +971,13 @@ namespace mx {
                 float spritePosY;
                 float spriteSizeW;
                 float spriteSizeH;
-                float padding1; 
+                float effectsOn;
                 float padding2;
                 float params[4];
             } pc {
                 (float)screenWidth, (float)screenHeight,
                 cmd.x, cmd.y, cmd.w, cmd.h,
-                0.0f, 0.0f, 
+                effectsEnabled ? 1.0f : 0.0f, 0.0f, 
                 {cmd.params.x, cmd.params.y, cmd.params.z, cmd.params.w}
             };
             
