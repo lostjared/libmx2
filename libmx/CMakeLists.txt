@@ -663,6 +663,7 @@ if(EXAMPLES)
      if(CV)
         add_subdirectory(vk_matrix_cv)
 	add_subdirectory(vk_opencv)
+        add_subdirectory(vk_opencv_moon)
      endif()
   endif()
 
