@@ -107,7 +107,7 @@ public:
         cv::cvtColor(frame, rgba, cv::COLOR_BGR2RGBA);
         VkDeviceSize imageSize = rgba.cols * rgba.rows * 4;
         updateTexture(rgba.data, imageSize);
-        printText("Hello World", 15, 15, {255, 255, 255, 255});
+        printText("LostSideDead", 15, 15, {255, 0, 150, 255});
     }
 
     void draw() override {
