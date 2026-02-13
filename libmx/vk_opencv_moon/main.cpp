@@ -58,7 +58,7 @@ static float magToAlpha(float mag) { return glm::clamp((6.5f - mag) / 6.5f, 0.0f
 class Moon : public mx::VKWindow {
 public:
     Moon(const std::string& path, int wx, int wy, bool full)
-        : mx::VKWindow("-[ Vulkan Example / Sprite ]-", wx, wy, full) {
+        : mx::VKWindow("-[ Vulkan Example / Texture Mapped Sphere ]-", wx, wy, full) {
         setPath(path);
         model.load(path + "/data/fixed_sphere.mxmod.z", 1.0);
     }
