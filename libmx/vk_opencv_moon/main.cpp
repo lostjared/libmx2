@@ -85,6 +85,7 @@ public:
     }
     
     void openFile(const std::string &filename) {
+        this->filename = filename;
         cap.open(filename);
         if(!cap.isOpened()) {
             throw mx::Exception("Error could not open file: " + filename);
@@ -99,8 +100,16 @@ public:
     void proc() override {
         cv::Mat frame;
         if(!cap.read(frame)) {
-            quit();
-            return;
+            if(!filename.empty()) {
+                cap.set(cv::CAP_PROP_POS_FRAMES, 0);
+                if(!cap.read(frame)) {
+                    quit();
+                    return;
+                }
+            } else {
+                quit();
+                return;
+            }
         }
 
         cv::Mat rgba;
@@ -180,7 +189,7 @@ public:
             modelMat = glm::scale(modelMat, glm::vec3(1.1f));
             modelMat = glm::rotate(modelMat, glm::radians(rotationX) + time * glm::radians(15.0f), glm::vec3(1.0f, 0.0f, 0.0f));
             modelMat = glm::rotate(modelMat, glm::radians(rotationY) + time * glm::radians(30.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-            modelMat = glm::rotate(modelMat, time * glm::radians(10.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+            //modelMat = glm::rotate(modelMat, time * glm::radians(10.0f), glm::vec3(0.0f, 0.0f, 1.0f));
             ubo.model = modelMat;
             ubo.view = viewMat;
             ubo.proj = projMat;
@@ -870,6 +879,7 @@ private:
     std::vector<VkBuffer> sUniformBuffers;
     std::vector<VkDeviceMemory> sUniformMemory;
     std::vector<void*> sUniformMapped;
+    std::string filename;
 };
 
 int main(int argc, char **argv) {
@@ -877,8 +887,8 @@ int main(int argc, char **argv) {
     try {
         Moon window(args.path, args.width, args.height, args.fullscreen);
         window.initVulkan();
-        window.openCamera(0, args.width, args.height);
-        
+        //window.openCamera(0, args.width, args.height);
+        window.openFile(args.filename);
         window.loop();
         window.cleanup();
     } catch (mx::Exception &e) {
