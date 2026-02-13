@@ -66,6 +66,7 @@ namespace mx {
         bool hasOwnPipeline() const { return customPipeline != VK_NULL_HANDLE; }
         VkPipeline getPipeline() const { return customPipeline; }
         VkPipelineLayout getPipelineLayout() const { return customPipelineLayout; }
+        void rebuildPipeline();  // rebuild custom pipeline after renderPass recreation
         VkSampler spriteSampler = VK_NULL_HANDLE;
         void enableInstancing(uint32_t maxInstances,
                               const std::string &instanceVertShaderPath,

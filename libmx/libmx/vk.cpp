@@ -1649,10 +1649,39 @@ namespace mx {
             SDL_Quit();
         }
     }
+
+    void VKWindow::setFullScreen(const bool full) {
+        if (!window) return;
+        vkDeviceWaitIdle(device);
+        if (full) {
+            SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+        } else {
+            SDL_SetWindowFullscreen(window, 0);
+        }
+        int newW, newH;
+        SDL_Vulkan_GetDrawableSize(window, &newW, &newH);
+        if (newW > 0 && newH > 0) {
+            w = newW;
+            h = newH;
+        }
+        recreateSwapChain();
+    }
+
     void VKWindow::recreateSwapChain() {
         vkDeviceWaitIdle(device);
         if(window)
             SDL_Vulkan_GetDrawableSize(window, &w, &h);
+
+        // Destroy sprite pipelines (they were built against old renderPass)
+        if (spritePipeline != VK_NULL_HANDLE) {
+            vkDestroyPipeline(device, spritePipeline, nullptr);
+            spritePipeline = VK_NULL_HANDLE;
+        }
+        if (spritePipelineLayout != VK_NULL_HANDLE) {
+            vkDestroyPipelineLayout(device, spritePipelineLayout, nullptr);
+            spritePipelineLayout = VK_NULL_HANDLE;
+        }
+
         cleanupSwapChain();
         createSwapChain();
         createImageViews();
@@ -1663,6 +1692,19 @@ namespace mx {
         createTextPipeline();
         createFramebuffers();
         createCommandBuffers();
+
+        // Rebuild sprite pipelines with new renderPass
+        if (!sprites.empty()) {
+            createSpritePipeline();
+            for (auto &sprite : sprites) {
+                if (sprite) {
+                    sprite->setRenderPass(renderPass);
+                    sprite->setDescriptorSetLayout(spriteDescriptorSetLayout);
+                    sprite->rebuildPipeline();
+                }
+            }
+        }
+
         onResize();
     }
     

@@ -527,6 +527,11 @@ namespace mx {
         vkDestroyShaderModule(device, vertShaderModule, nullptr);
     }
 
+    void VKSprite::rebuildPipeline() {
+        if (!hasCustomShader || fragmentShaderModule == VK_NULL_HANDLE) return;
+        createCustomPipeline();
+    }
+
     void VKSprite::createQuadBuffer() {
         if (quadBufferCreated) return;
         
