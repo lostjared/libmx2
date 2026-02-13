@@ -225,6 +225,8 @@ namespace mx {
         }
         ensureInstanceBuffer(maxInstances);
         createQuadBuffer();
+        instanceVertPath_ = instanceVertShaderPath;
+        instanceFragPath_ = instanceFragShaderPath;
         createInstancedPipeline(instanceVertShaderPath, instanceFragShaderPath);
         instancingEnabled = true;
     }
@@ -530,6 +532,11 @@ namespace mx {
     void VKSprite::rebuildPipeline() {
         if (!hasCustomShader || fragmentShaderModule == VK_NULL_HANDLE) return;
         createCustomPipeline();
+    }
+
+    void VKSprite::rebuildInstancedPipeline() {
+        if (!instancingEnabled || instanceVertPath_.empty() || instanceFragPath_.empty()) return;
+        createInstancedPipeline(instanceVertPath_, instanceFragPath_);
     }
 
     void VKSprite::createQuadBuffer() {

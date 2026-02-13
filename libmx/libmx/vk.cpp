@@ -1672,7 +1672,6 @@ namespace mx {
         if(window)
             SDL_Vulkan_GetDrawableSize(window, &w, &h);
 
-        // Destroy sprite pipelines (they were built against old renderPass)
         if (spritePipeline != VK_NULL_HANDLE) {
             vkDestroyPipeline(device, spritePipeline, nullptr);
             spritePipeline = VK_NULL_HANDLE;
@@ -1693,7 +1692,7 @@ namespace mx {
         createFramebuffers();
         createCommandBuffers();
 
-        // Rebuild sprite pipelines with new renderPass
+        
         if (!sprites.empty()) {
             createSpritePipeline();
             for (auto &sprite : sprites) {
@@ -1701,6 +1700,7 @@ namespace mx {
                     sprite->setRenderPass(renderPass);
                     sprite->setDescriptorSetLayout(spriteDescriptorSetLayout);
                     sprite->rebuildPipeline();
+                    sprite->rebuildInstancedPipeline();
                 }
             }
         }

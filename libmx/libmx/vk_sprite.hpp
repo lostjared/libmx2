@@ -66,7 +66,8 @@ namespace mx {
         bool hasOwnPipeline() const { return customPipeline != VK_NULL_HANDLE; }
         VkPipeline getPipeline() const { return customPipeline; }
         VkPipelineLayout getPipelineLayout() const { return customPipelineLayout; }
-        void rebuildPipeline();  // rebuild custom pipeline after renderPass recreation
+        void rebuildPipeline();  
+        void rebuildInstancedPipeline();  
         VkSampler spriteSampler = VK_NULL_HANDLE;
         void enableInstancing(uint32_t maxInstances,
                               const std::string &instanceVertShaderPath,
@@ -147,8 +148,7 @@ namespace mx {
         void updateSpriteTexture(const void* pixels, uint32_t width, uint32_t height);
         VkShaderModule createShaderModule(const std::vector<char>& code);
         std::vector<char> readShaderFile(const std::string& filename);
-        
-        // Instanced rendering internals
+    
         struct SpriteInstanceData {
             float posX, posY, sizeW, sizeH;
             float params[4];
@@ -160,6 +160,8 @@ namespace mx {
         bool instancingEnabled = false;
         VkPipeline instancedPipeline = VK_NULL_HANDLE;
         VkPipelineLayout instancedPipelineLayout = VK_NULL_HANDLE;
+        std::string instanceVertPath_;
+        std::string instanceFragPath_;
         void createInstancedPipeline(const std::string &vertPath, const std::string &fragPath);
         void ensureInstanceBuffer(uint32_t count);
         void destroyInstanceResources();
