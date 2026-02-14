@@ -61,6 +61,17 @@ public:
         : mx::VKWindow("-[ Vulkan Example / Texture Mapped Sphere ]-", wx, wy, full) {
         setPath(path);
         model.load(path + "/data/fixed_sphere.mxmod.z", 1.0);
+        if (SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER) == 0) {
+            for (int i = 0; i < SDL_NumJoysticks(); ++i) {
+                if (SDL_IsGameController(i)) {
+                    controller = SDL_GameControllerOpen(i);
+                    if (controller) {
+                        SDL_Log("Controller connected: %s", SDL_GameControllerName(controller));
+                        break;
+                    }
+                }
+            }
+        }
     }
 
     void initVulkan() override {
@@ -86,8 +97,7 @@ public:
     
     void openFile(const std::string &filename) {
         this->filename = filename;
-        cap.open(filename);
-        if(!cap.isOpened()) {
+        if(!cap.open(filename)) {
             throw mx::Exception("Error could not open file: " + filename);
         }
         camera_width = static_cast<int>(cap.get(cv::CAP_PROP_FRAME_WIDTH));
@@ -98,6 +108,32 @@ public:
     }
     
     void proc() override {
+        if (controller) {
+            float dt = 1.0f / 60.0f;
+
+            float lx = SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_LEFTX);
+            float ly = SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_LEFTY);
+            if (std::abs(lx) > STICK_DEADZONE)
+                rotationY += (lx / 32767.0f) * STICK_SENSITIVITY * dt;
+            if (std::abs(ly) > STICK_DEADZONE)
+                rotationX += (ly / 32767.0f) * STICK_SENSITIVITY * dt;
+            float ry = SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_RIGHTY);
+            if (std::abs(ry) > STICK_DEADZONE) {
+                cameraDistance += (ry / 32767.0f) * ZOOM_SENSITIVITY * dt;
+                cameraDistance = glm::clamp(cameraDistance, 1.0f, 20.0f);
+            }
+            float lt = SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_TRIGGERLEFT);
+            float rt = SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_TRIGGERRIGHT);
+            if (lt > 3000) {
+                cameraDistance += (lt / 32767.0f) * ZOOM_SENSITIVITY * dt;
+                cameraDistance = glm::clamp(cameraDistance, 1.0f, 20.0f);
+            }
+            if (rt > 3000) {
+                cameraDistance -= (rt / 32767.0f) * ZOOM_SENSITIVITY * dt;
+                cameraDistance = glm::clamp(cameraDistance, 1.0f, 20.0f);
+            }
+        }
+
         cv::Mat frame;
         if(!cap.read(frame)) {
             if(!filename.empty()) {
@@ -823,9 +859,45 @@ public:
             if (cameraDistance < 1.0f) cameraDistance = 1.0f;
             if (cameraDistance > 20.0f) cameraDistance = 20.0f;
         }
+
+        if (e.type == SDL_CONTROLLERDEVICEADDED) {
+            if (!controller) {
+                controller = SDL_GameControllerOpen(e.cdevice.which);
+                if (controller)
+                    SDL_Log("Controller connected: %s", SDL_GameControllerName(controller));
+            }
+        }
+        if (e.type == SDL_CONTROLLERDEVICEREMOVED) {
+            if (controller && e.cdevice.which == SDL_JoystickInstanceID(
+                    SDL_GameControllerGetJoystick(controller))) {
+                SDL_GameControllerClose(controller);
+                controller = nullptr;
+                SDL_Log("Controller disconnected");
+            }
+        }
+
+        if (e.type == SDL_CONTROLLERBUTTONDOWN) {
+            switch (e.cbutton.button) {
+                case SDL_CONTROLLER_BUTTON_A:
+                    effectIndex = (effectIndex + 1) % 5;
+                    break;
+                case SDL_CONTROLLER_BUTTON_B:
+                    effectIndex = (effectIndex - 1 + 5) % 5;
+                    break;
+                case SDL_CONTROLLER_BUTTON_START:
+                    quit();
+                    break;
+                default:
+                    break;
+            }
+        }
     }
 
     void cleanup() override {
+        if (controller) {
+            SDL_GameControllerClose(controller);
+            controller = nullptr;
+        }
         cleanupStars();
         model.cleanup(device);
         mx::VKWindow::cleanup();
@@ -842,6 +914,12 @@ private:
     int lastMouseX = 0;
     int lastMouseY = 0;
     int effectIndex = 0;  // 0=off, 1=kaleidoscope, 2=ripple/twist, 3=rotate/warp, 4=spiral
+
+    
+    SDL_GameController* controller = nullptr;
+    static constexpr float STICK_DEADZONE = 8000.0f;
+    static constexpr float STICK_SENSITIVITY = 150.0f;
+    static constexpr float ZOOM_SENSITIVITY = 5.0f;
 
     
     bool starsInitialized = false;
@@ -887,8 +965,7 @@ int main(int argc, char **argv) {
     try {
         Moon window(args.path, args.width, args.height, args.fullscreen);
         window.initVulkan();
-        //window.openCamera(0, args.width, args.height);
-        window.openFile(args.filename);
+        window.openFile(args.path + "/data/eye1.mp4");
         window.loop();
         window.cleanup();
     } catch (mx::Exception &e) {
