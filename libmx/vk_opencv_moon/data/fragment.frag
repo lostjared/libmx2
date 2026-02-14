@@ -10,7 +10,7 @@ layout(binding = 1) uniform UniformBufferObject {
     mat4 model;
     mat4 view;
     mat4 proj;
-    vec4 params;   // x=time, y=width, z=height, w=effectIndex (0=off,1=kaleidoscope,2=ripple/twist,3=rotate/warp,4=spiral,5=gravity/spiral,6=fractal/kaleido,7=chromatic/barrel)
+    vec4 params;   // x=time, y=width, z=height, w=effectIndex (0=off,1=kaleidoscope,2=ripple/twist,3=rotate/warp,4=spiral,5=gravity/spiral,6=rotating/zoom,7=chromatic/barrel,8=bend/warp,9=bubble/distort)
     vec4 color;  
 } ubo;
 
@@ -288,6 +288,39 @@ vec4 chromaticBarrelEffect(vec2 tc, vec2 iResolution) {
     return texture(texSampler, newTexCoord);
 }
 
+// ---- Effect 8: Bend Warp ----
+
+vec4 bendWarpEffect(vec2 tc, float time_f) {
+    vec2 uv = tc;
+    float t = mod(time_f, 10.0) * 0.1;
+    float angle = sin(t * 3.14159265) * -0.5;
+    vec2 center = vec2(0.5, 0.5);
+    uv -= center;
+    float dist = length(uv);
+    float bend = sin(dist * 6.0 + t * 2.0 * 3.14159265) * 0.05;
+    uv = mat2(cos(angle), -sin(angle), sin(angle), cos(angle)) * uv;
+    uv += center;
+    float time_t = pingPong(time_f, 10.0);
+    uv -= sin(bend * uv * time_t);
+    return texture(texSampler, uv);
+}
+
+// ---- Effect 9: Bubble Distort ----
+
+vec4 bubbleDistortEffect(vec2 tc, float time_f) {
+    vec2 uv = tc * 2.0 - 1.0;
+    float len = length(uv);
+    float time_t = pingPong(time_f, 10.0);
+    float bubble = smoothstep(0.8, 1.0, 1.0 - len);
+    bubble = sin(bubble * time_t);
+
+    vec2 distort = uv * (1.0 + 0.1 * sin(time_f + len * 20.0));
+    distort = sin(distort * time_t);
+
+    vec4 texColor = texture(texSampler, distort * 0.5 + 0.5);
+    return mix(texColor, vec4(1.0, 1.0, 1.0, 1.0), bubble);
+}
+
 // ---- Main ----
 
 void main() {
@@ -355,6 +388,16 @@ void main() {
         vec4 cX = chromaticBarrelEffect(uvX, iResolution);
         vec4 cY = chromaticBarrelEffect(uvY, iResolution);
         vec4 cZ = chromaticBarrelEffect(uvZ, iResolution);
+        texColor = cX * blend.x + cY * blend.y + cZ * blend.z;
+    } else if (effectIndex == 8) {
+        vec4 cX = bendWarpEffect(uvX, time_f);
+        vec4 cY = bendWarpEffect(uvY, time_f);
+        vec4 cZ = bendWarpEffect(uvZ, time_f);
+        texColor = cX * blend.x + cY * blend.y + cZ * blend.z;
+    } else if (effectIndex == 9) {
+        vec4 cX = bubbleDistortEffect(uvX, time_f);
+        vec4 cY = bubbleDistortEffect(uvY, time_f);
+        vec4 cZ = bubbleDistortEffect(uvZ, time_f);
         texColor = cX * blend.x + cY * blend.y + cZ * blend.z;
     } else {
         vec4 cX = texture(texSampler, uvX);
