@@ -10,7 +10,7 @@ layout(binding = 1) uniform UniformBufferObject {
     mat4 model;
     mat4 view;
     mat4 proj;
-    vec4 params;   // x=time, y=width, z=height, w=effectIndex (0=off,1=kaleidoscope,2=ripple/twist,3=rotate/warp,4=spiral)
+    vec4 params;   // x=time, y=width, z=height, w=effectIndex (0=off,1=kaleidoscope,2=ripple/twist,3=rotate/warp,4=spiral,5=gravity/spiral,6=fractal/kaleido,7=chromatic/barrel)
     vec4 color;  
 } ubo;
 
@@ -217,6 +217,77 @@ vec4 spiralEffect(vec2 tc, float time_f, vec2 iResolution) {
     return texture(texSampler, spiralCoord);
 }
 
+// ---- Effect 5: Gravity Spiral ----
+
+vec4 gravitySpiralEffect(vec2 tc, float time_f) {
+    vec2 uv = tc;
+    float maxTime = pingPong(time_f, 10.0);
+    float t = pingPong(time_f, maxTime);
+    float gForceIntensity = 0.1;
+    float waveFrequency = 10.0;
+    float waveAmplitude = 0.03;
+    float gravityPull = gForceIntensity * t * uv.y;
+    float waveDistortion = waveAmplitude * sin(waveFrequency * uv.x + t * 2.0);
+
+    vec2 centeredUV = uv - vec2(0.5, 0.5);
+    float angle = t + length(centeredUV) * 4.0;
+    float spiralAmount = 0.5 * (1.0 - uv.y);
+    mat2 rotation = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
+    vec2 spiraledUV = rotation * centeredUV * (1.0 + spiralAmount);
+    vec2 distortedUV = spiraledUV + vec2(0.5, 0.5);
+    distortedUV.y += gravityPull + waveDistortion;
+    distortedUV = clamp(distortedUV, vec2(0.0), vec2(1.0));
+    return texture(texSampler, distortedUV);
+}
+
+// ---- Effect 6: Rotating Zoom ----
+
+vec4 rotatingZoomEffect(vec2 tc, float time_f) {
+    vec2 uv = tc - vec2(0.5);
+    float amplitude = sin(time_f) * 0.5 + 0.5;
+    float angle = time_f + amplitude * 10.0;
+    mat2 rotation = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
+    vec2 rotatedUV = rotation * uv;
+    return texture(texSampler, rotatedUV + vec2(0.5));
+}
+
+// ---- Effect 7: Chromatic Barrel ----
+
+vec4 chromaticBarrelEffect(vec2 tc, vec2 iResolution) {
+    float radius = 1.0;
+    vec2 center = iResolution * 0.5;
+    vec2 texCoord = tc * iResolution;
+    vec2 delta = texCoord - center;
+    float dist = length(delta);
+    float maxRadius = min(iResolution.x, iResolution.y) * radius;
+
+    if (dist < maxRadius) {
+        float scaleFactor = 1.0 - pow(dist / maxRadius, 2.0);
+        vec2 direction = normalize(delta);
+        float offsetR = 0.015;
+        float offsetG = 0.0;
+        float offsetB = -0.015;
+
+        vec2 texCoordR = center + delta * scaleFactor + direction * offsetR * maxRadius;
+        vec2 texCoordG = center + delta * scaleFactor + direction * offsetG * maxRadius;
+        vec2 texCoordB = center + delta * scaleFactor + direction * offsetB * maxRadius;
+
+        texCoordR /= iResolution;
+        texCoordG /= iResolution;
+        texCoordB /= iResolution;
+        texCoordR = clamp(texCoordR, 0.0, 1.0);
+        texCoordG = clamp(texCoordG, 0.0, 1.0);
+        texCoordB = clamp(texCoordB, 0.0, 1.0);
+        float r = texture(texSampler, texCoordR).r;
+        float g = texture(texSampler, texCoordG).g;
+        float b = texture(texSampler, texCoordB).b;
+        return vec4(r, g, b, 1.0);
+    }
+
+    vec2 newTexCoord = clamp(tc, 0.0, 1.0);
+    return texture(texSampler, newTexCoord);
+}
+
 // ---- Main ----
 
 void main() {
@@ -269,6 +340,21 @@ void main() {
         vec4 cX = spiralEffect(uvX, time_f, iResolution);
         vec4 cY = spiralEffect(uvY, time_f, iResolution);
         vec4 cZ = spiralEffect(uvZ, time_f, iResolution);
+        texColor = cX * blend.x + cY * blend.y + cZ * blend.z;
+    } else if (effectIndex == 5) {
+        vec4 cX = gravitySpiralEffect(uvX, time_f);
+        vec4 cY = gravitySpiralEffect(uvY, time_f);
+        vec4 cZ = gravitySpiralEffect(uvZ, time_f);
+        texColor = cX * blend.x + cY * blend.y + cZ * blend.z;
+    } else if (effectIndex == 6) {
+        vec4 cX = rotatingZoomEffect(uvX, time_f);
+        vec4 cY = rotatingZoomEffect(uvY, time_f);
+        vec4 cZ = rotatingZoomEffect(uvZ, time_f);
+        texColor = cX * blend.x + cY * blend.y + cZ * blend.z;
+    } else if (effectIndex == 7) {
+        vec4 cX = chromaticBarrelEffect(uvX, iResolution);
+        vec4 cY = chromaticBarrelEffect(uvY, iResolution);
+        vec4 cZ = chromaticBarrelEffect(uvZ, iResolution);
         texColor = cX * blend.x + cY * blend.y + cZ * blend.z;
     } else {
         vec4 cX = texture(texSampler, uvX);

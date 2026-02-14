@@ -836,7 +836,8 @@ public:
             quit();
         }
         if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_SPACE) {
-            effectIndex = (effectIndex + 1) % 5;  // 0=off, 1=kaleidoscope, 2=ripple/twist, 3=rotate/warp, 4=spiral
+            effectIndex = (effectIndex + 1) % 8;  // 0=off, 1=kaleidoscope, 2=ripple/twist, 3=rotate/warp, 4=spiral, 5=gravity/spiral, 6=fractal/kaleido, 7=chromatic/barrel
+            std::cout << "index: " << effectIndex << "\n";
         }
         
         if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
@@ -879,10 +880,10 @@ public:
         if (e.type == SDL_CONTROLLERBUTTONDOWN) {
             switch (e.cbutton.button) {
                 case SDL_CONTROLLER_BUTTON_A:
-                    effectIndex = (effectIndex + 1) % 5;
+                    effectIndex = (effectIndex + 1) % 8;
                     break;
                 case SDL_CONTROLLER_BUTTON_B:
-                    effectIndex = (effectIndex - 1 + 5) % 5;
+                    effectIndex = (effectIndex - 1 + 8) % 8;
                     break;
                 case SDL_CONTROLLER_BUTTON_START:
                     quit();
@@ -913,7 +914,7 @@ private:
     bool dragging = false;
     int lastMouseX = 0;
     int lastMouseY = 0;
-    int effectIndex = 0;  // 0=off, 1=kaleidoscope, 2=ripple/twist, 3=rotate/warp, 4=spiral
+    int effectIndex = 0;  // 0=off, 1=kaleidoscope, 2=ripple/twist, 3=rotate/warp, 4=spiral, 5=gravity/spiral, 6=fractal/kaleido, 7=chromatic/barrel
 
     
     SDL_GameController* controller = nullptr;
@@ -965,7 +966,11 @@ int main(int argc, char **argv) {
     try {
         Moon window(args.path, args.width, args.height, args.fullscreen);
         window.initVulkan();
-        window.openFile(args.path + "/data/eye1.mp4");
+        if(args.filename.empty())
+            window.openFile(args.path + "/data/eye1.mp4");
+        else 
+            window.openFile(args.filename);
+            
         window.loop();
         window.cleanup();
     } catch (mx::Exception &e) {
