@@ -98,7 +98,7 @@ class Moon : public mx::VKWindow {
     };
 public:
     Moon(const std::string& path, int wx, int wy, bool full)
-        : mx::VKWindow("-[ Vulkan Example / Texture Mapped Sphere ]-", wx, wy, full) {
+        : mx::VKWindow("-[ Vulkan Example / Texture Mapped MXModel ]-", wx, wy, full) {
         setPath(path);
         model.reset(new mx::MXModel());
         model->load(path + "/data/" + models[0], modelScales[0]);
@@ -205,6 +205,7 @@ public:
         updateTexture(rgba.data, imageSize);
         printText("LostSideDead.biz", 15, 15, {255, 0, 150, 255});
         printText("Model: " + models[modelIndex],15,45, {255,255,255,255});
+        printText("Effect: " + effects[effectIndex],15,75,{255,0,0,255});
     }
 
     void draw() override {
@@ -891,7 +892,6 @@ public:
         }
         if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_SPACE) {
             effectIndex = (effectIndex + 1) % 10;  // 0=off, 1=kaleidoscope, 2=ripple/twist, 3=rotate/warp, 4=spiral, 5=gravity/spiral, 6=rotating/zoom, 7=chromatic/barrel, 8=bend/warp, 9=bubble/distort
-            std::cout << "index: " << effectIndex << "\n";
         }
 
         if(e.type == SDL_KEYDOWN && e.key.keysym.sym ==  SDLK_RETURN) {
@@ -945,6 +945,11 @@ public:
                 case SDL_CONTROLLER_BUTTON_B:
                     effectIndex = (effectIndex - 1 + 10) % 10;
                     break;
+                case SDL_CONTROLLER_BUTTON_X:
+                    modelIndex = (modelIndex + 1) % models.size();
+                    switchModel(modelIndex);
+                    std::cout << "mx: Model: " << models[modelIndex] << " loaded." << std::endl;
+                    break;
                 case SDL_CONTROLLER_BUTTON_START:
                     quit();
                     break;
@@ -974,9 +979,20 @@ private:
     bool dragging = false;
     int lastMouseX = 0;
     int lastMouseY = 0;
-    int effectIndex = 0;  // 0=off, 1=kaleidoscope, 2=ripple/twist, 3=rotate/warp, 4=spiral, 5=gravity/spiral, 6=rotating/zoom, 7=chromatic/barrel, 8=bend/warp, 9=bubble/distort
+    int effectIndex = 0;
+    std::vector<std::string> effects = {
+        "Off",
+        "Kaleidoscope",
+        "Ripple Twist",
+        "Rotate Warp",
+        "Spiral",
+        "Gravity Spiral",
+        "Rotating Zoom",
+        "Chromatic Barrel",
+        "Bend Warp",
+        "Bubble Distort"
+    };
 
-    
     SDL_GameController* controller = nullptr;
     static constexpr float STICK_DEADZONE = 8000.0f;
     static constexpr float STICK_SENSITIVITY = 150.0f;
