@@ -345,14 +345,26 @@ void main() {
     vec4 texColor;
 
     // Tri-planar mapping
-    vec3 objN = normalize(transpose(mat3(ubo.model)) * normal);
+    mat3 invModel = transpose(mat3(ubo.model));
+    vec3 objN = normalize(invModel * normal);
     vec3 blend = abs(objN);
     blend = pow(blend, vec3(4.0));
     blend /= (blend.x + blend.y + blend.z);
 
-    vec2 uvX = objN.yz * 0.5 + 0.5;
-    vec2 uvY = objN.xz * 0.5 + 0.5;
-    vec2 uvZ = objN.xy * 0.5 + 0.5;
+    int modelIdx = int(ubo.color.w + 0.5);
+    vec2 uvX, uvY, uvZ;
+    if (modelIdx == 0) {
+        // Sphere: normal-based UVs look correct
+        uvX = objN.yz * 0.5 + 0.5;
+        uvY = objN.xz * 0.5 + 0.5;
+        uvZ = objN.xy * 0.5 + 0.5;
+    } else {
+        // Other models: position-based UVs for proper texture variation
+        vec3 objPos = invModel * fragWorldPos;
+        uvX = objPos.yz * 0.5 + 0.5;
+        uvY = objPos.xz * 0.5 + 0.5;
+        uvZ = objPos.xy * 0.5 + 0.5;
+    }
 
     if (effectIndex == 1) {
         vec4 cX = kaleidoscopeEffect(uvX, time_f, iResolution);

@@ -8,7 +8,7 @@
 #include "loadpng.hpp"
 #include <random>
 #include <cmath>
-
+#include <string>
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -56,11 +56,52 @@ static float magToAlpha(float mag) { return glm::clamp((6.5f - mag) / 6.5f, 0.0f
 
 
 class Moon : public mx::VKWindow {
+    std::vector<std::string> models = {
+        "fixed_sphere.mxmod.z",
+        "3dplus.mxmod.z", "3dstar.mxmod.z", "bird.mxmod.z", "cigar_tube.mxmod.z",
+        "cigar_tunnel.mxmod.z", "cone.mxmod.z", "crystal_cave.mxmod.z", "cube.mxmod.z",
+        "cylinder.mxmod.z", "diamond.mxmod.z", "dome.mxmod.z",
+        "g_ufo.mxmod.z", "geosphere.mxmod.z", "hour_glass.mxmod.z", "hourglass.mxmod.z",
+        "hourglass_pyramid.mxmod.z", "icosahedron.mxmod.z", "kaleidoscope.mxmod.z",
+        "large_cylinder.mxmod.z", "large_hex.mxmod.z", "large_sphere.mxmod.z",
+        "menger_lattice.mxmod.z", "menger_spong.mxmod.z", "merkaba.mxmod.z", "moon.mxmod.z",
+        "new_cube6x.mxmod.z", "new_diamond.mxmod.z", "new_sphere.mxmod.z", "object.mxmod.z",
+        "octahedron.mxmod.z", "octopus.mxmod.z", "pentagon.mxmod.z", "pillar.mxmod.z",
+        "prism.mxmod.z", "prism_hex.mxmod.z", "pyramid.mxmod.z", "sacred_sphere_opt.mxmod.z",
+        "saturn.mxmod.z", "scube.mxmod.z", "ship.mxmod.z", "ship2.mxmod.z",
+        "shipshooter.mxmod.z", "sky.mxmod.z", "skybox1.mxmod.z", "skybox_cross.mxmod.z",
+        "skybox_hex.mxmod.z", "skybox_pyramid_top.mxmod.z", "skybox_star.mxmod.z",
+        "sphere_pillar.mxmod.z", "star.mxmod.z", "star_skybox.mxmod.z", "torus.mxmod.z",
+        "trapezoid.mxmod.z", "tree.mxmod.z", "trefoil_knot.mxmod.z", "triforce.mxmod.z",
+        "tube.mxmod.z", "tunnel.mxmod.z", "twisted_torus.mxmod.z", "ufo.mxmod.z",
+        "ufo_model.mxmod.z", "ufox.mxmod.z", "uv_sphere.mxmod.z"
+    };
+    std::vector<float> modelScales = {
+        1.000000f,
+        0.002000f, 1.000000f, 0.133333f, 0.055556f,
+        0.040000f, 2.000000f, 0.004275f, 2.000000f,
+        0.285714f, 1.000000f, 0.100000f,
+        2.500000f, 1.000000f, 0.016667f, 0.050000f,
+        0.033333f, 1.175570f, 0.007407f,
+        0.028571f, 0.020000f, 0.002000f,
+        0.020000f, 1.000000f, 0.444444f, 0.074074f,
+        0.333333f, 0.200000f, 2.000000f, 1.000000f,
+        0.025000f, 0.010778f, 1.000000f, 0.040000f,
+        1.000000f, 1.000000f, 2.000000f, 1.000000f,
+        0.500000f, 1.111111f, 1.000000f, 1.000000f,
+        0.454545f, 1.732051f, 1.732051f, 0.050000f,
+        0.010000f, 0.500000f, 0.002000f,
+        0.100000f, 1.000000f, 0.033333f, 0.476190f,
+        0.066667f, 0.769231f, 0.125000f, 0.500000f,
+        0.066667f, 0.006667f, 0.013333f, 2.500000f,
+        0.500000f, 1.000000f, 0.100000f
+    };
 public:
     Moon(const std::string& path, int wx, int wy, bool full)
         : mx::VKWindow("-[ Vulkan Example / Texture Mapped Sphere ]-", wx, wy, full) {
         setPath(path);
-        model.load(path + "/data/fixed_sphere.mxmod.z", 1.0);
+        model.reset(new mx::MXModel());
+        model->load(path + "/data/" + models[0], modelScales[0]);
         if (SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER) == 0) {
             for (int i = 0; i < SDL_NumJoysticks(); ++i) {
                 if (SDL_IsGameController(i)) {
@@ -74,9 +115,19 @@ public:
         }
     }
 
+    void switchModel(size_t index) {
+        if(index >= 0 && index < models.size()) {
+            vkDeviceWaitIdle(device);
+            model->cleanup(device);
+            model.reset(new mx::MXModel());
+            model->load(util.path + "/data/" + models[index], modelScales[index]);
+            model->upload(device, physicalDevice, commandPool, graphicsQueue);
+        }
+    }
+
     void initVulkan() override {
         mx::VKWindow::initVulkan();
-        model.upload(device, physicalDevice, commandPool, graphicsQueue);
+        model->upload(device, physicalDevice, commandPool, graphicsQueue);
         initStars();
         initStarResources();
     }
@@ -153,6 +204,7 @@ public:
         VkDeviceSize imageSize = rgba.cols * rgba.rows * 4;
         updateTexture(rgba.data, imageSize);
         printText("LostSideDead.biz", 15, 15, {255, 0, 150, 255});
+        printText("Model: " + models[modelIndex],15,45, {255,255,255,255});
     }
 
     void draw() override {
@@ -217,7 +269,7 @@ public:
         projMat[1][1] *= -1;
 
         
-        if (graphicsPipeline != VK_NULL_HANDLE && model.indexCount() > 0) {
+        if (graphicsPipeline != VK_NULL_HANDLE && model->indexCount() > 0) {
             vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
             mx::UniformBufferObject ubo{};
@@ -231,13 +283,13 @@ public:
             ubo.proj = projMat;
             ubo.params = glm::vec4(time, static_cast<float>(swapChainExtent.width),
                                    static_cast<float>(swapChainExtent.height), static_cast<float>(effectIndex));
-            ubo.color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+            ubo.color = glm::vec4(1.0f, 1.0f, 1.0f, static_cast<float>(modelIndex));
 
             memcpy(uniformBuffersMapped[imageIndex], &ubo, sizeof(ubo));
 
             vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                     pipelineLayout, 0, 1, &descriptorSets[imageIndex], 0, nullptr);
-            model.draw(cmd);
+            model->draw(cmd);
         }
 
         
@@ -831,6 +883,8 @@ public:
         starsInitialized = false;
     }
 
+    size_t modelIndex = 0;
+
     void event(SDL_Event& e) override {
         if (e.type == SDL_QUIT || (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE)) {
             quit();
@@ -838,6 +892,12 @@ public:
         if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_SPACE) {
             effectIndex = (effectIndex + 1) % 10;  // 0=off, 1=kaleidoscope, 2=ripple/twist, 3=rotate/warp, 4=spiral, 5=gravity/spiral, 6=rotating/zoom, 7=chromatic/barrel, 8=bend/warp, 9=bubble/distort
             std::cout << "index: " << effectIndex << "\n";
+        }
+
+        if(e.type == SDL_KEYDOWN && e.key.keysym.sym ==  SDLK_RETURN) {
+            modelIndex = (modelIndex + 1) % models.size();
+            switchModel(modelIndex);
+            std::cout << "mx: Model: " << models[modelIndex] << " loaded." << std::endl;
         }
         
         if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
@@ -900,13 +960,13 @@ public:
             controller = nullptr;
         }
         cleanupStars();
-        model.cleanup(device);
+        model->cleanup(device);
         mx::VKWindow::cleanup();
     }
 
 private:
     cv::VideoCapture cap;
-    mx::MXModel model;
+    std::unique_ptr<mx::MXModel> model;
     int camera_width = 0;
     int camera_height = 0;
     float rotationX = 0.0f;
