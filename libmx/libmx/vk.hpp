@@ -112,6 +112,8 @@ namespace mx {
         int getWidth() const { return w; }
         int getHeight() const { return h; }
         void resizeWindow(int width, int height);
+        void setWireFrame(bool enable) { useWireFrame = enable; }
+        bool getWireFrame() const { return useWireFrame; }
         struct {
             float posX = 8.0f, posY = 2.0f;
             float dirX = 0.0f, dirY = 1.0f;
@@ -144,6 +146,7 @@ namespace mx {
         VkPipeline graphicsPipeline = VK_NULL_HANDLE;
         VkPipeline graphicsPipelineMatrix = VK_NULL_HANDLE;
         VkPolygonMode currentPolygonMode = VK_POLYGON_MODE_FILL;
+        bool useWireFrame = false;
         std::vector<VkFramebuffer> swapChainFramebuffers;
 
         VkCommandPool commandPool = VK_NULL_HANDLE;
