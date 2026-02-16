@@ -19,6 +19,7 @@ struct LightOrb {
     float maxBrightness;  
     float strobeTimer;    
     float strobeInterval; 
+    float sizeSpeed;      
     
     void update(float dt, int screenW, int screenH, std::mt19937& rng) {
         x += vx * dt;
@@ -39,13 +40,15 @@ struct LightOrb {
             updateColorFromHue();
         }
         if(dir) {
-            size ++;
-            if(size >= 128) {
+            size += sizeSpeed * dt;
+            if(size >= 128.0f) {
+                size = 128.0f;
                 dir = false;
             } 
         } else {
-            size --;
-            if(size <= 64) {
+            size -= sizeSpeed * dt;
+            if(size <= 64.0f) {
+                size = 64.0f;
                 dir = true;
             }
         }
@@ -79,7 +82,7 @@ struct LightOrb {
 class PointSpriteWindow : public mx::VKWindow {
 public:
     PointSpriteWindow(const std::string& path, int wx, int wy, bool full) 
-        : mx::VKWindow("-[ Vulkan Point Sprites - Glowing Light Orbs ]-", wx, wy, full) {
+        : mx::VKWindow("-[ Vulkan Point Sprites - Star Light ]-", wx, wy, full) {
         setPath(path);
     }
     virtual ~PointSpriteWindow() {}
@@ -127,7 +130,9 @@ public:
             orb.minBrightness = minBrightDist(gen);
             orb.maxBrightness = maxBrightDist(gen);
             orb.strobeInterval = strobeIntervalDist(gen);
-            orb.strobeTimer = strobeTimerDist(gen);  
+            orb.strobeTimer = strobeTimerDist(gen);
+            orb.sizeSpeed = 60.0f;
+            orb.dir = std::uniform_int_distribution<int>(0, 1)(gen) == 0;
             float pulseFactor = 0.5f * (1.0f + std::sin(orb.pulsePhase));
             orb.brightness = orb.minBrightness + (orb.maxBrightness - orb.minBrightness) * pulseFactor;
             orb.updateColorFromHue();
@@ -152,22 +157,18 @@ public:
         Uint32 currentTime = SDL_GetTicks();
         float dt = (currentTime - lastTime) / 1000.0f;
         lastTime = currentTime;
-        
+        if (dt > 0.05f) dt = 0.05f;
         if(background) {
             background->setShaderParams(1.0f, 1.0f, 1.0f, 1.0f);
             background->drawSpriteRect(0, 0, getWidth(), getHeight());
         }
-        
         for (auto& orb : orbs) {
             orb.update(dt, w, h, gen);
         }
-        
         float currentTimeSec = static_cast<float>(currentTime) / 1000.0f;
-        
         for (const auto& orb : orbs) {
             if (orbSprite) {
                 orbSprite->setShaderParams(orb.r, orb.g, orb.b, currentTimeSec);
-                
                 float scale = orb.size / 64.0f;  
                 orbSprite->drawSprite(
                     static_cast<int>(orb.x - orb.size / 2), 
@@ -177,20 +178,21 @@ public:
             }
         }
         
-        
-        printText("-[ Glowing Light Orbs - Point Sprites Demo ]-", 20, 20, {255, 255, 255, 255});
-        
-        std::string orbInfo = "Orbs: " + std::to_string(orbs.size()) + " | FPS: " + std::to_string(static_cast<int>(1.0f / std::max(dt, 0.001f)));
-        printText(orbInfo, 20, 50, {200, 200, 200, 255});
-        printText("Press SPACE to add orbs | Press C to clear | ESC to quit", 20, 80, {150, 150, 150, 255});
+        if(hudEnabled) {
+            printText("-[ Glowing Light Orbs - Point Sprites Demo ]-", 20, 20, {255, 255, 255, 255});
+            std::string orbInfo = "Orbs: " + std::to_string(orbs.size()) + " | FPS: " + std::to_string(static_cast<int>(1.0f / std::max(dt, 0.001f)));
+            printText(orbInfo, 20, 50, {200, 200, 200, 255});
+            printText("Press SPACE to add orbs | Press C to clear | ESC to quit", 20, 80, {150, 150, 150, 255});
+        }
     }
+
+    bool hudEnabled = true;
     
     void event(SDL_Event& e) override {
         if (e.type == SDL_QUIT || (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE)) {
             quit();
             return;
         }
-        
         if (e.type == SDL_KEYDOWN) {
             if (e.key.keysym.sym == SDLK_SPACE) {
                 addRandomOrbs(50);
@@ -198,6 +200,9 @@ public:
             if (e.key.keysym.sym == SDLK_c) {
                 orbs.clear();
                 initOrbs();
+            }
+            if(e.key.keysym.sym == SDLK_v) {
+                hudEnabled = !hudEnabled;
             }
         }
     
@@ -236,7 +241,8 @@ public:
             orb.minBrightness = minBrightDist(gen);
             orb.maxBrightness = maxBrightDist(gen);
             orb.strobeInterval = strobeIntervalDist(gen);
-            orb.strobeTimer = strobeTimerDist(gen); 
+            orb.strobeTimer = strobeTimerDist(gen);
+            orb.sizeSpeed = 60.0f;
             float pulseFactor = 0.5f * (1.0f + std::sin(orb.pulsePhase));
             orb.brightness = orb.minBrightness + (orb.maxBrightness - orb.minBrightness) * pulseFactor;
             orb.updateColorFromHue();
@@ -268,7 +274,9 @@ public:
         orb.minBrightness = minBrightDist(gen);
         orb.maxBrightness = maxBrightDist(gen);
         orb.strobeInterval = strobeIntervalDist(gen);
-        orb.strobeTimer = strobeTimerDist(gen);  
+        orb.strobeTimer = strobeTimerDist(gen);
+        orb.sizeSpeed = 60.0f;
+        orb.dir = std::uniform_int_distribution<int>(0, 1)(gen) == 0;
         float pulseFactor = 0.5f * (1.0f + std::sin(orb.pulsePhase));
         orb.brightness = orb.minBrightness + (orb.maxBrightness - orb.minBrightness) * pulseFactor;
         orb.updateColorFromHue();
