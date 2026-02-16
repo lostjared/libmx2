@@ -1,5 +1,6 @@
 #include "vk.hpp"
 #include "vk_model.hpp"
+#include "loadpng.hpp"
 #include "SDL.h"
 #include <random>
 #include <cmath>
@@ -27,12 +28,12 @@ struct LightOrb {
     float sizeSpeed;
     bool dir;
 
-    void update(float dt, float sphereRadius, std::mt19937& rng) {
+    void update(float dt, float bounceRadius, std::mt19937& rng) {
         x += vx * dt;
         y += vy * dt;
         z += vz * dt;
         float dist = std::sqrt(x * x + y * y + z * z);
-        if (dist >= sphereRadius) {
+        if (dist >= bounceRadius) {
             float nx = x / dist;
             float ny = y / dist;
             float nz = z / dist;
@@ -40,7 +41,7 @@ struct LightOrb {
             vx -= 2.0f * dot * nx;
             vy -= 2.0f * dot * ny;
             vz -= 2.0f * dot * nz;
-            float pushBack = sphereRadius * 0.99f;
+            float pushBack = bounceRadius * 0.95f;
             x = nx * pushBack;
             y = ny * pushBack;
             z = nz * pushBack;
@@ -108,15 +109,149 @@ public:
 
         background = createSprite(util.getFilePath("data/universe.png"),
             util.getFilePath("data/sprite_vert.spv"),
-            util.getFilePath("data/sprite_frag.spv")
+            util.getFilePath("data/universe_fragment_frag.spv")
         );
+
+        loadGlassTexture();
+        createGlassPipeline();
 
         initOrbs();
         createOrbSprite();
     }
 
+    void loadGlassTexture() {
+        SDL_Surface* surface = png::LoadPNG(util.getFilePath("data/glass.png").c_str());
+        if (surface) {
+            createTextureImage(surface);
+            createTextureImageView();
+            updateDescriptorSets();
+            SDL_FreeSurface(surface);
+        }
+    }
+
+    void createGlassPipeline() {
+        auto vertShaderCode = mx::readFile(util.getFilePath("data/vert.spv"));
+        auto fragShaderCode = mx::readFile(util.getFilePath("data/glass_fragment_frag.spv"));
+
+        VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
+        VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
+
+        VkPipelineShaderStageCreateInfo vertStage{};
+        vertStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        vertStage.stage = VK_SHADER_STAGE_VERTEX_BIT;
+        vertStage.module = vertShaderModule;
+        vertStage.pName = "main";
+
+        VkPipelineShaderStageCreateInfo fragStage{};
+        fragStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        fragStage.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+        fragStage.module = fragShaderModule;
+        fragStage.pName = "main";
+
+        VkPipelineShaderStageCreateInfo shaderStages[] = { vertStage, fragStage };
+
+        VkVertexInputBindingDescription bindingDescription{};
+        bindingDescription.binding = 0;
+        bindingDescription.stride = sizeof(mx::Vertex);
+        bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+        std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
+        attributeDescriptions[0].binding = 0;
+        attributeDescriptions[0].location = 0;
+        attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+        attributeDescriptions[0].offset = offsetof(mx::Vertex, pos);
+        attributeDescriptions[1].binding = 0;
+        attributeDescriptions[1].location = 1;
+        attributeDescriptions[1].format = VK_FORMAT_R32G32_SFLOAT;
+        attributeDescriptions[1].offset = offsetof(mx::Vertex, texCoord);
+        attributeDescriptions[2].binding = 0;
+        attributeDescriptions[2].location = 2;
+        attributeDescriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
+        attributeDescriptions[2].offset = offsetof(mx::Vertex, normal);
+
+        VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+        vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        vertexInputInfo.vertexBindingDescriptionCount = 1;
+        vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+        vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+        vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+
+        VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+        inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+        inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+        VkPipelineViewportStateCreateInfo viewportState{};
+        viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+        viewportState.viewportCount = 1;
+        viewportState.scissorCount = 1;
+
+        std::array<VkDynamicState, 2> dynamicStates = {
+            VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR
+        };
+        VkPipelineDynamicStateCreateInfo dynamicState{};
+        dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
+        dynamicState.pDynamicStates = dynamicStates.data();
+
+        VkPipelineRasterizationStateCreateInfo rasterizer{};
+        rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+        rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+        rasterizer.lineWidth = 1.0f;
+        rasterizer.cullMode = VK_CULL_MODE_NONE;
+        rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+
+        VkPipelineMultisampleStateCreateInfo multisampling{};
+        multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+        multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+        VkPipelineDepthStencilStateCreateInfo depthStencil{};
+        depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+        depthStencil.depthTestEnable = VK_TRUE;
+        depthStencil.depthWriteEnable = VK_FALSE;  
+        depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
+
+        VkPipelineColorBlendAttachmentState colorBlendAttachment{};
+        colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+            VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        colorBlendAttachment.blendEnable = VK_TRUE;
+        colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+        colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+        colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+        colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+
+        VkPipelineColorBlendStateCreateInfo colorBlending{};
+        colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+        colorBlending.attachmentCount = 1;
+        colorBlending.pAttachments = &colorBlendAttachment;
+
+        VkGraphicsPipelineCreateInfo pipelineInfo{};
+        pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        pipelineInfo.stageCount = 2;
+        pipelineInfo.pStages = shaderStages;
+        pipelineInfo.pVertexInputState = &vertexInputInfo;
+        pipelineInfo.pInputAssemblyState = &inputAssembly;
+        pipelineInfo.pViewportState = &viewportState;
+        pipelineInfo.pRasterizationState = &rasterizer;
+        pipelineInfo.pMultisampleState = &multisampling;
+        pipelineInfo.pDepthStencilState = &depthStencil;
+        pipelineInfo.pColorBlendState = &colorBlending;
+        pipelineInfo.pDynamicState = &dynamicState;
+        pipelineInfo.layout = pipelineLayout;
+        pipelineInfo.renderPass = renderPass;
+        pipelineInfo.subpass = 0;
+        pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+
+        VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &glassPipeline));
+
+        vkDestroyShaderModule(device, fragShaderModule, nullptr);
+        vkDestroyShaderModule(device, vertShaderModule, nullptr);
+    }
+
     void initOrbs() {
-        std::uniform_real_distribution<float> posDist(-sphereRadius * 0.8f, sphereRadius * 0.8f);
+        std::uniform_real_distribution<float> posDist(-BOUNCE_RADIUS * 0.4f, BOUNCE_RADIUS * 0.4f);
         std::uniform_real_distribution<float> velDist(-0.5f, 0.5f);
         std::uniform_real_distribution<float> sizeDist(20.0f, 60.0f);
         std::uniform_real_distribution<float> phaseDist(0.0f, 2.0f * M_PI);
@@ -134,7 +269,7 @@ public:
                 orb.x = posDist(gen);
                 orb.y = posDist(gen);
                 orb.z = posDist(gen);
-            } while (std::sqrt(orb.x*orb.x + orb.y*orb.y + orb.z*orb.z) > sphereRadius * 0.8f);
+            } while (std::sqrt(orb.x*orb.x + orb.y*orb.y + orb.z*orb.z) > BOUNCE_RADIUS * 0.7f);
             orb.vx = velDist(gen);
             orb.vy = velDist(gen);
             orb.vz = velDist(gen);
@@ -174,12 +309,13 @@ public:
         if (dt > 0.05f) dt = 0.05f;
 
         if (background) {
-            background->setShaderParams(1.0f, 1.0f, 1.0f, 1.0f);
+            float bgTime = SDL_GetTicks() / 1000.0f;
+            background->setShaderParams(1.0f, 1.0f, 1.0f, bgTime);
             background->drawSpriteRect(0, 0, getWidth(), getHeight());
         }
 
         for (auto& orb : orbs) {
-            orb.update(dt, sphereRadius, gen);
+            orb.update(dt, BOUNCE_RADIUS, gen);
         }
 
         float time = SDL_GetTicks() / 1000.0f;
@@ -206,7 +342,7 @@ public:
                 float screenY = (ndc.y * 0.5f + 0.5f) * h;
 
                 float depthScale = 1.0f / clipPos.w;
-                float spriteSize = orb.size * depthScale * 2.0f;
+                float spriteSize = orb.size * depthScale * 2.0f * sphereRadius;
                 float scale = spriteSize / 64.0f;
                 if (scale < 0.05f) continue;
 
@@ -291,7 +427,7 @@ public:
         float time = SDL_GetTicks() / 1000.0f;
         float aspect = static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height);
 
-        VkPipeline modelPipeline = wireframe ? graphicsPipelineMatrix : graphicsPipeline;
+        VkPipeline modelPipeline = wireframe ? graphicsPipelineMatrix : glassPipeline;
         if (sphereVisible && modelPipeline != VK_NULL_HANDLE && model && model->indexCount() > 0) {
             vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, modelPipeline);
 
@@ -308,7 +444,7 @@ public:
             ubo.proj[1][1] *= -1;
             ubo.params = glm::vec4(time, static_cast<float>(swapChainExtent.width),
                                    static_cast<float>(swapChainExtent.height), 0.0f);
-            ubo.color = glm::vec4(0.2f, 0.8f, 1.0f, 1.0f);
+            ubo.color = glm::vec4(0.2f, 0.8f, 1.0f, 0.4f);
 
             memcpy(uniformBuffersMapped[imageIndex], &ubo, sizeof(ubo));
 
@@ -372,6 +508,10 @@ public:
 
     void cleanup() override {
         vkDeviceWaitIdle(device);
+        if (glassPipeline != VK_NULL_HANDLE) {
+            vkDestroyPipeline(device, glassPipeline, nullptr);
+            glassPipeline = VK_NULL_HANDLE;
+        }
         if (model) {
             model->cleanup(device);
         }
@@ -420,7 +560,7 @@ public:
     }
 
     void addRandomOrbs(int count) {
-        std::uniform_real_distribution<float> posDist(-sphereRadius * 0.8f, sphereRadius * 0.8f);
+        std::uniform_real_distribution<float> posDist(-BOUNCE_RADIUS * 0.4f, BOUNCE_RADIUS * 0.4f);
         std::uniform_real_distribution<float> velDist(-0.5f, 0.5f);
         std::uniform_real_distribution<float> sizeDist(20.0f, 60.0f);
         std::uniform_real_distribution<float> phaseDist(0.0f, 2.0f * M_PI);
@@ -437,7 +577,7 @@ public:
                 orb.x = posDist(gen);
                 orb.y = posDist(gen);
                 orb.z = posDist(gen);
-            } while (std::sqrt(orb.x*orb.x + orb.y*orb.y + orb.z*orb.z) > sphereRadius * 0.8f);
+            } while (std::sqrt(orb.x*orb.x + orb.y*orb.y + orb.z*orb.z) > BOUNCE_RADIUS * 0.7f);
             orb.vx = velDist(gen);
             orb.vy = velDist(gen);
             orb.vz = velDist(gen);
@@ -460,9 +600,11 @@ public:
 
 private:
     static constexpr int NUM_ORBS = 50;
+    static constexpr float BOUNCE_RADIUS = 0.9f;
     std::vector<LightOrb> orbs;
     mx::VKSprite *orbSprite = nullptr;
     mx::VKSprite *background = nullptr;
+    VkPipeline glassPipeline = VK_NULL_HANDLE;
     std::unique_ptr<mx::MXModel> model;
     bool wireframe = true;
     bool sphereVisible = true;
