@@ -271,7 +271,8 @@ public:
 
         
         if (graphicsPipeline != VK_NULL_HANDLE && model->indexCount() > 0) {
-            vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+            VkPipeline pipelineToUse = useWireFrame ? graphicsPipelineMatrix : graphicsPipeline;
+            vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineToUse);
 
             mx::UniformBufferObject ubo{};
             glm::mat4 modelMat = glm::mat4(1.0f);
@@ -898,6 +899,10 @@ public:
             modelIndex = (modelIndex + 1) % models.size();
             switchModel(modelIndex);
             std::cout << "mx: Model: " << models[modelIndex] << " loaded." << std::endl;
+        }
+
+        if(e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_p) {
+            useWireFrame = !useWireFrame;
         }
         
         if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
