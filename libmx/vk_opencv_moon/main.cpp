@@ -9,9 +9,27 @@
 #include <random>
 #include <cmath>
 #include <string>
+#include <fstream>
+#include <filesystem>
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
+
+struct ExtPushConstants {
+    glm::vec2 screenSize;
+    glm::vec2 spritePos;
+    glm::vec2 spriteSize;
+    glm::vec2 _pad;    // align params to offset 32 (vec4 requires 16-byte alignment in std430)
+    glm::vec4 params;  // x=colorR, y=colorG, z=colorB, w=time
+};
+
+struct SpriteExtendedUBO {
+    glm::vec4 mouse;
+    glm::vec4 u0;
+    glm::vec4 u1;
+    glm::vec4 u2;
+    glm::vec4 u3;
+};
 
 static constexpr int NUM_STARS = 15000;
 
@@ -97,11 +115,14 @@ class Moon : public mx::VKWindow {
         0.500000f, 1.000000f, 0.100000f
     };
 public:
-    Moon(const std::string& path, int wx, int wy, bool full)
+    Moon(const std::string& path, int wx, int wy, bool full, const std::string& shaderDir = "")
         : mx::VKWindow("-[ Vulkan Example / Texture Mapped MXModel ]-", wx, wy, full) {
         setPath(path);
         model.reset(new mx::MXModel());
         model->load(path + "/data/" + models[0], modelScales[0]);
+        if (!shaderDir.empty()) {
+            loadShaderIndex(shaderDir);
+        }
         if (SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER) == 0) {
             for (int i = 0; i < SDL_NumJoysticks(); ++i) {
                 if (SDL_IsGameController(i)) {
@@ -125,11 +146,365 @@ public:
         }
     }
 
+    void loadShaderIndex(const std::string& shaderDir) {
+        shaderPath = shaderDir;
+        std::string indexFile = shaderDir + "/index.txt";
+        std::ifstream infile(indexFile);
+        if (!infile.is_open()) {
+            SDL_Log("mx: Could not open shader index file: %s", indexFile.c_str());
+            return;
+        }
+        shaderFiles.clear();
+        std::string line;
+        while (std::getline(infile, line)) {
+            while (!line.empty() && (line.back() == '\r' || line.back() == '\n' || line.back() == ' '))
+                line.pop_back();
+            while (!line.empty() && (line.front() == ' '))
+                line.erase(line.begin());
+            if (!line.empty()) {
+                shaderFiles.push_back(line);
+            }
+        }
+        infile.close();
+        if (!shaderFiles.empty()) {
+            useExternalShaders = true;
+            effectIndex = 0;
+            effects.clear();
+            for (const auto& f : shaderFiles) {
+                std::string name = f;
+                auto dot = name.rfind('.');
+                if (dot != std::string::npos)
+                    name = name.substr(0, dot);
+                effects.push_back(name);
+            }
+            SDL_Log("mx: Loaded %zu external shaders from %s", shaderFiles.size(), indexFile.c_str());
+        }
+    }
+
+    void swapFragmentShader(size_t shaderIndex) {
+        if (shaderIndex >= shaderFiles.size()) return;
+        
+        std::string spvPath = shaderPath + "/" + shaderFiles[shaderIndex];
+    
+        if (!std::filesystem::exists(spvPath)) {
+            SDL_Log("mx: Shader file not found: %s", spvPath.c_str());
+            return;
+        }
+
+        vkDeviceWaitIdle(device);
+
+        if (graphicsPipeline != VK_NULL_HANDLE) {
+            vkDestroyPipeline(device, graphicsPipeline, nullptr);
+            graphicsPipeline = VK_NULL_HANDLE;
+        }
+        if (graphicsPipelineMatrix != VK_NULL_HANDLE) {
+            vkDestroyPipeline(device, graphicsPipelineMatrix, nullptr);
+            graphicsPipelineMatrix = VK_NULL_HANDLE;
+        }
+
+        if (extPipelineLayout == VK_NULL_HANDLE) {
+            {
+                std::array<VkDescriptorSetLayoutBinding, 2> bindings{};
+                bindings[0].binding = 0;
+                bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                bindings[0].descriptorCount = 1;
+                bindings[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+                bindings[1].binding = 1;
+                bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                bindings[1].descriptorCount = 1;
+                bindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+                VkDescriptorSetLayoutCreateInfo ci{};
+                ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+                ci.bindingCount = static_cast<uint32_t>(bindings.size());
+                ci.pBindings = bindings.data();
+                VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &ci, nullptr, &extFragDescSetLayout));
+            }
+            {
+                VkDescriptorSetLayoutBinding binding{};
+                binding.binding = 0;
+                binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                binding.descriptorCount = 1;
+                binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+                VkDescriptorSetLayoutCreateInfo ci{};
+                ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+                ci.bindingCount = 1;
+                ci.pBindings = &binding;
+                VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &ci, nullptr, &extVertDescSetLayout));
+            }
+
+            VkPushConstantRange pcRange{};
+            pcRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+            pcRange.offset = 0;
+            pcRange.size = sizeof(ExtPushConstants);
+
+            std::array<VkDescriptorSetLayout, 2> setLayouts = { extFragDescSetLayout, extVertDescSetLayout };
+            VkPipelineLayoutCreateInfo layoutInfo{};
+            layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+            layoutInfo.setLayoutCount = static_cast<uint32_t>(setLayouts.size());
+            layoutInfo.pSetLayouts = setLayouts.data();
+            layoutInfo.pushConstantRangeCount = 1;
+            layoutInfo.pPushConstantRanges = &pcRange;
+            VK_CHECK_RESULT(vkCreatePipelineLayout(device, &layoutInfo, nullptr, &extPipelineLayout));
+
+            uint32_t imgCount = static_cast<uint32_t>(swapChainImages.size());
+            std::array<VkDescriptorPoolSize, 2> poolSizes{};
+            poolSizes[0] = { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, imgCount };
+            poolSizes[1] = { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, imgCount * 2 }; // SpriteExtended + MVP per frame
+            VkDescriptorPoolCreateInfo poolInfo{};
+            poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+            poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+            poolInfo.pPoolSizes = poolSizes.data();
+            poolInfo.maxSets = imgCount * 2;
+            VK_CHECK_RESULT(vkCreateDescriptorPool(device, &poolInfo, nullptr, &extDescPool));
+
+            extFragDescSets.resize(imgCount);
+            {
+                std::vector<VkDescriptorSetLayout> layouts(imgCount, extFragDescSetLayout);
+                VkDescriptorSetAllocateInfo ai{};
+                ai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+                ai.descriptorPool = extDescPool;
+                ai.descriptorSetCount = imgCount;
+                ai.pSetLayouts = layouts.data();
+                VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &ai, extFragDescSets.data()));
+            }
+            
+            extVertDescSets.resize(imgCount);
+            {
+                std::vector<VkDescriptorSetLayout> layouts(imgCount, extVertDescSetLayout);
+                VkDescriptorSetAllocateInfo ai{};
+                ai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+                ai.descriptorPool = extDescPool;
+                ai.descriptorSetCount = imgCount;
+                ai.pSetLayouts = layouts.data();
+                VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &ai, extVertDescSets.data()));
+            }
+
+            extSpriteBuffers.resize(imgCount);
+            extSpriteMemory.resize(imgCount);
+            extSpriteMapped.resize(imgCount);
+            for (uint32_t i = 0; i < imgCount; i++) {
+                VkBufferCreateInfo bi{};
+                bi.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+                bi.size = sizeof(SpriteExtendedUBO);
+                bi.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+                bi.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+                VK_CHECK_RESULT(vkCreateBuffer(device, &bi, nullptr, &extSpriteBuffers[i]));
+                VkMemoryRequirements memReq;
+                vkGetBufferMemoryRequirements(device, extSpriteBuffers[i], &memReq);
+                VkMemoryAllocateInfo mai{};
+                mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+                mai.allocationSize = memReq.size;
+                mai.memoryTypeIndex = findMemoryType(memReq.memoryTypeBits,
+                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+                VK_CHECK_RESULT(vkAllocateMemory(device, &mai, nullptr, &extSpriteMemory[i]));
+                vkBindBufferMemory(device, extSpriteBuffers[i], extSpriteMemory[i], 0);
+                vkMapMemory(device, extSpriteMemory[i], 0, sizeof(SpriteExtendedUBO), 0, &extSpriteMapped[i]);
+                
+                SpriteExtendedUBO init{};
+                init.u0 = glm::vec4(1.0f, 1.0f, 0.0f, 0.0f);
+                memcpy(extSpriteMapped[i], &init, sizeof(init));
+            }
+
+            
+            for (uint32_t i = 0; i < imgCount; i++) {
+                VkDescriptorImageInfo imgInfo{};
+                imgInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                imgInfo.imageView = textureImageView;
+                imgInfo.sampler = textureSampler;
+                VkDescriptorBufferInfo bufInfo{};
+                bufInfo.buffer = extSpriteBuffers[i];
+                bufInfo.offset = 0;
+                bufInfo.range = sizeof(SpriteExtendedUBO);
+                std::array<VkWriteDescriptorSet, 2> writes{};
+                writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                writes[0].dstSet = extFragDescSets[i];
+                writes[0].dstBinding = 0;
+                writes[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                writes[0].descriptorCount = 1;
+                writes[0].pImageInfo = &imgInfo;
+                writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                writes[1].dstSet = extFragDescSets[i];
+                writes[1].dstBinding = 1;
+                writes[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                writes[1].descriptorCount = 1;
+                writes[1].pBufferInfo = &bufInfo;
+                vkUpdateDescriptorSets(device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+            }
+            
+            for (uint32_t i = 0; i < imgCount; i++) {
+                VkDescriptorBufferInfo bufInfo{};
+                bufInfo.buffer = uniformBuffers[i];
+                bufInfo.offset = 0;
+                bufInfo.range = sizeof(mx::UniformBufferObject);
+                VkWriteDescriptorSet write{};
+                write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                write.dstSet = extVertDescSets[i];
+                write.dstBinding = 0;
+                write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                write.descriptorCount = 1;
+                write.pBufferInfo = &bufInfo;
+                vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
+            }
+
+            SDL_Log("mx: Created external shader descriptor resources (2 sets)");
+        }
+
+        
+        auto vertShaderCode = mx::readFile(util.getFilePath("data/ext_vert.spv"));
+        auto fragShaderCode = mx::readFile(spvPath);
+
+        VkShaderModule vertModule = createShaderModule(vertShaderCode);
+        VkShaderModule fragModule = createShaderModule(fragShaderCode);
+
+        if (vertModule == VK_NULL_HANDLE || fragModule == VK_NULL_HANDLE) {
+            SDL_Log("mx: Failed to create shader modules for: %s", spvPath.c_str());
+            if (vertModule != VK_NULL_HANDLE) vkDestroyShaderModule(device, vertModule, nullptr);
+            if (fragModule != VK_NULL_HANDLE) vkDestroyShaderModule(device, fragModule, nullptr);
+            return;
+        }
+
+        VkPipelineShaderStageCreateInfo vertStage{};
+        vertStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        vertStage.stage = VK_SHADER_STAGE_VERTEX_BIT;
+        vertStage.module = vertModule;
+        vertStage.pName = "main";
+
+        VkPipelineShaderStageCreateInfo fragStage{};
+        fragStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        fragStage.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+        fragStage.module = fragModule;
+        fragStage.pName = "main";
+
+        VkPipelineShaderStageCreateInfo stages[] = { vertStage, fragStage };
+
+        VkVertexInputBindingDescription bindDesc{};
+        bindDesc.binding = 0;
+        bindDesc.stride = sizeof(mx::Vertex);
+        bindDesc.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+        std::array<VkVertexInputAttributeDescription, 3> attrDescs{};
+        attrDescs[0] = { 0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(mx::Vertex, pos) };
+        attrDescs[1] = { 1, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(mx::Vertex, texCoord) };
+        attrDescs[2] = { 2, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(mx::Vertex, normal) };
+
+        VkPipelineVertexInputStateCreateInfo vertexInput{};
+        vertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        vertexInput.vertexBindingDescriptionCount = 1;
+        vertexInput.pVertexBindingDescriptions = &bindDesc;
+        vertexInput.vertexAttributeDescriptionCount = static_cast<uint32_t>(attrDescs.size());
+        vertexInput.pVertexAttributeDescriptions = attrDescs.data();
+
+        VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+        inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+        inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+        VkPipelineViewportStateCreateInfo viewportState{};
+        viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+        viewportState.viewportCount = 1;
+        viewportState.scissorCount = 1;
+
+        std::array<VkDynamicState, 2> dynStates = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+        VkPipelineDynamicStateCreateInfo dynState{};
+        dynState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        dynState.dynamicStateCount = static_cast<uint32_t>(dynStates.size());
+        dynState.pDynamicStates = dynStates.data();
+
+        VkPipelineRasterizationStateCreateInfo rasterizer{};
+        rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+        rasterizer.depthClampEnable = VK_FALSE;
+        rasterizer.rasterizerDiscardEnable = VK_FALSE;
+        rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+        rasterizer.lineWidth = 1.0f;
+        rasterizer.cullMode = VK_CULL_MODE_NONE;
+        rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        rasterizer.depthBiasEnable = VK_FALSE;
+
+        VkPipelineMultisampleStateCreateInfo multisampling{};
+        multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+        multisampling.sampleShadingEnable = VK_FALSE;
+        multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+        VkPipelineDepthStencilStateCreateInfo depthStencil{};
+        depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+        depthStencil.depthTestEnable = VK_TRUE;
+        depthStencil.depthWriteEnable = VK_TRUE;
+        depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
+        depthStencil.depthBoundsTestEnable = VK_FALSE;
+        depthStencil.stencilTestEnable = VK_FALSE;
+
+        VkPipelineColorBlendAttachmentState colorBlendAttachment{};
+        colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+            VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        colorBlendAttachment.blendEnable = VK_FALSE;
+
+        VkPipelineColorBlendStateCreateInfo colorBlending{};
+        colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+        colorBlending.logicOpEnable = VK_FALSE;
+        colorBlending.attachmentCount = 1;
+        colorBlending.pAttachments = &colorBlendAttachment;
+
+        VkGraphicsPipelineCreateInfo pipelineInfo{};
+        pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        pipelineInfo.stageCount = 2;
+        pipelineInfo.pStages = stages;
+        pipelineInfo.pVertexInputState = &vertexInput;
+        pipelineInfo.pInputAssemblyState = &inputAssembly;
+        pipelineInfo.pViewportState = &viewportState;
+        pipelineInfo.pRasterizationState = &rasterizer;
+        pipelineInfo.pMultisampleState = &multisampling;
+        pipelineInfo.pDepthStencilState = &depthStencil;
+        pipelineInfo.pColorBlendState = &colorBlending;
+        pipelineInfo.pDynamicState = &dynState;
+        pipelineInfo.layout = extPipelineLayout;
+        pipelineInfo.renderPass = renderPass;
+        pipelineInfo.subpass = 0;
+        pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+
+        if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS) {
+            SDL_Log("mx: Failed to create graphics pipeline with shader: %s", spvPath.c_str());
+        }
+
+        rasterizer.polygonMode = VK_POLYGON_MODE_LINE;
+        pipelineInfo.pRasterizationState = &rasterizer;
+        if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipelineMatrix) != VK_SUCCESS) {
+            SDL_Log("mx: Failed to create wireframe pipeline with shader: %s", spvPath.c_str());
+        }
+
+        vkDestroyShaderModule(device, fragModule, nullptr);
+        vkDestroyShaderModule(device, vertModule, nullptr);
+
+        SDL_Log("mx: Swapped to shader: %s", shaderFiles[shaderIndex].c_str());
+    }
+
     void initVulkan() override {
         mx::VKWindow::initVulkan();
         model->upload(device, physicalDevice, commandPool, graphicsQueue);
         initStars();
         initStarResources();
+
+        if (useExternalShaders && !shaderFiles.empty()) {
+            swapFragmentShader(0);
+        }
+    }
+
+    void updateExtFragDescriptors() {
+        if (!useExternalShaders || extFragDescSets.empty()) return;
+        uint32_t imgCount = static_cast<uint32_t>(extFragDescSets.size());
+        for (uint32_t i = 0; i < imgCount; i++) {
+            VkDescriptorImageInfo imgInfo{};
+            imgInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            imgInfo.imageView = textureImageView;
+            imgInfo.sampler = textureSampler;
+            VkWriteDescriptorSet write{};
+            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            write.dstSet = extFragDescSets[i];
+            write.dstBinding = 0;
+            write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            write.descriptorCount = 1;
+            write.pImageInfo = &imgInfo;
+            vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
+        }
     }
 
     void openCamera(int index, int width, int height) {
@@ -144,6 +519,7 @@ public:
         setupTextureImage(camera_width, camera_height);
         createTextureImageView();
         updateDescriptorSets();
+        updateExtFragDescriptors();
     }
     
     void openFile(const std::string &filename) {
@@ -156,6 +532,7 @@ public:
         setupTextureImage(camera_width, camera_height);
         createTextureImageView();
         updateDescriptorSets();
+        updateExtFragDescriptors();
     }
     
     void proc() override {
@@ -289,8 +666,34 @@ public:
 
             memcpy(uniformBuffersMapped[imageIndex], &ubo, sizeof(ubo));
 
-            vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                    pipelineLayout, 0, 1, &descriptorSets[imageIndex], 0, nullptr);
+            if (useExternalShaders && extPipelineLayout != VK_NULL_HANDLE) {
+                VkDescriptorSet sets[] = { extFragDescSets[imageIndex], extVertDescSets[imageIndex] };
+                vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                        extPipelineLayout, 0, 2, sets, 0, nullptr);
+
+                ExtPushConstants epc{};
+                epc.screenSize = glm::vec2(static_cast<float>(swapChainExtent.width),
+                                           static_cast<float>(swapChainExtent.height));
+                epc.spritePos = glm::vec2(0.0f);
+                epc.spriteSize = glm::vec2(static_cast<float>(swapChainExtent.width),
+                                           static_cast<float>(swapChainExtent.height));
+                epc.params = glm::vec4(1.0f, 1.0f, 1.0f, time);
+                vkCmdPushConstants(cmd, extPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
+                                   0, sizeof(ExtPushConstants), &epc);
+
+
+                SpriteExtendedUBO extUBO{};
+                extUBO.mouse = glm::vec4(0.0f);
+                extUBO.u0 = glm::vec4(1.0f, 1.0f, 0.0f, 0.0f); // amp=1, uamp=1
+                extUBO.u1 = glm::vec4(0.016f, 0.0f, 0.0f, 60.0f); // iTimeDelta, 0, 0, iFrameRate
+                extUBO.u2 = glm::vec4(0.0f);
+                extUBO.u3 = glm::vec4(0.0f);
+                memcpy(extSpriteMapped[imageIndex], &extUBO, sizeof(extUBO));
+            } else {
+                vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                        pipelineLayout, 0, 1, &descriptorSets[imageIndex], 0, nullptr);
+            }
+
             model->draw(cmd);
         }
 
@@ -891,8 +1294,21 @@ public:
         if (e.type == SDL_QUIT || (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE)) {
             quit();
         }
-        if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_SPACE) {
-            effectIndex = (effectIndex + 1) % 10;  // 0=off, 1=kaleidoscope, 2=ripple/twist, 3=rotate/warp, 4=spiral, 5=gravity/spiral, 6=rotating/zoom, 7=chromatic/barrel, 8=bend/warp, 9=bubble/distort
+        if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_RIGHT) {
+            if (useExternalShaders && !shaderFiles.empty()) {
+                effectIndex = (effectIndex + 1) % static_cast<int>(shaderFiles.size());
+                swapFragmentShader(effectIndex);
+            } else {
+                effectIndex = (effectIndex + 1) % 10;
+            }
+        }
+        if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_LEFT) {
+            if (useExternalShaders && !shaderFiles.empty()) {
+                effectIndex = (effectIndex - 1 + static_cast<int>(shaderFiles.size())) % static_cast<int>(shaderFiles.size());
+                swapFragmentShader(effectIndex);
+            } else {
+                effectIndex = (effectIndex - 1 + 10) % 10;
+            }
         }
 
         if(e.type == SDL_KEYDOWN && e.key.keysym.sym ==  SDLK_RETURN) {
@@ -945,10 +1361,20 @@ public:
         if (e.type == SDL_CONTROLLERBUTTONDOWN) {
             switch (e.cbutton.button) {
                 case SDL_CONTROLLER_BUTTON_A:
-                    effectIndex = (effectIndex + 1) % 10;
+                    if (useExternalShaders && !shaderFiles.empty()) {
+                        effectIndex = (effectIndex + 1) % static_cast<int>(shaderFiles.size());
+                        swapFragmentShader(effectIndex);
+                    } else {
+                        effectIndex = (effectIndex + 1) % 10;
+                    }
                     break;
                 case SDL_CONTROLLER_BUTTON_B:
-                    effectIndex = (effectIndex - 1 + 10) % 10;
+                    if (useExternalShaders && !shaderFiles.empty()) {
+                        effectIndex = (effectIndex - 1 + static_cast<int>(shaderFiles.size())) % static_cast<int>(shaderFiles.size());
+                        swapFragmentShader(effectIndex);
+                    } else {
+                        effectIndex = (effectIndex - 1 + 10) % 10;
+                    }
                     break;
                 case SDL_CONTROLLER_BUTTON_X:
                     modelIndex = (modelIndex + 1) % models.size();
@@ -970,6 +1396,17 @@ public:
             controller = nullptr;
         }
         cleanupStars();
+        for (size_t i = 0; i < extSpriteBuffers.size(); i++) {
+            if (extSpriteBuffers[i] != VK_NULL_HANDLE) {
+                vkDestroyBuffer(device, extSpriteBuffers[i], nullptr);
+                vkFreeMemory(device, extSpriteMemory[i], nullptr);
+            }
+        }
+        extSpriteBuffers.clear(); extSpriteMemory.clear(); extSpriteMapped.clear();
+        if (extDescPool != VK_NULL_HANDLE) { vkDestroyDescriptorPool(device, extDescPool, nullptr); extDescPool = VK_NULL_HANDLE; }
+        if (extPipelineLayout != VK_NULL_HANDLE) { vkDestroyPipelineLayout(device, extPipelineLayout, nullptr); extPipelineLayout = VK_NULL_HANDLE; }
+        if (extFragDescSetLayout != VK_NULL_HANDLE) { vkDestroyDescriptorSetLayout(device, extFragDescSetLayout, nullptr); extFragDescSetLayout = VK_NULL_HANDLE; }
+        if (extVertDescSetLayout != VK_NULL_HANDLE) { vkDestroyDescriptorSetLayout(device, extVertDescSetLayout, nullptr); extVertDescSetLayout = VK_NULL_HANDLE; }
         model->cleanup(device);
         mx::VKWindow::cleanup();
     }
@@ -985,6 +1422,18 @@ private:
     int lastMouseX = 0;
     int lastMouseY = 0;
     int effectIndex = 0;
+    bool useExternalShaders = false;
+    std::string shaderPath;
+    std::vector<std::string> shaderFiles;
+    VkPipelineLayout extPipelineLayout = VK_NULL_HANDLE;
+    VkDescriptorSetLayout extFragDescSetLayout = VK_NULL_HANDLE;
+    VkDescriptorSetLayout extVertDescSetLayout = VK_NULL_HANDLE;
+    VkDescriptorPool extDescPool = VK_NULL_HANDLE;
+    std::vector<VkDescriptorSet> extFragDescSets;
+    std::vector<VkDescriptorSet> extVertDescSets;
+    std::vector<VkBuffer> extSpriteBuffers;
+    std::vector<VkDeviceMemory> extSpriteMemory;
+    std::vector<void*> extSpriteMapped;
     std::vector<std::string> effects = {
         "Off",
         "Kaleidoscope",
@@ -1045,7 +1494,7 @@ private:
 int main(int argc, char **argv) {
     Arguments args = proc_args(argc, argv);
     try {
-        Moon window(args.path, args.width, args.height, args.fullscreen);
+        Moon window(args.path, args.width, args.height, args.fullscreen, args.shaderPath);
         window.initVulkan();
         if(args.filename.empty())
             window.openFile(args.path + "/data/eye1.mp4");
