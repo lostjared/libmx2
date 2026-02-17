@@ -391,6 +391,7 @@ struct Arguments {
 	bool fullscreen;
 	std::string filename;
 	std::string texture;
+	std::string shaderPath;
 };
 
 inline Arguments proc_args(int &argc, char **argv) {
@@ -405,6 +406,8 @@ inline Arguments proc_args(int &argc, char **argv) {
         .addOptionDouble('F', "fullscreen", "fullscreen")
 		.addOptionDoubleValue(256, "filename", "input filename")
 		.addOptionDoubleValue(257, "texture", "texture file (.png or .tex)")
+		.addOptionSingleValue('S', "shader SPV folder path (contains index.txt)")
+		.addOptionDoubleValue(258, "shader-path", "shader SPV folder path (contains index.txt)")
 		;
 
     Argument<std::string> arg;
@@ -414,6 +417,7 @@ inline Arguments proc_args(int &argc, char **argv) {
     bool fullscreen = false;
 	std::string filename;
 	std::string texture;
+	std::string shaderPath;
     try {
         while((value = parser.proc(arg)) != -1) {
             switch(value) {
@@ -422,6 +426,10 @@ inline Arguments proc_args(int &argc, char **argv) {
 					break;
 				case 257:
 					texture = arg.arg_value;
+					break;
+				case 'S':
+				case 258:
+					shaderPath = arg.arg_value;
 					break;
                 case 'h':
                 case 'v':
@@ -471,6 +479,7 @@ inline Arguments proc_args(int &argc, char **argv) {
 	args.fullscreen = fullscreen;
 	args.filename = filename;
 	args.texture = texture;
+	args.shaderPath = shaderPath;
 	return args;
 }
 

@@ -51,6 +51,7 @@ namespace mx {
             vkDestroyPipelineLayout(device, customPipelineLayout, nullptr);
         }
         
+        destroyExtendedUBO();
         destroyInstanceResources();
     }
 
@@ -99,6 +100,159 @@ namespace mx {
 
         hasCustomShader = false;
         spriteLoaded = false;
+    }
+
+    void VKSprite::enableExtendedUBO() {
+        if (extendedUBOEnabled) return;
+        extendedUBOEnabled = true;
+        createExtendedUBO();
+        createExtendedDescriptorSetLayout();
+    }
+
+    void VKSprite::setMouseState(float mx, float my, float pressed, float reserved) {
+        extendedUBOData.mouse = glm::vec4(mx, my, pressed, reserved);
+    }
+
+    void VKSprite::setUniform0(float x, float y, float z, float w) {
+        extendedUBOData.u0 = glm::vec4(x, y, z, w);
+    }
+
+    void VKSprite::setUniform1(float x, float y, float z, float w) {
+        extendedUBOData.u1 = glm::vec4(x, y, z, w);
+    }
+
+    void VKSprite::setUniform2(float x, float y, float z, float w) {
+        extendedUBOData.u2 = glm::vec4(x, y, z, w);
+    }
+
+    void VKSprite::setUniform3(float x, float y, float z, float w) {
+        extendedUBOData.u3 = glm::vec4(x, y, z, w);
+    }
+
+    void VKSprite::createExtendedUBO() {
+        if (extendedUBOBuffer != VK_NULL_HANDLE) return;
+        createBuffer(sizeof(SpriteExtendedUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                    extendedUBOBuffer, extendedUBOMemory);
+        VK_CHECK_RESULT(vkMapMemory(device, extendedUBOMemory, 0, sizeof(SpriteExtendedUBO), 0, &extendedUBOMapped));
+        memset(extendedUBOMapped, 0, sizeof(SpriteExtendedUBO));
+    }
+
+    void VKSprite::updateExtendedUBO() {
+        if (!extendedUBOEnabled || !extendedUBOMapped) return;
+        memcpy(extendedUBOMapped, &extendedUBOData, sizeof(SpriteExtendedUBO));
+    }
+
+    void VKSprite::createExtendedDescriptorSetLayout() {
+        if (extendedDescriptorSetLayout != VK_NULL_HANDLE) return;
+
+        std::array<VkDescriptorSetLayoutBinding, 2> bindings{};
+        // binding 0: combined image sampler (same as original)
+        bindings[0].binding = 0;
+        bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        bindings[0].descriptorCount = 1;
+        bindings[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        bindings[0].pImmutableSamplers = nullptr;
+        // binding 1: uniform buffer for extended data
+        bindings[1].binding = 1;
+        bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        bindings[1].descriptorCount = 1;
+        bindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        bindings[1].pImmutableSamplers = nullptr;
+
+        VkDescriptorSetLayoutCreateInfo layoutInfo{};
+        layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+        layoutInfo.pBindings = bindings.data();
+
+        VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &extendedDescriptorSetLayout));
+        ownExtendedDescriptorSetLayout = true;
+    }
+
+    void VKSprite::createExtendedDescriptorSet() {
+        if (extendedDescriptorSetLayout == VK_NULL_HANDLE || spriteImageView == VK_NULL_HANDLE ||
+            spriteSampler == VK_NULL_HANDLE || extendedUBOBuffer == VK_NULL_HANDLE) return;
+
+        if (extendedDescriptorPool != VK_NULL_HANDLE) {
+            vkDestroyDescriptorPool(device, extendedDescriptorPool, nullptr);
+            extendedDescriptorPool = VK_NULL_HANDLE;
+            extendedDescriptorSet = VK_NULL_HANDLE;
+        }
+
+        std::array<VkDescriptorPoolSize, 2> poolSizes{};
+        poolSizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        poolSizes[0].descriptorCount = 1;
+        poolSizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        poolSizes[1].descriptorCount = 1;
+
+        VkDescriptorPoolCreateInfo poolInfo{};
+        poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+        poolInfo.pPoolSizes = poolSizes.data();
+        poolInfo.maxSets = 1;
+
+        VK_CHECK_RESULT(vkCreateDescriptorPool(device, &poolInfo, nullptr, &extendedDescriptorPool));
+
+        VkDescriptorSetAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        allocInfo.descriptorPool = extendedDescriptorPool;
+        allocInfo.descriptorSetCount = 1;
+        allocInfo.pSetLayouts = &extendedDescriptorSetLayout;
+
+        VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &allocInfo, &extendedDescriptorSet));
+
+        VkDescriptorImageInfo imageInfo{};
+        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        imageInfo.imageView = spriteImageView;
+        imageInfo.sampler = spriteSampler;
+
+        VkDescriptorBufferInfo bufferInfo{};
+        bufferInfo.buffer = extendedUBOBuffer;
+        bufferInfo.offset = 0;
+        bufferInfo.range = sizeof(SpriteExtendedUBO);
+
+        std::array<VkWriteDescriptorSet, 2> writes{};
+        writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[0].dstSet = extendedDescriptorSet;
+        writes[0].dstBinding = 0;
+        writes[0].dstArrayElement = 0;
+        writes[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        writes[0].descriptorCount = 1;
+        writes[0].pImageInfo = &imageInfo;
+
+        writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[1].dstSet = extendedDescriptorSet;
+        writes[1].dstBinding = 1;
+        writes[1].dstArrayElement = 0;
+        writes[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        writes[1].descriptorCount = 1;
+        writes[1].pBufferInfo = &bufferInfo;
+
+        vkUpdateDescriptorSets(device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+    }
+
+    void VKSprite::destroyExtendedUBO() {
+        if (extendedDescriptorPool != VK_NULL_HANDLE) {
+            vkDestroyDescriptorPool(device, extendedDescriptorPool, nullptr);
+            extendedDescriptorPool = VK_NULL_HANDLE;
+            extendedDescriptorSet = VK_NULL_HANDLE;
+        }
+        if (ownExtendedDescriptorSetLayout && extendedDescriptorSetLayout != VK_NULL_HANDLE) {
+            vkDestroyDescriptorSetLayout(device, extendedDescriptorSetLayout, nullptr);
+            extendedDescriptorSetLayout = VK_NULL_HANDLE;
+            ownExtendedDescriptorSetLayout = false;
+        }
+        if (extendedUBOBuffer != VK_NULL_HANDLE) {
+            if (extendedUBOMapped) {
+                vkUnmapMemory(device, extendedUBOMemory);
+                extendedUBOMapped = nullptr;
+            }
+            vkDestroyBuffer(device, extendedUBOBuffer, nullptr);
+            vkFreeMemory(device, extendedUBOMemory, nullptr);
+            extendedUBOBuffer = VK_NULL_HANDLE;
+            extendedUBOMemory = VK_NULL_HANDLE;
+        }
+        extendedUBOEnabled = false;
     }
 
     void VKSprite::createStagingResources(VkDeviceSize size) {
@@ -498,10 +652,12 @@ namespace mx {
         pushConstantRange.offset = 0;
         pushConstantRange.size = sizeof(float) * 12;
 
+        VkDescriptorSetLayout layoutToUseForPipeline = extendedUBOEnabled ? extendedDescriptorSetLayout : descriptorSetLayout;
+
         VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
         pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         pipelineLayoutInfo.setLayoutCount = 1;
-        pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
+        pipelineLayoutInfo.pSetLayouts = &layoutToUseForPipeline;
         pipelineLayoutInfo.pushConstantRangeCount = 1;
         pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 
@@ -705,6 +861,11 @@ namespace mx {
                 descriptorPool = VK_NULL_HANDLE;
                 descriptorSet = VK_NULL_HANDLE;
             }
+            if (extendedDescriptorPool != VK_NULL_HANDLE) {
+                vkDestroyDescriptorPool(device, extendedDescriptorPool, nullptr);
+                extendedDescriptorPool = VK_NULL_HANDLE;
+                extendedDescriptorSet = VK_NULL_HANDLE;
+            }
             createDescriptorPool();
         }
         SDL_FreeSurface(rgbaSurface);
@@ -770,6 +931,11 @@ namespace mx {
                 vkDestroyDescriptorPool(device, descriptorPool, nullptr);
                 descriptorPool = VK_NULL_HANDLE;
                 descriptorSet = VK_NULL_HANDLE;
+            }
+            if (extendedDescriptorPool != VK_NULL_HANDLE) {
+                vkDestroyDescriptorPool(device, extendedDescriptorPool, nullptr);
+                extendedDescriptorPool = VK_NULL_HANDLE;
+                extendedDescriptorSet = VK_NULL_HANDLE;
             }
             createDescriptorPool();
         }
@@ -967,8 +1133,18 @@ namespace mx {
             vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, customPipeline);
         }
         
-        vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, layoutToUse,
-                               0, 1, &descriptorSet, 0, nullptr);
+        // When extended UBO is enabled, update UBO and bind extended descriptor set
+        if (extendedUBOEnabled && customPipeline != VK_NULL_HANDLE) {
+            updateExtendedUBO();
+            if (extendedDescriptorSet == VK_NULL_HANDLE) {
+                createExtendedDescriptorSet();
+            }
+            vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, layoutToUse,
+                                   0, 1, &extendedDescriptorSet, 0, nullptr);
+        } else {
+            vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, layoutToUse,
+                                   0, 1, &descriptorSet, 0, nullptr);
+        }
         
         VkBuffer vertexBuffers[] = {quadVertexBuffer};
         VkDeviceSize offsets[] = {0};

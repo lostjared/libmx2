@@ -73,6 +73,15 @@ namespace mx {
                               const std::string &instanceVertShaderPath,
                               const std::string &instanceFragShaderPath);
         bool isInstancingEnabled() const { return instancingEnabled; }
+
+        // Extended UBO support for shaders needing mouse/u0-u3 uniforms
+        void enableExtendedUBO();
+        bool isExtendedUBOEnabled() const { return extendedUBOEnabled; }
+        void setMouseState(float mx, float my, float pressed, float reserved = 0.0f);
+        void setUniform0(float x, float y, float z, float w);
+        void setUniform1(float x, float y, float z, float w);
+        void setUniform2(float x, float y, float z, float w);
+        void setUniform3(float x, float y, float z, float w);
         
     private:
         struct SpriteVertex {
@@ -149,6 +158,28 @@ namespace mx {
         VkShaderModule createShaderModule(const std::vector<char>& code);
         std::vector<char> readShaderFile(const std::string& filename);
     
+        struct SpriteExtendedUBO {
+            glm::vec4 mouse;   
+            glm::vec4 u0;      
+            glm::vec4 u1;
+            glm::vec4 u2;
+            glm::vec4 u3;
+        };
+        bool extendedUBOEnabled = false;
+        SpriteExtendedUBO extendedUBOData{};
+        VkBuffer extendedUBOBuffer = VK_NULL_HANDLE;
+        VkDeviceMemory extendedUBOMemory = VK_NULL_HANDLE;
+        void* extendedUBOMapped = nullptr;
+        VkDescriptorSetLayout extendedDescriptorSetLayout = VK_NULL_HANDLE;
+        VkDescriptorPool extendedDescriptorPool = VK_NULL_HANDLE;
+        VkDescriptorSet extendedDescriptorSet = VK_NULL_HANDLE;
+        bool ownExtendedDescriptorSetLayout = false;
+        void createExtendedUBO();
+        void updateExtendedUBO();
+        void createExtendedDescriptorSetLayout();
+        void createExtendedDescriptorSet();
+        void destroyExtendedUBO();
+
         struct SpriteInstanceData {
             float posX, posY, sizeW, sizeH;
             float params[4];
