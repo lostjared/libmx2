@@ -359,7 +359,7 @@ public:
             printText("-[ Stars Bouncing Inside Wireframe Sphere ]-", 20, 20, {255, 255, 255, 255});
             std::string orbInfo = "Stars: " + std::to_string(orbs.size()) + " | FPS: " + std::to_string(static_cast<int>(1.0f / std::max(dt, 0.001f)));
             printText(orbInfo, 20, 50, {200, 200, 200, 255});
-            printText("SPACE: add stars | C: reset | W: toggle wireframe | ESC: quit", 20, 80, {150, 150, 150, 255});
+            printText("SPACE: add stars | C: reset | W: wireframe | K: kaleidoscope | ESC: quit", 20, 80, {150, 150, 150, 255});
         }
     }
 
@@ -443,7 +443,7 @@ public:
             ubo.proj = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 1000.0f);
             ubo.proj[1][1] *= -1;
             ubo.params = glm::vec4(time, static_cast<float>(swapChainExtent.width),
-                                   static_cast<float>(swapChainExtent.height), 0.0f);
+                                   static_cast<float>(swapChainExtent.height), kaleidoEnabled ? 1.0f : 0.0f);
             ubo.color = glm::vec4(0.2f, 0.8f, 1.0f, 0.4f);
 
             memcpy(uniformBuffersMapped[imageIndex], &ubo, sizeof(ubo));
@@ -542,6 +542,9 @@ public:
             if (e.key.keysym.sym == SDLK_h) {
                 sphereVisible = !sphereVisible;
             }
+            if (e.key.keysym.sym == SDLK_k) {
+                kaleidoEnabled = !kaleidoEnabled;
+            }
             if (e.key.keysym.sym == SDLK_UP) {
                 sphereRadius += 0.1f;
                 if (sphereRadius > 5.0f) sphereRadius = 5.0f;
@@ -556,6 +559,32 @@ public:
             if (e.key.keysym.sym == SDLK_RIGHT) {
                 cameraAngleY += 0.1f;
             }
+            if (e.key.keysym.sym == SDLK_PAGEUP) {
+                cameraAngleX -= 0.1f;
+                if (cameraAngleX < -1.5f) cameraAngleX = -1.5f;
+            }
+            if (e.key.keysym.sym == SDLK_PAGEDOWN) {
+                cameraAngleX += 0.1f;
+                if (cameraAngleX > 1.5f) cameraAngleX = 1.5f;
+            }
+        }
+        if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
+            mouseDragging = true;
+            lastMouseX = e.button.x;
+            lastMouseY = e.button.y;
+        }
+        if (e.type == SDL_MOUSEBUTTONUP && e.button.button == SDL_BUTTON_LEFT) {
+            mouseDragging = false;
+        }
+        if (e.type == SDL_MOUSEMOTION && mouseDragging) {
+            int dx = e.motion.x - lastMouseX;
+            int dy = e.motion.y - lastMouseY;
+            cameraAngleY += dx * 0.005f;
+            cameraAngleX += dy * 0.005f;
+            if (cameraAngleX < -1.5f) cameraAngleX = -1.5f;
+            if (cameraAngleX > 1.5f) cameraAngleX = 1.5f;
+            lastMouseX = e.motion.x;
+            lastMouseY = e.motion.y;
         }
     }
 
@@ -608,17 +637,23 @@ private:
     std::unique_ptr<mx::MXModel> model;
     bool wireframe = true;
     bool sphereVisible = true;
+    bool kaleidoEnabled = false;
     float sphereRadius = 1.0f;
     float cameraAngleY = 0.0f;
+    float cameraAngleX = 0.0f;
+    bool mouseDragging = false;
+    int lastMouseX = 0;
+    int lastMouseY = 0;
     Uint32 lastTime = 0;
     std::string filename;
     std::random_device rd;
     std::mt19937 gen{rd()};
 
     glm::vec3 getCameraPos() const {
-        float cx = cameraDistance * std::sin(cameraAngleY);
-        float cz = cameraDistance * std::cos(cameraAngleY);
-        return glm::vec3(cx, 0.0f, cz);
+        float cx = cameraDistance * std::sin(cameraAngleY) * std::cos(cameraAngleX);
+        float cy = cameraDistance * std::sin(cameraAngleX);
+        float cz = cameraDistance * std::cos(cameraAngleY) * std::cos(cameraAngleX);
+        return glm::vec3(cx, cy, cz);
     }
 };
 
