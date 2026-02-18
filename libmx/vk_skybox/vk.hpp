@@ -29,6 +29,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <opencv2/opencv.hpp>
 
 #define VK_CHECK_RESULT(f) { \
     VkResult res = (f); \
@@ -62,6 +63,22 @@ namespace mx {
         alignas(16) glm::vec4 params; 
     };
 
+    struct ExtPushConstants {
+        glm::vec2 screenSize;
+        glm::vec2 spritePos;
+        glm::vec2 spriteSize;
+        glm::vec2 _pad;
+        glm::vec4 params;
+    };
+
+    struct SpriteExtendedUBO {
+        glm::vec4 mouse;
+        glm::vec4 u0;
+        glm::vec4 u1;
+        glm::vec4 u2;
+        glm::vec4 u3;
+    };
+
     struct FractalPushConstants {
         double centerX;
         double centerY;
@@ -73,17 +90,22 @@ namespace mx {
     class SkyboxViewer {
     public:
         SkyboxViewer() = default;
-        SkyboxViewer(const std::string &title, int width, int height, bool full = false);
+        SkyboxViewer(const std::string &title, int width, int height, bool full = false, const std::string& shaderDir = "");
         virtual ~SkyboxViewer() {}
 
         void initWindow(const std::string &title, int width, int height, bool full = false);
         void initVulkan();
         void setPath(const std::string &path);
+        void setShaderPath(const std::string &path);
+        void openFile(const std::string &filename);
+        void openCamera(int device, int width, int height);
+        void activateFirstShader();
         void loop();
         void cleanup();
         void event(SDL_Event &e);
         void draw();
         void quit();
+        void proc();
 
         int w = 0, h = 0;
         mxUtil util;
@@ -127,6 +149,32 @@ namespace mx {
         VkDeviceMemory cubemapImageMemory = VK_NULL_HANDLE;
         VkImageView cubemapImageView = VK_NULL_HANDLE;
         VkSampler cubemapSampler = VK_NULL_HANDLE;
+
+        // Video texture (used when --filename is supplied)
+        cv::VideoCapture cap;
+        std::string filename;
+        int camera_width = 0, camera_height = 0;
+        VkImage textureImage = VK_NULL_HANDLE;
+        VkDeviceMemory textureImageMemory = VK_NULL_HANDLE;
+        VkImageView textureImageView = VK_NULL_HANDLE;
+        VkSampler textureSampler = VK_NULL_HANDLE;
+
+        // External shader support
+        bool useExternalShaders = false;
+        bool useVideoTexture = false;
+        std::string shaderPath;
+        std::vector<std::string> shaderFiles;
+        std::vector<std::string> effects;
+        int effectIndex = 0;
+        VkPipelineLayout extPipelineLayout = VK_NULL_HANDLE;
+        VkDescriptorSetLayout extFragDescSetLayout = VK_NULL_HANDLE;
+        VkDescriptorSetLayout extVertDescSetLayout = VK_NULL_HANDLE;
+        VkDescriptorPool extDescPool = VK_NULL_HANDLE;
+        std::vector<VkDescriptorSet> extFragDescSets;
+        std::vector<VkDescriptorSet> extVertDescSets;
+        std::vector<VkBuffer> extSpriteBuffers;
+        std::vector<VkDeviceMemory> extSpriteMemory;
+        std::vector<void*> extSpriteMapped;
 
         VkImage depthImage = VK_NULL_HANDLE;
         VkDeviceMemory depthImageMemory = VK_NULL_HANDLE;
@@ -172,6 +220,12 @@ namespace mx {
         void createDescriptorSets();
         void cleanupSwapChain();
         void recreateSwapChain();
+        void loadShaderIndex(const std::string& shaderDir);
+        void swapFragmentShader(size_t shaderIndex);
+        void setupTextureImage(int width, int height);
+        void createTextureImageView();
+        void updateTextureFromFrame(const cv::Mat& frame);
+        void updateExtFragDescriptors();
 
         QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
         VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
