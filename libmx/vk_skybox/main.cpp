@@ -26,8 +26,6 @@ int main(int argc, char **argv) {
                 viewer.openFile(args.filename);
         }
         viewer.initVulkan();
-        // When video + shaders are active, swap to the first shader immediately
-        // so we don't try to render with the cubemap shader on a 2D texture
         viewer.activateFirstShader();
         viewer.loop();
         viewer.cleanup();
