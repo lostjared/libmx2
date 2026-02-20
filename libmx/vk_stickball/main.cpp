@@ -105,6 +105,18 @@ public:
         mx::VKWindow::initVulkan();
 
         
+        SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER);
+        for (int i = 0; i < SDL_NumJoysticks(); i++) {
+            if (SDL_IsGameController(i)) {
+                gameController = SDL_GameControllerOpen(i);
+                if (gameController) {
+                    SDL_Log("Controller opened: %s", SDL_GameControllerName(gameController));
+                    break;
+                }
+            }
+        }
+
+        
         
         {
             uint32_t white = 0xFFFFFFFF;
@@ -194,6 +206,35 @@ public:
         }
 
         
+        if (gameController) {
+            constexpr float DEADZONE = 0.15f;
+            auto readAxis = [&](SDL_GameControllerAxis a) -> float {
+                return SDL_GameControllerGetAxis(gameController, a) / 32767.0f;
+            };
+
+            
+            float rx = readAxis(SDL_CONTROLLER_AXIS_RIGHTX);
+            float ry = readAxis(SDL_CONTROLLER_AXIS_RIGHTY);
+            if (fabsf(rx) > DEADZONE) camAngle += rx * 1.5f * dt;
+            if (fabsf(ry) > DEADZONE) camZoom  += ry * 5.0f * dt;
+            camZoom = glm::clamp(camZoom, 5.0f, 25.0f);
+
+            
+            float lx = readAxis(SDL_CONTROLLER_AXIS_LEFTX);
+            float ly = readAxis(SDL_CONTROLLER_AXIS_LEFTY);
+            if (phase == GamePhase::Aiming || phase == GamePhase::Charging) {
+                if (fabsf(lx) > DEADZONE) cueAngle += lx * 1.5f * dt;
+            } else if (phase == GamePhase::Placing) {
+                float s = 3.0f * dt;
+                if (fabsf(lx) > DEADZONE) balls[0].pos.x += lx * s;
+                if (fabsf(ly) > DEADZONE) balls[0].pos.y += ly * s;
+                float m = BALL_RADIUS + 0.1f;
+                balls[0].pos.x = glm::clamp(balls[0].pos.x, -TABLE_HALF_W + m, TABLE_HALF_W - m);
+                balls[0].pos.y = glm::clamp(balls[0].pos.y, -TABLE_HALF_H + m, TABLE_HALF_H - m);
+            }
+        }
+
+        
         printText("-[ 3D Pool ]-", 15, 15, {255, 255, 255, 255});
         printText("Shots: " + std::to_string(shotCount), 15, 45, {255, 255, 0, 255});
         int rem = 0;
@@ -202,16 +243,16 @@ public:
         printText("Balls: " + std::to_string(rem), 15, 75, {200, 200, 200, 255});
 
         if (phase == GamePhase::Aiming)
-            printText("Arrow Keys: Aim | Space: Charge & Shoot", 15, h - 40, {180, 180, 180, 255});
+            printText("Arrows/L-Stick: Aim | Space/A/B: Charge & Shoot | R-Stick: Cam", 15, h - 40, {180, 180, 180, 255});
         else if (phase == GamePhase::Charging) {
             int pct = static_cast<int>(chargeAmount / MAX_POWER * 100.0f);
             printText("Power: " + std::to_string(pct) + "%", 15, 105,
                       {255, static_cast<Uint8>(255 - pct * 2), 0, 255});
         } else if (phase == GamePhase::Placing)
-            printText("Arrows: move cue ball | Enter: place", 15, h - 40, {255, 100, 100, 255});
+            printText("Arrows/L-Stick: move cue ball | Enter/A/B: place", 15, h - 40, {255, 100, 100, 255});
         else if (phase == GamePhase::GameOver) {
             printText("Game Over", w / 2 - 70, h / 2 - 30, {255, 50, 50, 255});
-            printText("Press Enter to play again", w / 2 - 120, h / 2 + 10, {200, 200, 200, 255});
+            printText("Press Enter / A to play again", w / 2 - 120, h / 2 + 10, {200, 200, 200, 255});
         }
     }
 
@@ -251,7 +292,7 @@ public:
         vkCmdSetViewport(cmd, 0, 1, &vp);
         vkCmdSetScissor(cmd, 0, 1, &sc);
 
-        // Draw background image first so it stays fixed behind all 3D geometry
+        
         if (spritePipeline != VK_NULL_HANDLE && backgroundSprite != nullptr) {
             vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, spritePipeline);
             backgroundSprite->drawSpriteRect(0, 0,
@@ -432,10 +473,72 @@ public:
             shotCount++;
             chargeAmount = 0.0f;
         }
+
+        
+        if (e.type == SDL_CONTROLLERDEVICEADDED && !gameController) {
+            gameController = SDL_GameControllerOpen(e.cdevice.which);
+            if (gameController)
+                SDL_Log("Controller connected: %s", SDL_GameControllerName(gameController));
+        }
+        if (e.type == SDL_CONTROLLERDEVICEREMOVED && gameController) {
+            SDL_Joystick *j = SDL_GameControllerGetJoystick(gameController);
+            if (j && SDL_JoystickInstanceID(j) == e.cdevice.which) {
+                SDL_GameControllerClose(gameController);
+                gameController = nullptr;
+                SDL_Log("Controller disconnected");
+            }
+        }
+
+        
+        if (e.type == SDL_CONTROLLERBUTTONDOWN) {
+            switch (e.cbutton.button) {
+            case SDL_CONTROLLER_BUTTON_BACK:
+                quit();
+                return;
+            case SDL_CONTROLLER_BUTTON_A:
+            case SDL_CONTROLLER_BUTTON_B:
+                if (phase == GamePhase::Aiming) {
+                    phase = GamePhase::Charging;
+                    chargeAmount = 0.0f;
+                    ctrlChargeButton = e.cbutton.button;
+                } else if (phase == GamePhase::Placing) {
+                    
+                    bool ok = true;
+                    for (int i = 1; i < NUM_BALLS; i++) {
+                        if (!balls[i].active || balls[i].pocketed) continue;
+                        if (glm::length(balls[0].pos - balls[i].pos) < BALL_RADIUS * 2.5f)
+                        { ok = false; break; }
+                    }
+                    if (ok) phase = GamePhase::Aiming;
+                } else if (phase == GamePhase::GameOver) {
+                    resetGame();
+                }
+                break;
+            default: break;
+            }
+        }
+
+        if (e.type == SDL_CONTROLLERBUTTONUP) {
+            if ((e.cbutton.button == SDL_CONTROLLER_BUTTON_A ||
+                 e.cbutton.button == SDL_CONTROLLER_BUTTON_B) &&
+                 e.cbutton.button == ctrlChargeButton &&
+                 phase == GamePhase::Charging) {
+                glm::vec2 dir(cosf(cueAngle), sinf(cueAngle));
+                balls[0].vel = dir * chargeAmount;
+                phase = GamePhase::Rolling;
+                shotCount++;
+                chargeAmount = 0.0f;
+                ctrlChargeButton = -1;
+            }
+        }
     }
 
     
     void cleanup() override {
+        if (gameController) {
+            SDL_GameControllerClose(gameController);
+            gameController = nullptr;
+        }
         if (sphereModel)   sphereModel->cleanup(device);
         if (cylinderModel) cylinderModel->cleanup(device);
         if (cubeModel)     cubeModel->cleanup(device);
@@ -457,6 +560,10 @@ private:
     float     lastTime     = 0.0f;
     float     camAngle     = 0.4f;   
     float     camZoom      = 13.0f;  
+
+    
+    SDL_GameController *gameController  = nullptr;
+    int                 ctrlChargeButton = -1; 
 
     
     VkImage        tableTexImage     = VK_NULL_HANDLE;
