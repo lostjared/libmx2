@@ -100,10 +100,11 @@ public:
     }
 
     void openCamera(int index, int width, int height) {
-        cap.open(index);
+        cap.open(index, cv::CAP_V4L2);
         if(!cap.isOpened()) {
             throw mx::Exception("Error could not open camera at index: " + std::to_string(index));
         }
+        cap.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M','J','P','G'));
         cap.set(cv::CAP_PROP_FRAME_WIDTH, width);
         cap.set(cv::CAP_PROP_FRAME_HEIGHT, height);
         camera_width = static_cast<int>(cap.get(cv::CAP_PROP_FRAME_WIDTH));
