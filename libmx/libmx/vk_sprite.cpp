@@ -64,6 +64,14 @@ namespace mx {
             descriptorSet = VK_NULL_HANDLE;
         }
 
+        // Extended descriptor set references spriteImageView/spriteSampler,
+        // so it must be invalidated when those are destroyed.
+        if (extendedDescriptorPool != VK_NULL_HANDLE) {
+            vkDestroyDescriptorPool(device, extendedDescriptorPool, nullptr);
+            extendedDescriptorPool = VK_NULL_HANDLE;
+            extendedDescriptorSet = VK_NULL_HANDLE;
+        }
+
         if (spriteSampler != VK_NULL_HANDLE) {
             vkDestroySampler(device, spriteSampler, nullptr);
             spriteSampler = VK_NULL_HANDLE;
@@ -107,6 +115,7 @@ namespace mx {
         extendedUBOEnabled = true;
         createExtendedUBO();
         createExtendedDescriptorSetLayout();
+        rebuildPipeline();
     }
 
     void VKSprite::setMouseState(float mx, float my, float pressed, float reserved) {
