@@ -1,5 +1,3 @@
-
-
 #include "vk.hpp"
 #include "vk_model.hpp"
 #include "loadpng.hpp"
@@ -19,53 +17,48 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-
-static constexpr float TABLE_W      = 12.0f;
-static constexpr float TABLE_H      = 6.0f;
+static constexpr float TABLE_W = 12.0f;
+static constexpr float TABLE_H = 6.0f;
 static constexpr float TABLE_HALF_W = TABLE_W / 2.0f;
 static constexpr float TABLE_HALF_H = TABLE_H / 2.0f;
-static constexpr float BUMPER_W     = 0.3f;
-static constexpr float POCKET_R     = 0.45f;
-static constexpr float BALL_RADIUS  = 0.18f;
-static constexpr float CUE_LENGTH   = 2.5f;
-static constexpr int   NUM_BALLS    = 16;
-static constexpr float FRICTION     = 0.9988f;
-static constexpr float MIN_SPEED    = 0.001f;
-static constexpr float MAX_POWER    = 1.0f;
-static constexpr int   MAX_DRAWS    = 48;   
+static constexpr float BUMPER_W = 0.3f;
+static constexpr float POCKET_R = 0.45f;
+static constexpr float BALL_RADIUS = 0.18f;
+static constexpr float CUE_LENGTH = 2.5f;
+static constexpr int NUM_BALLS = 16;
+static constexpr float FRICTION = 0.9988f;
+static constexpr float MIN_SPEED = 0.001f;
+static constexpr float MAX_POWER = 1.0f;
+static constexpr int MAX_DRAWS = 48;
 
-
-
-static constexpr float PKT_INS = 0.15f; 
+static constexpr float PKT_INS = 0.15f;
 static const glm::vec2 POCKETS[6] = {
-    { -TABLE_HALF_W + PKT_INS,  TABLE_HALF_H - PKT_INS },   
-    {  0.0f,                    TABLE_HALF_H - 0.05f   },   
-    {  TABLE_HALF_W - PKT_INS,  TABLE_HALF_H - PKT_INS },   
-    { -TABLE_HALF_W + PKT_INS, -TABLE_HALF_H + PKT_INS },   
-    {  0.0f,                   -TABLE_HALF_H + 0.05f   },   
-    {  TABLE_HALF_W - PKT_INS, -TABLE_HALF_H + PKT_INS },   
+    { -TABLE_HALF_W + PKT_INS, TABLE_HALF_H - PKT_INS },
+    { 0.0f, TABLE_HALF_H - 0.05f },
+    { TABLE_HALF_W - PKT_INS, TABLE_HALF_H - PKT_INS },
+    { -TABLE_HALF_W + PKT_INS, -TABLE_HALF_H + PKT_INS },
+    { 0.0f, -TABLE_HALF_H + 0.05f },
+    { TABLE_HALF_W - PKT_INS, -TABLE_HALF_H + PKT_INS },
 };
-
 
 static const glm::vec3 BALL_COLORS[NUM_BALLS] = {
-    {1.0f, 1.0f, 1.0f},   
-    {1.0f, 0.84f, 0.0f},  
-    {0.0f, 0.0f, 0.8f},   
-    {0.9f, 0.0f, 0.0f},   
-    {0.5f, 0.0f, 0.5f},   
-    {1.0f, 0.5f, 0.0f},   
-    {0.0f, 0.5f, 0.0f},   
-    {0.55f, 0.0f, 0.0f},  
-    {0.1f, 0.1f, 0.1f},   
-    {1.0f, 0.84f, 0.0f},  
-    {0.0f, 0.0f, 0.8f},   
-    {0.9f, 0.0f, 0.0f},   
-    {0.5f, 0.0f, 0.5f},   
-    {1.0f, 0.5f, 0.0f},   
-    {0.0f, 0.5f, 0.0f},   
-    {0.55f, 0.0f, 0.0f},  
+    {1.0f, 1.0f, 1.0f},
+    {1.0f, 0.84f, 0.0f},
+    {0.0f, 0.0f, 0.8f},
+    {0.9f, 0.0f, 0.0f},
+    {0.5f, 0.0f, 0.5f},
+    {1.0f, 0.5f, 0.0f},
+    {0.0f, 0.5f, 0.0f},
+    {0.55f, 0.0f, 0.0f},
+    {0.1f, 0.1f, 0.1f},
+    {1.0f, 0.84f, 0.0f},
+    {0.0f, 0.0f, 0.8f},
+    {0.9f, 0.0f, 0.0f},
+    {0.5f, 0.0f, 0.5f},
+    {1.0f, 0.5f, 0.0f},
+    {0.0f, 0.5f, 0.0f},
+    {0.55f, 0.0f, 0.0f},
 };
-
 
 static float randFloat(float mn, float mx) {
     static std::random_device rd;
@@ -74,32 +67,26 @@ static float randFloat(float mn, float mx) {
     return d(eng);
 }
 
-
 struct PoolBall {
     glm::vec2 pos{0.0f};
     glm::vec2 vel{0.0f};
-    bool active    = true;
-    bool pocketed  = false;
-    int  number    = 0;
+    bool active = true;
+    bool pocketed = false;
+    int number = 0;
     float spinAngle = 0.0f;
 
     bool isMoving() const { return glm::length(vel) > MIN_SPEED; }
 };
 
-
 enum class GamePhase { Aiming, Charging, Rolling, Placing, GameOver };
-
-static constexpr float SINK_DURATION = 0.45f;  
+static constexpr float SINK_DURATION = 0.45f;
 
 struct SinkAnim {
-    glm::vec2 pocketPos;   
-    glm::vec3 color;       
-    float     spinAngle;   
-    float     timer  = 0.0f;
+    glm::vec2 pocketPos;
+    glm::vec3 color;
+    float spinAngle;
+    float timer = 0.0f;
 };
-
-
-
 
 class PoolWindow : public mx::VKWindow {
 public:
@@ -109,11 +96,8 @@ public:
     }
     ~PoolWindow() override = default;
 
-    
     void initVulkan() override {
         mx::VKWindow::initVulkan();
-
-        
         SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER);
         for (int i = 0; i < SDL_NumJoysticks(); i++) {
             if (SDL_IsGameController(i)) {
@@ -124,9 +108,6 @@ public:
                 }
             }
         }
-
-        
-        
         {
             uint32_t white = 0xFFFFFFFF;
             VkBuffer stg; VkDeviceMemory stgMem;
@@ -145,10 +126,7 @@ public:
             vkFreeMemory(device, stgMem, nullptr);
         }
 
-        
         loadTableTexture();
-
-        
         createObjectPool();
 
         sphereModel.reset(new mx::MXModel());
@@ -168,50 +146,46 @@ public:
         resetGame();
     }
 
-    
     void proc() override {
         float now = SDL_GetTicks() / 1000.0f;
-        float dt  = now - lastTime;
+        float dt = now - lastTime;
         if (dt > 0.05f) dt = 0.05f;
         lastTime = now;
 
         switch (phase) {
-        case GamePhase::Aiming:   handleAiming(dt);   break;
-        case GamePhase::Charging: handleCharging(dt);  break;
+        case GamePhase::Aiming: handleAiming(dt); break;
+        case GamePhase::Charging: handleCharging(dt); break;
         case GamePhase::Rolling:
             updatePhysics(dt);
             if (!anyBallMoving()) {
                 if (balls[0].pocketed) {
                     phase = GamePhase::Placing;
-                    balls[0].active   = true;
+                    balls[0].active = true;
                     balls[0].pocketed = false;
-                    balls[0].pos      = glm::vec2(-TABLE_HALF_W * 0.5f, 0.0f);
-                    balls[0].vel      = glm::vec2(0.0f);
+                    balls[0].pos = glm::vec2(-TABLE_HALF_W * 0.5f, 0.0f);
+                    balls[0].vel = glm::vec2(0.0f);
                 } else {
                     phase = GamePhase::Aiming;
                 }
                 checkGameOver();
             }
             break;
-        case GamePhase::Placing:  handlePlacing(dt);   break;
+        case GamePhase::Placing: handlePlacing(dt); break;
         case GamePhase::GameOver: break;
         }
 
-        
         for (auto &b : balls) {
             if (b.active && b.isMoving()) {
                 b.spinAngle += glm::length(b.vel) * 5.0f * dt;
             }
         }
 
-        
         for (auto &a : sinkAnims) a.timer += dt;
         sinkAnims.erase(
             std::remove_if(sinkAnims.begin(), sinkAnims.end(),
                            [](const SinkAnim &a){ return a.timer >= SINK_DURATION; }),
             sinkAnims.end());
 
-        
         {
             const Uint8 *k = SDL_GetKeyboardState(nullptr);
             if (k[SDL_SCANCODE_A]) camAngle -= 1.2f * dt;
@@ -221,21 +195,18 @@ public:
             camZoom = glm::clamp(camZoom, 5.0f, 25.0f);
         }
 
-        
         if (gameController) {
             constexpr float DEADZONE = 0.15f;
             auto readAxis = [&](SDL_GameControllerAxis a) -> float {
                 return SDL_GameControllerGetAxis(gameController, a) / 32767.0f;
             };
 
-            
             float rx = readAxis(SDL_CONTROLLER_AXIS_RIGHTX);
             float ry = readAxis(SDL_CONTROLLER_AXIS_RIGHTY);
             if (fabsf(rx) > DEADZONE) camAngle += rx * 1.5f * dt;
-            if (fabsf(ry) > DEADZONE) camZoom  += ry * 5.0f * dt;
+            if (fabsf(ry) > DEADZONE) camZoom += ry * 5.0f * dt;
             camZoom = glm::clamp(camZoom, 5.0f, 25.0f);
 
-            
             float lx = readAxis(SDL_CONTROLLER_AXIS_LEFTX);
             float ly = readAxis(SDL_CONTROLLER_AXIS_LEFTY);
             if (phase == GamePhase::Aiming || phase == GamePhase::Charging) {
@@ -243,16 +214,15 @@ public:
             } else if (phase == GamePhase::Placing) {
                 float s = 3.0f * dt;
                 glm::vec2 camRight( cosf(camAngle), -sinf(camAngle));
-                glm::vec2 camFwd  (-sinf(camAngle), -cosf(camAngle));
+                glm::vec2 camFwd (-sinf(camAngle), -cosf(camAngle));
                 if (fabsf(lx) > DEADZONE) balls[0].pos += camRight * (lx * s);
-                if (fabsf(ly) > DEADZONE) balls[0].pos -= camFwd   * (ly * s);
+                if (fabsf(ly) > DEADZONE) balls[0].pos -= camFwd * (ly * s);
                 float m = BALL_RADIUS + 0.1f;
                 balls[0].pos.x = glm::clamp(balls[0].pos.x, -TABLE_HALF_W + m, TABLE_HALF_W - m);
                 balls[0].pos.y = glm::clamp(balls[0].pos.y, -TABLE_HALF_H + m, TABLE_HALF_H - m);
             }
         }
 
-        
         printText("-[ 3D Pool ]-", 15, 15, {255, 255, 255, 255});
         printText("Shots: " + std::to_string(shotCount), 15, 45, {255, 255, 0, 255});
         int rem = 0;
@@ -274,7 +244,6 @@ public:
         }
     }
 
-    
     void draw() override {
         uint32_t imageIndex = 0;
         VkResult result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX,
@@ -293,10 +262,10 @@ public:
         rpInfo.sType              = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         rpInfo.renderPass         = renderPass;
         rpInfo.framebuffer        = swapChainFramebuffers[imageIndex];
-        rpInfo.renderArea.offset  = {0, 0};
-        rpInfo.renderArea.extent  = swapChainExtent;
+        rpInfo.renderArea.offset = {0, 0};
+        rpInfo.renderArea.extent = swapChainExtent;
         std::array<VkClearValue, 2> cv{};
-        cv[0].color        = {{0.0f, 0.0f, 0.0f, 1.0f}};
+        cv[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
         cv[1].depthStencil = {1.0f, 0};
         rpInfo.clearValueCount = static_cast<uint32_t>(cv.size());
         rpInfo.pClearValues    = cv.data();
@@ -310,7 +279,6 @@ public:
         vkCmdSetViewport(cmd, 0, 1, &vp);
         vkCmdSetScissor(cmd, 0, 1, &sc);
 
-        
         if (spritePipeline != VK_NULL_HANDLE && backgroundSprite != nullptr) {
             vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, spritePipeline);
             backgroundSprite->drawSpriteRect(0, 0,
@@ -322,30 +290,26 @@ public:
         }
 
         float aspect = vp.width / vp.height;
-        float time   = SDL_GetTicks() / 1000.0f;
+        float time = SDL_GetTicks() / 1000.0f;
 
-        
-        float camDist   = camZoom;
+        float camDist = camZoom;
         float camHeight = camZoom * 0.92f;
-        glm::vec3 camPos    = glm::vec3(sinf(camAngle) * camDist, camHeight, cosf(camAngle) * camDist);
+        glm::vec3 camPos = glm::vec3(sinf(camAngle) * camDist, camHeight, cosf(camAngle) * camDist);
         glm::vec3 camTarget = glm::vec3(0.0f, 0.0f, 0.0f);
-        glm::mat4 viewMat   = glm::lookAt(camPos, camTarget, glm::vec3(0.0f, 1.0f, 0.0f));
-        glm::mat4 projMat   = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 100.0f);
+        glm::mat4 viewMat = glm::lookAt(camPos, camTarget, glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::mat4 projMat = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 100.0f);
         projMat[1][1] *= -1;
 
         VkPipeline pipe = useWireFrame ? graphicsPipelineMatrix : graphicsPipeline;
         vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipe);
 
-        
         objDrawIndex = 0;
 
-        
         drawModelTextured(cmd, imageIndex, cubeModel.get(), viewMat, projMat, time,
                   glm::vec3(0.0f, -0.15f, 0.0f),
                   glm::vec3(TABLE_HALF_W, 0.05f, TABLE_HALF_H),
                   glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
 
-        
         glm::vec4 wood(0.4f, 0.22f, 0.05f, 1.0f);
         drawModel(cmd, imageIndex, cubeModel.get(), viewMat, projMat, time,
                   glm::vec3(0, 0, -TABLE_HALF_H - BUMPER_W/2),
@@ -360,7 +324,6 @@ public:
                   glm::vec3(TABLE_HALF_W + BUMPER_W/2, 0, 0),
                   glm::vec3(BUMPER_W/2, 0.15f, TABLE_HALF_H + BUMPER_W), wood);
 
-  
         for (int i = 0; i < 6; i++) {
             drawModel(cmd, imageIndex, cylinderModel.get(), viewMat, projMat, time,
                       glm::vec3(POCKETS[i].x, -0.098f, POCKETS[i].y),
@@ -378,12 +341,11 @@ public:
                          m, glm::vec4(BALL_COLORS[i], 1.0f));
         }
 
-        
         for (auto &anim : sinkAnims) {
-            float t  = anim.timer / SINK_DURATION;          
-            
-            float y  = glm::mix(BALL_RADIUS, -BALL_RADIUS * 3.5f, t);
-            
+            float t = anim.timer / SINK_DURATION;
+
+            float y = glm::mix(BALL_RADIUS, -BALL_RADIUS * 3.5f, t);
+
             float sc = BALL_RADIUS * (1.0f - t * 0.75f);
             glm::mat4 m(1.0f);
             m = glm::translate(m, glm::vec3(anim.pocketPos.x, y, anim.pocketPos.y));
@@ -393,9 +355,8 @@ public:
                          m, glm::vec4(anim.color, 1.0f));
         }
 
-        
         if ((phase == GamePhase::Aiming || phase == GamePhase::Charging) && balls[0].active) {
-            float offset   = (phase == GamePhase::Charging)
+            float offset = (phase == GamePhase::Charging)
                              ? (chargeAmount / MAX_POWER * 1.0f) : 0.0f;
             float stickDist = BALL_RADIUS + 0.3f + offset;
             float worldCueAngle = cueAngle + camAngle;
@@ -412,7 +373,6 @@ public:
                 : glm::vec4(0.55f, 0.27f, 0.07f, 1.0f);
             drawModelMat(cmd, imageIndex, cubeModel.get(), viewMat, projMat, time, m, cueCol);
 
-            
             float aimLen = 2.0f;
             glm::vec2 ac = balls[0].pos + dir * (BALL_RADIUS + aimLen * 0.5f);
             glm::mat4 am(1.0f);
@@ -423,7 +383,6 @@ public:
                          am, glm::vec4(1, 1, 0, 0.5f));
         }
 
-        
         if (spritePipeline != VK_NULL_HANDLE && !sprites.empty()) {
             vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, spritePipeline);
             for (auto &sp : sprites) {
@@ -432,7 +391,7 @@ public:
                                   swapChainExtent.width, swapChainExtent.height);
             }
         }
-        
+
         if (textRenderer && textPipeline != VK_NULL_HANDLE) {
             vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, textPipeline);
             textRenderer->renderText(cmd, textPipelineLayout,
@@ -467,7 +426,6 @@ public:
         for (auto &sp : sprites) { if (sp) sp->clearQueue(); }
     }
 
-    
     void event(SDL_Event &e) override {
         if (e.type == SDL_QUIT ||
             (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE)) {
@@ -509,7 +467,6 @@ public:
             chargeAmount = 0.0f;
         }
 
-        
         if (e.type == SDL_CONTROLLERDEVICEADDED && !gameController) {
             gameController = SDL_GameControllerOpen(e.cdevice.which);
             if (gameController)
@@ -524,7 +481,6 @@ public:
             }
         }
 
-        
         if (e.type == SDL_CONTROLLERBUTTONDOWN) {
             switch (e.cbutton.button) {
             case SDL_CONTROLLER_BUTTON_BACK:
@@ -537,7 +493,7 @@ public:
                     chargeAmount = 0.0f;
                     ctrlChargeButton = e.cbutton.button;
                 } else if (phase == GamePhase::Placing) {
-                    
+
                     bool ok = true;
                     for (int i = 1; i < NUM_BALLS; i++) {
                         if (!balls[i].active || balls[i].pocketed) continue;
@@ -569,15 +525,14 @@ public:
         }
     }
 
-    
     void cleanup() override {
         if (gameController) {
             SDL_GameControllerClose(gameController);
             gameController = nullptr;
         }
-        if (sphereModel)   sphereModel->cleanup(device);
+        if (sphereModel) sphereModel->cleanup(device);
         if (cylinderModel) cylinderModel->cleanup(device);
-        if (cubeModel)     cubeModel->cleanup(device);
+        if (cubeModel) cubeModel->cleanup(device);
         cleanupTableTexture();
         cleanupObjectPool();
         mx::VKWindow::cleanup();
@@ -588,27 +543,24 @@ private:
     std::unique_ptr<mx::MXModel> cylinderModel;
     std::unique_ptr<mx::MXModel> cubeModel;
 
-    PoolBall          balls[NUM_BALLS];
+    PoolBall balls[NUM_BALLS];
     std::vector<SinkAnim> sinkAnims;
-    GamePhase phase        = GamePhase::Aiming;
-    float     cueAngle     = 0.0f;
-    float     chargeAmount = 0.0f;
-    int       shotCount    = 0;
-    float     lastTime     = 0.0f;
-    float     camAngle     = 0.4f;   
-    float     camZoom      = 13.0f;  
+    GamePhase phase = GamePhase::Aiming;
+    float cueAngle = 0.0f;
+    float chargeAmount = 0.0f;
+    int shotCount = 0;
+    float lastTime = 0.0f;
+    float camAngle = 0.4f;
+    float camZoom = 13.0f;
 
-    
-    SDL_GameController *gameController  = nullptr;
-    int                 ctrlChargeButton = -1; 
+    SDL_GameController *gameController = nullptr;
+    int ctrlChargeButton = -1;
 
-    
-    VkImage        tableTexImage     = VK_NULL_HANDLE;
-    VkDeviceMemory tableTexMemory    = VK_NULL_HANDLE;
-    VkImageView    tableTexImageView = VK_NULL_HANDLE;
+    VkImage tableTexImage = VK_NULL_HANDLE;
+    VkDeviceMemory tableTexMemory = VK_NULL_HANDLE;
+    VkImageView tableTexImageView = VK_NULL_HANDLE;
 
-    mx::VKSprite  *backgroundSprite  = nullptr;
-    
+    mx::VKSprite *backgroundSprite = nullptr;
 
     void loadTableTexture() {
         std::string path = util.path + "/data/table.png";
@@ -617,7 +569,7 @@ private:
             SDL_Log("Failed to load table.png");
             return;
         }
-        
+
         SDL_Surface *rgba = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_ABGR8888, 0);
         SDL_FreeSurface(surface);
         if (!rgba) {
@@ -625,7 +577,7 @@ private:
             return;
         }
         VkDeviceSize imgSize = rgba->w * rgba->h * 4;
-        
+
         VkBuffer stg; VkDeviceMemory stgMem;
         createBuffer(imgSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
@@ -635,13 +587,13 @@ private:
         vkMapMemory(device, stgMem, 0, imgSize, 0, &d);
         memcpy(d, rgba->pixels, imgSize);
         vkUnmapMemory(device, stgMem);
-        
+
         createImage(rgba->w, rgba->h, VK_FORMAT_R8G8B8A8_UNORM,
                     VK_IMAGE_TILING_OPTIMAL,
                     VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
                     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
                     tableTexImage, tableTexMemory);
-        
+
         transitionImageLayout(tableTexImage, VK_FORMAT_R8G8B8A8_UNORM,
                               VK_IMAGE_LAYOUT_UNDEFINED,
                               VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
@@ -652,7 +604,7 @@ private:
         vkDestroyBuffer(device, stg, nullptr);
         vkFreeMemory(device, stgMem, nullptr);
         SDL_FreeSurface(rgba);
-        
+
         tableTexImageView = createImageView(tableTexImage, VK_FORMAT_R8G8B8A8_UNORM,
                                             VK_IMAGE_ASPECT_COLOR_BIT);
     }
@@ -666,22 +618,18 @@ private:
             vkFreeMemory(device, tableTexMemory, nullptr);
     }
 
-    
-    
-    
-    size_t                         swapCount = 0;
-    VkDescriptorPool               objPool   = VK_NULL_HANDLE;
-    std::vector<VkBuffer>          objUBOs;
-    std::vector<VkDeviceMemory>    objUBOMem;
-    std::vector<void*>             objUBOMapped;
-    std::vector<VkDescriptorSet>   objDescSets;
-    int                            objDrawIndex = 0;
+    size_t swapCount = 0;
+    VkDescriptorPool objPool = VK_NULL_HANDLE;
+    std::vector<VkBuffer> objUBOs;
+    std::vector<VkDeviceMemory> objUBOMem;
+    std::vector<void*> objUBOMapped;
+    std::vector<VkDescriptorSet> objDescSets;
+    int objDrawIndex = 0;
 
     void createObjectPool() {
         swapCount = swapChainImages.size();
         size_t total = MAX_DRAWS * swapCount;
 
-        
         std::array<VkDescriptorPoolSize, 2> poolSizes{};
         poolSizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         poolSizes[0].descriptorCount = static_cast<uint32_t>(total);
@@ -695,7 +643,6 @@ private:
         pi.maxSets       = static_cast<uint32_t>(total);
         VK_CHECK_RESULT(vkCreateDescriptorPool(device, &pi, nullptr, &objPool));
 
-        
         VkDeviceSize uboSize = sizeof(mx::UniformBufferObject);
         objUBOs.resize(total);
         objUBOMem.resize(total);
@@ -708,7 +655,6 @@ private:
             VK_CHECK_RESULT(vkMapMemory(device, objUBOMem[i], 0, uboSize, 0, &objUBOMapped[i]));
         }
 
-        
         std::vector<VkDescriptorSetLayout> layouts(total, descriptorSetLayout);
         VkDescriptorSetAllocateInfo ai{};
         ai.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -718,7 +664,6 @@ private:
         objDescSets.resize(total);
         VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &ai, objDescSets.data()));
 
-        
         for (size_t i = 0; i < total; i++) {
             VkDescriptorImageInfo imgInfo{};
             imgInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -731,19 +676,19 @@ private:
             bufInfo.range  = uboSize;
 
             std::array<VkWriteDescriptorSet, 2> writes{};
-            writes[0].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            writes[0].dstSet          = objDescSets[i];
-            writes[0].dstBinding      = 0;
-            writes[0].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            writes[0].dstSet = objDescSets[i];
+            writes[0].dstBinding = 0;
+            writes[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             writes[0].descriptorCount = 1;
-            writes[0].pImageInfo      = &imgInfo;
+            writes[0].pImageInfo = &imgInfo;
 
-            writes[1].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            writes[1].dstSet          = objDescSets[i];
-            writes[1].dstBinding      = 1;
-            writes[1].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            writes[1].dstSet = objDescSets[i];
+            writes[1].dstBinding = 1;
+            writes[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
             writes[1].descriptorCount = 1;
-            writes[1].pBufferInfo     = &bufInfo;
+            writes[1].pBufferInfo = &bufInfo;
 
             vkUpdateDescriptorSets(device, static_cast<uint32_t>(writes.size()),
                                    writes.data(), 0, nullptr);
@@ -767,7 +712,6 @@ private:
         objDescSets.clear();
     }
 
-    
     void drawModel(VkCommandBuffer cmd, uint32_t imgIdx, mx::MXModel *mdl,
                    const glm::mat4 &v, const glm::mat4 &p, float t,
                    const glm::vec3 &pos, const glm::vec3 &scl,
@@ -778,14 +722,13 @@ private:
         drawModelMat(cmd, imgIdx, mdl, v, p, t, m, col);
     }
 
-    
     void drawModelTextured(VkCommandBuffer cmd, uint32_t imgIdx, mx::MXModel *mdl,
                            const glm::mat4 &v, const glm::mat4 &p, float t,
                            const glm::vec3 &pos, const glm::vec3 &scl,
                            const glm::vec4 &col) {
         if (objDrawIndex >= MAX_DRAWS) return;
         if (tableTexImageView == VK_NULL_HANDLE) {
-            
+
             drawModel(cmd, imgIdx, mdl, v, p, t, pos, scl, col);
             return;
         }
@@ -805,7 +748,6 @@ private:
         ubo.color  = col;
         memcpy(objUBOMapped[slot], &ubo, sizeof(ubo));
 
-        
         VkDescriptorImageInfo imgInfo{};
         imgInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         imgInfo.imageView   = tableTexImageView;
@@ -828,7 +770,7 @@ private:
     void drawModelMat(VkCommandBuffer cmd, uint32_t imgIdx, mx::MXModel *mdl,
                       const glm::mat4 &v, const glm::mat4 &p, float t,
                       const glm::mat4 &m, const glm::vec4 &col) {
-        if (objDrawIndex >= MAX_DRAWS) return;   
+        if (objDrawIndex >= MAX_DRAWS) return;
 
         size_t slot = imgIdx * MAX_DRAWS + objDrawIndex;
         objDrawIndex++;
@@ -847,10 +789,9 @@ private:
         mdl->draw(cmd);
     }
 
-    
     void rackBalls() {
         balls[0] = {};
-        balls[0].pos    = glm::vec2(-TABLE_HALF_W * 0.5f, 0.0f);
+        balls[0].pos = glm::vec2(-TABLE_HALF_W * 0.5f, 0.0f);
         balls[0].active = true;
         balls[0].number = 0;
 
@@ -863,7 +804,7 @@ private:
                 if (idx >= 15) break;
                 int bn = order[idx];
                 balls[bn] = {};
-                balls[bn].pos    = glm::vec2(sx + row * sp * 0.866f,
+                balls[bn].pos = glm::vec2(sx + row * sp * 0.866f,
                                              (col - row * 0.5f) * sp);
                 balls[bn].active = true;
                 balls[bn].number = bn;
@@ -880,18 +821,18 @@ private:
         cueAngle = 0.0f;
         chargeAmount = 0.0f;
         shotCount = 0;
-        lastTime  = SDL_GetTicks() / 1000.0f;
+        lastTime = SDL_GetTicks() / 1000.0f;
     }
 
     void handleAiming(float dt) {
         const Uint8 *k = SDL_GetKeyboardState(nullptr);
-        if (k[SDL_SCANCODE_LEFT])  cueAngle -= 1.5f * dt;
+        if (k[SDL_SCANCODE_LEFT]) cueAngle -= 1.5f * dt;
         if (k[SDL_SCANCODE_RIGHT]) cueAngle += 1.5f * dt;
     }
 
     void handleCharging(float dt) {
         const Uint8 *k = SDL_GetKeyboardState(nullptr);
-        if (k[SDL_SCANCODE_LEFT])  cueAngle -= 1.5f * dt;
+        if (k[SDL_SCANCODE_LEFT]) cueAngle -= 1.5f * dt;
         if (k[SDL_SCANCODE_RIGHT]) cueAngle += 1.5f * dt;
         chargeAmount += MAX_POWER * 0.8f * dt;
         if (chargeAmount > MAX_POWER) chargeAmount = MAX_POWER;
@@ -901,17 +842,16 @@ private:
         const Uint8 *k = SDL_GetKeyboardState(nullptr);
         float s = 3.0f * dt;
         glm::vec2 camRight( cosf(camAngle), -sinf(camAngle));
-        glm::vec2 camFwd  (-sinf(camAngle), -cosf(camAngle));
-        if (k[SDL_SCANCODE_LEFT])  balls[0].pos -= camRight * s;
+        glm::vec2 camFwd (-sinf(camAngle), -cosf(camAngle));
+        if (k[SDL_SCANCODE_LEFT]) balls[0].pos -= camRight * s;
         if (k[SDL_SCANCODE_RIGHT]) balls[0].pos += camRight * s;
-        if (k[SDL_SCANCODE_UP])    balls[0].pos += camFwd   * s;
-        if (k[SDL_SCANCODE_DOWN])  balls[0].pos -= camFwd   * s;
+        if (k[SDL_SCANCODE_UP]) balls[0].pos += camFwd * s;
+        if (k[SDL_SCANCODE_DOWN]) balls[0].pos -= camFwd * s;
         float m = BALL_RADIUS + 0.1f;
         balls[0].pos.x = glm::clamp(balls[0].pos.x, -TABLE_HALF_W + m, TABLE_HALF_W - m);
         balls[0].pos.y = glm::clamp(balls[0].pos.y, -TABLE_HALF_H + m, TABLE_HALF_H - m);
     }
 
-    
     void updatePhysics(float dt) {
         float maxSpeed = 0.0f;
         for (auto &b : balls) {
@@ -978,7 +918,7 @@ private:
     void checkPocket(PoolBall &b) {
         for (int i = 0; i < 6; i++) {
             if (glm::length(b.pos - POCKETS[i]) < POCKET_R) {
-                
+
                 int idx = static_cast<int>(&b - &balls[0]);
                 SinkAnim anim;
                 anim.pocketPos  = POCKETS[i];
@@ -997,7 +937,7 @@ private:
     bool anyBallMoving() const {
         for (auto &b : balls)
             if (b.active && !b.pocketed && b.isMoving()) return true;
-        
+
         if (!sinkAnims.empty()) return true;
         return false;
     }
@@ -1010,7 +950,6 @@ private:
         if (allObjectBallsPocketed()) phase = GamePhase::GameOver;
     }
 };
-
 
 int main(int argc, char **argv) {
     Arguments args = proc_args(argc, argv);
