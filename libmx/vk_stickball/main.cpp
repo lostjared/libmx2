@@ -31,7 +31,7 @@ static constexpr float CUE_LENGTH   = 2.5f;
 static constexpr int   NUM_BALLS    = 16;
 static constexpr float FRICTION     = 0.9988f;
 static constexpr float MIN_SPEED    = 0.001f;
-static constexpr float MAX_POWER    = 4.0f;
+static constexpr float MAX_POWER    = 1.0f;
 static constexpr int   MAX_DRAWS    = 48;   
 
 
