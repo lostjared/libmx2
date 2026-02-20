@@ -235,7 +235,7 @@ public:
         rpInfo.renderArea.offset  = {0, 0};
         rpInfo.renderArea.extent  = swapChainExtent;
         std::array<VkClearValue, 2> cv{};
-        cv[0].color        = {{0.05f, 0.05f, 0.08f, 1.0f}};
+        cv[0].color        = {{0.0f, 0.0f, 0.0f, 1.0f}};
         cv[1].depthStencil = {1.0f, 0};
         rpInfo.clearValueCount = static_cast<uint32_t>(cv.size());
         rpInfo.pClearValues    = cv.data();
