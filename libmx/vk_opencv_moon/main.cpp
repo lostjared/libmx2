@@ -474,6 +474,8 @@ public:
         vkDestroyShaderModule(device, fragModule, nullptr);
         vkDestroyShaderModule(device, vertModule, nullptr);
 
+        drawLastTime = SDL_GetTicks();
+        drawFrameCount = 0;
         SDL_Log("mx: Swapped to shader: %s", shaderFiles[shaderIndex].c_str());
     }
 
@@ -682,11 +684,20 @@ public:
                                    0, sizeof(ExtPushConstants), &epc);
 
 
+                Uint32 nowMs = SDL_GetTicks();
+                float iTimeDelta = (drawLastTime > 0) ? (nowMs - drawLastTime) / 1000.0f : 0.016f;
+                drawLastTime = nowMs;
+                drawFrameCount++;
+                float iFrameRate = (iTimeDelta > 0.0f) ? (1.0f / iTimeDelta) : 60.0f;
+                int mx = 0, my = 0;
+                Uint32 mbuttons = SDL_GetMouseState(&mx, &my);
+                float mousePressed = (mbuttons & SDL_BUTTON_LMASK) ? 1.0f : 0.0f;
+
                 SpriteExtendedUBO extUBO{};
-                extUBO.mouse = glm::vec4(0.0f);
+                extUBO.mouse = glm::vec4(static_cast<float>(mx), static_cast<float>(my), mousePressed, 0.0f);
                 extUBO.u0 = glm::vec4(1.0f, 1.0f, 0.0f, 0.0f); // amp=1, uamp=1
-                extUBO.u1 = glm::vec4(0.016f, 0.0f, 0.0f, 60.0f); // iTimeDelta, 0, 0, iFrameRate
-                extUBO.u2 = glm::vec4(0.0f);
+                extUBO.u1 = glm::vec4(iTimeDelta, 0.0f, 0.0f, iFrameRate);
+                extUBO.u2 = glm::vec4(static_cast<float>(drawFrameCount), 0.0f, 0.0f, 0.0f);
                 extUBO.u3 = glm::vec4(0.0f);
                 memcpy(extSpriteMapped[imageIndex], &extUBO, sizeof(extUBO));
             } else {
@@ -1489,6 +1500,8 @@ private:
     std::vector<VkDeviceMemory> sUniformMemory;
     std::vector<void*> sUniformMapped;
     std::string filename;
+    Uint32 drawLastTime = 0;
+    int drawFrameCount = 0;
 };
 
 int main(int argc, char **argv) {
