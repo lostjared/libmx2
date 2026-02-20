@@ -921,14 +921,14 @@ private:
 
                 int idx = static_cast<int>(&b - &balls[0]);
                 SinkAnim anim;
-                anim.pocketPos  = POCKETS[i];
-                anim.color      = BALL_COLORS[idx];
-                anim.spinAngle  = b.spinAngle;
-                anim.timer      = 0.0f;
+                anim.pocketPos = POCKETS[i];
+                anim.color = BALL_COLORS[idx];
+                anim.spinAngle = b.spinAngle;
+                anim.timer = 0.0f;
                 sinkAnims.push_back(anim);
 
                 b.pocketed = true;
-                b.vel      = glm::vec2(0);
+                b.vel = glm::vec2(0);
                 return;
             }
         }
