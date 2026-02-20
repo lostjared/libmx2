@@ -135,7 +135,7 @@ public:
         sphereModel->upload(device, physicalDevice, commandPool, graphicsQueue);
 
         cylinderModel.reset(new mx::MXModel());
-        cylinderModel->load(util.path + "/data/cylinder.mxmod.z", 0.285714f);
+        cylinderModel->load(util.path + "/data/pocket.mxmod.z", 0.285714f);
         cylinderModel->upload(device, physicalDevice, commandPool, graphicsQueue);
 
         cubeModel.reset(new mx::MXModel());
@@ -288,7 +288,7 @@ public:
                   glm::vec3(TABLE_HALF_W + BUMPER_W/2, 0, 0),
                   glm::vec3(BUMPER_W/2, 0.15f, TABLE_HALF_H + BUMPER_W), wood);
 
-        
+  
         for (int i = 0; i < 6; i++) {
             drawModel(cmd, imageIndex, cylinderModel.get(), viewMat, projMat, time,
                       glm::vec3(POCKETS[i].x, -0.098f, POCKETS[i].y),
@@ -296,7 +296,6 @@ public:
                       glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
         }
 
-        
         for (int i = 0; i < NUM_BALLS; i++) {
             if (!balls[i].active || balls[i].pocketed) continue;
             glm::mat4 m(1.0f);
