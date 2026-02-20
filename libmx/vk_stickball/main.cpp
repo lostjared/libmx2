@@ -751,7 +751,6 @@ private:
 
     
     void updatePhysics(float dt) {
-        // Find fastest ball to determine required substep count
         float maxSpeed = 0.0f;
         for (auto &b : balls) {
             if (b.active && !b.pocketed) {
@@ -759,11 +758,9 @@ private:
                 if (spd > maxSpeed) maxSpeed = spd;
             }
         }
-        // Ensure max movement per substep < BALL_RADIUS to prevent tunneling
         float maxMovePerStep = BALL_RADIUS * 0.75f;
         int steps = std::max(8, (int)std::ceil(maxSpeed * dt * 60.0f / maxMovePerStep));
         float sub = dt / (float)steps;
-        // Scale friction so total damping per frame matches original (FRICTION^4)
         float stepFriction = std::pow(FRICTION, 4.0f / (float)steps);
         for (int s = 0; s < steps; s++) {
             for (auto &b : balls) {
