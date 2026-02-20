@@ -142,6 +142,8 @@ public:
         cubeModel->load(util.path + "/data/cube.mxmod.z", 2.0f);
         cubeModel->upload(device, physicalDevice, commandPool, graphicsQueue);
 
+        backgroundSprite = createSprite(util.path + "/data/background.png", "", "");
+
         resetGame();
     }
 
@@ -248,6 +250,17 @@ public:
         VkRect2D sc{}; sc.extent = swapChainExtent;
         vkCmdSetViewport(cmd, 0, 1, &vp);
         vkCmdSetScissor(cmd, 0, 1, &sc);
+
+        // Draw background image first so it stays fixed behind all 3D geometry
+        if (spritePipeline != VK_NULL_HANDLE && backgroundSprite != nullptr) {
+            vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, spritePipeline);
+            backgroundSprite->drawSpriteRect(0, 0,
+                static_cast<int>(swapChainExtent.width),
+                static_cast<int>(swapChainExtent.height));
+            backgroundSprite->renderSprites(cmd, spritePipelineLayout,
+                swapChainExtent.width, swapChainExtent.height);
+            backgroundSprite->clearQueue();
+        }
 
         float aspect = vp.width / vp.height;
         float time   = SDL_GetTicks() / 1000.0f;
@@ -449,6 +462,9 @@ private:
     VkImage        tableTexImage     = VK_NULL_HANDLE;
     VkDeviceMemory tableTexMemory    = VK_NULL_HANDLE;
     VkImageView    tableTexImageView = VK_NULL_HANDLE;
+
+    mx::VKSprite  *backgroundSprite  = nullptr;
+    
 
     void loadTableTexture() {
         std::string path = util.path + "/data/table.png";
