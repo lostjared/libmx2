@@ -89,6 +89,15 @@ struct PoolBall {
 
 enum class GamePhase { Aiming, Charging, Rolling, Placing, GameOver };
 
+static constexpr float SINK_DURATION = 0.45f;  
+
+struct SinkAnim {
+    glm::vec2 pocketPos;   
+    glm::vec3 color;       
+    float     spinAngle;   
+    float     timer  = 0.0f;
+};
+
 
 
 
@@ -196,6 +205,13 @@ public:
         }
 
         
+        for (auto &a : sinkAnims) a.timer += dt;
+        sinkAnims.erase(
+            std::remove_if(sinkAnims.begin(), sinkAnims.end(),
+                           [](const SinkAnim &a){ return a.timer >= SINK_DURATION; }),
+            sinkAnims.end());
+
+        
         {
             const Uint8 *k = SDL_GetKeyboardState(nullptr);
             if (k[SDL_SCANCODE_A]) camAngle -= 1.2f * dt;
@@ -226,8 +242,10 @@ public:
                 if (fabsf(lx) > DEADZONE) cueAngle += lx * 1.5f * dt;
             } else if (phase == GamePhase::Placing) {
                 float s = 3.0f * dt;
-                if (fabsf(lx) > DEADZONE) balls[0].pos.x += lx * s;
-                if (fabsf(ly) > DEADZONE) balls[0].pos.y += ly * s;
+                glm::vec2 camRight( cosf(camAngle), -sinf(camAngle));
+                glm::vec2 camFwd  (-sinf(camAngle), -cosf(camAngle));
+                if (fabsf(lx) > DEADZONE) balls[0].pos += camRight * (lx * s);
+                if (fabsf(ly) > DEADZONE) balls[0].pos -= camFwd   * (ly * s);
                 float m = BALL_RADIUS + 0.1f;
                 balls[0].pos.x = glm::clamp(balls[0].pos.x, -TABLE_HALF_W + m, TABLE_HALF_W - m);
                 balls[0].pos.y = glm::clamp(balls[0].pos.y, -TABLE_HALF_H + m, TABLE_HALF_H - m);
@@ -361,16 +379,32 @@ public:
         }
 
         
+        for (auto &anim : sinkAnims) {
+            float t  = anim.timer / SINK_DURATION;          
+            
+            float y  = glm::mix(BALL_RADIUS, -BALL_RADIUS * 3.5f, t);
+            
+            float sc = BALL_RADIUS * (1.0f - t * 0.75f);
+            glm::mat4 m(1.0f);
+            m = glm::translate(m, glm::vec3(anim.pocketPos.x, y, anim.pocketPos.y));
+            m = glm::rotate(m, anim.spinAngle + t * 6.0f, glm::vec3(0.0f, 1.0f, 0.0f));
+            m = glm::scale(m, glm::vec3(sc));
+            drawModelMat(cmd, imageIndex, sphereModel.get(), viewMat, projMat, time,
+                         m, glm::vec4(anim.color, 1.0f));
+        }
+
+        
         if ((phase == GamePhase::Aiming || phase == GamePhase::Charging) && balls[0].active) {
             float offset   = (phase == GamePhase::Charging)
                              ? (chargeAmount / MAX_POWER * 1.0f) : 0.0f;
             float stickDist = BALL_RADIUS + 0.3f + offset;
-            glm::vec2 dir(cosf(cueAngle), sinf(cueAngle));
+            float worldCueAngle = cueAngle + camAngle;
+            glm::vec2 dir(cosf(worldCueAngle), sinf(worldCueAngle));
             glm::vec2 sc2 = balls[0].pos - dir * (stickDist + CUE_LENGTH * 0.5f);
 
             glm::mat4 m(1.0f);
             m = glm::translate(m, glm::vec3(sc2.x, BALL_RADIUS + 0.05f, sc2.y));
-            m = glm::rotate(m, -cueAngle, glm::vec3(0.0f, 1.0f, 0.0f));
+            m = glm::rotate(m, -worldCueAngle, glm::vec3(0.0f, 1.0f, 0.0f));
             m = glm::scale(m, glm::vec3(CUE_LENGTH * 0.5f, 0.03f, 0.03f));
             float pct = chargeAmount / MAX_POWER;
             glm::vec4 cueCol = (phase == GamePhase::Charging)
@@ -383,7 +417,7 @@ public:
             glm::vec2 ac = balls[0].pos + dir * (BALL_RADIUS + aimLen * 0.5f);
             glm::mat4 am(1.0f);
             am = glm::translate(am, glm::vec3(ac.x, BALL_RADIUS + 0.02f, ac.y));
-            am = glm::rotate(am, -cueAngle, glm::vec3(0.0f, 1.0f, 0.0f));
+            am = glm::rotate(am, -worldCueAngle, glm::vec3(0.0f, 1.0f, 0.0f));
             am = glm::scale(am, glm::vec3(aimLen * 0.5f, 0.005f, 0.005f));
             drawModelMat(cmd, imageIndex, cubeModel.get(), viewMat, projMat, time,
                          am, glm::vec4(1, 1, 0, 0.5f));
@@ -467,7 +501,8 @@ public:
         }
         if (e.type == SDL_KEYUP && e.key.keysym.sym == SDLK_SPACE
             && phase == GamePhase::Charging) {
-            glm::vec2 dir(cosf(cueAngle), sinf(cueAngle));
+            float worldCueAngle = cueAngle + camAngle;
+            glm::vec2 dir(cosf(worldCueAngle), sinf(worldCueAngle));
             balls[0].vel = dir * chargeAmount;
             phase = GamePhase::Rolling;
             shotCount++;
@@ -523,7 +558,8 @@ public:
                  e.cbutton.button == SDL_CONTROLLER_BUTTON_B) &&
                  e.cbutton.button == ctrlChargeButton &&
                  phase == GamePhase::Charging) {
-                glm::vec2 dir(cosf(cueAngle), sinf(cueAngle));
+                float worldCueAngle = cueAngle + camAngle;
+                glm::vec2 dir(cosf(worldCueAngle), sinf(worldCueAngle));
                 balls[0].vel = dir * chargeAmount;
                 phase = GamePhase::Rolling;
                 shotCount++;
@@ -552,7 +588,8 @@ private:
     std::unique_ptr<mx::MXModel> cylinderModel;
     std::unique_ptr<mx::MXModel> cubeModel;
 
-    PoolBall  balls[NUM_BALLS];
+    PoolBall          balls[NUM_BALLS];
+    std::vector<SinkAnim> sinkAnims;
     GamePhase phase        = GamePhase::Aiming;
     float     cueAngle     = 0.0f;
     float     chargeAmount = 0.0f;
@@ -838,6 +875,7 @@ private:
 
     void resetGame() {
         rackBalls();
+        sinkAnims.clear();
         phase = GamePhase::Aiming;
         cueAngle = 0.0f;
         chargeAmount = 0.0f;
@@ -862,10 +900,12 @@ private:
     void handlePlacing(float dt) {
         const Uint8 *k = SDL_GetKeyboardState(nullptr);
         float s = 3.0f * dt;
-        if (k[SDL_SCANCODE_LEFT])  balls[0].pos.x -= s;
-        if (k[SDL_SCANCODE_RIGHT]) balls[0].pos.x += s;
-        if (k[SDL_SCANCODE_UP])    balls[0].pos.y -= s;
-        if (k[SDL_SCANCODE_DOWN])  balls[0].pos.y += s;
+        glm::vec2 camRight( cosf(camAngle), -sinf(camAngle));
+        glm::vec2 camFwd  (-sinf(camAngle), -cosf(camAngle));
+        if (k[SDL_SCANCODE_LEFT])  balls[0].pos -= camRight * s;
+        if (k[SDL_SCANCODE_RIGHT]) balls[0].pos += camRight * s;
+        if (k[SDL_SCANCODE_UP])    balls[0].pos += camFwd   * s;
+        if (k[SDL_SCANCODE_DOWN])  balls[0].pos -= camFwd   * s;
         float m = BALL_RADIUS + 0.1f;
         balls[0].pos.x = glm::clamp(balls[0].pos.x, -TABLE_HALF_W + m, TABLE_HALF_W - m);
         balls[0].pos.y = glm::clamp(balls[0].pos.y, -TABLE_HALF_H + m, TABLE_HALF_H - m);
@@ -938,8 +978,17 @@ private:
     void checkPocket(PoolBall &b) {
         for (int i = 0; i < 6; i++) {
             if (glm::length(b.pos - POCKETS[i]) < POCKET_R) {
+                
+                int idx = static_cast<int>(&b - &balls[0]);
+                SinkAnim anim;
+                anim.pocketPos  = POCKETS[i];
+                anim.color      = BALL_COLORS[idx];
+                anim.spinAngle  = b.spinAngle;
+                anim.timer      = 0.0f;
+                sinkAnims.push_back(anim);
+
                 b.pocketed = true;
-                b.vel = glm::vec2(0);
+                b.vel      = glm::vec2(0);
                 return;
             }
         }
@@ -948,6 +997,8 @@ private:
     bool anyBallMoving() const {
         for (auto &b : balls)
             if (b.active && !b.pocketed && b.isMoving()) return true;
+        
+        if (!sinkAnims.empty()) return true;
         return false;
     }
     bool allObjectBallsPocketed() const {
