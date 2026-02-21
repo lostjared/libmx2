@@ -12,17 +12,15 @@
 #include <array>
 #include <cstring>
 #include <memory>
-
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
-
 static constexpr float TABLE_W = 12.0f;
 static constexpr float TABLE_H = 6.0f;
 static constexpr float TABLE_HALF_W = TABLE_W / 2.0f;
 static constexpr float TABLE_HALF_H = TABLE_H / 2.0f;
 static constexpr float BUMPER_W = 0.3f;
-static constexpr float POCKET_R = 0.45f;
+static constexpr float POCKET_R = 0.25f;
 static constexpr float BALL_RADIUS = 0.18f;
 static constexpr float CUE_LENGTH = 2.5f;
 static constexpr int NUM_BALLS = 16;
@@ -30,17 +28,15 @@ static constexpr float FRICTION = 0.9988f;
 static constexpr float MIN_SPEED = 0.001f;
 static constexpr float MAX_POWER = 1.0f;
 static constexpr int MAX_DRAWS = 48;
-
-static constexpr float PKT_INS = 0.15f;
+static constexpr float PKT_INS = 0.25f;
 static const glm::vec2 POCKETS[6] = {
     { -TABLE_HALF_W + PKT_INS, TABLE_HALF_H - PKT_INS },
-    { 0.0f, TABLE_HALF_H - 0.05f },
+    { 0.0f, TABLE_HALF_H - 0.15f },
     { TABLE_HALF_W - PKT_INS, TABLE_HALF_H - PKT_INS },
     { -TABLE_HALF_W + PKT_INS, -TABLE_HALF_H + PKT_INS },
-    { 0.0f, -TABLE_HALF_H + 0.05f },
+    { 0.0f, -TABLE_HALF_H + 0.15f },
     { TABLE_HALF_W - PKT_INS, -TABLE_HALF_H + PKT_INS },
 };
-
 static const glm::vec3 BALL_COLORS[NUM_BALLS] = {
     {1.0f, 1.0f, 1.0f},
     {1.0f, 0.84f, 0.0f},
@@ -59,14 +55,12 @@ static const glm::vec3 BALL_COLORS[NUM_BALLS] = {
     {0.0f, 0.5f, 0.0f},
     {0.55f, 0.0f, 0.0f},
 };
-
 static float randFloat(float mn, float mx) {
     static std::random_device rd;
     static std::default_random_engine eng(rd());
     std::uniform_real_distribution<float> d(mn, mx);
     return d(eng);
 }
-
 struct PoolBall {
     glm::vec2 pos{0.0f};
     glm::vec2 vel{0.0f};
@@ -74,20 +68,16 @@ struct PoolBall {
     bool pocketed = false;
     int number = 0;
     float spinAngle = 0.0f;
-
     bool isMoving() const { return glm::length(vel) > MIN_SPEED; }
 };
-
 enum class GamePhase { Aiming, Charging, Rolling, Placing, GameOver };
 static constexpr float SINK_DURATION = 0.45f;
-
 struct SinkAnim {
     glm::vec2 pocketPos;
     glm::vec3 color;
     float spinAngle;
     float timer = 0.0f;
 };
-
 class PoolWindow : public mx::VKWindow {
 public:
     PoolWindow(const std::string &path, int wx, int wy, bool full)
@@ -95,7 +85,6 @@ public:
         setPath(path);
     }
     ~PoolWindow() override = default;
-
     void initVulkan() override {
         mx::VKWindow::initVulkan();
         SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER);
@@ -125,33 +114,34 @@ public:
             vkDestroyBuffer(device, stg, nullptr);
             vkFreeMemory(device, stgMem, nullptr);
         }
-
         loadTableTexture();
         createObjectPool();
-
         sphereModel.reset(new mx::MXModel());
         sphereModel->load(util.path + "/data/geosphere.mxmod.z", 1.0f);
         sphereModel->upload(device, physicalDevice, commandPool, graphicsQueue);
-
         cylinderModel.reset(new mx::MXModel());
         cylinderModel->load(util.path + "/data/pocket.mxmod.z", 0.285714f);
         cylinderModel->upload(device, physicalDevice, commandPool, graphicsQueue);
-
         cubeModel.reset(new mx::MXModel());
         cubeModel->load(util.path + "/data/cube.mxmod.z", 2.0f);
         cubeModel->upload(device, physicalDevice, commandPool, graphicsQueue);
-
+        tableModel.reset(new mx::MXModel());
+        tableModel->load(util.path + "/data/pooltable_felt.mxmod.z", 1.0f);
+        tableModel->upload(device, physicalDevice, commandPool, graphicsQueue);
+        tableWoodModel.reset(new mx::MXModel());
+        tableWoodModel->load(util.path + "/data/pooltable_wood.mxmod.z", 1.0f);
+        tableWoodModel->upload(device, physicalDevice, commandPool, graphicsQueue);
+        tablePocketModel.reset(new mx::MXModel());
+        tablePocketModel->load(util.path + "/data/pooltable_pocket.mxmod.z", 1.0f);
+        tablePocketModel->upload(device, physicalDevice, commandPool, graphicsQueue);
         backgroundSprite = createSprite(util.path + "/data/background.png", "", "");
-
         resetGame();
     }
-
     void proc() override {
         float now = SDL_GetTicks() / 1000.0f;
         float dt = now - lastTime;
         if (dt > 0.05f) dt = 0.05f;
         lastTime = now;
-
         switch (phase) {
         case GamePhase::Aiming: handleAiming(dt); break;
         case GamePhase::Charging: handleCharging(dt); break;
@@ -173,19 +163,16 @@ public:
         case GamePhase::Placing: handlePlacing(dt); break;
         case GamePhase::GameOver: break;
         }
-
         for (auto &b : balls) {
             if (b.active && b.isMoving()) {
                 b.spinAngle += glm::length(b.vel) * 5.0f * dt;
             }
         }
-
         for (auto &a : sinkAnims) a.timer += dt;
         sinkAnims.erase(
             std::remove_if(sinkAnims.begin(), sinkAnims.end(),
                            [](const SinkAnim &a){ return a.timer >= SINK_DURATION; }),
             sinkAnims.end());
-
         {
             const Uint8 *k = SDL_GetKeyboardState(nullptr);
             if (k[SDL_SCANCODE_A]) camAngle -= 1.2f * dt;
@@ -194,19 +181,16 @@ public:
             if (k[SDL_SCANCODE_E]) camZoom += 5.0f * dt;
             camZoom = glm::clamp(camZoom, 5.0f, 25.0f);
         }
-
         if (gameController) {
             constexpr float DEADZONE = 0.15f;
             auto readAxis = [&](SDL_GameControllerAxis a) -> float {
                 return SDL_GameControllerGetAxis(gameController, a) / 32767.0f;
             };
-
             float rx = readAxis(SDL_CONTROLLER_AXIS_RIGHTX);
             float ry = readAxis(SDL_CONTROLLER_AXIS_RIGHTY);
             if (fabsf(rx) > DEADZONE) camAngle += rx * 1.5f * dt;
             if (fabsf(ry) > DEADZONE) camZoom += ry * 5.0f * dt;
             camZoom = glm::clamp(camZoom, 5.0f, 25.0f);
-
             float lx = readAxis(SDL_CONTROLLER_AXIS_LEFTX);
             float ly = readAxis(SDL_CONTROLLER_AXIS_LEFTY);
             if (phase == GamePhase::Aiming || phase == GamePhase::Charging) {
@@ -222,14 +206,12 @@ public:
                 balls[0].pos.y = glm::clamp(balls[0].pos.y, -TABLE_HALF_H + m, TABLE_HALF_H - m);
             }
         }
-
         printText("-[ 3D Pool ]-", 15, 15, {255, 255, 255, 255});
         printText("Shots: " + std::to_string(shotCount), 15, 45, {255, 255, 0, 255});
         int rem = 0;
         for (int i = 1; i < NUM_BALLS; i++)
             if (balls[i].active && !balls[i].pocketed) rem++;
         printText("Balls: " + std::to_string(rem), 15, 75, {200, 200, 200, 255});
-
         if (phase == GamePhase::Aiming)
             printText("Arrows/L-Stick: Aim | Space/A/B: Charge & Shoot | R-Stick: Cam", 15, h - 40, {180, 180, 180, 255});
         else if (phase == GamePhase::Charging) {
@@ -243,7 +225,6 @@ public:
             printText("Press Enter / A to play again", w / 2 - 120, h / 2 + 10, {200, 200, 200, 255});
         }
     }
-
     void draw() override {
         uint32_t imageIndex = 0;
         VkResult result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX,
@@ -251,34 +232,29 @@ public:
         if (result == VK_ERROR_OUT_OF_DATE_KHR) { recreateSwapChain(); return; }
         else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
             throw mx::Exception("Failed to acquire swap chain image!");
-
         VK_CHECK_RESULT(vkResetCommandBuffer(commandBuffers[imageIndex], 0));
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         if (vkBeginCommandBuffer(commandBuffers[imageIndex], &beginInfo) != VK_SUCCESS)
             throw mx::Exception("Failed to begin recording command buffer!");
-
         VkRenderPassBeginInfo rpInfo{};
-        rpInfo.sType              = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        rpInfo.renderPass         = renderPass;
-        rpInfo.framebuffer        = swapChainFramebuffers[imageIndex];
+        rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        rpInfo.renderPass = renderPass;
+        rpInfo.framebuffer = swapChainFramebuffers[imageIndex];
         rpInfo.renderArea.offset = {0, 0};
         rpInfo.renderArea.extent = swapChainExtent;
         std::array<VkClearValue, 2> cv{};
         cv[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
         cv[1].depthStencil = {1.0f, 0};
         rpInfo.clearValueCount = static_cast<uint32_t>(cv.size());
-        rpInfo.pClearValues    = cv.data();
-
+        rpInfo.pClearValues = cv.data();
         VkCommandBuffer cmd = commandBuffers[imageIndex];
         vkCmdBeginRenderPass(cmd, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
-
         VkViewport vp{}; vp.width = (float)swapChainExtent.width;
         vp.height = (float)swapChainExtent.height; vp.maxDepth = 1.0f;
         VkRect2D sc{}; sc.extent = swapChainExtent;
         vkCmdSetViewport(cmd, 0, 1, &vp);
         vkCmdSetScissor(cmd, 0, 1, &sc);
-
         if (spritePipeline != VK_NULL_HANDLE && backgroundSprite != nullptr) {
             vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, spritePipeline);
             backgroundSprite->drawSpriteRect(0, 0,
@@ -288,10 +264,8 @@ public:
                 swapChainExtent.width, swapChainExtent.height);
             backgroundSprite->clearQueue();
         }
-
         float aspect = vp.width / vp.height;
         float time = SDL_GetTicks() / 1000.0f;
-
         float camDist = camZoom;
         float camHeight = camZoom * 0.92f;
         glm::vec3 camPos = glm::vec3(sinf(camAngle) * camDist, camHeight, cosf(camAngle) * camDist);
@@ -299,38 +273,21 @@ public:
         glm::mat4 viewMat = glm::lookAt(camPos, camTarget, glm::vec3(0.0f, 1.0f, 0.0f));
         glm::mat4 projMat = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 100.0f);
         projMat[1][1] *= -1;
-
         VkPipeline pipe = useWireFrame ? graphicsPipelineMatrix : graphicsPipeline;
         vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipe);
-
         objDrawIndex = 0;
-
-        drawModelTextured(cmd, imageIndex, cubeModel.get(), viewMat, projMat, time,
-                  glm::vec3(0.0f, -0.15f, 0.0f),
-                  glm::vec3(TABLE_HALF_W, 0.05f, TABLE_HALF_H),
+        drawModelTextured(cmd, imageIndex, tableModel.get(), viewMat, projMat, time,
+                  glm::vec3(0.0f, 0.0f, 0.0f),
+                  glm::vec3(1.0f, 1.0f, 1.0f),
                   glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
-
-        glm::vec4 wood(0.4f, 0.22f, 0.05f, 1.0f);
-        drawModel(cmd, imageIndex, cubeModel.get(), viewMat, projMat, time,
-                  glm::vec3(0, 0, -TABLE_HALF_H - BUMPER_W/2),
-                  glm::vec3(TABLE_HALF_W + BUMPER_W, 0.15f, BUMPER_W/2), wood);
-        drawModel(cmd, imageIndex, cubeModel.get(), viewMat, projMat, time,
-                  glm::vec3(0, 0, TABLE_HALF_H + BUMPER_W/2),
-                  glm::vec3(TABLE_HALF_W + BUMPER_W, 0.15f, BUMPER_W/2), wood);
-        drawModel(cmd, imageIndex, cubeModel.get(), viewMat, projMat, time,
-                  glm::vec3(-TABLE_HALF_W - BUMPER_W/2, 0, 0),
-                  glm::vec3(BUMPER_W/2, 0.15f, TABLE_HALF_H + BUMPER_W), wood);
-        drawModel(cmd, imageIndex, cubeModel.get(), viewMat, projMat, time,
-                  glm::vec3(TABLE_HALF_W + BUMPER_W/2, 0, 0),
-                  glm::vec3(BUMPER_W/2, 0.15f, TABLE_HALF_H + BUMPER_W), wood);
-
-        for (int i = 0; i < 6; i++) {
-            drawModel(cmd, imageIndex, cylinderModel.get(), viewMat, projMat, time,
-                      glm::vec3(POCKETS[i].x, -0.098f, POCKETS[i].y),
-                      glm::vec3(POCKET_R, 0.001f, POCKET_R),
-                      glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
-        }
-
+        drawModel(cmd, imageIndex, tableWoodModel.get(), viewMat, projMat, time,
+                  glm::vec3(0.0f, 0.0f, 0.0f),
+                  glm::vec3(1.0f, 1.0f, 1.0f),
+                  glm::vec4(0.4f, 0.22f, 0.05f, 1.0f));
+        drawModel(cmd, imageIndex, tablePocketModel.get(), viewMat, projMat, time,
+                  glm::vec3(0.0f, 0.0f, 0.0f),
+                  glm::vec3(1.0f, 1.0f, 1.0f),
+                  glm::vec4(0.08f, 0.08f, 0.08f, 1.0f));
         for (int i = 0; i < NUM_BALLS; i++) {
             if (!balls[i].active || balls[i].pocketed) continue;
             glm::mat4 m(1.0f);
@@ -340,12 +297,9 @@ public:
             drawModelMat(cmd, imageIndex, sphereModel.get(), viewMat, projMat, time,
                          m, glm::vec4(BALL_COLORS[i], 1.0f));
         }
-
         for (auto &anim : sinkAnims) {
             float t = anim.timer / SINK_DURATION;
-
             float y = glm::mix(BALL_RADIUS, -BALL_RADIUS * 3.5f, t);
-
             float sc = BALL_RADIUS * (1.0f - t * 0.75f);
             glm::mat4 m(1.0f);
             m = glm::translate(m, glm::vec3(anim.pocketPos.x, y, anim.pocketPos.y));
@@ -354,7 +308,6 @@ public:
             drawModelMat(cmd, imageIndex, sphereModel.get(), viewMat, projMat, time,
                          m, glm::vec4(anim.color, 1.0f));
         }
-
         if ((phase == GamePhase::Aiming || phase == GamePhase::Charging) && balls[0].active) {
             float offset = (phase == GamePhase::Charging)
                              ? (chargeAmount / MAX_POWER * 1.0f) : 0.0f;
@@ -362,7 +315,6 @@ public:
             float worldCueAngle = cueAngle + camAngle;
             glm::vec2 dir(cosf(worldCueAngle), sinf(worldCueAngle));
             glm::vec2 sc2 = balls[0].pos - dir * (stickDist + CUE_LENGTH * 0.5f);
-
             glm::mat4 m(1.0f);
             m = glm::translate(m, glm::vec3(sc2.x, BALL_RADIUS + 0.05f, sc2.y));
             m = glm::rotate(m, -worldCueAngle, glm::vec3(0.0f, 1.0f, 0.0f));
@@ -372,17 +324,15 @@ public:
                 ? glm::vec4(0.55f + pct*0.45f, 0.27f*(1-pct), 0.07f*(1-pct), 1)
                 : glm::vec4(0.55f, 0.27f, 0.07f, 1.0f);
             drawModelMat(cmd, imageIndex, cubeModel.get(), viewMat, projMat, time, m, cueCol);
-
             float aimLen = 2.0f;
             glm::vec2 ac = balls[0].pos + dir * (BALL_RADIUS + aimLen * 0.5f);
             glm::mat4 am(1.0f);
-            am = glm::translate(am, glm::vec3(ac.x, BALL_RADIUS + 0.02f, ac.y));
+            am = glm::translate(am, glm::vec3(ac.x, BALL_RADIUS + 0.06f, ac.y));
             am = glm::rotate(am, -worldCueAngle, glm::vec3(0.0f, 1.0f, 0.0f));
-            am = glm::scale(am, glm::vec3(aimLen * 0.5f, 0.005f, 0.005f));
+            am = glm::scale(am, glm::vec3(aimLen * 0.5f, 0.008f, 0.015f));
             drawModelMat(cmd, imageIndex, cubeModel.get(), viewMat, projMat, time,
-                         am, glm::vec4(1, 1, 0, 0.5f));
+                         am, glm::vec4(1, 1, 0, 1.0f));
         }
-
         if (spritePipeline != VK_NULL_HANDLE && !sprites.empty()) {
             vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, spritePipeline);
             for (auto &sp : sprites) {
@@ -391,17 +341,14 @@ public:
                                   swapChainExtent.width, swapChainExtent.height);
             }
         }
-
         if (textRenderer && textPipeline != VK_NULL_HANDLE) {
             vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, textPipeline);
             textRenderer->renderText(cmd, textPipelineLayout,
                                      swapChainExtent.width, swapChainExtent.height);
         }
-
         vkCmdEndRenderPass(cmd);
         if (vkEndCommandBuffer(cmd) != VK_SUCCESS)
             throw mx::Exception("Failed to record command buffer!");
-
         VkSubmitInfo si{}; si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         VkSemaphore wait[] = { imageAvailableSemaphore };
         VkPipelineStageFlags ws[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
@@ -411,7 +358,6 @@ public:
         si.signalSemaphoreCount = 1; si.pSignalSemaphores = sig;
         if (vkQueueSubmit(graphicsQueue, 1, &si, VK_NULL_HANDLE) != VK_SUCCESS)
             throw mx::Exception("Failed to submit draw command buffer!");
-
         VkPresentInfoKHR pi{}; pi.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         pi.waitSemaphoreCount = 1; pi.pWaitSemaphores = sig;
         pi.swapchainCount = 1; pi.pSwapchains = &swapChain; pi.pImageIndices = &imageIndex;
@@ -420,12 +366,10 @@ public:
             recreateSwapChain();
         else if (result != VK_SUCCESS)
             throw mx::Exception("Failed to present swap chain image!");
-
         vkQueueWaitIdle(graphicsQueue);
         clearTextQueue();
         for (auto &sp : sprites) { if (sp) sp->clearQueue(); }
     }
-
     void event(SDL_Event &e) override {
         if (e.type == SDL_QUIT ||
             (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE)) {
@@ -466,7 +410,6 @@ public:
             shotCount++;
             chargeAmount = 0.0f;
         }
-
         if (e.type == SDL_CONTROLLERDEVICEADDED && !gameController) {
             gameController = SDL_GameControllerOpen(e.cdevice.which);
             if (gameController)
@@ -480,7 +423,6 @@ public:
                 SDL_Log("Controller disconnected");
             }
         }
-
         if (e.type == SDL_CONTROLLERBUTTONDOWN) {
             switch (e.cbutton.button) {
             case SDL_CONTROLLER_BUTTON_BACK:
@@ -493,7 +435,6 @@ public:
                     chargeAmount = 0.0f;
                     ctrlChargeButton = e.cbutton.button;
                 } else if (phase == GamePhase::Placing) {
-
                     bool ok = true;
                     for (int i = 1; i < NUM_BALLS; i++) {
                         if (!balls[i].active || balls[i].pocketed) continue;
@@ -508,7 +449,6 @@ public:
             default: break;
             }
         }
-
         if (e.type == SDL_CONTROLLERBUTTONUP) {
             if ((e.cbutton.button == SDL_CONTROLLER_BUTTON_A ||
                  e.cbutton.button == SDL_CONTROLLER_BUTTON_B) &&
@@ -524,7 +464,6 @@ public:
             }
         }
     }
-
     void cleanup() override {
         if (gameController) {
             SDL_GameControllerClose(gameController);
@@ -533,16 +472,20 @@ public:
         if (sphereModel) sphereModel->cleanup(device);
         if (cylinderModel) cylinderModel->cleanup(device);
         if (cubeModel) cubeModel->cleanup(device);
+        if (tableModel) tableModel->cleanup(device);
+        if (tableWoodModel) tableWoodModel->cleanup(device);
+        if (tablePocketModel) tablePocketModel->cleanup(device);
         cleanupTableTexture();
         cleanupObjectPool();
         mx::VKWindow::cleanup();
     }
-
 private:
     std::unique_ptr<mx::MXModel> sphereModel;
     std::unique_ptr<mx::MXModel> cylinderModel;
     std::unique_ptr<mx::MXModel> cubeModel;
-
+    std::unique_ptr<mx::MXModel> tableModel;
+    std::unique_ptr<mx::MXModel> tableWoodModel;
+    std::unique_ptr<mx::MXModel> tablePocketModel;
     PoolBall balls[NUM_BALLS];
     std::vector<SinkAnim> sinkAnims;
     GamePhase phase = GamePhase::Aiming;
@@ -552,16 +495,12 @@ private:
     float lastTime = 0.0f;
     float camAngle = 0.4f;
     float camZoom = 13.0f;
-
     SDL_GameController *gameController = nullptr;
     int ctrlChargeButton = -1;
-
     VkImage tableTexImage = VK_NULL_HANDLE;
     VkDeviceMemory tableTexMemory = VK_NULL_HANDLE;
     VkImageView tableTexImageView = VK_NULL_HANDLE;
-
     mx::VKSprite *backgroundSprite = nullptr;
-
     void loadTableTexture() {
         std::string path = util.path + "/data/table.png";
         SDL_Surface *surface = png::LoadPNG(path.c_str());
@@ -569,7 +508,6 @@ private:
             SDL_Log("Failed to load table.png");
             return;
         }
-
         SDL_Surface *rgba = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_ABGR8888, 0);
         SDL_FreeSurface(surface);
         if (!rgba) {
@@ -577,7 +515,6 @@ private:
             return;
         }
         VkDeviceSize imgSize = rgba->w * rgba->h * 4;
-
         VkBuffer stg; VkDeviceMemory stgMem;
         createBuffer(imgSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
@@ -587,13 +524,11 @@ private:
         vkMapMemory(device, stgMem, 0, imgSize, 0, &d);
         memcpy(d, rgba->pixels, imgSize);
         vkUnmapMemory(device, stgMem);
-
         createImage(rgba->w, rgba->h, VK_FORMAT_R8G8B8A8_UNORM,
                     VK_IMAGE_TILING_OPTIMAL,
                     VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
                     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
                     tableTexImage, tableTexMemory);
-
         transitionImageLayout(tableTexImage, VK_FORMAT_R8G8B8A8_UNORM,
                               VK_IMAGE_LAYOUT_UNDEFINED,
                               VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
@@ -604,11 +539,9 @@ private:
         vkDestroyBuffer(device, stg, nullptr);
         vkFreeMemory(device, stgMem, nullptr);
         SDL_FreeSurface(rgba);
-
         tableTexImageView = createImageView(tableTexImage, VK_FORMAT_R8G8B8A8_UNORM,
                                             VK_IMAGE_ASPECT_COLOR_BIT);
     }
-
     void cleanupTableTexture() {
         if (tableTexImageView != VK_NULL_HANDLE)
             vkDestroyImageView(device, tableTexImageView, nullptr);
@@ -617,7 +550,6 @@ private:
         if (tableTexMemory != VK_NULL_HANDLE)
             vkFreeMemory(device, tableTexMemory, nullptr);
     }
-
     size_t swapCount = 0;
     VkDescriptorPool objPool = VK_NULL_HANDLE;
     std::vector<VkBuffer> objUBOs;
@@ -625,24 +557,20 @@ private:
     std::vector<void*> objUBOMapped;
     std::vector<VkDescriptorSet> objDescSets;
     int objDrawIndex = 0;
-
     void createObjectPool() {
         swapCount = swapChainImages.size();
         size_t total = MAX_DRAWS * swapCount;
-
         std::array<VkDescriptorPoolSize, 2> poolSizes{};
         poolSizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         poolSizes[0].descriptorCount = static_cast<uint32_t>(total);
         poolSizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         poolSizes[1].descriptorCount = static_cast<uint32_t>(total);
-
         VkDescriptorPoolCreateInfo pi{};
-        pi.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        pi.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         pi.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
-        pi.pPoolSizes    = poolSizes.data();
-        pi.maxSets       = static_cast<uint32_t>(total);
+        pi.pPoolSizes = poolSizes.data();
+        pi.maxSets = static_cast<uint32_t>(total);
         VK_CHECK_RESULT(vkCreateDescriptorPool(device, &pi, nullptr, &objPool));
-
         VkDeviceSize uboSize = sizeof(mx::UniformBufferObject);
         objUBOs.resize(total);
         objUBOMem.resize(total);
@@ -654,27 +582,23 @@ private:
                          objUBOs[i], objUBOMem[i]);
             VK_CHECK_RESULT(vkMapMemory(device, objUBOMem[i], 0, uboSize, 0, &objUBOMapped[i]));
         }
-
         std::vector<VkDescriptorSetLayout> layouts(total, descriptorSetLayout);
         VkDescriptorSetAllocateInfo ai{};
-        ai.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        ai.descriptorPool     = objPool;
+        ai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        ai.descriptorPool = objPool;
         ai.descriptorSetCount = static_cast<uint32_t>(total);
-        ai.pSetLayouts        = layouts.data();
+        ai.pSetLayouts = layouts.data();
         objDescSets.resize(total);
         VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &ai, objDescSets.data()));
-
         for (size_t i = 0; i < total; i++) {
             VkDescriptorImageInfo imgInfo{};
             imgInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            imgInfo.imageView   = textureImageView;
-            imgInfo.sampler     = textureSampler;
-
+            imgInfo.imageView = textureImageView;
+            imgInfo.sampler = textureSampler;
             VkDescriptorBufferInfo bufInfo{};
             bufInfo.buffer = objUBOs[i];
             bufInfo.offset = 0;
-            bufInfo.range  = uboSize;
-
+            bufInfo.range = uboSize;
             std::array<VkWriteDescriptorSet, 2> writes{};
             writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             writes[0].dstSet = objDescSets[i];
@@ -682,19 +606,16 @@ private:
             writes[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             writes[0].descriptorCount = 1;
             writes[0].pImageInfo = &imgInfo;
-
             writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             writes[1].dstSet = objDescSets[i];
             writes[1].dstBinding = 1;
             writes[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
             writes[1].descriptorCount = 1;
             writes[1].pBufferInfo = &bufInfo;
-
             vkUpdateDescriptorSets(device, static_cast<uint32_t>(writes.size()),
                                    writes.data(), 0, nullptr);
         }
     }
-
     void cleanupObjectPool() {
         for (size_t i = 0; i < objUBOs.size(); i++) {
             if (objUBOMem[i] != VK_NULL_HANDLE)
@@ -711,7 +632,6 @@ private:
         }
         objDescSets.clear();
     }
-
     void drawModel(VkCommandBuffer cmd, uint32_t imgIdx, mx::MXModel *mdl,
                    const glm::mat4 &v, const glm::mat4 &p, float t,
                    const glm::vec3 &pos, const glm::vec3 &scl,
@@ -721,80 +641,67 @@ private:
         m = glm::scale(m, scl);
         drawModelMat(cmd, imgIdx, mdl, v, p, t, m, col);
     }
-
     void drawModelTextured(VkCommandBuffer cmd, uint32_t imgIdx, mx::MXModel *mdl,
                            const glm::mat4 &v, const glm::mat4 &p, float t,
                            const glm::vec3 &pos, const glm::vec3 &scl,
                            const glm::vec4 &col) {
         if (objDrawIndex >= MAX_DRAWS) return;
         if (tableTexImageView == VK_NULL_HANDLE) {
-
             drawModel(cmd, imgIdx, mdl, v, p, t, pos, scl, col);
             return;
         }
         size_t slot = imgIdx * MAX_DRAWS + objDrawIndex;
         objDrawIndex++;
-
         glm::mat4 m(1.0f);
         m = glm::translate(m, pos);
         m = glm::scale(m, scl);
-
         mx::UniformBufferObject ubo{};
-        ubo.model  = m;
-        ubo.view   = v;
-        ubo.proj   = p;
+        ubo.model = m;
+        ubo.view = v;
+        ubo.proj = p;
         ubo.params = glm::vec4(t, (float)swapChainExtent.width,
                                (float)swapChainExtent.height, 0.0f);
-        ubo.color  = col;
+        ubo.color = col;
         memcpy(objUBOMapped[slot], &ubo, sizeof(ubo));
-
         VkDescriptorImageInfo imgInfo{};
         imgInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        imgInfo.imageView   = tableTexImageView;
-        imgInfo.sampler     = textureSampler;
-
+        imgInfo.imageView = tableTexImageView;
+        imgInfo.sampler = textureSampler;
         VkWriteDescriptorSet write{};
-        write.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        write.dstSet          = objDescSets[slot];
-        write.dstBinding      = 0;
-        write.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write.dstSet = objDescSets[slot];
+        write.dstBinding = 0;
+        write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         write.descriptorCount = 1;
-        write.pImageInfo      = &imgInfo;
+        write.pImageInfo = &imgInfo;
         vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
-
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                 pipelineLayout, 0, 1, &objDescSets[slot], 0, nullptr);
         mdl->draw(cmd);
     }
-
     void drawModelMat(VkCommandBuffer cmd, uint32_t imgIdx, mx::MXModel *mdl,
                       const glm::mat4 &v, const glm::mat4 &p, float t,
                       const glm::mat4 &m, const glm::vec4 &col) {
         if (objDrawIndex >= MAX_DRAWS) return;
-
         size_t slot = imgIdx * MAX_DRAWS + objDrawIndex;
         objDrawIndex++;
-
         mx::UniformBufferObject ubo{};
-        ubo.model  = m;
-        ubo.view   = v;
-        ubo.proj   = p;
+        ubo.model = m;
+        ubo.view = v;
+        ubo.proj = p;
         ubo.params = glm::vec4(t, (float)swapChainExtent.width,
                                (float)swapChainExtent.height, 0.0f);
-        ubo.color  = col;
+        ubo.color = col;
         memcpy(objUBOMapped[slot], &ubo, sizeof(ubo));
-
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                 pipelineLayout, 0, 1, &objDescSets[slot], 0, nullptr);
         mdl->draw(cmd);
     }
-
     void rackBalls() {
         balls[0] = {};
         balls[0].pos = glm::vec2(-TABLE_HALF_W * 0.5f, 0.0f);
         balls[0].active = true;
         balls[0].number = 0;
-
         int order[15] = {1,2,3,8,4,5,6,7,9,10,11,12,13,14,15};
         float sx = TABLE_HALF_W * 0.3f;
         float sp = BALL_RADIUS * 2.1f;
@@ -813,7 +720,6 @@ private:
             }
         }
     }
-
     void resetGame() {
         rackBalls();
         sinkAnims.clear();
@@ -823,13 +729,11 @@ private:
         shotCount = 0;
         lastTime = SDL_GetTicks() / 1000.0f;
     }
-
     void handleAiming(float dt) {
         const Uint8 *k = SDL_GetKeyboardState(nullptr);
         if (k[SDL_SCANCODE_LEFT]) cueAngle -= 1.5f * dt;
         if (k[SDL_SCANCODE_RIGHT]) cueAngle += 1.5f * dt;
     }
-
     void handleCharging(float dt) {
         const Uint8 *k = SDL_GetKeyboardState(nullptr);
         if (k[SDL_SCANCODE_LEFT]) cueAngle -= 1.5f * dt;
@@ -837,7 +741,6 @@ private:
         chargeAmount += MAX_POWER * 0.8f * dt;
         if (chargeAmount > MAX_POWER) chargeAmount = MAX_POWER;
     }
-
     void handlePlacing(float dt) {
         const Uint8 *k = SDL_GetKeyboardState(nullptr);
         float s = 3.0f * dt;
@@ -851,7 +754,6 @@ private:
         balls[0].pos.x = glm::clamp(balls[0].pos.x, -TABLE_HALF_W + m, TABLE_HALF_W - m);
         balls[0].pos.y = glm::clamp(balls[0].pos.y, -TABLE_HALF_H + m, TABLE_HALF_H - m);
     }
-
     void updatePhysics(float dt) {
         float maxSpeed = 0.0f;
         for (auto &b : balls) {
@@ -891,7 +793,6 @@ private:
             }
         }
     }
-
     void resolveBall(PoolBall &a, PoolBall &b) {
         glm::vec2 d = b.pos - a.pos;
         float dist = glm::length(d);
@@ -905,7 +806,6 @@ private:
             if (rv > 0) { a.vel -= n * rv; b.vel += n * rv; }
         }
     }
-
     void resolveWall(PoolBall &b) {
         float l = -TABLE_HALF_W + BALL_RADIUS, r = TABLE_HALF_W - BALL_RADIUS;
         float t = -TABLE_HALF_H + BALL_RADIUS, bt = TABLE_HALF_H - BALL_RADIUS;
@@ -914,11 +814,9 @@ private:
         if (b.pos.y < t) { b.pos.y = t; b.vel.y = -b.vel.y * 0.8f; }
         if (b.pos.y > bt){ b.pos.y = bt; b.vel.y = -b.vel.y * 0.8f; }
     }
-
     void checkPocket(PoolBall &b) {
         for (int i = 0; i < 6; i++) {
             if (glm::length(b.pos - POCKETS[i]) < POCKET_R) {
-
                 int idx = static_cast<int>(&b - &balls[0]);
                 SinkAnim anim;
                 anim.pocketPos = POCKETS[i];
@@ -926,18 +824,15 @@ private:
                 anim.spinAngle = b.spinAngle;
                 anim.timer = 0.0f;
                 sinkAnims.push_back(anim);
-
                 b.pocketed = true;
                 b.vel = glm::vec2(0);
                 return;
             }
         }
     }
-
     bool anyBallMoving() const {
         for (auto &b : balls)
             if (b.active && !b.pocketed && b.isMoving()) return true;
-
         if (!sinkAnims.empty()) return true;
         return false;
     }
@@ -950,7 +845,6 @@ private:
         if (allObjectBallsPocketed()) phase = GamePhase::GameOver;
     }
 };
-
 int main(int argc, char **argv) {
     Arguments args = proc_args(argc, argv);
     try {
