@@ -615,7 +615,10 @@ int main(int argc, char **argv) {
         RaycastWindow window(args.path, args.width, args.height, args.fullscreen);
         if (!args.shaderPath.empty())
             window.openLibrary(args.shaderPath, args.shaderPath + "/index.txt");
-        window.setCamera(0);
+        if(!args.texture.empty())
+            window.setFile(args.texture);
+        else
+            window.setCamera(0);
         window.initVulkan();
         window.loop();
         window.cleanup();
