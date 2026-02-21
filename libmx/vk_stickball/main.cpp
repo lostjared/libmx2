@@ -12,6 +12,8 @@
 #include <array>
 #include <cstring>
 #include <memory>
+#include <fstream>
+#include <sstream>
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -55,9 +57,7 @@ static const glm::vec3 BALL_COLORS[NUM_BALLS] = {
     {0.0f, 0.5f, 0.0f},
     {0.55f, 0.0f, 0.0f},
 };
-
 enum class GameScreen { Intro, Scores, Game, Start };
-
 static float randFloat(float mn, float mx) {
     static std::random_device rd;
     static std::default_random_engine eng(rd());
@@ -80,6 +80,57 @@ struct SinkAnim {
     glm::vec3 color;
     float spinAngle;
     float timer = 0.0f;
+};
+struct Score {
+    std::string name;
+    int shots; 
+    Score() : name{}, shots{0} {}
+    Score(const std::string &n, int s) : name(n), shots(s) {}
+};
+class HighScores {
+public:
+    HighScores() { read(); }
+    ~HighScores() { write(); }
+    void addScore(const std::string &name, int shots) {
+        entries.push_back({name, shots});
+        sort();
+        if (entries.size() > 10) entries.resize(10);
+    }
+    void sort() {
+        std::sort(entries.begin(), entries.end(),
+            [](const Score &a, const Score &b){ return a.shots < b.shots; });
+    }
+    bool qualifies(int shots) const {
+        if (entries.size() < 10) return true;
+        return shots < entries.back().shots;
+    }
+    const std::vector<Score>& list() const { return entries; }
+    void read() {
+        std::fstream f("./pool_scores.dat", std::ios::in);
+        if (!f.is_open()) { initDefaults(); return; }
+        std::string line;
+        int count = 0;
+        while (std::getline(f, line) && count < 10) {
+            auto p = line.find(':');
+            if (p != std::string::npos) {
+                entries.push_back({line.substr(0, p),
+                    (int)std::strtol(line.substr(p+1).c_str(), nullptr, 10)});
+                count++;
+            }
+        }
+        sort();
+    }
+    void write() const {
+        std::fstream f("./pool_scores.dat", std::ios::out);
+        if (!f.is_open()) return;
+        for (auto &e : entries) f << e.name << ":" << e.shots << "\n";
+    }
+private:
+    void initDefaults() {
+        for (int i = 1; i <= 10; i++)
+            entries.push_back({"Anonymous", i * 20});
+    }
+    std::vector<Score> entries;
 };
 class PoolWindow : public mx::VKWindow {
     GameScreen screen = GameScreen::Intro;
@@ -140,9 +191,9 @@ public:
         tablePocketModel->upload(device, physicalDevice, commandPool, graphicsQueue);
         backgroundSprite = createSprite(util.path + "/data/background.png", "", "");
         startscreenSprite = createSprite(util.path + "/data/start.png", "", "");
+        scoresBackground = createSprite(util.path + "/data/scores.png", "", "");
         introSprite = createSprite(util.path + "/data/logo.png", util.path + "/data/sprite_vert.spv", util.path + "/data/bend_dir.spv");
     }
-
     void procIntro() {
         uint32_t cur_time = SDL_GetTicks();
         static uint32_t start_t = 0;
@@ -151,43 +202,42 @@ public:
         uint32_t elapsed = cur_time - start_t;
         constexpr uint32_t TOTAL = 5000;
         constexpr uint32_t FADE_DUR = 1500;
-
         if(elapsed >= TOTAL) {
             start_t = 0;
             setScreen(GameScreen::Start);
             return;
         }
-
         float fadeOut = 1.0f;
         if(elapsed > TOTAL - FADE_DUR) {
             fadeOut = 1.0f - static_cast<float>(elapsed - (TOTAL - FADE_DUR)) / static_cast<float>(FADE_DUR);
         }
-
         if(fadeOut < 1.0f && startscreenSprite != nullptr) {
             startscreenSprite->setShaderParams(1.0f, 1.0f, 1.0f, 1.0f);
             startscreenSprite->drawSpriteRect(0, 0, getWidth(), getHeight());
         }
-
         if(introSprite != nullptr) {
             float time = static_cast<float>(SDL_GetTicks() / 1000.0f);
             introSprite->setShaderParams(fadeOut, 1.0f, 1.0f, time);
             introSprite->drawSpriteRect(0, 0, getWidth(), getHeight());
         }
     }
-
     void procStart() {
         if(startscreenSprite != nullptr) {
             startscreenSprite->setShaderParams(1.0f, 1.0f, 1.0f, 1.0f);
             startscreenSprite->drawSpriteRect(0, 0, getWidth(), getHeight());
         }
-
+        const char *hint = "ENTER / A  -  Play      SPACE /Y  -  Scores      ESC / Back  -  Quit";
+        int tw, th;
+        getTextDimensions(hint, tw, th);
+        printText(hint, w / 2 - tw / 2, (h - th * 3)+20, {220, 220, 100, 255});
         const Uint8 *keys = SDL_GetKeyboardState(nullptr);
         if(keys[SDL_SCANCODE_RETURN]) {
             resetGame();
             setScreen(GameScreen::Game);
+        } else if(keys[SDL_SCANCODE_SPACE]) {
+            setScreen(GameScreen::Scores);
         }
     }
-
     void procGame() {
         float now = SDL_GetTicks() / 1000.0f;
         float dt = now - lastTime;
@@ -257,7 +307,6 @@ public:
                 balls[0].pos.y = glm::clamp(balls[0].pos.y, -TABLE_HALF_H + m, TABLE_HALF_H - m);
             }
         }
-        //printText("-[ 3D Pool ]-", 15, 15, {255, 255, 255, 255});
         printText("Shots: " + std::to_string(shotCount), 15, 45, {255, 255, 0, 255});
         int rem = 0;
         for (int i = 1; i < NUM_BALLS; i++)
@@ -272,19 +321,80 @@ public:
         } else if (phase == GamePhase::Placing)
             printText("Arrows/L-Stick: move cue ball | Enter/A/B: place", 15, h - 40, {255, 100, 100, 255});
         else if (phase == GamePhase::GameOver) {
-            printText("Game Over", w / 2 - 70, h / 2 - 30, {255, 50, 50, 255});
-            printText("Press Enter / A to play again", w / 2 - 120, h / 2 + 10, {200, 200, 200, 255});
         }
     }
-
     void setScreen(GameScreen scr) {
+        if (screen == GameScreen::Scores && scr != GameScreen::Scores) {
+            setFont("font.ttf", 24);
+            lastScoreFontSize = 0;
+        }
         screen = scr;
     }
-
-    void procScores() {
-
+    void goToScoresScreen() {
+        finalScore = shotCount;
+        playerName = "";
+        enteringName = highScores.qualifies(finalScore);
+        setScreen(GameScreen::Scores);
     }
+    void procScores() {
+        if (scoresBackground != nullptr) {
+            scoresBackground->setShaderParams(1.0f, 1.0f, 1.0f, 1.0f);
+            scoresBackground->drawSpriteRect(0, 0, getWidth(), getHeight());
+        }
 
+        // Felt area as fractions of the window, matched to the start.png image layout.
+        // Adjust these if the image layout differs.
+        int feltL  = (int)(w * 0.125f);   // left rail edge
+        int feltT  = (int)(h * 0.19f);    // below the decorative HIGH SCORES banner
+        int feltB  = (int)(h * 0.87f);    // above the bottom rail
+        int feltH  = feltB - feltT;
+        int feltCX = (int)(w * 0.48f);    // horizontal centre of felt
+
+        // Scale font so 10 entries + prompt fit comfortably inside the felt
+        int fs = std::max(10, feltH / 15);
+        if (fs != lastScoreFontSize) {
+            setFont("font.ttf", fs);
+            lastScoreFontSize = fs;
+        }
+        int lineH = fs + fs / 3;  // line height with inter-line spacing
+
+        const auto &scoreList = highScores.list();
+        for (size_t i = 0; i < scoreList.size() && i < 10; i++) {
+            std::ostringstream ss;
+            ss << (i+1) << ". " << scoreList[i].name << "  " << scoreList[i].shots << " shots";
+            std::string row = ss.str();
+            SDL_Color col = {255, 255, 255, 255};
+            if (enteringName && finalScore > 0) {
+                int rank = (int)scoreList.size();
+                for (int j = 0; j < (int)scoreList.size(); j++) {
+                    if (finalScore < scoreList[j].shots) { rank = j; break; }
+                }
+                if ((int)i == rank) col = {0, 255, 0, 255};
+            }
+            printText(row, feltL + fs / 2, feltT + (int)i * lineH, col);
+        }
+
+        if (enteringName) {
+            int entryY = feltT + 10 * lineH + lineH / 2;
+            std::ostringstream ss;
+            ss << "Your score: " << finalScore << " shots";
+            std::string ys = ss.str();
+            int tw, th;
+            getTextDimensions(ys, tw, th);
+            printText(ys, feltCX - tw / 2, entryY, {255, 255, 0, 255});
+            std::string dn = playerName + "_";
+            getTextDimensions(dn, tw, th);
+            printText(dn, feltCX - tw / 2, entryY + lineH, {0, 255, 255, 255});
+            const char *hint = "ENTER to confirm  |  BACKSPACE to delete";
+            getTextDimensions(hint, tw, th);
+            printText(hint, feltCX - tw / 2, entryY + lineH * 2, {200, 200, 200, 255});
+        } else {
+            const char *ret = "Press ENTER to return to intro";
+            int tw, th;
+            getTextDimensions(ret, tw, th);
+            printText(ret, feltCX - tw / 2, feltB - lineH, {255, 255, 0, 255});
+        }
+    }
     void proc() override {
         switch(screen) {
             case GameScreen::Intro:
@@ -301,19 +411,15 @@ public:
                 break;
         }
     }
-
     void drawIntro() {
         VKWindow::draw();
     }
-
     void drawStart() {
         VKWindow::draw();
     }
-
     void drawScores() {
-
+        VKWindow::draw();
     }
-
     void drawGame() {
         uint32_t imageIndex = 0;
         VkResult result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX,
@@ -460,7 +566,6 @@ public:
         clearTextQueue();
         for (auto &sp : sprites) { if (sp) sp->clearQueue(); }
     }
-
     void draw() override {
         switch(screen) {
             case GameScreen::Intro:
@@ -478,22 +583,46 @@ public:
         }
     }
     void event(SDL_Event &e) override {
-        if (e.type == SDL_QUIT ||
-            (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE)) {
-            quit(); return;
+        if (e.type == SDL_QUIT) { quit(); return; }
+        if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE) {
+            if (screen == GameScreen::Scores) {
+                setScreen(GameScreen::Intro);
+            } else {
+                quit();
+            }
+            return;
+        }
+        if (e.type == SDL_TEXTINPUT && screen == GameScreen::Scores && enteringName) {
+            if (playerName.length() < 15) playerName += e.text.text;
+            return;
+        }
+        if (e.type == SDL_KEYDOWN && screen == GameScreen::Scores) {
+            if (enteringName) {
+                if (e.key.keysym.sym == SDLK_RETURN && !playerName.empty()) {
+                    highScores.addScore(playerName, finalScore);
+                    highScores.write();
+                    enteringName = false;
+                } else if (e.key.keysym.sym == SDLK_BACKSPACE && !playerName.empty()) {
+                    playerName.pop_back();
+                }
+            } else {
+                if (e.key.keysym.sym == SDLK_RETURN)
+                    setScreen(GameScreen::Intro);
+            }
+            return;
         }
         if (e.type == SDL_KEYDOWN) {
             switch (e.key.keysym.sym) {
-            case SDLK_r: resetGame(); break;
+            case SDLK_r: if (screen == GameScreen::Game) resetGame(); break;
             case SDLK_p: setWireFrame(!getWireFrame()); break;
             case SDLK_SPACE:
-                if (phase == GamePhase::Aiming) {
+                if (screen == GameScreen::Game && phase == GamePhase::Aiming) {
                     phase = GamePhase::Charging;
                     chargeAmount = 0.0f;
                 }
                 break;
             case SDLK_RETURN:
-                if (phase == GamePhase::Placing) {
+                if (screen == GameScreen::Game && phase == GamePhase::Placing) {
                     bool ok = true;
                     for (int i = 1; i < NUM_BALLS; i++) {
                         if (!balls[i].active || balls[i].pocketed) continue;
@@ -501,15 +630,13 @@ public:
                         { ok = false; break; }
                     }
                     if (ok) phase = GamePhase::Aiming;
-                } else if (phase == GamePhase::GameOver) {
-                    resetGame();
                 }
                 break;
             default: break;
             }
         }
         if (e.type == SDL_KEYUP && e.key.keysym.sym == SDLK_SPACE
-            && phase == GamePhase::Charging) {
+            && screen == GameScreen::Game && phase == GamePhase::Charging) {
             float worldCueAngle = cueAngle + camAngle;
             glm::vec2 dir(cosf(worldCueAngle), sinf(worldCueAngle));
             balls[0].vel = dir * chargeAmount;
@@ -531,26 +658,53 @@ public:
             }
         }
         if (e.type == SDL_CONTROLLERBUTTONDOWN) {
+            if (screen == GameScreen::Intro) {
+                if (e.cbutton.button == SDL_CONTROLLER_BUTTON_A ||
+                    e.cbutton.button == SDL_CONTROLLER_BUTTON_START)
+                    setScreen(GameScreen::Start);
+                return;
+            }
+            if (screen == GameScreen::Scores) {
+                if (!enteringName) {
+                    if (e.cbutton.button == SDL_CONTROLLER_BUTTON_A ||
+                        e.cbutton.button == SDL_CONTROLLER_BUTTON_B ||
+                        e.cbutton.button == SDL_CONTROLLER_BUTTON_START)
+                        setScreen(GameScreen::Intro);
+                }
+                return;
+            }
+            if (screen == GameScreen::Start) {
+                if (e.cbutton.button == SDL_CONTROLLER_BUTTON_A ||
+                    e.cbutton.button == SDL_CONTROLLER_BUTTON_START) {
+                    resetGame();
+                    setScreen(GameScreen::Game);
+                } else if (e.cbutton.button == SDL_CONTROLLER_BUTTON_Y) {
+                    setScreen(GameScreen::Scores);
+                } else if (e.cbutton.button == SDL_CONTROLLER_BUTTON_BACK) {
+                    quit();
+                }
+                return;
+            }
             switch (e.cbutton.button) {
             case SDL_CONTROLLER_BUTTON_BACK:
                 quit();
                 return;
             case SDL_CONTROLLER_BUTTON_A:
             case SDL_CONTROLLER_BUTTON_B:
-                if (phase == GamePhase::Aiming) {
-                    phase = GamePhase::Charging;
-                    chargeAmount = 0.0f;
-                    ctrlChargeButton = e.cbutton.button;
-                } else if (phase == GamePhase::Placing) {
-                    bool ok = true;
-                    for (int i = 1; i < NUM_BALLS; i++) {
-                        if (!balls[i].active || balls[i].pocketed) continue;
-                        if (glm::length(balls[0].pos - balls[i].pos) < BALL_RADIUS * 2.5f)
-                        { ok = false; break; }
+                if (screen == GameScreen::Game) {
+                    if (phase == GamePhase::Aiming) {
+                        phase = GamePhase::Charging;
+                        chargeAmount = 0.0f;
+                        ctrlChargeButton = e.cbutton.button;
+                    } else if (phase == GamePhase::Placing) {
+                        bool ok = true;
+                        for (int i = 1; i < NUM_BALLS; i++) {
+                            if (!balls[i].active || balls[i].pocketed) continue;
+                            if (glm::length(balls[0].pos - balls[i].pos) < BALL_RADIUS * 2.5f)
+                            { ok = false; break; }
+                        }
+                        if (ok) phase = GamePhase::Aiming;
                     }
-                    if (ok) phase = GamePhase::Aiming;
-                } else if (phase == GamePhase::GameOver) {
-                    resetGame();
                 }
                 break;
             default: break;
@@ -560,6 +714,7 @@ public:
             if ((e.cbutton.button == SDL_CONTROLLER_BUTTON_A ||
                  e.cbutton.button == SDL_CONTROLLER_BUTTON_B) &&
                  e.cbutton.button == ctrlChargeButton &&
+                 screen == GameScreen::Game &&
                  phase == GamePhase::Charging) {
                 float worldCueAngle = cueAngle + camAngle;
                 glm::vec2 dir(cosf(worldCueAngle), sinf(worldCueAngle));
@@ -610,7 +765,12 @@ private:
     mx::VKSprite *backgroundSprite = nullptr;
     mx::VKSprite *startscreenSprite = nullptr;
     mx::VKSprite *introSprite = nullptr;
-
+    mx::VKSprite *scoresBackground = nullptr;
+    HighScores highScores;
+    bool enteringName = false;
+    std::string playerName;
+    int finalScore = 0;
+    int lastScoreFontSize = 0;
     void loadTableTexture() {
         std::string path = util.path + "/data/table.png";
         SDL_Surface *surface = png::LoadPNG(path.c_str());
@@ -952,7 +1112,7 @@ private:
         return true;
     }
     void checkGameOver() {
-        if (allObjectBallsPocketed()) phase = GamePhase::GameOver;
+        if (allObjectBallsPocketed()) goToScoresScreen();
     }
 };
 int main(int argc, char **argv) {
