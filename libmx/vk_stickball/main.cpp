@@ -55,6 +55,9 @@ static const glm::vec3 BALL_COLORS[NUM_BALLS] = {
     {0.0f, 0.5f, 0.0f},
     {0.55f, 0.0f, 0.0f},
 };
+
+enum class GameScreen { Intro, Scores, Game, Start };
+
 static float randFloat(float mn, float mx) {
     static std::random_device rd;
     static std::default_random_engine eng(rd());
@@ -79,6 +82,7 @@ struct SinkAnim {
     float timer = 0.0f;
 };
 class PoolWindow : public mx::VKWindow {
+    GameScreen screen = GameScreen::Intro;
 public:
     PoolWindow(const std::string &path, int wx, int wy, bool full)
         : mx::VKWindow("-[ 3D Pool / Vulkan ]-", wx, wy, full) {
@@ -135,9 +139,56 @@ public:
         tablePocketModel->load(util.path + "/data/pooltable_pocket.mxmod.z", 1.0f);
         tablePocketModel->upload(device, physicalDevice, commandPool, graphicsQueue);
         backgroundSprite = createSprite(util.path + "/data/background.png", "", "");
-        resetGame();
+        startscreenSprite = createSprite(util.path + "/data/start.png", "", "");
+        introSprite = createSprite(util.path + "/data/logo.png", util.path + "/data/sprite_vert.spv", util.path + "/data/bend_dir.spv");
     }
-    void proc() override {
+
+    void procIntro() {
+        uint32_t cur_time = SDL_GetTicks();
+        static uint32_t start_t = 0;
+        if(start_t == 0)
+            start_t = SDL_GetTicks();
+        uint32_t elapsed = cur_time - start_t;
+        constexpr uint32_t TOTAL = 5000;
+        constexpr uint32_t FADE_DUR = 1500;
+
+        if(elapsed >= TOTAL) {
+            start_t = 0;
+            setScreen(GameScreen::Start);
+            return;
+        }
+
+        float fadeOut = 1.0f;
+        if(elapsed > TOTAL - FADE_DUR) {
+            fadeOut = 1.0f - static_cast<float>(elapsed - (TOTAL - FADE_DUR)) / static_cast<float>(FADE_DUR);
+        }
+
+        if(fadeOut < 1.0f && startscreenSprite != nullptr) {
+            startscreenSprite->setShaderParams(1.0f, 1.0f, 1.0f, 1.0f);
+            startscreenSprite->drawSpriteRect(0, 0, getWidth(), getHeight());
+        }
+
+        if(introSprite != nullptr) {
+            float time = static_cast<float>(SDL_GetTicks() / 1000.0f);
+            introSprite->setShaderParams(fadeOut, 1.0f, 1.0f, time);
+            introSprite->drawSpriteRect(0, 0, getWidth(), getHeight());
+        }
+    }
+
+    void procStart() {
+        if(startscreenSprite != nullptr) {
+            startscreenSprite->setShaderParams(1.0f, 1.0f, 1.0f, 1.0f);
+            startscreenSprite->drawSpriteRect(0, 0, getWidth(), getHeight());
+        }
+
+        const Uint8 *keys = SDL_GetKeyboardState(nullptr);
+        if(keys[SDL_SCANCODE_RETURN]) {
+            resetGame();
+            setScreen(GameScreen::Game);
+        }
+    }
+
+    void procGame() {
         float now = SDL_GetTicks() / 1000.0f;
         float dt = now - lastTime;
         if (dt > 0.05f) dt = 0.05f;
@@ -206,7 +257,7 @@ public:
                 balls[0].pos.y = glm::clamp(balls[0].pos.y, -TABLE_HALF_H + m, TABLE_HALF_H - m);
             }
         }
-        printText("-[ 3D Pool ]-", 15, 15, {255, 255, 255, 255});
+        //printText("-[ 3D Pool ]-", 15, 15, {255, 255, 255, 255});
         printText("Shots: " + std::to_string(shotCount), 15, 45, {255, 255, 0, 255});
         int rem = 0;
         for (int i = 1; i < NUM_BALLS; i++)
@@ -225,7 +276,45 @@ public:
             printText("Press Enter / A to play again", w / 2 - 120, h / 2 + 10, {200, 200, 200, 255});
         }
     }
-    void draw() override {
+
+    void setScreen(GameScreen scr) {
+        screen = scr;
+    }
+
+    void procScores() {
+
+    }
+
+    void proc() override {
+        switch(screen) {
+            case GameScreen::Intro:
+                procIntro();
+                break;
+            case GameScreen::Start:
+                procStart();
+                break;
+            case GameScreen::Game:
+                procGame();
+                break;
+            case GameScreen::Scores:
+                procScores();
+                break;
+        }
+    }
+
+    void drawIntro() {
+        VKWindow::draw();
+    }
+
+    void drawStart() {
+        VKWindow::draw();
+    }
+
+    void drawScores() {
+
+    }
+
+    void drawGame() {
         uint32_t imageIndex = 0;
         VkResult result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX,
                                                  imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
@@ -257,6 +346,7 @@ public:
         vkCmdSetScissor(cmd, 0, 1, &sc);
         if (spritePipeline != VK_NULL_HANDLE && backgroundSprite != nullptr) {
             vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, spritePipeline);
+            backgroundSprite->setShaderParams(1.0f, 1.0f, 1.0f, 1.0f);
             backgroundSprite->drawSpriteRect(0, 0,
                 static_cast<int>(swapChainExtent.width),
                 static_cast<int>(swapChainExtent.height));
@@ -369,6 +459,23 @@ public:
         vkQueueWaitIdle(graphicsQueue);
         clearTextQueue();
         for (auto &sp : sprites) { if (sp) sp->clearQueue(); }
+    }
+
+    void draw() override {
+        switch(screen) {
+            case GameScreen::Intro:
+                drawIntro();
+                break;
+            case GameScreen::Game:
+                drawGame();
+                break;
+            case GameScreen::Scores:
+                drawScores();
+                break;
+            case GameScreen::Start:
+                drawStart();
+                break;
+        }
     }
     void event(SDL_Event &e) override {
         if (e.type == SDL_QUIT ||
@@ -501,6 +608,9 @@ private:
     VkDeviceMemory tableTexMemory = VK_NULL_HANDLE;
     VkImageView tableTexImageView = VK_NULL_HANDLE;
     mx::VKSprite *backgroundSprite = nullptr;
+    mx::VKSprite *startscreenSprite = nullptr;
+    mx::VKSprite *introSprite = nullptr;
+
     void loadTableTexture() {
         std::string path = util.path + "/data/table.png";
         SDL_Surface *surface = png::LoadPNG(path.c_str());

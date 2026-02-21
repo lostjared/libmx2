@@ -18,5 +18,5 @@ layout(push_constant) uniform PushConstants {
 
 void main() {
     vec4 texColor = texture(spriteTexture, fragTexCoord);
-    outColor = texColor;
+    outColor = texColor * vec4(pc.params[0], pc.params[1], pc.params[2], 1.0);
 }
