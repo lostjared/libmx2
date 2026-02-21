@@ -268,7 +268,7 @@ namespace mx {
         }
 
 #ifdef WITH_MOLTEN
-        //extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+        
         extensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
 #endif
 
@@ -625,6 +625,16 @@ namespace mx {
     }
 
     void VKWindow::cleanupSwapChain() {
+
+        
+        cleanupPostFXPipeline();
+        if (postFXDescriptorPool != VK_NULL_HANDLE) {
+            vkDestroyDescriptorPool(device, postFXDescriptorPool, nullptr);
+            postFXDescriptorPool = VK_NULL_HANDLE;
+            postFXDescriptorSets.clear();
+        }
+        
+        cleanupOffscreenResources();
 
         for (auto framebuffer : swapChainFramebuffers) {
             if (framebuffer != VK_NULL_HANDLE) {
@@ -1517,9 +1527,17 @@ namespace mx {
         }
 
         VkRenderPassBeginInfo renderPassInfo{};
-        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        renderPassInfo.renderPass = renderPass;
-        renderPassInfo.framebuffer = swapChainFramebuffers[imageIndex];
+        renderPassInfo.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        
+        
+        if (postFXEnabled && postFXPipeline != VK_NULL_HANDLE &&
+            offscreenFramebuffer != VK_NULL_HANDLE) {
+            renderPassInfo.renderPass  = offscreenRenderPass;
+            renderPassInfo.framebuffer = offscreenFramebuffer;
+        } else {
+            renderPassInfo.renderPass  = renderPass;
+            renderPassInfo.framebuffer = swapChainFramebuffers[imageIndex];
+        }
         renderPassInfo.renderArea.offset = { 0, 0 };
         renderPassInfo.renderArea.extent = swapChainExtent;
         std::array<VkClearValue, 2> clearValues{};
@@ -1593,18 +1611,95 @@ namespace mx {
             );
         }
 
-        vkCmdDrawIndexed(commandBuffers[imageIndex], indexCount, 1, 0, 0, 0);
-        
-        if (textRenderer && textPipeline != VK_NULL_HANDLE) {
-            try {
-                vkCmdBindPipeline(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, textPipeline);
-                textRenderer->renderText(commandBuffers[imageIndex], textPipelineLayout, 
-                                       swapChainExtent.width, swapChainExtent.height);
-            } catch (const std::exception& e) {
+        if (postFXEnabled && postFXPipeline != VK_NULL_HANDLE &&
+            offscreenFramebuffer != VK_NULL_HANDLE) {
+            
+            vkCmdDrawIndexed(commandBuffers[imageIndex], indexCount, 1, 0, 0, 0);
+            vkCmdEndRenderPass(commandBuffers[imageIndex]);
 
+            
+            VkRenderPassBeginInfo postRPI{};
+            postRPI.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+            postRPI.renderPass        = renderPass;
+            postRPI.framebuffer       = swapChainFramebuffers[imageIndex];
+            postRPI.renderArea.offset = {0, 0};
+            postRPI.renderArea.extent = swapChainExtent;
+            std::array<VkClearValue, 2> postClears{};
+            postClears[0].color        = {{0.0f, 0.0f, 0.0f, 1.0f}};
+            postClears[1].depthStencil = {1.0f, 0};
+            postRPI.clearValueCount    = static_cast<uint32_t>(postClears.size());
+            postRPI.pClearValues       = postClears.data();
+            vkCmdBeginRenderPass(commandBuffers[imageIndex], &postRPI, VK_SUBPASS_CONTENTS_INLINE);
+
+            vkCmdBindPipeline(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, postFXPipeline);
+
+            VkViewport postVP{};
+            postVP.x        = 0.0f; postVP.y = 0.0f;
+            postVP.width    = static_cast<float>(swapChainExtent.width);
+            postVP.height   = static_cast<float>(swapChainExtent.height);
+            postVP.minDepth = 0.0f; postVP.maxDepth = 1.0f;
+            vkCmdSetViewport(commandBuffers[imageIndex], 0, 1, &postVP);
+
+            VkRect2D postSC{}; postSC.offset = {0,0}; postSC.extent = swapChainExtent;
+            vkCmdSetScissor(commandBuffers[imageIndex], 0, 1, &postSC);
+
+            if (!postFXDescriptorSets.empty()) {
+                vkCmdBindDescriptorSets(commandBuffers[imageIndex],
+                    VK_PIPELINE_BIND_POINT_GRAPHICS, postFXPipelineLayout,
+                    0, 1, &postFXDescriptorSets[imageIndex], 0, nullptr);
             }
+
+            
+            updatePostFXUBO();
+
+            
+            
+            
+            struct PostFXPC {
+                float screenW, screenH;
+                float posX,    posY;
+                float sizeW,   sizeH;
+                float effectsOn, padding;
+                float params[4]; 
+            } pc {};
+            float iTime = SDL_GetTicks() / 1000.0f;
+            pc.screenW   = static_cast<float>(swapChainExtent.width);
+            pc.screenH   = static_cast<float>(swapChainExtent.height);
+            pc.posX      = 0.0f; pc.posY   = 0.0f;
+            pc.sizeW     = pc.screenW; pc.sizeH = pc.screenH;
+            pc.effectsOn = 1.0f; pc.padding = 0.0f;
+            pc.params[0] = 1.0f; pc.params[1] = 1.0f;
+            pc.params[2] = 1.0f; pc.params[3] = iTime;
+            vkCmdPushConstants(commandBuffers[imageIndex], postFXPipelineLayout,
+                               VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                               0, sizeof(PostFXPC), &pc);
+
+            
+            vkCmdDraw(commandBuffers[imageIndex], 6, 1, 0, 0);
+
+            
+            if (textRenderer && textPipeline != VK_NULL_HANDLE) {
+                try {
+                    vkCmdBindPipeline(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, textPipeline);
+                    textRenderer->renderText(commandBuffers[imageIndex], textPipelineLayout,
+                                            swapChainExtent.width, swapChainExtent.height);
+                } catch (...) {}
+            }
+            vkCmdEndRenderPass(commandBuffers[imageIndex]);
+
+        } else {
+            
+            vkCmdDrawIndexed(commandBuffers[imageIndex], indexCount, 1, 0, 0, 0);
+
+            if (textRenderer && textPipeline != VK_NULL_HANDLE) {
+                try {
+                    vkCmdBindPipeline(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, textPipeline);
+                    textRenderer->renderText(commandBuffers[imageIndex], textPipelineLayout, 
+                                           swapChainExtent.width, swapChainExtent.height);
+                } catch (const std::exception& e) {}
+            }
+            vkCmdEndRenderPass(commandBuffers[imageIndex]);
         }
-        vkCmdEndRenderPass(commandBuffers[imageIndex]);
         if (vkEndCommandBuffer(commandBuffers[imageIndex]) != VK_SUCCESS) {
             throw mx::Exception("Failed to record command buffer!");
         }
@@ -1649,7 +1744,11 @@ namespace mx {
     
     void VKWindow::cleanup() {
         vkDeviceWaitIdle(device);
+
         
+        cleanupPostFX();
+        cleanupOffscreenResources();
+
         if (textRenderer != nullptr) {
             textRenderer.release();
         }
@@ -1736,7 +1835,7 @@ namespace mx {
         vkDeviceWaitIdle(device);
 
         SDL_Vulkan_GetDrawableSize(window, &w, &h);
-        
+
         cleanupSwapChain();
         createSwapChain();
         createImageViews();
@@ -1746,6 +1845,14 @@ namespace mx {
         createGraphicsPipeline();
         createFramebuffers();
         createCommandBuffers();
+
+        
+        if (postFXEnabled && !postFXFragPath.empty()) {
+            createOffscreenResources();
+            createPostFXDescriptorPool();
+            createPostFXDescriptorSets();
+            createPostFXPipelineInternal(postFXFragPath);
+        }
     }
     
     void VKWindow::printText(const std::string &text, int x, int y, const SDL_Color &col) {
@@ -1942,4 +2049,434 @@ namespace mx {
 
         VK_CHECK_RESULT(vkCreateDescriptorPool(device, &poolInfo, nullptr, &textDescriptorPool));
     }
+
+    
+
+    void VKWindow::createOffscreenResources() {
+        
+        createImage(swapChainExtent.width, swapChainExtent.height,
+                    swapChainImageFormat, VK_IMAGE_TILING_OPTIMAL,
+                    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                    offscreenImage, offscreenImageMemory);
+
+        offscreenImageView = createImageView(offscreenImage, swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+
+        
+        VkSamplerCreateInfo si{};
+        si.sType            = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        si.magFilter        = VK_FILTER_LINEAR;
+        si.minFilter        = VK_FILTER_LINEAR;
+        si.addressModeU     = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        si.addressModeV     = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        si.addressModeW     = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        si.anisotropyEnable = VK_FALSE;
+        si.maxAnisotropy    = 1.0f;
+        si.borderColor      = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+        si.mipmapMode       = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        VK_CHECK_RESULT(vkCreateSampler(device, &si, nullptr, &offscreenSampler));
+
+        
+        
+        VkAttachmentDescription colorAtt{};
+        colorAtt.format         = swapChainImageFormat;
+        colorAtt.samples        = VK_SAMPLE_COUNT_1_BIT;
+        colorAtt.loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        colorAtt.storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
+        colorAtt.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        colorAtt.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        colorAtt.initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
+        colorAtt.finalLayout    = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+        
+        VkAttachmentDescription depthAtt{};
+        depthAtt.format         = depthFormat;
+        depthAtt.samples        = VK_SAMPLE_COUNT_1_BIT;
+        depthAtt.loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        depthAtt.storeOp        = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        depthAtt.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        depthAtt.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        depthAtt.initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
+        depthAtt.finalLayout    = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+        VkAttachmentReference colorRef{};
+        colorRef.attachment = 0;
+        colorRef.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+        VkAttachmentReference depthRef{};
+        depthRef.attachment = 1;
+        depthRef.layout     = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+        VkSubpassDescription subpass{};
+        subpass.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        subpass.colorAttachmentCount    = 1;
+        subpass.pColorAttachments       = &colorRef;
+        subpass.pDepthStencilAttachment = &depthRef;
+
+        
+        std::array<VkSubpassDependency, 2> deps{};
+        
+        deps[0].srcSubpass    = VK_SUBPASS_EXTERNAL;
+        deps[0].dstSubpass    = 0;
+        deps[0].srcStageMask  = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        deps[0].dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        deps[0].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        deps[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        deps[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+        
+        deps[1].srcSubpass    = 0;
+        deps[1].dstSubpass    = VK_SUBPASS_EXTERNAL;
+        deps[1].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        deps[1].dstStageMask  = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        deps[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        deps[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        deps[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+        std::array<VkAttachmentDescription, 2> attachments = {colorAtt, depthAtt};
+        VkRenderPassCreateInfo rpInfo{};
+        rpInfo.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        rpInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+        rpInfo.pAttachments    = attachments.data();
+        rpInfo.subpassCount    = 1;
+        rpInfo.pSubpasses      = &subpass;
+        rpInfo.dependencyCount = static_cast<uint32_t>(deps.size());
+        rpInfo.pDependencies   = deps.data();
+        VK_CHECK_RESULT(vkCreateRenderPass(device, &rpInfo, nullptr, &offscreenRenderPass));
+
+        
+        std::array<VkImageView, 2> fbViews = {offscreenImageView, depthImageView};
+        VkFramebufferCreateInfo fbInfo{};
+        fbInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        fbInfo.renderPass      = offscreenRenderPass;
+        fbInfo.attachmentCount = static_cast<uint32_t>(fbViews.size());
+        fbInfo.pAttachments    = fbViews.data();
+        fbInfo.width           = swapChainExtent.width;
+        fbInfo.height          = swapChainExtent.height;
+        fbInfo.layers          = 1;
+        VK_CHECK_RESULT(vkCreateFramebuffer(device, &fbInfo, nullptr, &offscreenFramebuffer));
+
+        std::cout << ">> [Offscreen] Created " << swapChainExtent.width
+                  << "x" << swapChainExtent.height << " offscreen render target\n";
+    }
+
+    void VKWindow::cleanupOffscreenResources() {
+        if (offscreenFramebuffer != VK_NULL_HANDLE) {
+            vkDestroyFramebuffer(device, offscreenFramebuffer, nullptr);
+            offscreenFramebuffer = VK_NULL_HANDLE;
+        }
+        if (offscreenRenderPass != VK_NULL_HANDLE) {
+            vkDestroyRenderPass(device, offscreenRenderPass, nullptr);
+            offscreenRenderPass = VK_NULL_HANDLE;
+        }
+        if (offscreenSampler != VK_NULL_HANDLE) {
+            vkDestroySampler(device, offscreenSampler, nullptr);
+            offscreenSampler = VK_NULL_HANDLE;
+        }
+        if (offscreenImageView != VK_NULL_HANDLE) {
+            vkDestroyImageView(device, offscreenImageView, nullptr);
+            offscreenImageView = VK_NULL_HANDLE;
+        }
+        if (offscreenImage != VK_NULL_HANDLE) {
+            vkDestroyImage(device, offscreenImage, nullptr);
+            offscreenImage = VK_NULL_HANDLE;
+        }
+        if (offscreenImageMemory != VK_NULL_HANDLE) {
+            vkFreeMemory(device, offscreenImageMemory, nullptr);
+            offscreenImageMemory = VK_NULL_HANDLE;
+        }
+    }
+
+    
+
+    void VKWindow::createPostFXDescriptorSetLayout() {
+        
+        
+        std::array<VkDescriptorSetLayoutBinding, 2> bindings{};
+        bindings[0].binding            = 0;
+        bindings[0].descriptorType     = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        bindings[0].descriptorCount    = 1;
+        bindings[0].stageFlags         = VK_SHADER_STAGE_FRAGMENT_BIT;
+        bindings[0].pImmutableSamplers = nullptr;
+
+        bindings[1].binding            = 1;
+        bindings[1].descriptorType     = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        bindings[1].descriptorCount    = 1;
+        bindings[1].stageFlags         = VK_SHADER_STAGE_FRAGMENT_BIT;
+        bindings[1].pImmutableSamplers = nullptr;
+
+        VkDescriptorSetLayoutCreateInfo info{};
+        info.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        info.bindingCount = static_cast<uint32_t>(bindings.size());
+        info.pBindings    = bindings.data();
+        VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &info, nullptr, &postFXDescriptorSetLayout));
+    }
+
+    void VKWindow::createPostFXDescriptorPool() {
+        std::array<VkDescriptorPoolSize, 2> poolSizes{};
+        poolSizes[0].type            = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        poolSizes[0].descriptorCount = static_cast<uint32_t>(swapChainImages.size());
+        poolSizes[1].type            = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        poolSizes[1].descriptorCount = static_cast<uint32_t>(swapChainImages.size());
+
+        VkDescriptorPoolCreateInfo info{};
+        info.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        info.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+        info.pPoolSizes    = poolSizes.data();
+        info.maxSets       = static_cast<uint32_t>(swapChainImages.size());
+        VK_CHECK_RESULT(vkCreateDescriptorPool(device, &info, nullptr, &postFXDescriptorPool));
+    }
+
+    void VKWindow::createPostFXDescriptorSets() {
+        std::vector<VkDescriptorSetLayout> layouts(swapChainImages.size(), postFXDescriptorSetLayout);
+        VkDescriptorSetAllocateInfo alloc{};
+        alloc.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        alloc.descriptorPool     = postFXDescriptorPool;
+        alloc.descriptorSetCount = static_cast<uint32_t>(swapChainImages.size());
+        alloc.pSetLayouts        = layouts.data();
+
+        postFXDescriptorSets.resize(swapChainImages.size());
+        VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &alloc, postFXDescriptorSets.data()));
+
+        for (size_t i = 0; i < swapChainImages.size(); ++i) {
+            VkDescriptorImageInfo img{};
+            img.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            img.imageView   = offscreenImageView;
+            img.sampler     = offscreenSampler;
+
+            VkDescriptorBufferInfo bufInfo{};
+            bufInfo.buffer = postFXUBOBuffer;
+            bufInfo.offset = 0;
+            bufInfo.range  = sizeof(PostFXExtendedUBO);
+
+            std::array<VkWriteDescriptorSet, 2> writes{};
+            
+            writes[0].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            writes[0].dstSet          = postFXDescriptorSets[i];
+            writes[0].dstBinding      = 0;
+            writes[0].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            writes[0].descriptorCount = 1;
+            writes[0].pImageInfo      = &img;
+            
+            writes[1].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            writes[1].dstSet          = postFXDescriptorSets[i];
+            writes[1].dstBinding      = 1;
+            writes[1].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            writes[1].descriptorCount = 1;
+            writes[1].pBufferInfo     = &bufInfo;
+
+            vkUpdateDescriptorSets(device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+        }
+    }
+
+    
+
+    void VKWindow::createPostFXPipelineInternal(const std::string& fragSpvPath) {
+        auto vertCode = mx::readFile(util.getFilePath("data/postfx_vert.spv"));
+        auto fragCode = mx::readFile(fragSpvPath);
+
+        VkShaderModule vertMod = createShaderModule(vertCode);
+        VkShaderModule fragMod = createShaderModule(fragCode);
+
+        VkPipelineShaderStageCreateInfo stages[2]{};
+        stages[0].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        stages[0].stage  = VK_SHADER_STAGE_VERTEX_BIT;
+        stages[0].module = vertMod;
+        stages[0].pName  = "main";
+        stages[1].sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        stages[1].stage  = VK_SHADER_STAGE_FRAGMENT_BIT;
+        stages[1].module = fragMod;
+        stages[1].pName  = "main";
+
+        
+        VkPipelineVertexInputStateCreateInfo vi{};
+        vi.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+
+        VkPipelineInputAssemblyStateCreateInfo ia{};
+        ia.sType    = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+        ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+
+        VkPipelineViewportStateCreateInfo vp{};
+        vp.sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+        vp.viewportCount = 1;
+        vp.scissorCount  = 1;
+
+        std::array<VkDynamicState, 2> dynStates = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+        VkPipelineDynamicStateCreateInfo dyn{};
+        dyn.sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        dyn.dynamicStateCount = static_cast<uint32_t>(dynStates.size());
+        dyn.pDynamicStates    = dynStates.data();
+
+        VkPipelineRasterizationStateCreateInfo rast{};
+        rast.sType       = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+        rast.polygonMode = VK_POLYGON_MODE_FILL;
+        rast.cullMode    = VK_CULL_MODE_NONE;
+        rast.frontFace   = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        rast.lineWidth   = 1.0f;
+
+        VkPipelineMultisampleStateCreateInfo ms{};
+        ms.sType                = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+        ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+        
+        VkPipelineDepthStencilStateCreateInfo ds{};
+        ds.sType            = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+        ds.depthTestEnable  = VK_FALSE;
+        ds.depthWriteEnable = VK_FALSE;
+
+        VkPipelineColorBlendAttachmentState cba{};
+        cba.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                             VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        cba.blendEnable    = VK_FALSE;
+
+        VkPipelineColorBlendStateCreateInfo cb{};
+        cb.sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+        cb.attachmentCount = 1;
+        cb.pAttachments    = &cba;
+
+        
+        
+        VkPushConstantRange pcRange{};
+        pcRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+        pcRange.offset     = 0;
+        pcRange.size       = sizeof(float) * 12;
+
+        VkPipelineLayoutCreateInfo pli{};
+        pli.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        pli.setLayoutCount         = 1;
+        pli.pSetLayouts            = &postFXDescriptorSetLayout;
+        pli.pushConstantRangeCount = 1;
+        pli.pPushConstantRanges    = &pcRange;
+        VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pli, nullptr, &postFXPipelineLayout));
+
+        VkGraphicsPipelineCreateInfo pci{};
+        pci.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        pci.stageCount          = 2;
+        pci.pStages             = stages;
+        pci.pVertexInputState   = &vi;
+        pci.pInputAssemblyState = &ia;
+        pci.pViewportState      = &vp;
+        pci.pRasterizationState = &rast;
+        pci.pMultisampleState   = &ms;
+        pci.pDepthStencilState  = &ds;
+        pci.pColorBlendState    = &cb;
+        pci.pDynamicState       = &dyn;
+        pci.layout              = postFXPipelineLayout;
+        pci.renderPass          = renderPass;   
+        pci.subpass             = 0;
+        VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pci, nullptr, &postFXPipeline));
+
+        vkDestroyShaderModule(device, fragMod, nullptr);
+        vkDestroyShaderModule(device, vertMod, nullptr);
+
+        std::cout << ">> [PostFX] Pipeline created with: " << fragSpvPath << "\n";
+    }
+
+    void VKWindow::cleanupPostFXPipeline() {
+        if (postFXPipeline != VK_NULL_HANDLE) {
+            vkDestroyPipeline(device, postFXPipeline, nullptr);
+            postFXPipeline = VK_NULL_HANDLE;
+        }
+        if (postFXPipelineLayout != VK_NULL_HANDLE) {
+            vkDestroyPipelineLayout(device, postFXPipelineLayout, nullptr);
+            postFXPipelineLayout = VK_NULL_HANDLE;
+        }
+    }
+
+    void VKWindow::cleanupPostFX() {
+        cleanupPostFXPipeline();
+        if (postFXDescriptorPool != VK_NULL_HANDLE) {
+            vkDestroyDescriptorPool(device, postFXDescriptorPool, nullptr);
+            postFXDescriptorPool = VK_NULL_HANDLE;
+            postFXDescriptorSets.clear();
+        }
+        if (postFXDescriptorSetLayout != VK_NULL_HANDLE) {
+            vkDestroyDescriptorSetLayout(device, postFXDescriptorSetLayout, nullptr);
+            postFXDescriptorSetLayout = VK_NULL_HANDLE;
+        }
+        destroyPostFXUBO();
+        postFXEnabled = false;
+    }
+
+    
+
+    void VKWindow::loadPostFXShader(const std::string& fragSpvPath) {
+        postFXFragPath = fragSpvPath;
+        vkDeviceWaitIdle(device);
+
+        
+        if (offscreenImage == VK_NULL_HANDLE) {
+            createOffscreenResources();
+        }
+
+        
+        if (postFXUBOBuffer == VK_NULL_HANDLE) {
+            createPostFXUBO();
+        }
+
+        
+        if (postFXDescriptorSetLayout == VK_NULL_HANDLE) {
+            createPostFXDescriptorSetLayout();
+        }
+
+        
+        if (postFXDescriptorPool != VK_NULL_HANDLE) {
+            vkDestroyDescriptorPool(device, postFXDescriptorPool, nullptr);
+            postFXDescriptorPool = VK_NULL_HANDLE;
+            postFXDescriptorSets.clear();
+        }
+        createPostFXDescriptorPool();
+        createPostFXDescriptorSets();
+
+        
+        cleanupPostFXPipeline();
+        createPostFXPipelineInternal(fragSpvPath);
+
+        postFXEnabled = true;
+    }
+
+    
+
+    void VKWindow::createPostFXUBO() {
+        if (postFXUBOBuffer != VK_NULL_HANDLE) return;
+        createBuffer(sizeof(PostFXExtendedUBO),
+                     VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                     postFXUBOBuffer, postFXUBOMemory);
+        VK_CHECK_RESULT(vkMapMemory(device, postFXUBOMemory, 0, sizeof(PostFXExtendedUBO), 0, &postFXUBOMapped));
+        memset(postFXUBOMapped, 0, sizeof(PostFXExtendedUBO));
+    }
+
+    void VKWindow::updatePostFXUBO() {
+        if (!postFXEnabled || !postFXUBOMapped) return;
+        memcpy(postFXUBOMapped, &postFXUBOData, sizeof(PostFXExtendedUBO));
+    }
+
+    void VKWindow::destroyPostFXUBO() {
+        if (postFXUBOBuffer != VK_NULL_HANDLE) {
+            vkDestroyBuffer(device, postFXUBOBuffer, nullptr);
+            postFXUBOBuffer = VK_NULL_HANDLE;
+        }
+        if (postFXUBOMemory != VK_NULL_HANDLE) {
+            vkFreeMemory(device, postFXUBOMemory, nullptr);
+            postFXUBOMemory = VK_NULL_HANDLE;
+        }
+        postFXUBOMapped = nullptr;
+    }
+
+    void VKWindow::setPostFXMouse(float mx, float my, float pressed, float reserved) {
+        postFXUBOData.mouse = glm::vec4(mx, my, pressed, reserved);
+    }
+    void VKWindow::setPostFXUniform0(float x, float y, float z, float w) {
+        postFXUBOData.u0 = glm::vec4(x, y, z, w);
+    }
+    void VKWindow::setPostFXUniform1(float x, float y, float z, float w) {
+        postFXUBOData.u1 = glm::vec4(x, y, z, w);
+    }
+    void VKWindow::setPostFXUniform2(float x, float y, float z, float w) {
+        postFXUBOData.u2 = glm::vec4(x, y, z, w);
+    }
+    void VKWindow::setPostFXUniform3(float x, float y, float z, float w) {
+        postFXUBOData.u3 = glm::vec4(x, y, z, w);
+    }
+
 }

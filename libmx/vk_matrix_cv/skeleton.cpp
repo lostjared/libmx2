@@ -6,6 +6,7 @@
 #include <deque>
 #include <unordered_map>
 #include <memory>
+#include <filesystem>
 #include <opencv2/opencv.hpp>
 #include "argz.hpp"
 #ifndef M_PI
@@ -145,7 +146,7 @@ public:
             for (int px = 0; px < glyph.w && (destX + px) < destWidth; ++px) {
                 if (destX + px >= 0 && destY + py >= 0) {
                     uint32_t pixel = glyph.pixels[py * glyph.w + px];
-                    if ((pixel >> 24) & 0xFF) { // Simple alpha test
+                    if ((pixel >> 24) & 0xFF) { 
                         destBuffer[(destY + py) * destWidth + (destX + px)] = pixel;
                     }
                 }
@@ -191,13 +192,70 @@ private:
 class RaycastWindow;
 
 class RaycastWindow : public mx::VKWindow {
+
+        class ShaderLibrary {
+    public:
+        ShaderLibrary() = default;
+        ~ShaderLibrary() = default;
+        ShaderLibrary &operator=(const ShaderLibrary &) = delete;
+        ShaderLibrary &operator=(ShaderLibrary &&) = delete;
+        ShaderLibrary(const ShaderLibrary &) = delete;
+        ShaderLibrary(ShaderLibrary &&) = delete;
+
+        void load(const std::string &path, const std::string &text) {
+            if(!shader_names.empty()) 
+                shader_names.clear();
+
+            std::fstream file;
+            file.open(text, std::ios::in);
+            if(!file.is_open()) {
+                throw mx::Exception("acvk: Error loading index file: " + text);
+            }
+            std::string s;
+            while(std::getline(file, s)) {
+                if(!s.empty() ) {
+                    std::string path_name = path + "/" + s;
+                    if(std::filesystem::exists(path_name)) {
+                        shader_names.push_back(s);
+                        std::cout << "acvk: Shader Filename: " << s << "\n";
+                    }
+                    else {
+                        std::cerr << "acvk: File: " << path_name << " does not exisit at path: " << path << "\n";
+                    }
+                }
+            }
+        }
+
+        std::string getShaderName(int index) {
+            if(index >= 0 && index < static_cast<int>(shader_names.size())) 
+                return shader_names[index];
+            throw mx::Exception("acvk: Shader Index out of obounds of get name");
+        }
+
+        int size() const {
+            return static_cast<int>(shader_names.size());
+        }
+
+        std::vector<char> loadShader(int index) {
+            if(index >= 0 && index < static_cast<int>(shader_names.size()))
+                return mx::readFile(shader_names[index]);
+            throw mx::Exception("acvk: Could not load shader file: " + shader_names[index]);
+        }
+
+        void release() {
+
+        }
+
+    protected:
+        std::vector<std::string> shader_names;
+    };
+
 public:
     float posX = 3.5f, posY = 1.5f;     
     float dirX = 0.0f, dirY = 1.0f;     
     float planeX = 0.66f, planeY = 0.0f; 
     float moveSpeed = 0.05f;
     float rotSpeed = 0.03f;
-    
     
     bool keyW = false, keyS = false, keyA = false, keyD = false;
     bool keyLeft = false, keyRight = false;
@@ -217,6 +275,8 @@ public:
     bool kaleido_effect = false;
     bool droste_effect = false;
     bool mirror_droste_effect = false;
+    int  postFXShaderIndex = 0;  
+    uint32_t frameCount = 0;     
 
     void setFile(const std::string &filen) {
         filename = filen;
@@ -251,9 +311,20 @@ public:
         cleanupMatrix();
     }
     
+    void openLibrary(const std::string &path, const std::string &filename) {
+        library.load(path, filename);
+        shader_path = path;
+    }
+
     void initVulkan() override {
         mx::VKWindow::initVulkan();
         initMatrix();
+        
+        if (library.size() > 0) {
+            std::string frag = shader_path + "/" + library.getShaderName(postFXShaderIndex);
+            loadPostFXShader(frag);
+            std::cout << "PostFX: loaded initial shader " << frag << "\n";
+        }
     }
     
     bool canMove(float newX, float newY) {
@@ -332,9 +403,28 @@ public:
         raycastPlayer.kaleidoEffect = kaleido_effect ? 1.0f : 0.0f;
         raycastPlayer.drosteEffect = droste_effect ? 1.0f : 0.0f;
         raycastPlayer.mirrorDrosteEffect = mirror_droste_effect ? 1.0f : 0.0f;
-        printText("WASD: Move  Arrow Keys: Turn  ESC: Quit", 10, 10, {255, 255, 255, 255});        
+
+        
+        
+        if (postFXEnabled) {
+            float iFrameRate = (currentDeltaTime > 0.0f) ? (1.0f / currentDeltaTime) : 60.0f;
+            int mx, my;
+            Uint32 buttons = SDL_GetMouseState(&mx, &my);
+            float mousePressed = (buttons & SDL_BUTTON(SDL_BUTTON_LEFT)) ? 1.0f : 0.0f;
+            setPostFXMouse(static_cast<float>(mx), static_cast<float>(my), mousePressed, 0.0f);
+            setPostFXUniform0(1.0f, 1.0f, 0.0f, 0.0f);  
+            setPostFXUniform1(currentDeltaTime, 0.0f, 0.0f, iFrameRate);
+            setPostFXUniform2(static_cast<float>(frameCount), 0.0f, 0.0f, 0.0f);
+            setPostFXUniform3(0.0f, 0.0f, 0.0f, 0.0f);
+            ++frameCount;
+        }
+
+        printText("WASD: Move  Arrows: Turn  SPACE: Next Shader  G: Glyphs  ESC: Quit", 10, 10, {255, 255, 255, 255});        
         std::string posStr = std::format("Pos: {}, {}", posX, posY);
         printText(posStr, 10, 40, {200, 200, 200, 255});
+        if (postFXEnabled && library.size() > 0) {
+            printText("PostFX: " + library.getShaderName(postFXShaderIndex), 10, 70, {100, 255, 100, 255});
+        }
     }
     
     void event(SDL_Event& e) override {
@@ -350,8 +440,17 @@ public:
                 case SDLK_d: keyD = true; break;
                 case SDLK_LEFT: keyLeft = true; break;
                 case SDLK_RIGHT: keyRight = true; break;
-                case SDLK_SPACE: 
+                case SDLK_g:
                     draw_glyph = !draw_glyph;
+                break;
+                case SDLK_SPACE:
+                    
+                    if (library.size() > 0) {
+                        postFXShaderIndex = (postFXShaderIndex + 1) % library.size();
+                        std::string frag = shader_path + "/" + library.getShaderName(postFXShaderIndex);
+                        loadPostFXShader(frag);
+                        std::cout << "PostFX: switched to " << library.getShaderName(postFXShaderIndex) << "\n";
+                    }
                 break;
                 case SDLK_b:
                     bubble_effect = !bubble_effect;
@@ -395,7 +494,9 @@ private:
     std::vector<int> gridCodepoints;
     TTF_Font* matrixFont = nullptr;
     std::vector<uint32_t> texturePixels;
-    
+    ShaderLibrary library;
+    std::string shader_path;
+
     void initMatrix() {
         std::string fontPath = util.getFilePath("data/keifont.ttf");
         matrixFont = TTF_OpenFont(fontPath.c_str(), 28);
@@ -512,6 +613,8 @@ int main(int argc, char **argv) {
     Arguments args = proc_args(argc, argv);
     try {
         RaycastWindow window(args.path, args.width, args.height, args.fullscreen);
+        if (!args.shaderPath.empty())
+            window.openLibrary(args.shaderPath, args.shaderPath + "/index.txt");
         window.setCamera(0);
         window.initVulkan();
         window.loop();

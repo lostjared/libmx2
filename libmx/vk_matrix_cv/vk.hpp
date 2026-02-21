@@ -68,10 +68,10 @@ namespace mx {
         alignas(16) glm::mat4 model;
         alignas(16) glm::mat4 view;
         alignas(16) glm::mat4 proj;
-        alignas(16) glm::vec4 params;      // x=time, y=unused, z=unused, w=unused
+        alignas(16) glm::vec4 params;      
         alignas(16) glm::vec4 color;  
-        alignas(16) glm::vec4 playerPos;   // x=posX, y=posZ, z=dirX, w=dirZ
-        alignas(16) glm::vec4 playerPlane; // x=planeX, y=planeZ, z=screenW, w=screenH
+        alignas(16) glm::vec4 playerPos;   
+        alignas(16) glm::vec4 playerPlane; 
     };
 
     class VKWindow {
@@ -98,8 +98,32 @@ namespace mx {
         void updateTexture(void* pixels, VkDeviceSize imageSize);
         void printText(const std::string &text, int x, int y, const SDL_Color &col);
         void clearTextQueue();
+
         
-        // Raycaster player data (set by derived class, used by draw())
+        
+        
+        
+        void loadPostFXShader(const std::string& fragSpvPath);
+        bool postFXEnabled = false;
+        std::string postFXFragPath; 
+
+        
+        
+        struct PostFXExtendedUBO {
+            glm::vec4 mouse;   
+            glm::vec4 u0;      
+            glm::vec4 u1;      
+            glm::vec4 u2;      
+            glm::vec4 u3;      
+        };
+        PostFXExtendedUBO postFXUBOData{};
+        void setPostFXMouse(float mx, float my, float pressed, float reserved);
+        void setPostFXUniform0(float x, float y, float z, float w);
+        void setPostFXUniform1(float x, float y, float z, float w);
+        void setPostFXUniform2(float x, float y, float z, float w);
+        void setPostFXUniform3(float x, float y, float z, float w);
+        
+        
         struct {
             float posX = 8.0f, posY = 2.0f;
             float dirX = 0.0f, dirY = 1.0f;
@@ -225,6 +249,38 @@ namespace mx {
         void createTextDescriptorSetLayout();
         void createTextPipeline();
         void createTextDescriptorPool();
+
+        
+        VkImage            offscreenImage        = VK_NULL_HANDLE;
+        VkDeviceMemory     offscreenImageMemory  = VK_NULL_HANDLE;
+        VkImageView        offscreenImageView    = VK_NULL_HANDLE;
+        VkSampler          offscreenSampler      = VK_NULL_HANDLE;
+        VkFramebuffer      offscreenFramebuffer  = VK_NULL_HANDLE;
+        VkRenderPass       offscreenRenderPass   = VK_NULL_HANDLE;
+
+        
+        VkPipeline              postFXPipeline              = VK_NULL_HANDLE;
+        VkPipelineLayout        postFXPipelineLayout        = VK_NULL_HANDLE;
+        VkDescriptorSetLayout   postFXDescriptorSetLayout   = VK_NULL_HANDLE;
+        VkDescriptorPool        postFXDescriptorPool        = VK_NULL_HANDLE;
+        std::vector<VkDescriptorSet> postFXDescriptorSets;
+
+        
+        VkBuffer        postFXUBOBuffer = VK_NULL_HANDLE;
+        VkDeviceMemory  postFXUBOMemory = VK_NULL_HANDLE;
+        void*           postFXUBOMapped = nullptr;
+        void createPostFXUBO();
+        void updatePostFXUBO();
+        void destroyPostFXUBO();
+
+        void createOffscreenResources();
+        void cleanupOffscreenResources();
+        void createPostFXDescriptorSetLayout();
+        void createPostFXDescriptorPool();
+        void createPostFXDescriptorSets();
+        void createPostFXPipelineInternal(const std::string& fragSpvPath);
+        void cleanupPostFXPipeline();
+        void cleanupPostFX();
     };
 
 }
