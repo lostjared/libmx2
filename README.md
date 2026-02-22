@@ -54,7 +54,7 @@ This separation means you can build a project that uses only the core SDL2 featu
 
 then run with
 ```bash
-./run program_name
+./run.pl program_name
 ```
 
 or
