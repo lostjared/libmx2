@@ -235,19 +235,21 @@ class Game : public gl::GLObject {
                         executor.setInterrupt(&this->interrupt_command);
                         std::cout << "Executing: " << text << std::endl;
                         std::string lineBuf;
-                        
+                        bool update_callback_printed = false;
+
                         executor.setUpdateCallback(
-                            [&lineBuf,window,this](const std::string &chunk) {
+                            [&lineBuf,window,this,&update_callback_printed](const std::string &chunk) {
                                 lineBuf += chunk;
                                 size_t nl;
                                 while ((nl = lineBuf.find('\n')) != std::string::npos) {
                                     std::string oneLine = lineBuf.substr(0, nl+1);
                                     lineBuf.erase(0, nl+1);
                                     window->console.thread_safe_print(oneLine);
-                                    window->console.process_message_queue();             
+                                    window->console.process_message_queue();
+                                    update_callback_printed = true;             
                                 }
                                 if(interrupt_command) {
-				                    interrupt_command = false;
+                                    interrupt_command = false;
                                     throw cmd::Exit_Exception(100);
                                 }
                             }
@@ -261,13 +263,16 @@ class Game : public gl::GLObject {
                         std::ostringstream out_stream;
                         program_running = true;
                         executor.execute(input_stream, out_stream, ast);
-                        if(!lineBuf.empty()) {
-                            window->console.thread_safe_print(lineBuf);
-                            window->console.process_message_queue();
-                        }
-                        if(!out_stream.str().empty()) {
-                            window->console.thread_safe_print(out_stream.str());
-                            window->console.process_message_queue();
+                        if(update_callback_printed) {
+                            if(!lineBuf.empty()) {
+                                window->console.thread_safe_print(lineBuf);
+                                window->console.process_message_queue();
+                            }
+                        } else {
+                            if(!out_stream.str().empty()) {
+                                window->console.thread_safe_print(out_stream.str());
+                                window->console.process_message_queue();
+                            }
                         }
                         program_running = false;
                     } catch(const scan::ScanExcept &e) {
