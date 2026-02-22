@@ -35,6 +35,12 @@ namespace mx {
         mxWindow() = delete;
         mxWindow(const std::string &name, int w, int h, bool full = false);
         virtual ~mxWindow();
+
+        mxWindow(const mxWindow&) = delete;
+        mxWindow& operator=(const mxWindow&) = delete;
+        mxWindow(mxWindow&&) = delete;
+        mxWindow& operator=(mxWindow&&) = delete;
+
         virtual void event(SDL_Event &e) = 0;
         virtual void draw(SDL_Renderer *ren) = 0;
         SDL_Texture *createTexture(int w, int h);

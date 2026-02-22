@@ -77,8 +77,12 @@ namespace mx {
     class VKWindow {
     public:
         VKWindow() = default;
-        VKWindow(const std::string &title, int width, int height, bool full = false);
+        VKWindow(const std::string &title, int width, int height, bool full = false, bool valid = true);
         virtual ~VKWindow() { }
+        VKWindow(const VKWindow&) = delete;
+        VKWindow& operator=(const VKWindow&) = delete;
+        VKWindow(VKWindow&&) = delete;
+        VKWindow& operator=(VKWindow&&) = delete;
         void initWindow(const std::string &title, int width, int height, bool full = false);
         void setFont(const std::string &font, const int size = 24);
         virtual void initVulkan();
@@ -108,6 +112,8 @@ namespace mx {
         int getWidth() const { return w; }
         int getHeight() const { return h; }
         void resizeWindow(int width, int height);
+        void setWireFrame(bool enable) { useWireFrame = enable; }
+        bool getWireFrame() const { return useWireFrame; }
         struct {
             float posX = 8.0f, posY = 2.0f;
             float dirX = 0.0f, dirY = 1.0f;
@@ -116,6 +122,7 @@ namespace mx {
         
     protected:
         bool active = true;
+        bool enableValidation = true;
         std::string font = "font.ttf";
         int font_size = 24;
         VkInstance instance = VK_NULL_HANDLE;
@@ -140,6 +147,7 @@ namespace mx {
         VkPipeline graphicsPipeline = VK_NULL_HANDLE;
         VkPipeline graphicsPipelineMatrix = VK_NULL_HANDLE;
         VkPolygonMode currentPolygonMode = VK_POLYGON_MODE_FILL;
+        bool useWireFrame = false;
         std::vector<VkFramebuffer> swapChainFramebuffers;
 
         VkCommandPool commandPool = VK_NULL_HANDLE;

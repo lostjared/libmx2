@@ -21,6 +21,12 @@ namespace mx {
         ConfigFile() = default;
         ConfigFile(const std::string &filex);
        ~ConfigFile();
+
+        ConfigFile(const ConfigFile&) = delete;
+        ConfigFile& operator=(const ConfigFile&) = delete;
+        ConfigFile(ConfigFile&&) = delete;
+        ConfigFile& operator=(ConfigFile&&) = delete;
+
         Item itemAtKey(const std::string &section, const std::string &key);
         void setItem(const std::string &section, const std::string &key, const std::string value);
         void loadFile(const std::string  &f);

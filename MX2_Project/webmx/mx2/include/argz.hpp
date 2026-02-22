@@ -35,6 +35,7 @@ struct Argument {
 	String arg_value;
 	ArgType arg_type;
 	String desc;
+	~Argument() = default;
 	Argument() : arg_name{}, arg_letter{}, arg_value{}, arg_type{}, desc{} {}
 	Argument(const Argument &a) : arg_name{a.arg_name}, arg_letter{a.arg_letter}, arg_value{a.arg_value}, arg_type{a.arg_type}, desc{a.desc} {}
 	Argument &operator=(const Argument<String> &a) {
@@ -52,6 +53,7 @@ template <StringType String>
 struct ArgumentData {
 	std::vector<String> args;
 	int argc;
+	~ArgumentData() = default;
 	ArgumentData() = default;
 	ArgumentData(const ArgumentData<String> &a) : args{a.args}, argc{a.argc} {}
 	ArgumentData &operator=(const ArgumentData<String> &a) {
@@ -84,6 +86,7 @@ private:
 template <StringType String>
 class Argz {
 public:
+	~Argz() = default;
 	Argz() = default;
 	Argz(int argc, char **argv) { initArgs(argc, argv); }
 	Argz(const Argz<String> &a) : arg_data{a.arg_data}, arg_info{a.arg_info}, index{a.index}, cindex{a.cindex} {}
@@ -388,6 +391,7 @@ struct Arguments {
 	bool fullscreen;
 	std::string filename;
 	std::string texture;
+	std::string shaderPath;
 };
 
 inline Arguments proc_args(int &argc, char **argv) {
@@ -402,6 +406,8 @@ inline Arguments proc_args(int &argc, char **argv) {
         .addOptionDouble('F', "fullscreen", "fullscreen")
 		.addOptionDoubleValue(256, "filename", "input filename")
 		.addOptionDoubleValue(257, "texture", "texture file (.png or .tex)")
+		.addOptionSingleValue('S', "shader SPV folder path (contains index.txt)")
+		.addOptionDoubleValue(258, "shader-path", "shader SPV folder path (contains index.txt)")
 		;
 
     Argument<std::string> arg;
@@ -411,6 +417,7 @@ inline Arguments proc_args(int &argc, char **argv) {
     bool fullscreen = false;
 	std::string filename;
 	std::string texture;
+	std::string shaderPath;
     try {
         while((value = parser.proc(arg)) != -1) {
             switch(value) {
@@ -419,6 +426,10 @@ inline Arguments proc_args(int &argc, char **argv) {
 					break;
 				case 257:
 					texture = arg.arg_value;
+					break;
+				case 'S':
+				case 258:
+					shaderPath = arg.arg_value;
 					break;
                 case 'h':
                 case 'v':
@@ -468,6 +479,7 @@ inline Arguments proc_args(int &argc, char **argv) {
 	args.fullscreen = fullscreen;
 	args.filename = filename;
 	args.texture = texture;
+	args.shaderPath = shaderPath;
 	return args;
 }
 

@@ -15,6 +15,14 @@
 namespace mx {
     class mxUtil {
     public:
+        ~mxUtil() { closeJoystick(); }
+
+        mxUtil() = default;
+        mxUtil(const mxUtil&) = delete;
+        mxUtil& operator=(const mxUtil&) = delete;
+        mxUtil(mxUtil&&) = delete;
+        mxUtil& operator=(mxUtil&&) = delete;
+
     #ifdef FOR_WASM
         std::string path = "/assets";
     #else

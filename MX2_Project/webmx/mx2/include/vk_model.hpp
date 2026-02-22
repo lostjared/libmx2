@@ -51,6 +51,12 @@ namespace mx {
     public:
         MXModel() = default;
         ~MXModel() = default;
+
+        MXModel(const MXModel&) = delete;
+        MXModel& operator=(const MXModel&) = delete;
+        MXModel(MXModel&&) = delete;
+        MXModel& operator=(MXModel&&) = delete;
+
         void load(const std::string &path, float positionScale = 1.0f);
         void upload(VkDevice device, VkPhysicalDevice physicalDevice,
                     VkCommandPool commandPool, VkQueue graphicsQueue);

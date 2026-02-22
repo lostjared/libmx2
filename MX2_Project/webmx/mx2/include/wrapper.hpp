@@ -20,6 +20,7 @@ namespace mx {
         Wrapper(std::nullopt_t n) : type{n} {}
         Wrapper(const Wrapper<T> &w) : type{w.type} {}
         Wrapper(Wrapper<T> &&w) : type{std::move(w.type)} {}
+        ~Wrapper() = default;
 
         Wrapper<T> &operator=(const T &t) {
             this->type = t;

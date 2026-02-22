@@ -37,6 +37,11 @@ namespace mx {
         VKSprite(VkDevice device, VkPhysicalDevice physicalDevice, VkQueue graphicsQueue,
                  VkCommandPool commandPool);
         ~VKSprite();
+
+        VKSprite(const VKSprite&) = delete;
+        VKSprite& operator=(const VKSprite&) = delete;
+        VKSprite(VKSprite&&) = delete;
+        VKSprite& operator=(VKSprite&&) = delete;
         
         void loadSprite(const std::string &pngPath, const std::string &fragmentShaderPath = "");
         void loadSprite(SDL_Surface* surface, const std::string &fragmentShaderPath = "");
@@ -48,6 +53,8 @@ namespace mx {
         void updateTexture(SDL_Surface* surface);
         void updateTexture(const void* pixels, int width, int height, int pitch = 0);
         void setShaderParams(float p1 = 0.0f, float p2 = 0.0f, float p3 = 0.0f, float p4 = 0.0f);
+        void setEffectsEnabled(bool enabled) { effectsEnabled = enabled; }
+        bool getEffectsEnabled() const { return effectsEnabled; }
         void renderSprites(VkCommandBuffer cmdBuffer, VkPipelineLayout pipelineLayout,
                           uint32_t screenWidth, uint32_t screenHeight);
         void clearQueue();
@@ -59,7 +66,22 @@ namespace mx {
         bool hasOwnPipeline() const { return customPipeline != VK_NULL_HANDLE; }
         VkPipeline getPipeline() const { return customPipeline; }
         VkPipelineLayout getPipelineLayout() const { return customPipelineLayout; }
+        void rebuildPipeline();  
+        void rebuildInstancedPipeline();  
         VkSampler spriteSampler = VK_NULL_HANDLE;
+        void enableInstancing(uint32_t maxInstances,
+                              const std::string &instanceVertShaderPath,
+                              const std::string &instanceFragShaderPath);
+        bool isInstancingEnabled() const { return instancingEnabled; }
+
+        // Extended UBO support for shaders needing mouse/u0-u3 uniforms
+        void enableExtendedUBO();
+        bool isExtendedUBOEnabled() const { return extendedUBOEnabled; }
+        void setMouseState(float mx, float my, float pressed, float reserved = 0.0f);
+        void setUniform0(float x, float y, float z, float w);
+        void setUniform1(float x, float y, float z, float w);
+        void setUniform2(float x, float y, float z, float w);
+        void setUniform3(float x, float y, float z, float w);
         
     private:
         struct SpriteVertex {
@@ -85,6 +107,7 @@ namespace mx {
         VkShaderModule fragmentShaderModule = VK_NULL_HANDLE;
         bool hasCustomShader = false;
         glm::vec4 shaderParams = glm::vec4(0.0f);
+        bool effectsEnabled = true;
         std::vector<SpriteDrawCmd> drawQueue;  
         
         VkPipeline customPipeline = VK_NULL_HANDLE;
@@ -134,6 +157,45 @@ namespace mx {
         void updateSpriteTexture(const void* pixels, uint32_t width, uint32_t height);
         VkShaderModule createShaderModule(const std::vector<char>& code);
         std::vector<char> readShaderFile(const std::string& filename);
+    
+        struct SpriteExtendedUBO {
+            glm::vec4 mouse;   
+            glm::vec4 u0;      
+            glm::vec4 u1;
+            glm::vec4 u2;
+            glm::vec4 u3;
+        };
+        bool extendedUBOEnabled = false;
+        SpriteExtendedUBO extendedUBOData{};
+        VkBuffer extendedUBOBuffer = VK_NULL_HANDLE;
+        VkDeviceMemory extendedUBOMemory = VK_NULL_HANDLE;
+        void* extendedUBOMapped = nullptr;
+        VkDescriptorSetLayout extendedDescriptorSetLayout = VK_NULL_HANDLE;
+        VkDescriptorPool extendedDescriptorPool = VK_NULL_HANDLE;
+        VkDescriptorSet extendedDescriptorSet = VK_NULL_HANDLE;
+        bool ownExtendedDescriptorSetLayout = false;
+        void createExtendedUBO();
+        void updateExtendedUBO();
+        void createExtendedDescriptorSetLayout();
+        void createExtendedDescriptorSet();
+        void destroyExtendedUBO();
+
+        struct SpriteInstanceData {
+            float posX, posY, sizeW, sizeH;
+            float params[4];
+        };
+        VkBuffer instanceBuffer = VK_NULL_HANDLE;
+        VkDeviceMemory instanceBufferMemory = VK_NULL_HANDLE;
+        void* instanceBufferMapped = nullptr;
+        uint32_t instanceBufferCapacity = 0;
+        bool instancingEnabled = false;
+        VkPipeline instancedPipeline = VK_NULL_HANDLE;
+        VkPipelineLayout instancedPipelineLayout = VK_NULL_HANDLE;
+        std::string instanceVertPath_;
+        std::string instanceFragPath_;
+        void createInstancedPipeline(const std::string &vertPath, const std::string &fragPath);
+        void ensureInstanceBuffer(uint32_t count);
+        void destroyInstanceResources();
     };
 
 }

@@ -104,6 +104,7 @@ namespace mx {
         std::vector<Mesh> meshes;
 
         Model() = default;
+        ~Model() = default;
         Model(const std::string &filename);
         Model(const Model &m) = delete;
         Model &operator=(const Model &m) = delete;

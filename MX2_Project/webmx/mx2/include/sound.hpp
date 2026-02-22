@@ -16,6 +16,12 @@ namespace mx {
     public:
         Mixer();
         ~Mixer();
+
+        Mixer(const Mixer&) = delete;
+        Mixer& operator=(const Mixer&) = delete;
+        Mixer(Mixer&&) = delete;
+        Mixer& operator=(Mixer&&) = delete;
+
         void init();
         int loadWav(const std::string &filename);
         int loadMusic(const std::string &filename);
