@@ -28,19 +28,21 @@
 #include<cstdlib>
 #include"cmd_argz.hpp"
 
-struct Args {
-    bool debug_output = false;
-    bool debug_syntax_highlight = false;
-    bool command_proc = false;
-    bool stdin_input = false;
-    bool debug_tokens = false;
-    std::string command_text;
-    std::string filename;
-    std::vector<std::string> arguments;
-};
+namespace arg {
+	struct Args {
+	    bool debug_output = false;
+	    bool debug_syntax_highlight = false;
+	    bool command_proc = false;
+	    bool stdin_input = false;
+	    bool debug_tokens = false;
+	    std::string command_text;
+	    std::string filename;
+	    std::vector<std::string> arguments;
+	};
+}
 
-Args proc_custom_args(int &argc, char **argv) {
-	Args args;
+arg::Args proc_custom_args(int &argc, char **argv) {
+	arg::Args args;
 	Argz<std::string> parser(argc, argv);
     parser.addOptionSingle('h', "Display help message")
         .addOptionDouble('H', "help", "Display help message")
@@ -187,7 +189,7 @@ int main(int argc, char **argv) {
     sa.sa_flags = 0;
     sigaction(SIGINT, &sa, nullptr);
 #endif
-    Args args = proc_custom_args(argc, argv);
+    arg::Args args = proc_custom_args(argc, argv);
     if(args.command_proc) {
         if(args.command_text.empty()) {
             std::cerr << "mx: No command provided.\n";

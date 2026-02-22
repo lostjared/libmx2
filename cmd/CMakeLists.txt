@@ -412,6 +412,7 @@ if(CONSOLE)
     target_link_libraries(cmd-console PRIVATE
         mxcmd
         libmx2::mx 
+	libmx2::mxgl
         ${SDL2_LIBRARIES} 
         ${SDL2_TTF_LIBRARIES} 
         ${SDL2_MIXER_LIBRARIES}    
