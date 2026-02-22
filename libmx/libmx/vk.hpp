@@ -77,7 +77,7 @@ namespace mx {
     class VKWindow {
     public:
         VKWindow() = default;
-        VKWindow(const std::string &title, int width, int height, bool full = false);
+        VKWindow(const std::string &title, int width, int height, bool full = false, bool valid = true);
         virtual ~VKWindow() { }
         VKWindow(const VKWindow&) = delete;
         VKWindow& operator=(const VKWindow&) = delete;
@@ -122,6 +122,7 @@ namespace mx {
         
     protected:
         bool active = true;
+        bool enableValidation = true;
         std::string font = "font.ttf";
         int font_size = 24;
         VkInstance instance = VK_NULL_HANDLE;

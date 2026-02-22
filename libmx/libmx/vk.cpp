@@ -3,7 +3,8 @@
 
 namespace mx {
 
-    VKWindow::VKWindow(const std::string &title, int width, int height, bool full) {
+    VKWindow::VKWindow(const std::string &title, int width, int height, bool full, bool valid) {
+        enableValidation = valid;
         initWindow(title, width, height, full);    
     }
 
@@ -233,7 +234,7 @@ namespace mx {
         appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
         appInfo.pApplicationName = "VulkanApp";
         appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-        appInfo.apiVersion = VK_API_VERSION_1_0;
+        appInfo.apiVersion = VK_API_VERSION_1_3;
 
         unsigned int sdlExtensionCount = 0;
         SDL_Vulkan_GetInstanceExtensions(window, &sdlExtensionCount, nullptr);
@@ -247,7 +248,7 @@ namespace mx {
             VK_EXT_DEBUG_UTILS_EXTENSION_NAME
         };
 
-        bool enableValidation = true;
+        
         if (enableValidation) {
             extensions.insert(extensions.end(), debugExtensions.begin(), debugExtensions.end());
         }
@@ -296,6 +297,13 @@ namespace mx {
         }
 
         VK_CHECK_RESULT(vkCreateInstance(&createInfo, nullptr, &instance));
+
+        uint32_t instanceVersion = 0;
+        vkEnumerateInstanceVersion(&instanceVersion);
+        std::cout << "Vulkan Instance Version: "
+                  << VK_VERSION_MAJOR(instanceVersion) << "."
+                  << VK_VERSION_MINOR(instanceVersion) << "."
+                  << VK_VERSION_PATCH(instanceVersion) << "\n";
 
 #ifndef WITH_MOLTEN
         volkLoadInstance(instance);
