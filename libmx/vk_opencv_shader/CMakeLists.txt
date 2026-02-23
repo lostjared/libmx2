@@ -9,5 +9,5 @@ target_include_directories(vk_opencv_shader PRIVATE
     ${SDL2_TTF_INCLUDE_DIRS}
     ${OpenCV_INCLUDE_DIRS}
 )
-target_link_libraries(vk_opencv_shader PUBLIC SDL2::SDL2main mxvk $<$<NOT:$<BOOL:${MOLTEN}>>:volk> ${OpenCV_LIBS})
+target_link_libraries(vk_opencv_shader PUBLIC SDL2::SDL2main mxvk $<$<NOT:$<BOOL:${MOLTEN}>>:volk> mxvk_cv ${OpenCV_LIBS})
 

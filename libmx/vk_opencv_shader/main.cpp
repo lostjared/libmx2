@@ -1,4 +1,5 @@
 #include"vk.hpp"
+#include"vk_cv.hpp"
 #include"SDL.h"
 #include"argz.hpp"
 #include<fstream>
@@ -92,16 +93,16 @@ public:
         shaderIndex = static_cast<int>(index);
         std::string fragPath = shader_path + "/" + library.getShaderName(shaderIndex);
         vkDeviceWaitIdle(device);
-        sprite->createEmptySprite(camera_width, camera_height,
-            util.path + "/data/sprite_vert.spv", fragPath);
-        sprite->enableExtendedUBO();
+        if(!cap.reload(camera_width, camera_height, util.path + "/data/sprite_vert.spv", fragPath)) {
+            throw mx::Exception("Error reloading shader: " + fragPath);
+        }
         startTime = lastTime = SDL_GetTicks();
         frameCount = 0;
     }
 
     void openCamera(int index, int width, int height) {
         cap.open(index, cv::CAP_V4L2);
-        if(!cap.isOpened()) {
+        if(!cap.is_open()) {
             throw mx::Exception("Error could not open camera at index: " + std::to_string(index));
         }
         cap.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M','J','P','G'));
@@ -112,10 +113,9 @@ public:
         std::string fragPath = (library.size() > 0)
             ? shader_path + "/" + library.getShaderName(0)
             : util.path + "/data/sprite_frag.spv";
-        sprite = createSprite(camera_width, camera_height, util.path + "/data/sprite_vert.spv", fragPath);
-        sprite->enableExtendedUBO();
-        sprite->rebuildPipeline();
-        resizeWindow(camera_width, camera_height);
+        if(cap.createImage(this, camera_width, camera_height, util.path + "/data/sprite_vert.spv", fragPath)) {
+            resizeWindow(camera_width, camera_height);
+        }
         startTime = lastTime = SDL_GetTicks();
         frameCount = 0;
     }
@@ -130,10 +130,9 @@ public:
         std::string fragPath = (library.size() > 0)
             ? shader_path + "/" + library.getShaderName(0)
             : util.path + "/data/sprite_frag.spv";
-        sprite = createSprite(camera_width, camera_height, util.path + "/data/sprite_vert.spv", fragPath);
-        sprite->enableExtendedUBO();
-        sprite->rebuildPipeline();
-        resizeWindow(camera_width, camera_height);
+        if(cap.createImage(this, camera_width, camera_height, util.path + "/data/sprite_vert.spv", fragPath)) {
+            resizeWindow(camera_width, camera_height);
+        }
         startTime = lastTime = SDL_GetTicks();
         frameCount = 0;
     }
@@ -143,11 +142,10 @@ public:
             return;
         }
         cv::Mat frame;
-        if(!cap.read(frame)) {
-            std::cout << "acvk: video loop\n";
+        if(!cap.read()) {
             if(!filename.empty()) {
                 cap.set(cv::CAP_PROP_POS_FRAMES, 0);
-                if(!cap.read(frame)) {
+                if(!cap.read()) {
                     quit();
                     return;
                 }
@@ -171,10 +169,7 @@ public:
         sprite->setUniform0(1.0f, 1.0f, 0.0f, 0.0f);  // amp=1, uamp=1
         sprite->setUniform1(iTimeDelta, 0.0f, 0.0f, iFrameRate);
         sprite->setUniform2(static_cast<float>(frameCount), 0.0f, 0.0f, 0.0f);
-        cv::Mat rgba;
-        cv::cvtColor(frame, rgba, cv::COLOR_BGR2RGBA);
-        sprite->updateTexture(rgba.data, rgba.cols, rgba.rows, rgba.step);
-        sprite->drawSpriteRect(0, 0, getWidth(), getHeight());
+        cap.getSprite()->drawSpriteRect(0, 0, getWidth(), getHeight());
         if(library.size() > 0)
             printText("Shader: " + library.getShaderName(shaderIndex), 15, 15, {255, 255, 255, 255});
     }
@@ -199,7 +194,7 @@ private:
     ShaderLibrary library;
     size_t camera_width = 0;
     size_t camera_height = 0;
-    cv::VideoCapture cap;
+    mx::MXCapture cap;
     std::string filename;
     std::string shader_path;
     int shaderIndex = 0;

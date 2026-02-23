@@ -16,7 +16,6 @@ else()
 endif()
 
 find_package(SDL2 REQUIRED)
-find_package(SDL2_ttf REQUIRED)
 
 target_include_directories(mx PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
@@ -122,6 +121,36 @@ if(VULKAN OR MOLTEN)
 
     install(FILES vk.hpp vk_model.hpp vk_text.hpp vk_sprite.hpp DESTINATION ${INSTALL_INCLUDE_DIR})
     install(FILES include/volk/volk.h DESTINATION ${INSTALL_INCLUDE_DIR}/volk)
+endif()
+
+if(VULKAN AND CV)
+
+find_package(OpenCV REQUIRED)
+add_library(mxvk_cv SHARED vk_cv.cpp)
+add_library(libmx2::mxvk_cv ALIAS mxvk_cv)
+
+target_include_directories(mxvk_cv PRIVATE
+    ${OpenCV_INCLUDE_DIRS}
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/volk>
+    $<INSTALL_INTERFACE:${INSTALL_INCLUDE_DIR}>
+    $<INSTALL_INTERFACE:${INSTALL_INCLUDE_DIR}/volk>
+    ${SDL2_INCLUDE_DIRS}
+    ${SDL2_TTF_INCLUDE_DIRS}
+    ${VK_INCLUDE}
+)
+target_link_libraries(mxvk_cv ${OpenCV_LIBS})
+install(TARGETS mxvk_cv
+    EXPORT libmx2Targets
+    LIBRARY DESTINATION ${INSTALL_LIB_DIR}
+    INCLUDES DESTINATION ${INSTALL_INCLUDE_DIR}
+)
+message(STATUS "Installing vk_cv.hpp to: ${CMAKE_INSTALL_PREFIX}/${INSTALL_INCLUDE_DIR}")    
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/vk_cv.hpp")
+        message(FATAL_ERROR "Could not find vk_cv.hpp in ${CMAKE_CURRENT_SOURCE_DIR}")
+endif()
+install(FILES vk_cv.hpp DESTINATION ${INSTALL_INCLUDE_DIR})
 endif()
 
 # ─── Export / Install ─────────────────────────────────────────────────────────
