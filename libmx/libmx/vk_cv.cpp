@@ -1,4 +1,5 @@
 #include"vk_cv.hpp"
+#include<filesystem>
 
 namespace mx {
 
@@ -9,7 +10,6 @@ namespace mx {
     bool MXCapture::open(int id, int mode) {
         if(mode == 0)
             mode = cv::CAP_V4L2;
-
         return cap.open(id, mode);
     }
     
@@ -22,8 +22,10 @@ namespace mx {
         if(sprite) {
             sprite->enableExtendedUBO();
             sprite->rebuildPipeline();
+            std::cout << ">> MXCapture - CreateSprite for - [OK]\n";
             return true;
         }
+        std::cout << ">> MXCapture = CreateSprite for MXCapture failed.\n";
         return false;
     }
 
@@ -31,8 +33,10 @@ namespace mx {
         if(sprite) {
             sprite->createEmptySprite(width, height,vert, frag);
             sprite->enableExtendedUBO();
+            std::cout << ">> MXCapture shader reloaded \n   Vertex: [" << std::filesystem::path(vert).filename().string() << "] - Fragment: [" << std::filesystem::path(frag).filename().string() << "] \n";
             return true;
         }
+        std::cout << ">> MXCapture failure to reload shader\n";
         return false;
     }
 
@@ -42,7 +46,7 @@ namespace mx {
         }
         cv::Mat rgba;
         cv::cvtColor(frame, rgba, cv::COLOR_BGR2RGBA);
-        sprite->updateTexture(rgba.ptr(), rgba.rows, rgba.cols, rgba.step);
+        sprite->updateTexture(rgba.ptr(), rgba.cols, rgba.rows, rgba.step);
         return true;
     }
 

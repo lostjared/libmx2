@@ -89,13 +89,12 @@ public:
     }
 
     void swichShader(size_t index) {
-        if(!sprite) return;
         shaderIndex = static_cast<int>(index);
         std::string fragPath = shader_path + "/" + library.getShaderName(shaderIndex);
         vkDeviceWaitIdle(device);
         if(!cap.reload(camera_width, camera_height, util.path + "/data/sprite_vert.spv", fragPath)) {
             throw mx::Exception("Error reloading shader: " + fragPath);
-        }
+        } 
         startTime = lastTime = SDL_GetTicks();
         frameCount = 0;
     }
@@ -132,15 +131,14 @@ public:
             : util.path + "/data/sprite_frag.spv";
         if(cap.createImage(this, camera_width, camera_height, util.path + "/data/sprite_vert.spv", fragPath)) {
             resizeWindow(camera_width, camera_height);
+        } else {
+            throw mx::Exception("Could not create MXCapture image");
         }
         startTime = lastTime = SDL_GetTicks();
         frameCount = 0;
     }
 
     void proc() override {
-        if (!sprite) {
-            return;
-        }
         cv::Mat frame;
         if(!cap.read()) {
             if(!filename.empty()) {
@@ -164,12 +162,13 @@ public:
         int mx = 0, my = 0;
         Uint32 buttons = SDL_GetMouseState(&mx, &my);
         float mousePressed = (buttons & SDL_BUTTON_LMASK) ? 1.0f : 0.0f;
-        sprite->setShaderParams(1.0f, 1.0f, 1.0f, iTime);
-        sprite->setMouseState(static_cast<float>(mx), static_cast<float>(my), mousePressed, 0.0f);
-        sprite->setUniform0(1.0f, 1.0f, 0.0f, 0.0f);  // amp=1, uamp=1
-        sprite->setUniform1(iTimeDelta, 0.0f, 0.0f, iFrameRate);
-        sprite->setUniform2(static_cast<float>(frameCount), 0.0f, 0.0f, 0.0f);
-        cap.getSprite()->drawSpriteRect(0, 0, getWidth(), getHeight());
+        cap.getSprite()->setShaderParams(1.0f, 1.0f, 1.0f, iTime);
+        cap.getSprite()->setMouseState(static_cast<float>(mx), static_cast<float>(my), mousePressed, 0.0f);
+        cap.getSprite()->setUniform0(1.0f, 1.0f, 0.0f, 0.0f);  // amp=1, uamp=1
+        cap.getSprite()->setUniform1(iTimeDelta, 0.0f, 0.0f, iFrameRate);
+        cap.getSprite()->setUniform2(static_cast<float>(frameCount), 0.0f, 0.0f, 0.0f);
+        cap.draw(0, 0, getWidth(), getHeight());
+        
         if(library.size() > 0)
             printText("Shader: " + library.getShaderName(shaderIndex), 15, 15, {255, 255, 255, 255});
     }
@@ -190,7 +189,6 @@ public:
     }
 
 private:
-    mx::VKSprite* sprite = nullptr;
     ShaderLibrary library;
     size_t camera_width = 0;
     size_t camera_height = 0;
