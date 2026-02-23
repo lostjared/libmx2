@@ -10,7 +10,7 @@ LIBMX_LIB = $(LIBS_PATH)/mx2/lib/libmx.a
 PRELOAD = --preload-file data
 SOURCES = room.cpp
 OBJECTS = $(SOURCES:.cpp=.o)
-OUTPUT = Room.html
+OUTPUT = Room.js
 
 .PHONY: all clean install
 

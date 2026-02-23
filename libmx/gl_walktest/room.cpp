@@ -42,8 +42,7 @@ public:
     float getWallThickness() const { return wallThickness_; }
     void load(gl::GLWindow *win) override {
 #ifndef __EMSCRIPTEN__
-        const char *vertexShader = R"(
-            #version 330 core
+        const char *vertexShader = R"(#version 330 core
             layout(location = 0) in vec3 aPos;
             layout(location = 1) in vec2 aTexCoord;
             layout(location = 2) in vec3 aNormal;
@@ -60,8 +59,7 @@ public:
                 TexCoord = aTexCoord;
             }
         )";
-        const char *fragmentShader = R"(
-            #version 330 core
+        const char *fragmentShader = R"(#version 330 core
             in vec2 TexCoord;
             out vec4 color;
             uniform sampler2D wallTexture;
@@ -70,8 +68,7 @@ public:
             }
         )";
 #else
-        const char *vertexShader = R"(
-            #version 300 es
+        const char *vertexShader = R"(#version 300 es
             precision highp float;
             layout(location = 0) in vec3 aPos;
             layout(location = 1) in vec2 aTexCoord;
@@ -89,8 +86,7 @@ public:
                 TexCoord = aTexCoord;
             }
         )";
-        const char *fragmentShader = R"(
-            #version 300 es
+        const char *fragmentShader = R"(#version 300 es
             precision highp float;
             in vec2 TexCoord;
             out vec4 color;
@@ -668,8 +664,7 @@ public:
     }
     void load(gl::GLWindow *win) {
 #ifndef __EMSCRIPTEN__
-        const char *vertexShader = R"(
-            #version 330 core
+        const char *vertexShader = R"(#version 330 core
             layout(location = 0) in vec3 aPos;
             layout(location = 1) in vec4 aColor;
             layout(location = 2) in float aSize;
@@ -682,8 +677,7 @@ public:
                 particleColor = aColor;
             }
         )";
-        const char *fragmentShader = R"(
-            #version 330 core
+        const char *fragmentShader = R"(#version 330 core
             in vec4 particleColor;
             out vec4 FragColor;
             void main() {
@@ -1998,7 +1992,7 @@ private:
 };
 class MainWindow : public gl::GLWindow {
 public:
-    MainWindow(std::string path, int tw, int th) : gl::GLWindow("Room", tw, th, true) {
+    MainWindow(std::string path, int tw, int th) : gl::GLWindow("FPS Maze Room - OpenGL ES3/WebGL 2.0", tw, th, true) {
         setPath(path);
         setObject(new Game());
         object->load(this);
