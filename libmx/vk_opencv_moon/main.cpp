@@ -1,16 +1,16 @@
-#include "vk.hpp"
-#include "vk_model.hpp"
-#include "SDL.h"
-#include "argz.hpp"
-#include<opencv2/opencv.hpp>
+#include"vk.hpp"
+#include"vk_model.hpp"
+#include"vk_cv.hpp"
+#include"SDL.h"
+#include"argz.hpp"
 #include<glm/glm.hpp>
 #include<glm/gtc/matrix_transform.hpp>
-#include "loadpng.hpp"
-#include <random>
-#include <cmath>
-#include <string>
-#include <fstream>
-#include <filesystem>
+#include"loadpng.hpp"
+#include<random>
+#include<cmath>
+#include<string>
+#include<fstream>
+#include<filesystem>
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -511,7 +511,7 @@ public:
 
     void openCamera(int index, int width, int height) {
         cap.open(index);
-        if(!cap.isOpened()) {
+        if(!cap.is_open()) {
             throw mx::Exception("Error could not open camera at index: " + std::to_string(index));
         }
         cap.set(cv::CAP_PROP_FRAME_WIDTH, width);
@@ -1423,7 +1423,7 @@ public:
     }
 
 private:
-    cv::VideoCapture cap;
+    mx::MXCapture cap;
     std::unique_ptr<mx::MXModel> model;
     int camera_width = 0;
     int camera_height = 0;

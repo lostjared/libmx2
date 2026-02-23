@@ -40,6 +40,10 @@ namespace mx {
         return false;
     }
 
+    bool MXCapture::read(cv::Mat &frame) {
+        return cap.read(frame);
+    }
+
     bool MXCapture::read() {
         if(!cap.read(frame)) {
             return false;

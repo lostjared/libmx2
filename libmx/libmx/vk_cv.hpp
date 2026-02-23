@@ -27,6 +27,7 @@ namespace mx {
         void draw(int x, int y);
         bool reload(size_t width, size_t height, const std::string &vert, const std::string &frag);
         bool read();
+        bool read(cv::Mat &frame);
         void set(unsigned int option, double value);
         double get(unsigned int option);
 
