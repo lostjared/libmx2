@@ -1,4 +1,5 @@
-#include "vk_model.hpp"
+#include"vk_model.hpp"
+#include<filesystem>
 
 namespace mx {
 
@@ -168,7 +169,7 @@ namespace mx {
 
         if (!fileIndices.empty()) {
             indices_ = std::move(fileIndices);
-            std::cout << ">> MXModel: loaded " << vcount << " verts, " << indices_.size() << " indices from file\n";
+            std::cout << ">> MXModel: " << vcount << " verts, " << indices_.size() << " indices from file\n";
         } else {
             indices_.clear();
             indices_.reserve(vcount);
@@ -176,6 +177,7 @@ namespace mx {
                 indices_.push_back(i);
             compressIndices();
         }
+        std::cout << ">> MXModel::load: " << std::filesystem::path(path).filename().string() << " - [OK]\n";
     }
 
     void MXModel::upload(VkDevice device, VkPhysicalDevice physicalDevice,
