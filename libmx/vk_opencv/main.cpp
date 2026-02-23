@@ -1,7 +1,7 @@
-#include "vk.hpp"
-#include "SDL.h"
-#include "argz.hpp"
-#include<opencv2/opencv.hpp>
+#include"vk.hpp"
+#include"SDL.h"
+#include"argz.hpp"
+#include"vk_cv.hpp"
 
 
 class ExampleWindow : public mx::VKWindow {
@@ -16,7 +16,7 @@ public:
 
     void openCamera(int index, int width, int height) {
         cap.open(index);
-        if(!cap.isOpened()) {
+        if(!cap.is_open()) {
             throw mx::Exception("Error could not open camera at index: " + std::to_string(index));
         }
         cap.set(cv::CAP_PROP_FRAME_WIDTH, width);
@@ -24,34 +24,28 @@ public:
         camera_width = static_cast<int>(cap.get(cv::CAP_PROP_FRAME_WIDTH));
         camera_height = static_cast<int>(cap.get(cv::CAP_PROP_FRAME_HEIGHT));
         resizeWindow(camera_width, camera_height);
-        sprite = createSprite(camera_width, camera_height, util.path + "/data/sprite_vert.spv", util.path + "/data/sprite_frag.spv");
+        if(!cap.createImage(this, camera_width, camera_height, util.path + "/data/sprite_vert.spv", util.path + "/data/sprite_frag.spv")) {
+            throw mx::Exception("Error creating MXCapture image");
+        }
     }
     
     void openFile(const std::string &filename) {
         cap.open(filename);
-        if(!cap.isOpened()) {
+        if(!cap.is_open()) {
             throw mx::Exception("Error could not open file: " + filename);
         }
         camera_width = static_cast<int>(cap.get(cv::CAP_PROP_FRAME_WIDTH));
         camera_height = static_cast<int>(cap.get(cv::CAP_PROP_FRAME_HEIGHT));
         resizeWindow(camera_width, camera_height);
-        sprite = createSprite(camera_width, camera_height, util.path + "/data/sprite_vert.spv", util.path + "/data/sprite_frag.spv");
+        cap.createImage(this, camera_width, camera_height, util.path + "/data/sprite_vert.spv", util.path + "/data/sprite_frag.spv");
     }
     
     void proc() override {
-        if (!sprite) {
-            return;
-        }
-        cv::Mat frame;
-        if(!cap.read(frame)) {
+        if(!cap.read()) {
             quit();
             return;
         }
-
-        cv::Mat rgba;
-        cv::cvtColor(frame, rgba, cv::COLOR_BGR2RGBA);
-        sprite->updateTexture(rgba.data, rgba.cols, rgba.rows, rgba.step);
-        sprite->drawSpriteRect(0, 0, getWidth(), getHeight());
+        cap.draw(0, 0, getWidth(), getHeight());
         printText("Hello World", 15, 15, {255, 255, 255, 255});
     }
     void event(SDL_Event& e) override {
@@ -61,8 +55,7 @@ public:
     }
 
 private:
-    mx::VKSprite* sprite = nullptr;
-    cv::VideoCapture cap;
+    mx::MXCapture cap;
     int camera_width = 0;
     int camera_height = 0;
 };
@@ -72,7 +65,6 @@ int main(int argc, char **argv) {
     try {
         ExampleWindow window(args.path, args.width, args.height, args.fullscreen);
         window.initVulkan();
-        //window.openCamera(0, args.width, args.height);
         window.openFile(args.filename);
         window.loop();
         window.cleanup();
