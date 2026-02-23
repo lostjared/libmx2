@@ -40,7 +40,7 @@ public:
     glm::vec3 startPosition = glm::vec3(0.0f);
     glm::vec3 getStartPosition() const { return startPosition; }
     float getWallThickness() const { return wallThickness_; }
-    void load(gl::GLWindow *win) {
+    void load(gl::GLWindow *win) override {
 #ifndef __EMSCRIPTEN__
         const char *vertexShader = R"(
             #version 330 core
@@ -369,7 +369,7 @@ public:
         if (vbo != 0) glDeleteBuffers(1, &vbo);
         if (ebo != 0) glDeleteBuffers(1, &ebo);
     }
-    void load(gl::GLWindow *win) {}
+    void load(gl::GLWindow *win) override {}
     void load(gl::GLWindow *win, const Wall &mazeWalls) {
 #ifndef __EMSCRIPTEN__
         const char *vertexShader = R"(
