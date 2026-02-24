@@ -123,6 +123,35 @@ if(VULKAN OR MOLTEN)
     install(FILES include/volk/volk.h DESTINATION ${INSTALL_INCLUDE_DIR}/volk)
 endif()
 
+if(OPENGL AND CV)
+
+find_package(OpenCV REQUIRED)
+add_library(mxgl_cv SHARED gl_cv.cpp)
+add_library(libmx2::mxgl_cv ALIAS mxgl_cv)
+
+target_include_directories(mxgl_cv PRIVATE
+    ${OpenCV_INCLUDE_DIRS}
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:${INSTALL_INCLUDE_DIR}>
+    ${SDL2_INCLUDE_DIRS}
+    ${SDL2_TTF_INCLUDE_DIRS}
+    ${GL_INCLUDE}
+    )
+    target_compile_definitions(mxgl_cv PUBLIC WITH_GL)
+    target_link_libraries(mxgl_cv ${OpenCV_LIBS})
+    install(TARGETS mxgl_cv
+        EXPORT libmx2Targets
+        LIBRARY DESTINATION ${INSTALL_LIB_DIR}
+        INCLUDES DESTINATION ${INSTALL_INCLUDE_DIR}
+    )
+    message(STATUS "Installing gl_cv.hpp to: ${CMAKE_INSTALL_PREFIX}/${INSTALL_INCLUDE_DIR}")    
+    if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/gl_cv.hpp")
+            message(FATAL_ERROR "Could not find gl_cv.hpp in ${CMAKE_CURRENT_SOURCE_DIR}")
+    endif()
+    install(FILES gl_cv.hpp DESTINATION ${INSTALL_INCLUDE_DIR})
+endif()
+
 if(VULKAN AND CV)
 
 find_package(OpenCV REQUIRED)
@@ -152,6 +181,7 @@ if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/vk_cv.hpp")
 endif()
 install(FILES vk_cv.hpp DESTINATION ${INSTALL_INCLUDE_DIR})
 endif()
+
 
 # ─── Export / Install ─────────────────────────────────────────────────────────
 install(EXPORT libmx2Targets

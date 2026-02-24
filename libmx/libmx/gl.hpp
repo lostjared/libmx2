@@ -107,15 +107,19 @@ namespace gl {
         void loadTexture(ShaderProgram *shader, const std::string &tex, float x, float  y, int textWidth, int textHeight);
         void loadTexture(ShaderProgram *shader, const std::string &tex, float x, float y);
         void draw();
+        void draw(int x, int y);
+        void draw(int x, int y, int w, int h);
         void draw(GLuint texture_id, float x, float y, int w, int h);
         void updateTexture(SDL_Surface *surf);
+        void updateTexture(void *buffer, int width, int height);
+        int width = 0, height = 0;
     private:
         ShaderProgram *shader;
         GLuint texture = 0;
         GLuint VBO = 0, VAO = 0;
         std::vector<float> vertices;
         float screenWidth = 0.0f, screenHeight = 0.0f;
-        int width = 0, height = 0;
+        int texWidth = 0, texHeight = 0;
         std::string textureName;
     };
 
@@ -198,6 +202,7 @@ namespace gl {
     GLuint loadTexture(const std::string &filename, int &w, int &h);
     void updateTexture(GLuint texture, SDL_Surface *surface, bool flip);    
     GLuint createTexture(SDL_Surface *surface, bool flip);
+    GLuint createTexture(void *buffer, int width, int height);
     SDL_Surface *createSurface(int w, int h);    
 }
 #endif

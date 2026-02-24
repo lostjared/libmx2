@@ -54,9 +54,8 @@ namespace gl {
         if (webglContext > 0) {
             emscripten_webgl_make_context_current(webglContext);
             glViewport(0, 0, w, h);
-            if (object) {
+            if (object) 
                 object->resize(this, w, h);
-            }
         }
     }
 #endif
@@ -301,9 +300,6 @@ namespace gl {
     }
 
     void GLWindow::loop() {
-        if(!object) {
-            throw mx::Exception("Requires you set an Object");
-        }
         active = true;
         while(active) {
             proc();
@@ -313,9 +309,6 @@ namespace gl {
     void GLWindow::delay() {}
 
     void GLWindow::proc() {
-        if(!object) {
-            throw mx::Exception("Requires an active Object");
-        }
         while(SDL_PollEvent(&e)) {
             if(e.type == SDL_USEREVENT) {
                 console.refresh();
@@ -343,7 +336,8 @@ namespace gl {
                 } else {
                     event(e);
                 }
-                object->event(this, e);
+                if(object)
+                    object->event(this, e);
             }
         }
         draw();
@@ -710,6 +704,23 @@ namespace gl {
         SDL_FreeSurface(converted);
         return texture;
     }
+
+    GLuint createTexture(void *buffer, int width, int height) {
+        if (!buffer) {
+            throw mx::Exception("buffer is null: Unable to load PNG file.");
+        }
+        GLuint texture = 0;
+        glGenTextures(1, &texture);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); 
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, buffer);    
+        glGenerateMipmap(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        return texture;
+    }
     
     void updateTexture(GLuint texture, SDL_Surface *surface, bool flip) {
         if (!surface || !surface->pixels) {
@@ -963,6 +974,8 @@ namespace gl {
         }
         this->shader = program;
         this->texture = text;
+        this->width = textWidth;
+        this->height = textHeight;
         float ndcX = (x / screenWidth) * 2.0f - 1.0f;       
         float ndcY = 1.0f - (y / screenHeight) * 2.0f;      
         float w = (float)textWidth / screenWidth * 2.0f;    
@@ -1002,6 +1015,8 @@ namespace gl {
         if (!texture) {
             throw mx::Exception("Failed to load texture: " + tex);
         }
+        this->width = textWidth;
+        this->height = textHeight;
         float ndcX = (x / screenWidth) * 2.0f - 1.0f;       
         float ndcY = 1.0f - (y / screenHeight) * 2.0f;      
         float w = (float)textWidth / screenWidth * 2.0f;    
@@ -1036,6 +1051,8 @@ namespace gl {
         texture = gl::loadTexture(tex, width, height); 
         int textWidth = width;
         int textHeight = height;
+        this->width = textWidth;
+        this->height = textHeight;
 
         if (!texture) {
             throw mx::Exception("Failed to load texture: " + tex);
@@ -1090,7 +1107,25 @@ namespace gl {
         glBindTexture(GL_TEXTURE_2D, 0);
     }
 
+    void GLSprite::updateTexture(void *buffer, int width, int height) {
+        if(this->texture == 0) return;
+        glBindTexture(GL_TEXTURE_2D, this->texture);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        if (width != texWidth || height != texHeight) {
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
+            texWidth = width;
+            texHeight = height;
+        } else {
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
+        }
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
+
     void GLSprite::draw() {
+        if (!shader || VAO == 0 || texture == 0) return;
         glDisable(GL_DEPTH_TEST);
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -1136,5 +1171,48 @@ namespace gl {
         glDisable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
     }
+
+    void GLSprite::draw(int x, int y) {
+        if (this->texture == 0) return;
+        draw(this->texture, (float)x, (float)y, this->width, this->height);
+    }
+
+    void GLSprite::draw(int x, int y, int w, int h) {
+        if (this->texture == 0 || VAO == 0 || VBO == 0) return;
+        if (screenWidth <= 0 || screenHeight <= 0) return;
+        this->width = w;
+        this->height = h;
+        float fx = static_cast<float>(x);
+        float fy = static_cast<float>(y);
+        float fw = static_cast<float>(w);
+        float fh = static_cast<float>(h);
+        float ndcX = (fx / screenWidth) * 2.0f - 1.0f;
+        float ndcY = 1.0f - (fy / screenHeight) * 2.0f;
+        float ndcW = (fw / screenWidth) * 2.0f;
+        float ndcH = (fh / screenHeight) * 2.0f;
+        vertices = {
+            ndcX,         ndcY,          0.0f, 0.0f, 1.0f,
+            ndcX + ndcW,  ndcY,          0.0f, 1.0f, 1.0f,
+            ndcX,         ndcY - ndcH,   0.0f, 0.0f, 0.0f,
+            ndcX + ndcW,  ndcY - ndcH,   0.0f, 1.0f, 0.0f
+        };
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, vertices.size() * sizeof(float), vertices.data());
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        // Draw directly — no double buffer update
+        glDisable(GL_DEPTH_TEST);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        this->shader->useProgram();
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, this->texture);
+        glBindVertexArray(VAO);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        glBindVertexArray(0);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glDisable(GL_BLEND);
+        glEnable(GL_DEPTH_TEST);
+    }
+        
 }
 #endif

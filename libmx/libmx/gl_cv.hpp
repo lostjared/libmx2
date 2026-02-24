@@ -1,9 +1,9 @@
-#ifndef __VK_OPENCV__H_
-#define __VK_OPENCV__H_
+#ifndef __GL_OPENCV__H_
+#define __GL_OPENCV__H_
 
 #include<opencv2/opencv.hpp>
-#include"vk.hpp"
-#include"vk_sprite.hpp"
+#include"gl.hpp"
+#include<memory>
 
 namespace mx {
     class MXCapture {
@@ -18,17 +18,19 @@ namespace mx {
         bool open(int id, int mode=0);
         void close();
         bool is_open() const { return cap.isOpened(); }
-        bool createImage(VKWindow *window, size_t width, size_t height, const std::string &vert, const std::string &frag);
-        VKSprite *getSprite() { return sprite; }
+        bool createImage(gl::GLWindow *window, size_t width, size_t height, const std::string &vert, const std::string &frag);
+        gl::GLSprite *getSprite() { return &sprite; }
         void draw(int x, int y, int width, int height);
         void draw(int x, int y);
-        bool reload(size_t width, size_t height, const std::string &vert, const std::string &frag);
+        bool reload(const std::string &vert, const std::string &frag);
         bool read();
         bool read(cv::Mat &frame);
         void set(unsigned int option, double value);
         double get(unsigned int option);
     private:
-        VKSprite *sprite = nullptr;
+        gl::GLSprite sprite;
+        std::unique_ptr<gl::ShaderProgram> shader;
+        gl::GLWindow *window = nullptr;
         cv::VideoCapture cap;
         cv::Mat frame;
     };
