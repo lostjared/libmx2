@@ -33,6 +33,7 @@ namespace mx {
         gl::GLWindow *window = nullptr;
         cv::VideoCapture cap;
         cv::Mat frame;
+        
     };
 }
 
