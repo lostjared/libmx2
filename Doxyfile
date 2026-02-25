@@ -1,0 +1,125 @@
+# Doxyfile for libmx2
+# Generated for Doxygen 1.16.x
+# Run: doxygen Doxyfile  (from the libmx2/ directory)
+# Output will be written to docs/html/index.html
+
+#---------------------------------------------------------------------------
+# Project metadata
+#---------------------------------------------------------------------------
+
+PROJECT_NAME           = "libmx2"
+PROJECT_NUMBER         = "2.0"
+PROJECT_BRIEF          = "C++20 multimedia and game-engine library (SDL2 / OpenGL / Vulkan)"
+PROJECT_LOGO           =
+
+OUTPUT_DIRECTORY       = docs
+
+#---------------------------------------------------------------------------
+# Input files
+#---------------------------------------------------------------------------
+
+INPUT                  = mainpage.dox libmx/libmx
+FILE_PATTERNS          = *.hpp *.cpp
+RECURSIVE              = YES
+
+EXCLUDE                =
+EXCLUDE_SYMLINKS       = NO
+EXCLUDE_PATTERNS       =
+
+# Include protected/private members in the output
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE        = YES
+EXTRACT_STATIC         = YES
+EXTRACT_LOCAL_CLASSES  = YES
+
+#---------------------------------------------------------------------------
+# Build options
+#---------------------------------------------------------------------------
+
+FULL_PATH_NAMES        = NO
+# Treat "/** ... */" blocks before the first sentence as the brief description
+JAVADOC_AUTOBRIEF      = YES
+
+# Show template parameter documentation
+BUILTIN_STL_SUPPORT    = YES
+CPP_CLI_SUPPORT        = NO
+EXTENSION_MAPPING      =
+
+# Enable concept documentation (C++20) and all WITH_* feature guards so that
+# Doxygen sees the classes inside #ifdef WITH_GL, WITH_MIXER, etc.
+PREDEFINED             = __cplusplus=202002L \
+                         WITH_GL=1 \
+                         WITH_MIXER=1 \
+                         WITH_JPEG=1 \
+                         WITH_MOLTEN=1
+
+# Warns about missing @param / @return
+WARN_IF_UNDOCUMENTED   = NO
+WARN_IF_DOC_ERROR      = YES
+WARN_NO_PARAMDOC       = NO
+
+QUIET                  = NO
+WARNINGS               = YES
+
+#---------------------------------------------------------------------------
+# HTML output
+#---------------------------------------------------------------------------
+
+GENERATE_HTML          = YES
+HTML_OUTPUT            = html
+HTML_FILE_EXTENSION    = .html
+HTML_COLORSTYLE        = DARK
+GENERATE_TREEVIEW      = YES
+TREEVIEW_WIDTH         = 250
+ENUM_VALUES_PER_LINE   = 4
+
+#---------------------------------------------------------------------------
+# Other output formats (disabled by default)
+#---------------------------------------------------------------------------
+
+GENERATE_LATEX         = NO
+GENERATE_MAN           = NO
+GENERATE_RTF           = NO
+GENERATE_XML           = NO
+
+#---------------------------------------------------------------------------
+# Source browsing
+#---------------------------------------------------------------------------
+
+SOURCE_BROWSER         = YES
+INLINE_SOURCES         = NO
+STRIP_CODE_COMMENTS    = NO
+REFERENCES_RELATION    = YES
+REFERENCED_BY_RELATION = YES
+
+#---------------------------------------------------------------------------
+# Graphviz / dot (installed at /usr/sbin/dot)
+#---------------------------------------------------------------------------
+
+HAVE_DOT               = YES
+DOT_PATH               = /usr/sbin
+CLASS_GRAPH            = YES
+COLLABORATION_GRAPH    = YES
+INCLUDE_GRAPH          = YES
+INCLUDED_BY_GRAPH      = YES
+CALL_GRAPH             = NO
+CALLER_GRAPH           = NO
+GRAPHICAL_HIERARCHY    = YES
+DOT_IMAGE_FORMAT       = svg
+INTERACTIVE_SVG        = YES
+MAX_DOT_GRAPH_DEPTH    = 3
+
+#---------------------------------------------------------------------------
+# Alphabetical index
+#---------------------------------------------------------------------------
+
+ALPHABETICAL_INDEX     = YES
+
+#---------------------------------------------------------------------------
+# Preprocessing
+#---------------------------------------------------------------------------
+
+ENABLE_PREPROCESSING   = YES
+MACRO_EXPANSION        = YES
+EXPAND_ONLY_PREDEF     = NO
+SEARCH_INCLUDES        = YES
