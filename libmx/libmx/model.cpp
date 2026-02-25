@@ -1,3 +1,7 @@
+/**
+ * @file model.cpp
+ * @brief Implementation of mx::Mesh and mx::Model OpenGL 3-D mesh with CPU deformers.
+ */
 #ifdef __EMSCRIPTEN__
 #include "config.hpp"
 #else

@@ -1,3 +1,7 @@
+/**
+ * @file vk_cv.cpp
+ * @brief Implementation of mx::MXCapture (Vulkan + OpenCV variant).
+ */
 #include"vk_cv.hpp"
 #include<filesystem>
 

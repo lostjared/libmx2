@@ -1,3 +1,7 @@
+/**
+ * @file tee_stream.cpp
+ * @brief Implementation of mx::TeeBuf, mx::TeeStream, and the redirect() helper.
+ */
 #include"tee_stream.hpp"
 #include<filesystem>
 

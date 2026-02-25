@@ -1,3 +1,7 @@
+/**
+ * @file input.cpp
+ * @brief Implementation of mx::Input game-controller helper.
+ */
 #include"input.hpp"
 
 namespace mx {

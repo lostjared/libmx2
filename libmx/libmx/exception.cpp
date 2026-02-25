@@ -1,3 +1,7 @@
+/**
+ * @file exception.cpp
+ * @brief Implementation of mx::Exception.
+ */
 #include"exception.hpp"
 
 namespace mx{

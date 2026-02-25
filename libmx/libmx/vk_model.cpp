@@ -1,3 +1,7 @@
+/**
+ * @file vk_model.cpp
+ * @brief Implementation of mx::MXModel Vulkan OBJ mesh loader.
+ */
 #include"vk_model.hpp"
 #include<filesystem>
 

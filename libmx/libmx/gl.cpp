@@ -1,3 +1,7 @@
+/**
+ * @file gl.cpp
+ * @brief Implementation of gl::ShaderProgram, gl::GLText, gl::GLSprite, gl::GLWindow, and gl::GLObject.
+ */
 #ifdef __EMSCRIPTEN__
 #include"config.hpp"
 #else

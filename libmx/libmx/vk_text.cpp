@@ -1,3 +1,7 @@
+/**
+ * @file vk_text.cpp
+ * @brief Implementation of mx::VKText Vulkan SDL_ttf text renderer.
+ */
 #include"vk_text.hpp"
 
 namespace mx {

@@ -1,3 +1,7 @@
+/**
+ * @file console.cpp
+ * @brief Implementation of console::Console, console::GLConsole, and console::ConsoleChars.
+ */
 #include"console.hpp"
 #ifdef WITH_GL
 #include"gl.hpp"

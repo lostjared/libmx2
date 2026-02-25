@@ -1,3 +1,7 @@
+/**
+ * @file sound.cpp
+ * @brief Implementation of mx::Mixer SDL_mixer audio manager.
+ */
 #ifdef __EMSCRIPTEN__
 #include"config.hpp"
 #else

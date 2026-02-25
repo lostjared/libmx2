@@ -1,3 +1,7 @@
+/**
+ * @file util.cpp
+ * @brief Implementation of mx::mxUtil and free utility functions (readFile, compress, random).
+ */
 #include"util.hpp"
 #include"loadpng.hpp"
 #include<sstream>

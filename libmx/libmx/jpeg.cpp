@@ -1,3 +1,7 @@
+/**
+ * @file jpeg.cpp
+ * @brief Implementation of jpeg::LoadJPEG and jpeg::SaveJPEG utilities.
+ */
 #ifdef __EMSCRIPTEN__
 #include"config.hpp"
 #else

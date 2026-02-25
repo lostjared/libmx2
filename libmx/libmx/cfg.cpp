@@ -1,3 +1,7 @@
+/**
+ * @file cfg.cpp
+ * @brief Implementation of INI-style config file reader/writer (mx::ConfigFile).
+ */
 #include"cfg.hpp"
 #include<algorithm>
 #include"mx.hpp"

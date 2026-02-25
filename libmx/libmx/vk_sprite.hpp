@@ -1,3 +1,14 @@
+/**
+ * @file vk_sprite.hpp
+ * @brief Vulkan 2-D sprite renderer with optional custom shaders and instancing.
+ *
+ * VKSprite manages a Vulkan texture, a screen-space quad, and an optional
+ * custom graphics pipeline.  It supports:
+ * - Loading images from PNG files or SDL_Surface objects.
+ * - Drawing at arbitrary positions, scales, and rotations.
+ * - GPU instancing for large batches of identical sprites.
+ * - Extended UBO with mouse state and four custom vec4 uniforms.
+ */
 #ifndef __MXSPRITE__
 #define __MXSPRITE__
 
@@ -32,55 +43,194 @@
 
 namespace mx {
 
+/**
+ * @class VKSprite
+ * @brief Vulkan 2-D sprite with texture, custom shader, and instancing support.
+ *
+ * Allocates and manages all Vulkan resources required to render one sprite
+ * type: image, sampler, descriptor set, vertex/index buffers, and an
+ * optional custom pipeline.  Multiple draw commands are batched into a
+ * queue and submitted together in renderSprites().
+ */
     class VKSprite {
     public:
+        /**
+         * @brief Construct and record Vulkan context handles.
+         * @param device         Logical device.
+         * @param physicalDevice Physical device.
+         * @param graphicsQueue  Graphics queue.
+         * @param commandPool    Command pool for staging operations.
+         */
         VKSprite(VkDevice device, VkPhysicalDevice physicalDevice, VkQueue graphicsQueue,
                  VkCommandPool commandPool);
+
+        /** @brief Destructor — frees all Vulkan resources. */
         ~VKSprite();
 
         VKSprite(const VKSprite&) = delete;
         VKSprite& operator=(const VKSprite&) = delete;
         VKSprite(VKSprite&&) = delete;
         VKSprite& operator=(VKSprite&&) = delete;
-        
+
+        /**
+         * @brief Load sprite texture from a PNG file.
+         * @param pngPath            Path to the PNG file.
+         * @param fragmentShaderPath Optional custom fragment shader (SPIR-V .spv).
+         */
         void loadSprite(const std::string &pngPath, const std::string &fragmentShaderPath = "");
+
+        /**
+         * @brief Load sprite texture from an SDL_Surface.
+         * @param surface            Source surface (not consumed).
+         * @param fragmentShaderPath Optional custom fragment shader.
+         */
         void loadSprite(SDL_Surface* surface, const std::string &fragmentShaderPath = "");
+
+        /**
+         * @brief Create a blank (un-initialised) sprite texture.
+         * @param width              Pixel width.
+         * @param height             Pixel height.
+         * @param vertexShaderPath   Optional vertex shader.
+         * @param fragmentShaderPath Optional fragment shader.
+         */
         void createEmptySprite(int width, int height, const std::string &vertexShaderPath = "", const std::string &fragmentShaderPath = "");
+
+        /**
+         * @brief Queue a draw at the given pixel position.
+         * @param x Destination X.
+         * @param y Destination Y.
+         */
         void drawSprite(int x, int y);
+
+        /**
+         * @brief Queue a scaled draw.
+         * @param x      Destination X.
+         * @param y      Destination Y.
+         * @param scaleX Horizontal scale factor.
+         * @param scaleY Vertical scale factor.
+         */
         void drawSprite(int x, int y, float scaleX, float scaleY);
+
+        /**
+         * @brief Queue a scaled and rotated draw.
+         * @param x        Destination X.
+         * @param y        Destination Y.
+         * @param scaleX   Horizontal scale.
+         * @param scaleY   Vertical scale.
+         * @param rotation Clockwise rotation in degrees.
+         */
         void drawSprite(int x, int y, float scaleX, float scaleY, float rotation);
+
+        /**
+         * @brief Queue a draw into an explicit destination rectangle.
+         * @param x,y,w,h Destination rectangle.
+         */
         void drawSpriteRect(int x, int y, int w, int h);
+
+        /**
+         * @brief Replace the sprite texture from an SDL_Surface.
+         * @param surface New surface (not consumed).
+         */
         void updateTexture(SDL_Surface* surface);
+
+        /**
+         * @brief Replace the sprite texture from a raw pixel buffer.
+         * @param pixels Pointer to RGBA data.
+         * @param width  Buffer width.
+         * @param height Buffer height.
+         * @param pitch  Row stride in bytes (0 = auto).
+         */
         void updateTexture(const void* pixels, int width, int height, int pitch = 0);
+
+        /**
+         * @brief Set up to four custom shader float parameters.
+         * @param p1,p2,p3,p4 Parameter values packed into a vec4.
+         */
         void setShaderParams(float p1 = 0.0f, float p2 = 0.0f, float p3 = 0.0f, float p4 = 0.0f);
+
+        /**
+         * @brief Enable or disable the custom fragment shader effects.
+         * @param enabled @c true to enable effects.
+         */
         void setEffectsEnabled(bool enabled) { effectsEnabled = enabled; }
+
+        /** @return @c true if shader effects are enabled. */
         bool getEffectsEnabled() const { return effectsEnabled; }
+
+        /**
+         * @brief Record all queued draw commands into the given command buffer.
+         * @param cmdBuffer    Active command buffer.
+         * @param pipelineLayout Pipeline layout for push constants/descriptors.
+         * @param screenWidth  Current viewport width.
+         * @param screenHeight Current viewport height.
+         */
         void renderSprites(VkCommandBuffer cmdBuffer, VkPipelineLayout pipelineLayout,
                           uint32_t screenWidth, uint32_t screenHeight);
+
+        /** @brief Discard all pending draw commands without rendering. */
         void clearQueue();
+
+        /** @return Sprite texture width in pixels. */
         int getWidth() const { return spriteWidth; }
+        /** @return Sprite texture height in pixels. */
         int getHeight() const { return spriteHeight; }
+
+        /** @brief Assign an external descriptor-set layout. */
         void setDescriptorSetLayout(VkDescriptorSetLayout layout) { descriptorSetLayout = layout; }
+        /** @brief Assign the render pass used to build the custom pipeline. */
         void setRenderPass(VkRenderPass rp) { renderPass = rp; }
+        /** @brief Override the vertex shader path (used when rebuilding the pipeline). */
         void setVertexShaderPath(const std::string &path) { vertexShaderPath = path; }
+
+        /** @return @c true if a custom pipeline has been built. */
         bool hasOwnPipeline() const { return customPipeline != VK_NULL_HANDLE; }
+        /** @return The custom VkPipeline handle (may be VK_NULL_HANDLE). */
         VkPipeline getPipeline() const { return customPipeline; }
+        /** @return The custom pipeline layout handle. */
         VkPipelineLayout getPipelineLayout() const { return customPipelineLayout; }
-        void rebuildPipeline();  
-        void rebuildInstancedPipeline();  
-        VkSampler spriteSampler = VK_NULL_HANDLE;
+
+        /** @brief Destroy and recreate the custom graphics pipeline. */
+        void rebuildPipeline();
+        /** @brief Destroy and recreate the instanced graphics pipeline. */
+        void rebuildInstancedPipeline();
+
+        VkSampler spriteSampler = VK_NULL_HANDLE; ///< Texture sampler.
+
+        /**
+         * @brief Enable GPU instancing for this sprite type.
+         * @param maxInstances          Maximum simultaneous instances.
+         * @param instanceVertShaderPath Vertex shader supporting instancing.
+         * @param instanceFragShaderPath Fragment shader.
+         */
         void enableInstancing(uint32_t maxInstances,
                               const std::string &instanceVertShaderPath,
                               const std::string &instanceFragShaderPath);
+
+        /** @return @c true if GPU instancing is active. */
         bool isInstancingEnabled() const { return instancingEnabled; }
 
-        // Extended UBO support for shaders needing mouse/u0-u3 uniforms
+        /** @brief Allocate and initialise the extended uniform buffer object. */
         void enableExtendedUBO();
+
+        /** @return @c true if the extended UBO is active. */
         bool isExtendedUBOEnabled() const { return extendedUBOEnabled; }
+
+        /**
+         * @brief Upload mouse state to the extended UBO.
+         * @param mx       Mouse X (normalised or pixels).
+         * @param my       Mouse Y.
+         * @param pressed  Mouse button state.
+         * @param reserved Reserved channel.
+         */
         void setMouseState(float mx, float my, float pressed, float reserved = 0.0f);
+
+        /** @brief Upload user uniform 0 to the extended UBO. @param x,y,z,w Components. */
         void setUniform0(float x, float y, float z, float w);
+        /** @brief Upload user uniform 1 to the extended UBO. @param x,y,z,w Components. */
         void setUniform1(float x, float y, float z, float w);
+        /** @brief Upload user uniform 2 to the extended UBO. @param x,y,z,w Components. */
         void setUniform2(float x, float y, float z, float w);
+        /** @brief Upload user uniform 3 to the extended UBO. @param x,y,z,w Components. */
         void setUniform3(float x, float y, float z, float w);
         
     private:

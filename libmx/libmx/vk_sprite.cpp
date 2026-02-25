@@ -1,3 +1,7 @@
+/**
+ * @file vk_sprite.cpp
+ * @brief Implementation of mx::VKSprite Vulkan 2-D sprite renderer.
+ */
 #include"vk_sprite.hpp"
 #include"loadpng.hpp"
 

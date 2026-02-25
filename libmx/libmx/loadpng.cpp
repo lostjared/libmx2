@@ -1,3 +1,7 @@
+/**
+ * @file loadpng.cpp
+ * @brief Implementation of png::LoadPNG, png::SavePNG, and png::SavePNG_RGBA utilities.
+ */
 #include"loadpng.hpp"
 #include<png.h>
 #include"SDL.h"

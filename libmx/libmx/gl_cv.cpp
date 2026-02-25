@@ -1,3 +1,7 @@
+/**
+ * @file gl_cv.cpp
+ * @brief Implementation of mx::MXCapture (OpenGL + OpenCV variant).
+ */
 #include"config.h"
 #include"gl_cv.hpp"
 #include<filesystem>

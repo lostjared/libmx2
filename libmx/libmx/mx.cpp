@@ -1,3 +1,7 @@
+/**
+ * @file mx.cpp
+ * @brief Implementation of mx::mxWindow main SDL2/OpenGL window class.
+ */
 #include"mx.hpp"
 #ifdef FOR_WASM
 #include<emscripten/emscripten.h>

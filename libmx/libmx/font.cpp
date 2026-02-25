@@ -1,3 +1,7 @@
+/**
+ * @file font.cpp
+ * @brief Implementation of mx::Font and mx::Text SDL_ttf wrappers.
+ */
 #include"font.hpp"
 #include<iostream>
 #include<filesystem>

@@ -1,3 +1,7 @@
+/**
+ * @file vk.cpp
+ * @brief Implementation of mx::VKWindow Vulkan window and Vulkan initialisation helpers.
+ */
 #include"vk.hpp"
 #include"loadpng.hpp"
 

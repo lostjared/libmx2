@@ -1,3 +1,7 @@
+/**
+ * @file texture.cpp
+ * @brief Implementation of mx::Texture SDL_Texture RAII wrapper.
+ */
 #include"mx.hpp"
 #include"texture.hpp"
 #include"loadpng.hpp"

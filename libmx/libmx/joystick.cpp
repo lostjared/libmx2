@@ -1,3 +1,7 @@
+/**
+ * @file joystick.cpp
+ * @brief Implementation of mx::Joystick and mx::Controller SDL joystick wrappers.
+ */
 #include"joystick.hpp"
 #include<optional>
 #include"tee_stream.hpp"

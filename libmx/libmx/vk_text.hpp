@@ -1,3 +1,12 @@
+/**
+ * @file vk_text.hpp
+ * @brief Vulkan SDL_ttf text renderer.
+ *
+ * VKText rasterises text strings into SDL surfaces, uploads them as
+ * Vulkan image textures, and batches the resulting quads for submission
+ * during the render pass.  Each printTextG_Solid() call adds one TextQuad
+ * to the pending queue, which is flushed by renderText().
+ */
 #ifndef __MXTEXT__
 #define __MXTEXT__
 
@@ -29,24 +38,81 @@
 #endif
 
 namespace mx {
+
+/**
+ * @class VKText
+ * @brief Renders SDL_ttf text into Vulkan image textures.
+ *
+ * Loads a TrueType font via SDL_ttf, creates a descriptor pool for per-glyph
+ * textures, and provides a print-then-render workflow:
+ * 1. Call printTextG_Solid() for each string to display.
+ * 2. Call renderText() once during the render pass to draw all queued strings.
+ * 3. Optionally call clearQueue() to discard pending strings.
+ */
       class VKText {
         public:
+        /**
+         * @brief Construct VKText and load the font.
+         * @param device         Logical device.
+         * @param physicalDevice Physical device.
+         * @param graphicsQueue  Graphics queue.
+         * @param commandPool    Command pool for staging.
+         * @param fontPath       Path to the TTF font file.
+         * @param fontSize       Point size.
+         */
         VKText(VkDevice device, VkPhysicalDevice physicalDevice, VkQueue graphicsQueue, 
                VkCommandPool commandPool, const std::string &fontPath, int fontSize = 24);
+
+        /** @brief Destructor -- destroys all Vulkan and SDL_ttf resources. */
         ~VKText();
 
         VKText(const VKText&) = delete;
         VKText& operator=(const VKText&) = delete;
         VKText(VKText&&) = delete;
         VKText& operator=(VKText&&) = delete;
+
+        /**
+         * @brief Queue a text string for solid (opaque) rendering.
+         * @param text String to draw.
+         * @param x    Destination X in pixels.
+         * @param y    Destination Y in pixels.
+         * @param col  Text colour.
+         */
         void printTextG_Solid(const std::string &text, int x, int y, const SDL_Color &col);
+
+        /**
+         * @brief Record all queued text quads into a command buffer.
+         * @param cmdBuffer    Active Vulkan command buffer.
+         * @param pipelineLayout Pipeline layout for push constants.
+         * @param screenWidth  Viewport width.
+         * @param screenHeight Viewport height.
+         */
         void renderText(VkCommandBuffer cmdBuffer, VkPipelineLayout pipelineLayout, 
                        uint32_t screenWidth, uint32_t screenHeight);
+
+        /** @brief Discard all pending text quads without rendering them. */
         void clearQueue();
+
+        /** @brief Assign an external descriptor-set layout. */
         void setDescriptorSetLayout(VkDescriptorSetLayout layout) { descriptorSetLayout = layout; }
+
+        /**
+         * @brief Change the active font.
+         * @param fontPath New font file path.
+         * @param fontSize New point size.
+         */
         void setFont(const std::string &fontPath, int fontSize);
+
+        /**
+         * @brief Measure the pixel dimensions of a string with the current font.
+         * @param text   String to measure.
+         * @param width  Output: pixel width.
+         * @param height Output: pixel height.
+         * @return @c true if measurement succeeded.
+         */
         bool getTextDimensions(const std::string &text, int& width, int& height);
-        VkSampler fontSampler = VK_NULL_HANDLE;
+
+        VkSampler fontSampler = VK_NULL_HANDLE; ///< Sampler used for all text textures.
         private:
         struct TextVertex {
             float pos[2];
