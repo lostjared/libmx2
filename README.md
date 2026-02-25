@@ -13,6 +13,9 @@
 # Tech Specifications
 https://lostsidedead.biz/libmx2/mx.html
 
+# Documentation
+https://lostsidedead.biz/libmx2/docs/
+
 libmx2 is a cross-platform library that facilitates cross-platform SDL2/OpenGL or Vulkan development using C++20.
 It provides a collection of utilities and abstractions to streamline the creation of multimedia applications.
 
