@@ -932,10 +932,6 @@ namespace gl {
         screenHeight = h;
     }
 
-    void GLSprite::setShader(ShaderProgram *program) {
-        shader = program;
-    }
-
     void GLSprite::setName(const std::string &name) {
         textureName = name;
     }
@@ -965,14 +961,13 @@ namespace gl {
         release();
     }
 
-    void GLSprite::initWithTexture(ShaderProgram *program, GLuint text, float x, float y, int textWidth, int textHeight) {
-        if (!program) {
+    void GLSprite::initWithTextureImpl(GLuint text, float x, float y, int textWidth, int textHeight) {
+        if (active_shader_id == 0) {
             throw mx::Exception("Shader program is null in GLSprite::initWithTexture");
         }
         if (screenWidth <= 0 || screenHeight <= 0) {
             throw mx::Exception("Invalid screen dimensions in GLSprite::initWithTexture");
         }
-        this->shader = program;
         this->texture = text;
         this->width = textWidth;
         this->height = textHeight;
@@ -1000,14 +995,13 @@ namespace gl {
             glBindBuffer(GL_ARRAY_BUFFER, VBO);
             glBufferSubData(GL_ARRAY_BUFFER, 0, vertices.size() * sizeof(float), vertices.data());
         }
-        this->shader->useProgram();
-        this->shader->setUniform(textureName, 0);
+        glUseProgram(active_shader_id);
+        glUniform1i(glGetUniformLocation(active_shader_id, textureName.c_str()), 0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindVertexArray(0);
     }
 
-    void GLSprite::loadTexture(ShaderProgram *shader, const std::string &tex, float x, float y, int textWidth, int textHeight) {
-        this->shader = shader;
+    void GLSprite::loadTextureImpl(const std::string &tex, float x, float y, int textWidth, int textHeight) {
         if (texture != 0) {
            glDeleteTextures(1, &texture);
 }
@@ -1037,14 +1031,13 @@ namespace gl {
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
         glEnableVertexAttribArray(1);
-        this->shader->useProgram();
-        this->shader->setUniform(textureName, 0);
+        glUseProgram(active_shader_id);
+        glUniform1i(glGetUniformLocation(active_shader_id, textureName.c_str()), 0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindVertexArray(0);
     }
 
-      void GLSprite::loadTexture(ShaderProgram *shader, const std::string &tex, float x, float y) {
-        this->shader = shader;
+    void GLSprite::loadTextureImpl(const std::string &tex, float x, float y) {
         if (texture != 0) {
            glDeleteTextures(1, &texture);
 }
@@ -1077,8 +1070,8 @@ namespace gl {
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
         glEnableVertexAttribArray(1);
-        this->shader->useProgram();
-        this->shader->setUniform(textureName, 0);
+        glUseProgram(active_shader_id);
+        glUniform1i(glGetUniformLocation(active_shader_id, textureName.c_str()), 0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindVertexArray(0);
     }
@@ -1125,11 +1118,11 @@ namespace gl {
     }
 
     void GLSprite::draw() {
-        if (!shader || VAO == 0 || texture == 0) return;
+        if (active_shader_id == 0 || VAO == 0 || texture == 0) return;
         glDisable(GL_DEPTH_TEST);
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        this->shader->useProgram();
+        glUseProgram(active_shader_id);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, this->texture);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -1159,7 +1152,7 @@ namespace gl {
         glDisable(GL_DEPTH_TEST);
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        this->shader->useProgram();
+        glUseProgram(active_shader_id);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture_id);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); 
@@ -1202,7 +1195,7 @@ namespace gl {
         glDisable(GL_DEPTH_TEST);
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        this->shader->useProgram();
+        glUseProgram(active_shader_id);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, this->texture);
         glBindVertexArray(VAO);

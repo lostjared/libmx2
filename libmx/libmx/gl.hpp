@@ -102,10 +102,31 @@ namespace gl {
         void release();
         void initSize(float w, float h);
         void setName(const std::string &name);
-        void setShader(ShaderProgram *program);
-        void initWithTexture(ShaderProgram *program, GLuint texture, float x, float y, int textWidth, int textHeight);
-        void loadTexture(ShaderProgram *shader, const std::string &tex, float x, float  y, int textWidth, int textHeight);
-        void loadTexture(ShaderProgram *shader, const std::string &tex, float x, float y);
+
+        // Accept any shader type that exposes id() -> GLuint
+        template<typename ShaderT>
+        void setShader(ShaderT *program) {
+            active_shader_id = program ? program->id() : 0;
+        }
+
+        template<typename ShaderT>
+        void initWithTexture(ShaderT *program, GLuint texture, float x, float y, int textWidth, int textHeight) {
+            active_shader_id = program ? program->id() : 0;
+            initWithTextureImpl(texture, x, y, textWidth, textHeight);
+        }
+
+        template<typename ShaderT>
+        void loadTexture(ShaderT *shader, const std::string &tex, float x, float y, int textWidth, int textHeight) {
+            active_shader_id = shader ? shader->id() : 0;
+            loadTextureImpl(tex, x, y, textWidth, textHeight);
+        }
+
+        template<typename ShaderT>
+        void loadTexture(ShaderT *shader, const std::string &tex, float x, float y) {
+            active_shader_id = shader ? shader->id() : 0;
+            loadTextureImpl(tex, x, y);
+        }
+
         void draw();
         void draw(int x, int y);
         void draw(int x, int y, int w, int h);
@@ -114,7 +135,10 @@ namespace gl {
         void updateTexture(void *buffer, int width, int height);
         int width = 0, height = 0;
     private:
-        ShaderProgram *shader;
+        void initWithTextureImpl(GLuint texture, float x, float y, int textWidth, int textHeight);
+        void loadTextureImpl(const std::string &tex, float x, float y, int textWidth, int textHeight);
+        void loadTextureImpl(const std::string &tex, float x, float y);
+        GLuint active_shader_id = 0;
         GLuint texture = 0;
         GLuint VBO = 0, VAO = 0;
         std::vector<float> vertices;
