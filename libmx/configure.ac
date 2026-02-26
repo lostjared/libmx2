@@ -4,7 +4,7 @@ dnl  Mirrors the CMake build (libmx2/libmx/CMakeLists.txt)
 dnl ============================================================================
 
 AC_PREREQ([2.69])
-AC_INIT([libmx2], [1.14.0], [], [libmx2])
+AC_INIT([libmx2], [2.0.0], [], [libmx2])
 AC_CONFIG_SRCDIR([libmx/mx.cpp])
 AC_CONFIG_HEADERS([config.h:config_autotools.h.in])
 AC_CONFIG_AUX_DIR([build-aux])
@@ -397,8 +397,8 @@ AM_CONDITIONAL([CROSS_USE_VK], [test "x$enable_cross" = "xyes" -a "x$enable_vulk
 AM_CONDITIONAL([CROSS_USE_GL], [test "x$enable_cross" = "xyes" -a "x$enable_vulkan" != "xyes" -a "x$enable_opengl" = "xyes"])
 
 dnl ── Version defines for config.h ──────────────────────────────────────────
-AC_DEFINE_UNQUOTED([PROJECT_VERSION_MAJOR], [1], [Major version number])
-AC_DEFINE_UNQUOTED([PROJECT_VERSION_MINOR], [14], [Minor version number])
+AC_DEFINE_UNQUOTED([PROJECT_VERSION_MAJOR], [2], [Major version number])
+AC_DEFINE_UNQUOTED([PROJECT_VERSION_MINOR], [0], [Minor version number])
 
 dnl ── Output ────────────────────────────────────────────────────────────────
 AC_CONFIG_FILES([Makefile
