@@ -139,7 +139,7 @@ target_include_directories(mxgl_cv PRIVATE
     ${GL_INCLUDE}
     )
     target_compile_definitions(mxgl_cv PUBLIC WITH_GL)
-    target_link_libraries(mxgl_cv ${OpenCV_LIBS})
+    target_link_libraries(mxgl_cv ${OpenCV_LIBS} mxgl)
     install(TARGETS mxgl_cv
         EXPORT libmx2Targets
         LIBRARY DESTINATION ${INSTALL_LIB_DIR}
@@ -152,7 +152,7 @@ target_include_directories(mxgl_cv PRIVATE
     install(FILES gl_cv.hpp DESTINATION ${INSTALL_INCLUDE_DIR})
 endif()
 
-if(VULKAN AND CV)
+if(VULKAN AND CV OR MOLTEN AND CV)
 
 find_package(OpenCV REQUIRED)
 add_library(mxvk_cv SHARED vk_cv.cpp)
@@ -169,7 +169,7 @@ target_include_directories(mxvk_cv PRIVATE
     ${SDL2_TTF_INCLUDE_DIRS}
     ${VK_INCLUDE}
 )
-target_link_libraries(mxvk_cv ${OpenCV_LIBS})
+target_link_libraries(mxvk_cv ${OpenCV_LIBS} mxvk)
 install(TARGETS mxvk_cv
     EXPORT libmx2Targets
     LIBRARY DESTINATION ${INSTALL_LIB_DIR}
