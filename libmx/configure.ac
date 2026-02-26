@@ -6,7 +6,7 @@ dnl ============================================================================
 AC_PREREQ([2.69])
 AC_INIT([libmx2], [1.14.0], [], [libmx2])
 AC_CONFIG_SRCDIR([libmx/mx.cpp])
-AC_CONFIG_HEADERS([config.h])
+AC_CONFIG_HEADERS([config.h:config_autotools.h.in])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIRS([m4])
 
