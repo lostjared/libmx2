@@ -2493,57 +2493,48 @@ public:
         }
 
         
-        bool speedInput = false;
-        if (state[SDL_SCANCODE_UP] || controller.getButton(SDL_CONTROLLER_BUTTON_RIGHTSHOULDER)
+        if (controller.getButton(SDL_CONTROLLER_BUTTON_LEFTSHOULDER)
             || controller.getButton(SDL_CONTROLLER_BUTTON_DPAD_UP)) {
             ship.increaseSpeed(deltaTime);
-            speedInput = true;
         }
-        if (state[SDL_SCANCODE_DOWN] || controller.getButton(SDL_CONTROLLER_BUTTON_LEFTSHOULDER)
+        else if (controller.getButton(SDL_CONTROLLER_BUTTON_RIGHTSHOULDER)
                  || controller.getButton(SDL_CONTROLLER_BUTTON_DPAD_DOWN)) {
             ship.decreaseSpeed(deltaTime);
-            speedInput = true;
         }
 
-        
-        Sint16 leftTrig = controller.getAxis(SDL_CONTROLLER_AXIS_TRIGGERLEFT);
-        if (leftTrig > DEAD_ZONE) {
-            float boostAmount = static_cast<float>(leftTrig) / AXIS_MAX;
-            ship.increaseSpeed(deltaTime * (1.0f + boostAmount * 2.0f));
-            speedInput = true;
+        if (state[SDL_SCANCODE_UP]) {
+            ship.increaseSpeed(deltaTime);
         }
-
-        
-        if (!speedInput) {
-            float cruiseSpeed = 5.0f;
-            if (ship.currentSpeed > cruiseSpeed + 0.5f) {
-                ship.decreaseSpeed(deltaTime * 0.3f);
-            } else if (ship.currentSpeed < cruiseSpeed - 0.5f) {
-                ship.increaseSpeed(deltaTime * 0.3f);
+        else if (state[SDL_SCANCODE_DOWN]) {
+            ship.decreaseSpeed(deltaTime);
+        }
+        else {
+            if (ship.currentSpeed > 5.0f) {
+                ship.decreaseSpeed(deltaTime * 0.5f);
+            }
+            else if (ship.currentSpeed < 5.0f) {
+                ship.increaseSpeed(deltaTime * 0.5f);
             }
         }
 
         
         float yawAmount = 0.0f;
         float pitchAmount = 0.0f;
+        float rollAmount = 0.0f;
+        bool manualRollInput = false;
 
         
         Sint16 leftX = controller.getAxis(SDL_CONTROLLER_AXIS_LEFTX);
         if (abs(leftX) > DEAD_ZONE) {
-            yawAmount = -static_cast<float>(leftX) / AXIS_MAX;
+            float normalized = (static_cast<float>(abs(leftX)) - static_cast<float>(DEAD_ZONE)) / (AXIS_MAX - static_cast<float>(DEAD_ZONE));
+            normalized = glm::clamp(normalized, 0.0f, 1.0f);
+            float curved = normalized * normalized;
+            yawAmount = (leftX > 0) ? -curved : curved;
         }
 
-        
-        Sint16 leftY = controller.getAxis(SDL_CONTROLLER_AXIS_LEFTY);
-        if (abs(leftY) > DEAD_ZONE) {
-            float stickVal = static_cast<float>(leftY) / AXIS_MAX;
-            pitchAmount = inverted_controls ? stickVal : -stickVal;
-        }
-
-        // A/D keys = yaw
-        if (state[SDL_SCANCODE_A]) {
+        if (state[SDL_SCANCODE_LEFT]) {
             yawAmount = 1.0f;
-        } else if (state[SDL_SCANCODE_D]) {
+        } else if (state[SDL_SCANCODE_RIGHT]) {
             yawAmount = -1.0f;
         }
 
@@ -2556,55 +2547,66 @@ public:
             if (state[SDL_SCANCODE_S]) { pitchAmount = -1.0f; }
         }
 
-        // Arrow Left/Right = roll
-        float keyboardRoll = 0.0f;
-        if (state[SDL_SCANCODE_LEFT]) {
-            keyboardRoll = -1.0f;
-        } else if (state[SDL_SCANCODE_RIGHT]) {
-            keyboardRoll = 1.0f;
-        }
-        if (fabs(keyboardRoll) > 0.01f) {
-            ship.roll(keyboardRoll, deltaTime);
+        if (state[SDL_SCANCODE_A]) {
+            rollAmount = -1.0f;
+            manualRollInput = true;
+        } else if (state[SDL_SCANCODE_D]) {
+            rollAmount = 1.0f;
+            manualRollInput = true;
         }
 
-        
         if (controller.getButton(SDL_CONTROLLER_BUTTON_DPAD_LEFT)) {
             yawAmount = 1.0f;
         } else if (controller.getButton(SDL_CONTROLLER_BUTTON_DPAD_RIGHT)) {
             yawAmount = -1.0f;
         }
 
-        
-        if (fabs(yawAmount) > 0.01f) {
-            ship.yaw(yawAmount, deltaTime);
-            float targetRoll = -yawAmount * 35.0f;
+        Sint16 rightX = controller.getAxis(SDL_CONTROLLER_AXIS_RIGHTX);
+        if (abs(rightX) > DEAD_ZONE) {
+            float normalized = (static_cast<float>(abs(rightX)) - static_cast<float>(DEAD_ZONE)) / (AXIS_MAX - static_cast<float>(DEAD_ZONE));
+            normalized = glm::clamp(normalized, 0.0f, 1.0f);
+            float curved = normalized * normalized;
+            rollAmount = (rightX > 0) ? curved : -curved;
+            manualRollInput = true;
+        }
+
+        Sint16 rightY = controller.getAxis(SDL_CONTROLLER_AXIS_RIGHTY);
+        if (abs(rightY) > DEAD_ZONE) {
+            float normalized = (static_cast<float>(abs(rightY)) - static_cast<float>(DEAD_ZONE)) / (AXIS_MAX - static_cast<float>(DEAD_ZONE));
+            normalized = glm::clamp(normalized, 0.0f, 1.0f);
+            float curved = normalized * normalized;
+            float stickVal = (rightY > 0) ? curved : -curved;
+            float finePitch = inverted_controls ? stickVal : -stickVal;
+            pitchAmount = finePitch;
+        }
+
+        static float smoothYaw = 0.0f;
+        static float smoothPitch = 0.0f;
+        static float smoothRoll = 0.0f;
+        float smoothing = glm::clamp(deltaTime * 8.0f, 0.0f, 1.0f);
+        smoothYaw = glm::mix(smoothYaw, yawAmount, smoothing);
+        smoothPitch = glm::mix(smoothPitch, pitchAmount, smoothing);
+        smoothRoll = glm::mix(smoothRoll, rollAmount, smoothing);
+
+        if (fabs(smoothYaw) > 0.01f) {
+            ship.yaw(smoothYaw, deltaTime);
+        }
+
+        if (fabs(smoothPitch) > 0.01f) {
+            ship.pitch(smoothPitch, deltaTime);
+        }
+
+        if (manualRollInput && fabs(smoothRoll) > 0.01f) {
+            ship.roll(smoothRoll, deltaTime);
+        }
+
+        if (!manualRollInput && fabs(smoothYaw) > 0.01f) {
+            float targetRoll = -smoothYaw * 35.0f;
             float rollDiff = targetRoll - ship.rotation.z;
             ship.rotation.z += rollDiff * 5.0f * deltaTime;
         }
 
-        
-        if (fabs(pitchAmount) > 0.01f) {
-            ship.pitch(pitchAmount, deltaTime);
-        }
-
-        
-        Sint16 rightX = controller.getAxis(SDL_CONTROLLER_AXIS_RIGHTX);
-        if (abs(rightX) > DEAD_ZONE) {
-            float rollVal = static_cast<float>(rightX) / AXIS_MAX;
-            ship.roll(rollVal, deltaTime);
-        }
-
-        
-        Sint16 rightY = controller.getAxis(SDL_CONTROLLER_AXIS_RIGHTY);
-        if (abs(rightY) > DEAD_ZONE) {
-            float stickVal = static_cast<float>(rightY) / AXIS_MAX;
-            float finePitch = inverted_controls ? stickVal : -stickVal;
-            ship.pitch(finePitch * 0.6f, deltaTime);
-        }
-
-        
-        if (fabs(yawAmount) < 0.01f && abs(rightX) <= DEAD_ZONE
-            && !state[SDL_SCANCODE_LEFT] && !state[SDL_SCANCODE_RIGHT]) {
+        if (!manualRollInput && fabs(smoothYaw) < 0.01f) {
             while (ship.rotation.z > 180.0f) ship.rotation.z -= 360.0f;
             while (ship.rotation.z < -180.0f) ship.rotation.z += 360.0f;
             float wingLevelingSpeed = 3.0f;
