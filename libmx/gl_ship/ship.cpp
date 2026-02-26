@@ -1810,6 +1810,17 @@ public:
         isDestroyed = false;
     }
 
+    static void cleanupResources() {
+        for (auto &model : models) {
+            if (model) {
+                model.reset();
+            }
+        }
+        if (shader) {
+            shader.reset();
+        }
+    }
+
 private:
     static std::unique_ptr<mx::Model> models[4];
     static std::unique_ptr<gl::ShaderProgram> shader;
@@ -1829,6 +1840,8 @@ class Game : public gl::GLObject {
 public:
     Game() = default;
     virtual ~Game() override {
+        planets.clear();
+        Planet::cleanupResources();
         if(texture)
             glDeleteTextures(1, &texture);
     }
