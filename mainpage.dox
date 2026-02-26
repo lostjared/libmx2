@@ -1,0 +1,95 @@
+/**
+ * @mainpage libmx2
+ *
+ * @brief A cross-platform C++20 multimedia and game-engine library built on SDL2,
+ * OpenGL, and Vulkan.
+ *
+ * ---
+ *
+ * @section intro Introduction
+ *
+ * **libmx2** is a cross-platform library that facilitates SDL2/OpenGL or Vulkan
+ * development using modern C++20. It provides a collection of utilities and
+ * abstractions that streamline the creation of multimedia and game applications
+ * through an object-oriented design.
+ *
+ * Tech specifications: https://lostsidedead.biz/libmx2/mx.html
+ *
+ * ---
+ *
+ * @section modules Modular Architecture
+ *
+ * libmx2 is split into three independently built modules:
+ *
+ * | Module  | Description |
+ * |---------|-------------|
+ * | **mx**  | Core module — SDL2 window management, input handling, font rendering (SDL2_ttf), PNG/JPEG loading, audio (SDL2_mixer), INI-style configuration, and general utilities. No graphics API dependency; always built. |
+ * | **mxgl** | OpenGL module — GLAD/GLM initialisation, GLSL shader helpers, 3D model loading with CPU deformers, and an in-app console overlay. Built when `-DOPENGL=ON` (default). Links against **mx**. |
+ * | **mxvk** | Vulkan module — Vulkan initialisation (via volk / MoltenVK), pipeline and shader helpers, Vulkan model/sprite/text rendering. Built when `-DVULKAN=ON`. Links against **mx**. |
+ *
+ * OpenGL and Vulkan never depend on each other — they share only the **mx** core.
+ *
+ * ---
+ *
+ * @section features Features
+ *
+ * - **SDL2 integration** — simplified setup and management of SDL2 subsystems.
+ * - **Modern C++20 design** — concepts, ranges, and structured bindings throughout.
+ * - **Optional OpenGL / GLAD / GLM** — compile-in with `-DOPENGL=ON`.
+ * - **Optional Vulkan / MoltenVK** — compile-in with `-DVULKAN=ON`.
+ * - **Cross-platform** — Linux, macOS (MoltenVK), and Emscripten (WebAssembly).
+ * - **Command-line argument parser** — header-only `Argz<>` template (argz.hpp).
+ * - **In-app GL console** — scrollable, thread-safe, shader-rendered console overlay.
+ * - **3D model loading** — OBJ mesh loader with CPU-side deform, bend, twist, wave, and morph operations.
+ * - **Vulkan sprite/text rendering** — instanced sprite batching and SDL_ttf text via Vulkan pipelines.
+ *
+ * ---
+ *
+ * @section prereqs Prerequisites
+ *
+ * - C++20 compiler (GCC 10+, Clang 10+, MSVC 2019+)
+ * - SDL2, SDL2_ttf, SDL2_mixer, libpng, zlib
+ * - Optional: OpenGL / GLM (includes GLAD headers)
+ * - Optional: Vulkan SDK / MoltenVK
+ *
+ * ---
+ *
+ * @section build Building
+ *
+ * **Quick build** (using the provided Perl scripts):
+ * @code{.sh}
+ * ./compile.pl
+ * ./run.pl program_name
+ * @endcode
+ *
+ * **CMake build**:
+ * @code{.sh}
+ * git clone https://github.com/lostjared/libmx2.git
+ * cd libmx2
+ * mkdir build && cd build
+ * cmake -B . -S ../libmx
+ * make -j$(nproc)
+ * @endcode
+ *
+ * Enable Vulkan support:
+ * @code{.sh}
+ * cmake -B . -S ../libmx -DVULKAN=ON
+ * @endcode
+ *
+ * ---
+ *
+ * @section layout Key Classes
+ *
+ * | Class | Header | Description |
+ * |-------|--------|-------------|
+ * | mx::mxWindow | mx.hpp | Main SDL2 application window — subclass and override `draw()` / `event()`. |
+ * | gl::GLWindow | gl.hpp | SDL2 + OpenGL window; adds shader program and sprite support. |
+ * | mx::VKWindow | vk.hpp | Vulkan window with swap-chain, pipeline, and render-pass management. |
+ * | gl::ShaderProgram | gl.hpp | GLSL shader compilation, linking, and uniform upload. |
+ * | gl::GLSprite | gl.hpp | Textured quad rendered with a custom shader. |
+ * | mx::Model | model.hpp | OpenGL 3D mesh with extensive CPU deformation API. |
+ * | mx::VKSprite | vk_sprite.hpp | Vulkan 2D sprite renderer with instancing support. |
+ * | mx::ConfigFile | cfg.hpp | INI-style configuration file reader/writer. |
+ * | Argz\<String\> | argz.hpp | Lightweight template command-line argument parser. |
+ * | console::GLConsole | console.hpp | Shader-rendered in-app console with command history. |
+ */
