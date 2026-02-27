@@ -1705,6 +1705,7 @@ public:
     
     float speed = 10.0f;         
     float turnSpeed = 140.0f;    
+    float pitchSpeedMultiplier = 0.55f;
     float maxSpeed = 25.0f;      
     float drag = 0.95f;
     
@@ -1773,7 +1774,7 @@ public:
     
     
     void pitch(float amount, float deltaTime) {
-        rotation.x += amount * turnSpeed * deltaTime;
+        rotation.x += amount * turnSpeed * pitchSpeedMultiplier * deltaTime;
         rotation.x = glm::clamp(rotation.x, -80.0f, 80.0f);
     }
     
@@ -2523,6 +2524,20 @@ public:
         float rollAmount = 0.0f;
         bool manualRollInput = false;
 
+        static float keyboardYaw = 0.0f;
+        static float keyboardPitch = 0.0f;
+        static float keyboardRoll = 0.0f;
+
+        auto rampAxis = [&](float &value, float target, float riseRate, float fallRate) {
+            float rate = (fabs(target) > fabs(value)) ? riseRate : fallRate;
+            float step = rate * deltaTime;
+            if (value < target) {
+                value = std::min(value + step, target);
+            } else if (value > target) {
+                value = std::max(value - step, target);
+            }
+        };
+
         
         Sint16 leftX = controller.getAxis(SDL_CONTROLLER_AXIS_LEFTX);
         if (abs(leftX) > DEAD_ZONE) {
@@ -2532,26 +2547,40 @@ public:
             yawAmount = (leftX > 0) ? -curved : curved;
         }
 
+        float keyboardYawTarget = 0.0f;
         if (state[SDL_SCANCODE_LEFT]) {
-            yawAmount = 1.0f;
+            keyboardYawTarget = 1.0f;
         } else if (state[SDL_SCANCODE_RIGHT]) {
-            yawAmount = -1.0f;
+            keyboardYawTarget = -1.0f;
+        }
+        rampAxis(keyboardYaw, keyboardYawTarget, 3.2f, 8.0f);
+        if (fabs(keyboardYaw) > 0.001f) {
+            yawAmount = keyboardYaw;
         }
 
         // W/S keys = pitch
+        float keyboardPitchTarget = 0.0f;
         if (inverted_controls) {
-            if (state[SDL_SCANCODE_W]) { pitchAmount = -1.0f; }
-            if (state[SDL_SCANCODE_S]) { pitchAmount = 1.0f; }
+            if (state[SDL_SCANCODE_W]) { keyboardPitchTarget = -1.0f; }
+            if (state[SDL_SCANCODE_S]) { keyboardPitchTarget = 1.0f; }
         } else {
-            if (state[SDL_SCANCODE_W]) { pitchAmount = 1.0f; }
-            if (state[SDL_SCANCODE_S]) { pitchAmount = -1.0f; }
+            if (state[SDL_SCANCODE_W]) { keyboardPitchTarget = 1.0f; }
+            if (state[SDL_SCANCODE_S]) { keyboardPitchTarget = -1.0f; }
+        }
+        rampAxis(keyboardPitch, keyboardPitchTarget, 2.8f, 8.0f);
+        if (fabs(keyboardPitch) > 0.001f) {
+            pitchAmount = keyboardPitch;
         }
 
+        float keyboardRollTarget = 0.0f;
         if (state[SDL_SCANCODE_A]) {
-            rollAmount = -1.0f;
-            manualRollInput = true;
+            keyboardRollTarget = -1.0f;
         } else if (state[SDL_SCANCODE_D]) {
-            rollAmount = 1.0f;
+            keyboardRollTarget = 1.0f;
+        }
+        rampAxis(keyboardRoll, keyboardRollTarget, 3.0f, 8.0f);
+        if (fabs(keyboardRoll) > 0.001f) {
+            rollAmount = keyboardRoll;
             manualRollInput = true;
         }
 
