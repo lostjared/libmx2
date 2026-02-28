@@ -32,7 +32,7 @@ AM_CPPFLAGS = \
 
 AM_CXXFLAGS = $(CXX20_CXXFLAGS) $(OPT_CXXFLAGS) -Wall -fPIC
 AM_CFLAGS   = $(OPT_CFLAGS) -Wall -fPIC
-LIBS       += $(SDL2_LIBS) $(SDL2_TTF_LIBS)
+LIBS       += $(SDL2_LIBS) $(SDL2_TTF_LIBS) $(SDL2_MIXER_LIBS)
 
 ## ---------------------------------------------------------------------------
 ##  Primary lists  (filled conditionally below)
