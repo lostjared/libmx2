@@ -45,6 +45,7 @@ class ModelViewer : public gl::GLObject {
 public:
     gl::ShaderProgram shaderProgram;
     GLuint texture;
+    mx::Font font;
     mx::Model obj_model;
     std::string filename;
     std::string text, texture_path;
@@ -65,6 +66,19 @@ public:
     float modelRadius = 1.0f;
     float baseCameraDistance = 50.0f;
     bool compress = true;
+    float twistAngle = 1.0f;
+    float twistSpeed = 6.0f;
+    float twistDirection = 1.0f;
+    const float minTwistAngle = 0.0f;
+    const float maxTwistAngle = 360.0f;
+    const float minTwistSpeed = 0.1f;
+    const float maxTwistSpeed = 60.0f;
+    bool twistX = false, twistY = false, twistZ = false;
+    bool morphT = false;
+    bool showControls = true;
+#ifndef __EMSCRIPTEN__
+    bool poly = false;
+#endif
 
     ModelViewer(const std::string &filename, const std::string &text, std::string text_path, bool compress_) : rot_x{1.0f, true}, rot_y{1.0f, true}, rot_z{0.0f, false}, light(0.0, 10.0, 5.0) {
         this->filename = filename;
@@ -78,6 +92,7 @@ public:
 
     float zoom = 75.0f;
     virtual void load(gl::GLWindow *win) override {
+        font.loadFont(win->util.getFilePath("data/font.ttf"), 18);
         if(texture_path.empty()) {
             texture_path = win->util.getFilePath("data");
             std::cout << "Viewer: Texture default: " << texture_path << "\n";
@@ -151,8 +166,8 @@ public:
         } else {
             obj_model.setTextures(win, text, texture_path);
         }
+        obj_model.saveOriginal();
     }
-
 
     virtual void draw(gl::GLWindow *win) override {
         glDisable(GL_CULL_FACE);
@@ -200,7 +215,16 @@ public:
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture);
         shaderProgram.setUniform("texture1", 0);
-     
+        twistAngle += twistDirection * twistSpeed * deltaTime;
+        if (twistAngle > maxTwistAngle) {
+            twistAngle = maxTwistAngle - (twistAngle - maxTwistAngle);
+            twistDirection = -1.0f;
+        } else if (twistAngle < minTwistAngle) {
+            twistAngle = minTwistAngle + (minTwistAngle - twistAngle);
+            twistDirection = 1.0f;
+        }
+        obj_model.resetToOriginal();
+
         if (std::get<1>(rot_x)) {
             std::get<0>(rot_x) += 50.0f * deltaTime;
             if (std::get<0>(rot_x) >= 360.0f) {
@@ -230,7 +254,32 @@ public:
         shaderProgram.setUniform("view", viewMatrix);
         shaderProgram.setUniform("projection", projectionMatrix);
         shaderProgram.setUniform("lightColor", lightColor);
+
+               
+        const float safeRadius = (modelRadius > 0.001f) ? modelRadius : 0.001f;
+        const float deformFactor = glm::radians(twistAngle) / safeRadius;
+
+        if(twistY) obj_model.twist(mx::DeformAxis::Y, deformFactor, modelCenter.y);
+        if(twistZ) obj_model.twist(mx::DeformAxis::Z, deformFactor, modelCenter.z);
+        if(twistX) obj_model.twist(mx::DeformAxis::X, deformFactor, modelCenter.x);
+        if(morphT) obj_model.bend(mx::DeformAxis::Y, deformFactor, modelCenter.y, 0.0f);
+
+        obj_model.updateBuffers();
+        obj_model.recalculateNormals();
         obj_model.drawArrays();
+
+        if (showControls) {
+            win->text.setColor({255, 255, 255, 255});
+            win->text.printText_Solid(font, 20.0f, 20.0f, "Controls (SPACE: show/hide)");
+            win->text.printText_Solid(font, 20.0f, 48.0f, "X/Y/Z: Toggle twist axis   T: Toggle bend");
+            win->text.printText_Solid(font, 20.0f, 76.0f, "-/+: Twist speed down/up   0: Reset speed   R: Reverse direction");
+            win->text.printText_Solid(font, 20.0f, 104.0f, "A/S: Zoom   Arrow keys: Toggle model rotation   Enter: Inside/Outside");
+            win->text.printText_Solid(font, 20.0f, 132.0f, "K/L/I/O: Move light   P: Wireframe toggle");
+            win->text.printText_Solid(font, 20.0f, 160.0f,
+                "twistSpeed=" + std::to_string(twistSpeed) + " deg/sec  direction=" +
+                std::string(twistDirection > 0.0f ? "forward" : "reverse"));
+        }
+
         glBindVertexArray(0);
     }
 
@@ -252,6 +301,18 @@ public:
                         insideCube = !insideCube;
                         viewRotationActive = insideCube ? false : true;
                         break;
+                case SDLK_x:
+                    twistX = !twistX;
+                    break;
+                case SDLK_y:
+                    twistY = !twistY;
+                    break;
+                case SDLK_z:
+                    twistZ = !twistZ;
+                    break;
+                case SDLK_t:
+                    morphT = !morphT;
+                    break;
                 }
                 break;
         }
@@ -295,19 +356,47 @@ public:
                         break;
                     case SDLK_p: {
 #ifndef __EMSCRIPTEN__
-                        static bool poly = false;
                         if(poly == false) {
                             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
                             poly = true;
+                            showControls = false;
                         } else {
                             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-                            poly = false;
+                            poly = false;                            
                         }
 #endif
                     }
                     break;
                     case SDLK_SPACE:
-                        mx::system_out << "X: " << std::get<0>(rot_x) << " Y: " << std::get<0>(rot_y) << "\n";
+#ifndef __EMSCRIPTEN__
+                        if(poly == false) {
+#endif
+                            showControls = !showControls;
+                            mx::system_out << "mx: controls overlay " << (showControls ? "shown" : "hidden") << "\n";
+#ifndef __EMSCRIPTEN__
+                        }
+#endif
+                    break;
+                    case SDLK_MINUS:
+                    case SDLK_KP_MINUS:
+                        twistSpeed -= 1.0f;
+                        if (twistSpeed < minTwistSpeed) twistSpeed = minTwistSpeed;
+                        mx::system_out << "mx: twistSpeed = " << twistSpeed << " deg/sec\n";
+                    break;
+                    case SDLK_EQUALS:
+                    case SDLK_KP_PLUS:
+                        twistSpeed += 1.0f;
+                        if (twistSpeed > maxTwistSpeed) twistSpeed = maxTwistSpeed;
+                        mx::system_out << "mx: twistSpeed = " << twistSpeed << " deg/sec\n";
+                    break;
+                    case SDLK_0:
+                    case SDLK_KP_0:
+                        twistSpeed = 6.0f;
+                        mx::system_out << "mx: twistSpeed reset = " << twistSpeed << " deg/sec\n";
+                    break;
+                    case SDLK_r:
+                        twistDirection *= -1.0f;
+                        mx::system_out << "mx: twistDirection = " << (twistDirection > 0.0f ? "forward" : "reverse") << "\n";
                     break;
                 }
             }

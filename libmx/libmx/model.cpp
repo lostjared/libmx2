@@ -475,6 +475,7 @@ namespace mx {
     void Mesh::bend(DeformAxis axis, float angle, float center, float range) {
         for (size_t i = 0; i < vert.size(); i += 3) {
             float x = vert[i], y = vert[i + 1], z = vert[i + 2];
+
             if (axis == DeformAxis::Y) {
                 float dist = y - center;
                 if (range == 0.0f || std::abs(dist) < range) {
@@ -482,8 +483,21 @@ namespace mx {
                     vert[i] = x * std::cos(theta) - dist * std::sin(theta);
                     vert[i + 1] = center + x * std::sin(theta) + dist * std::cos(theta);
                 }
+            } else if (axis == DeformAxis::X) {
+                float dist = x - center;
+                if (range == 0.0f || std::abs(dist) < range) {
+                    float theta = dist * angle;
+                    vert[i + 1] = y * std::cos(theta) - dist * std::sin(theta);
+                    vert[i] = center + y * std::sin(theta) + dist * std::cos(theta);
+                }
+            } else if (axis == DeformAxis::Z) {
+                float dist = z - center;
+                if (range == 0.0f || std::abs(dist) < range) {
+                    float theta = dist * angle;
+                    vert[i] = x * std::cos(theta) - dist * std::sin(theta);
+                    vert[i + 2] = center + x * std::sin(theta) + dist * std::cos(theta);
+                }
             }
-            (void)z;
         }
     }
 
@@ -495,6 +509,18 @@ namespace mx {
                 float x = vert[i], z = vert[i + 2];
                 vert[i] = x * c - z * s;
                 vert[i + 2] = x * s + z * c;
+            } else if (axis == DeformAxis::X) {
+                float theta = (vert[i] - center) * angle;
+                float s = std::sin(theta), c = std::cos(theta);
+                float y = vert[i + 1], z = vert[i + 2];
+                vert[i + 1] = y * c - z * s;
+                vert[i + 2] = y * s + z * c;
+            } else if (axis == DeformAxis::Z) {
+                float theta = (vert[i + 2] - center) * angle;
+                float s = std::sin(theta), c = std::cos(theta);
+                float x = vert[i], y = vert[i + 1];
+                vert[i] = x * c - y * s;
+                vert[i + 1] = x * s + y * c;
             }
         }
     }
