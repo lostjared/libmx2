@@ -383,8 +383,12 @@ namespace mx {
             queueCreateInfos.push_back(queueInfo);
         }
         
+        VkPhysicalDeviceFeatures supportedFeatures{};
+        vkGetPhysicalDeviceFeatures(physicalDevice, &supportedFeatures);
+
         VkPhysicalDeviceFeatures deviceFeatures{};
-        deviceFeatures.samplerAnisotropy = VK_TRUE;
+        deviceFeatures.samplerAnisotropy = supportedFeatures.samplerAnisotropy;
+        deviceFeatures.fillModeNonSolid = supportedFeatures.fillModeNonSolid;
     
         
         std::vector<const char*> deviceExtensions = {
@@ -1478,7 +1482,9 @@ namespace mx {
                 throw mx::Exception("Failed to create graphics pipeline!");
             }
             
-            rasterizer.polygonMode = VK_POLYGON_MODE_LINE;
+            VkPhysicalDeviceFeatures supportedFeatures{};
+            vkGetPhysicalDeviceFeatures(physicalDevice, &supportedFeatures);
+            rasterizer.polygonMode = (supportedFeatures.fillModeNonSolid == VK_TRUE) ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
             if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipelineMatrix) != VK_SUCCESS) {
                 throw mx::Exception("Failed to create Matrix graphics pipeline!");
             }

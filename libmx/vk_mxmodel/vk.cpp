@@ -411,9 +411,16 @@ namespace mx {
             queueInfos.push_back(qi);
         }
 
+        VkPhysicalDeviceFeatures supportedFeatures{};
+        vkGetPhysicalDeviceFeatures(physicalDevice, &supportedFeatures);
+
         VkPhysicalDeviceFeatures features{};
-        features.samplerAnisotropy = VK_TRUE;
-        features.fillModeNonSolid = VK_TRUE;  
+        features.samplerAnisotropy = supportedFeatures.samplerAnisotropy;
+        features.fillModeNonSolid = supportedFeatures.fillModeNonSolid;
+
+        if (supportedFeatures.fillModeNonSolid != VK_TRUE) {
+            std::cout << "[Vulkan] fillModeNonSolid not supported; wireframe pipeline will use fill mode fallback.\n";
+        }
 
         std::vector<const char*> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 #ifdef WITH_MOLTEN
@@ -765,7 +772,10 @@ namespace mx {
             throw mx::Exception("Failed to create pipeline layout!");
 
         fillPipeline = buildPipeline(VK_POLYGON_MODE_FILL);
-        wirePipeline = buildPipeline(VK_POLYGON_MODE_LINE);
+
+        VkPhysicalDeviceFeatures supportedFeatures{};
+        vkGetPhysicalDeviceFeatures(physicalDevice, &supportedFeatures);
+        wirePipeline = buildPipeline((supportedFeatures.fillModeNonSolid == VK_TRUE) ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL);
         std::cout << ">> Created fill + wireframe pipelines\n";
     }
 
