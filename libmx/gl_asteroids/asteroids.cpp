@@ -2558,7 +2558,6 @@ public:
             yawAmount = keyboardYaw;
         }
 
-        // W/S keys = pitch
         float keyboardPitchTarget = 0.0f;
         if (inverted_controls) {
             if (state[SDL_SCANCODE_W]) { keyboardPitchTarget = -1.0f; }
