@@ -312,10 +312,10 @@ EXTRA_PROGRAMS += \
 ## ── Base (SDL2-only) examples ──────────────────────────────────────────────
 
 mx2_test_SOURCES              = test/main.cpp
-mx2_test_LDADD                = libmx.la
+mx2_test_LDADD                = libmx.la $(SDL2_LIBS)
 
 mx2_controller_test_SOURCES   = controller_test/main.cpp
-mx2_controller_test_LDADD     = libmx.la
+mx2_controller_test_LDADD     = libmx.la $(SDL2_LIBS)
 
 mx2_input_test_SOURCES        = input_test/main.cpp
 mx2_input_test_LDADD          = libmx.la
