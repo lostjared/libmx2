@@ -916,7 +916,6 @@ namespace mx {
         if (!surfacex) {
             throw mx::Exception("SDL_Surface is null!");
         }
-
         if (textureImageView != VK_NULL_HANDLE) {
             vkDestroyImageView(device, textureImageView, nullptr);
             textureImageView = VK_NULL_HANDLE;
@@ -930,56 +929,43 @@ namespace mx {
             vkFreeMemory(device, textureImageMemory, nullptr);
             textureImageMemory = VK_NULL_HANDLE;
         }
-
         SDL_Surface* surface = SDL_ConvertSurfaceFormat(surfacex, SDL_PIXELFORMAT_RGBA8888, 0);
         if (!surface) {
             throw mx::Exception("SDL_ConvertSurfaceFormat failed!");
         }
-
         width = surface->w;
         height = surface->h;
-
         VkDeviceSize imageSize = static_cast<VkDeviceSize>(width) * static_cast<VkDeviceSize>(height) * 4;
-
         VkBuffer stagingBuffer;
         VkDeviceMemory stagingBufferMemory;
         createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
             stagingBuffer, stagingBufferMemory);
-
         void* data = nullptr;
         VK_CHECK_RESULT(vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data));
-
         if (SDL_MUSTLOCK(surface)) {
             SDL_LockSurface(surface);
         }
-
         uint8_t* dst = reinterpret_cast<uint8_t*>(data);
         const uint8_t* src = reinterpret_cast<const uint8_t*>(surface->pixels);
         const size_t rowBytes = static_cast<size_t>(width) * 4;
         for (int y = 0; y < surface->h; ++y) {
             memcpy(dst + static_cast<size_t>(y) * rowBytes, src + static_cast<size_t>(y) * static_cast<size_t>(surface->pitch), rowBytes);
         }
-
         if (SDL_MUSTLOCK(surface)) {
             SDL_UnlockSurface(surface);
         }
-
         vkUnmapMemory(device, stagingBufferMemory);
         SDL_FreeSurface(surface);
-
         VkFormat textureFormat = VK_FORMAT_R8G8B8A8_UNORM;
-
         createImage(static_cast<uint32_t>(width), static_cast<uint32_t>(height), textureFormat, VK_IMAGE_TILING_OPTIMAL,
             VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
-
         transitionImageLayout(textureImage, textureFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
         textureImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
         copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
         transitionImageLayout(textureImage, textureFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
         textureImageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
         vkDestroyBuffer(device, stagingBuffer, nullptr);
         vkFreeMemory(device, stagingBufferMemory, nullptr);
     }
@@ -1000,29 +986,23 @@ namespace mx {
         imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
         imageInfo.flags = 0;
-
         if (vkCreateImage(device, &imageInfo, nullptr, &image) != VK_SUCCESS) {
             throw mx::Exception("Failed to create image!");
         }
-
         VkMemoryRequirements memRequirements;
         vkGetImageMemoryRequirements(device, image, &memRequirements);
-
         VkMemoryAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         allocInfo.allocationSize = memRequirements.size;
         allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
-
         if (vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS) {
             throw mx::Exception("Failed to allocate image memory!");
         }
-
         vkBindImageMemory(device, image, imageMemory, 0);
     }
 
     void VKWindow::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
         VkCommandBuffer commandBuffer = beginSingleTimeCommands();
-
         VkImageMemoryBarrier barrier{};
         barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
         barrier.oldLayout = oldLayout;
