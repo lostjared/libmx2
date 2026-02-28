@@ -308,6 +308,19 @@ namespace mx {
             createInfo.enabledLayerCount = 0;
         }
 
+        VkDebugUtilsMessengerCreateInfoEXT messengerInfo{};
+
+        if (enableValidation) {
+            messengerInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+            messengerInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | 
+                                            VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+            messengerInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | 
+                                        VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | 
+                                        VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+            messengerInfo.pfnUserCallback = debugCallback;
+            createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*) &messengerInfo;
+        }
+
         VK_CHECK_RESULT(vkCreateInstance(&createInfo, nullptr, &instance));
 
         uint32_t instanceVersion = 0;
@@ -320,20 +333,11 @@ namespace mx {
 #ifndef WITH_MOLTEN
         volkLoadInstance(instance);
 #endif
-        if (enableValidation) {
-            VkDebugUtilsMessengerCreateInfoEXT messengerInfo{};
-            messengerInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-            messengerInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | 
-                                            VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-            messengerInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | 
-                                        VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | 
-                                        VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-            messengerInfo.pfnUserCallback = debugCallback;
-               if (vkCreateDebugUtilsMessengerEXT(instance, &messengerInfo, nullptr, &debugMessenger) != VK_SUCCESS) {
-                throw mx::Exception("Failed to set up debug messenger!");
-            }
+        if(enableValidation) {
+            if (vkCreateDebugUtilsMessengerEXT(instance, &messengerInfo, nullptr, &debugMessenger) != VK_SUCCESS) {
+                    throw mx::Exception("Failed to set up debug messenger!");
+            } 
         }
-
     }
 
     void VKWindow::createSurface() {
