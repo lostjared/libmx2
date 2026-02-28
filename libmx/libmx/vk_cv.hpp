@@ -16,6 +16,7 @@ namespace mx {
 
 /**
  * @class MXCapture
+ * @ingroup mxvk_cv_module
  * @brief Vulkan OpenCV video capture source.
  *
  * Opens a video file or camera, decodes frames, and uploads them to a

@@ -16,6 +16,7 @@ namespace mx {
 
 /**
  * @class MXCapture
+ * @ingroup mxgl_cv_module
  * @brief OpenCV video capture source that renders via an OpenGL sprite.
  *
  * Opens a video file or camera device, reads frames frame-by-frame, and
