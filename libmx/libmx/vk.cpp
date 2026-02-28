@@ -919,6 +919,19 @@ namespace mx {
             throw mx::Exception("SDL_Surface is null!");
         }
 
+        if (textureImageView != VK_NULL_HANDLE) {
+            vkDestroyImageView(device, textureImageView, nullptr);
+            textureImageView = VK_NULL_HANDLE;
+        }
+        if (textureImage != VK_NULL_HANDLE) {
+            vkDestroyImage(device, textureImage, nullptr);
+            textureImage = VK_NULL_HANDLE;
+        }
+        if (textureImageMemory != VK_NULL_HANDLE) {
+            vkFreeMemory(device, textureImageMemory, nullptr);
+            textureImageMemory = VK_NULL_HANDLE;
+        }
+
         SDL_Surface* surface = SDL_ConvertSurfaceFormat(surfacex, SDL_PIXELFORMAT_RGBA8888, 0);
         if (!surface) {
             throw mx::Exception("SDL_ConvertSurfaceFormat failed!");

@@ -319,7 +319,6 @@ namespace mx {
 
         /** @return @c true if wireframe mode is active. */
         bool getWireFrame() const { return useWireFrame; }
-       
     protected:
         bool active = true;
         bool inputControllersInitialized = false;
