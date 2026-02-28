@@ -366,198 +366,198 @@ mx2_jpeg_test_LDADD           = libmx.la $(SDL2_LIBS) $(SDL2_TTF_LIBS)
 ## ── OpenGL examples ────────────────────────────────────────────────────────
 
 mx2_gl_window_SOURCES             = gl_window/window.cpp
-mx2_gl_window_LDADD               = libmxgl.la
+mx2_gl_window_LDADD               = libmxgl.la libmx.la
 
 mx2_gl_skeleton_SOURCES           = gl_skeleton/skeleton.cpp
-mx2_gl_skeleton_LDADD             = libmxgl.la
+mx2_gl_skeleton_LDADD             = libmxgl.la libmx.la
 
 mx2_gl_example_SOURCES            = gl_example/example.cpp
-mx2_gl_example_LDADD              = libmxgl.la
+mx2_gl_example_LDADD              = libmxgl.la libmx.la
 
 mx2_gl_cube_SOURCES               = gl_cube/example.cpp
-mx2_gl_cube_LDADD                 = libmxgl.la
+mx2_gl_cube_LDADD                 = libmxgl.la libmx.la
 
 mx2_gl_pong_SOURCES               = gl_pong/pong.cpp
-mx2_gl_pong_LDADD                 = libmxgl.la
+mx2_gl_pong_LDADD                 = libmxgl.la libmx.la
 
 mx2_gl_animated_cube_SOURCES      = gl_animated_cube/example.cpp
-mx2_gl_animated_cube_LDADD        = libmxgl.la
+mx2_gl_animated_cube_LDADD        = libmxgl.la libmx.la
 
 mx2_gl_breakout_SOURCES           = gl_breakout/breakout.cpp gl_breakout/game.cpp gl_breakout/intro.cpp
-mx2_gl_breakout_LDADD             = libmxgl.la
+mx2_gl_breakout_LDADD             = libmxgl.la libmx.la
 
 mx2_gl_pyramid_SOURCES            = gl_pyramid/example.cpp
-mx2_gl_pyramid_LDADD              = libmxgl.la
+mx2_gl_pyramid_LDADD              = libmxgl.la libmx.la
 
 mx2_gl_mxmod_SOURCES              = gl_mxmod/viewer.cpp
-mx2_gl_mxmod_LDADD                = libmxgl.la
+mx2_gl_mxmod_LDADD                = libmxgl.la libmx.la
 
 mx2_space3d_SOURCES               = space3d/explode.cpp space3d/intro.cpp space3d/space.cpp
-mx2_space3d_LDADD                 = libmxgl.la
+mx2_space3d_LDADD                 = libmxgl.la libmx.la
 
 mx2_gl_surface_test_SOURCES       = gl_surface_test/window.cpp
-mx2_gl_surface_test_LDADD         = libmxgl.la
+mx2_gl_surface_test_LDADD         = libmxgl.la libmx.la
 
 mx2_gl_ps_SOURCES                 = gl_ps/ps.cpp
-mx2_gl_ps_LDADD                   = libmxgl.la
+mx2_gl_ps_LDADD                   = libmxgl.la libmx.la
 
 mx2_gl_ps2_SOURCES                = gl_ps2/ps.cpp
-mx2_gl_ps2_LDADD                  = libmxgl.la
+mx2_gl_ps2_LDADD                  = libmxgl.la libmx.la
 
 mx2_gl_ps3_SOURCES                = gl_ps3/ps.cpp
-mx2_gl_ps3_LDADD                  = libmxgl.la
+mx2_gl_ps3_LDADD                  = libmxgl.la libmx.la
 
 mx2_gl_ps4_SOURCES                = gl_ps4/ps.cpp
-mx2_gl_ps4_LDADD                  = libmxgl.la
+mx2_gl_ps4_LDADD                  = libmxgl.la libmx.la
 
 mx2_gl_ps3d_SOURCES               = gl_ps3d/ps.cpp
-mx2_gl_ps3d_LDADD                 = libmxgl.la
+mx2_gl_ps3d_LDADD                 = libmxgl.la libmx.la
 
 mx2_gl_stars3d_SOURCES            = gl_stars3d/stars.cpp
-mx2_gl_stars3d_LDADD              = libmxgl.la
+mx2_gl_stars3d_LDADD              = libmxgl.la libmx.la
 
 mx2_gl_work_SOURCES               = gl_work/stars.cpp
-mx2_gl_work_LDADD                 = libmxgl.la
+mx2_gl_work_LDADD                 = libmxgl.la libmx.la
 
 mx2_gl_explode_SOURCES            = gl_explode/explode.cpp gl_explode/test.cpp
-mx2_gl_explode_LDADD              = libmxgl.la
+mx2_gl_explode_LDADD              = libmxgl.la libmx.la
 
 mx2_gl_walk_SOURCES               = gl_walk/walk.cpp
-mx2_gl_walk_LDADD                 = libmxgl.la
+mx2_gl_walk_LDADD                 = libmxgl.la libmx.la
 
 mx2_gl_walktest_SOURCES           = gl_walktest/room.cpp
-mx2_gl_walktest_LDADD             = libmxgl.la
+mx2_gl_walktest_LDADD             = libmxgl.la libmx.la
 
 mx2_gl_cubemap_SOURCES            = gl_cubemap/example.cpp
-mx2_gl_cubemap_LDADD              = libmxgl.la
+mx2_gl_cubemap_LDADD              = libmxgl.la libmx.la
 
 mx2_gl_stencil_test_SOURCES       = gl_stencil_test/skeleton.cpp
-mx2_gl_stencil_test_LDADD         = libmxgl.la
+mx2_gl_stencil_test_LDADD         = libmxgl.la libmx.la
 
 mx2_gl_blend_shader_SOURCES       = gl_blend_shader/blend.cpp
-mx2_gl_blend_shader_LDADD         = libmxgl.la
+mx2_gl_blend_shader_LDADD         = libmxgl.la libmx.la
 
 mx2_gl_framebuffer_SOURCES        = gl_framebuffer/skeleton.cpp
-mx2_gl_framebuffer_LDADD          = libmxgl.la
+mx2_gl_framebuffer_LDADD          = libmxgl.la libmx.la
 
 mx2_gl_shade1_SOURCES             = gl_shade1/shade.cpp
-mx2_gl_shade1_LDADD               = libmxgl.la
+mx2_gl_shade1_LDADD               = libmxgl.la libmx.la
 
 mx2_gl_shade2_SOURCES             = gl_shade2/shade.cpp
-mx2_gl_shade2_LDADD               = libmxgl.la
+mx2_gl_shade2_LDADD               = libmxgl.la libmx.la
 
 mx2_gl_shadow_SOURCES             = gl_shadow/shadow.cpp
-mx2_gl_shadow_LDADD               = libmxgl.la
+mx2_gl_shadow_LDADD               = libmxgl.la libmx.la
 
 mx2_gl_skybox_SOURCES             = gl_skybox/skybox.cpp
-mx2_gl_skybox_LDADD               = libmxgl.la
+mx2_gl_skybox_LDADD               = libmxgl.la libmx.la
 
 mx2_gl_skybox2_SOURCES            = gl_skybox2/skybox.cpp
-mx2_gl_skybox2_LDADD              = libmxgl.la
+mx2_gl_skybox2_LDADD              = libmxgl.la libmx.la
 
 mx2_gl_skybox3_SOURCES            = gl_skybox3/skybox.cpp
-mx2_gl_skybox3_LDADD              = libmxgl.la
+mx2_gl_skybox3_LDADD              = libmxgl.la libmx.la
 
 mx2_gl_curve_SOURCES              = gl_curve/curve.cpp
-mx2_gl_curve_LDADD                = libmxgl.la
+mx2_gl_curve_LDADD                = libmxgl.la libmx.la
 
 mx2_gl_snow_SOURCES               = gl_snow/snow.cpp
-mx2_gl_snow_LDADD                 = libmxgl.la
+mx2_gl_snow_LDADD                 = libmxgl.la libmx.la
 
 mx2_gl_fire_SOURCES               = gl_fire/fire.cpp
-mx2_gl_fire_LDADD                 = libmxgl.la
+mx2_gl_fire_LDADD                 = libmxgl.la libmx.la
 
 mx2_gl_water_SOURCES              = gl_water/water.cpp
-mx2_gl_water_LDADD                = libmxgl.la
+mx2_gl_water_LDADD                = libmxgl.la libmx.la
 
 mx2_gl_rain_SOURCES               = gl_rain/rain.cpp
-mx2_gl_rain_LDADD                 = libmxgl.la
+mx2_gl_rain_LDADD                 = libmxgl.la libmx.la
 
 mx2_gl_room_SOURCES               = gl_room/room.cpp
-mx2_gl_room_LDADD                 = libmxgl.la
+mx2_gl_room_LDADD                 = libmxgl.la libmx.la
 
 mx2_gl_matrix_SOURCES             = gl_matrix/matrix.cpp
-mx2_gl_matrix_LDADD               = libmxgl.la
+mx2_gl_matrix_LDADD               = libmxgl.la libmx.la
 
 mx2_gl_obj_explode_SOURCES        = gl_obj_explode/obj_explode.cpp
-mx2_gl_obj_explode_LDADD          = libmxgl.la
+mx2_gl_obj_explode_LDADD          = libmxgl.la libmx.la
 
 mx2_gl_fog_SOURCES                = gl_fog/room.cpp
-mx2_gl_fog_LDADD                  = libmxgl.la
+mx2_gl_fog_LDADD                  = libmxgl.la libmx.la
 
 mx2_gl_ship_SOURCES               = gl_ship/ship.cpp
-mx2_gl_ship_LDADD                 = libmxgl.la
+mx2_gl_ship_LDADD                 = libmxgl.la libmx.la
 
 mx2_gl_matrix_room_SOURCES        = gl_matrix_room/matrix_room.cpp
-mx2_gl_matrix_room_LDADD          = libmxgl.la
+mx2_gl_matrix_room_LDADD          = libmxgl.la libmx.la
 
 mx2_gl_matrix_glitch_SOURCES      = gl_matrix_glitch/matrix_glitch.cpp
-mx2_gl_matrix_glitch_LDADD        = libmxgl.la
+mx2_gl_matrix_glitch_LDADD        = libmxgl.la libmx.la
 
 mx2_gl_matrix_psyche_SOURCES      = gl_matrix_psyche/matrix_psyche.cpp
-mx2_gl_matrix_psyche_LDADD        = libmxgl.la
+mx2_gl_matrix_psyche_LDADD        = libmxgl.la libmx.la
 
 mx2_gl_blank_model_SOURCES        = gl_blank_model/blank_model.cpp
-mx2_gl_blank_model_LDADD          = libmxgl.la
+mx2_gl_blank_model_LDADD          = libmxgl.la libmx.la
 
 mx2_gl_intro_screen_SOURCES       = gl_intro_screen/intro.cpp
-mx2_gl_intro_screen_LDADD         = libmxgl.la
+mx2_gl_intro_screen_LDADD         = libmxgl.la libmx.la
 
 mx2_gl_model_explode_SOURCES      = gl_model_explode/model_explode.cpp
-mx2_gl_model_explode_LDADD        = libmxgl.la
+mx2_gl_model_explode_LDADD        = libmxgl.la libmx.la
 
 mx2_gl_model_glitch_SOURCES       = gl_model_glitch/model_glitch.cpp
-mx2_gl_model_glitch_LDADD         = libmxgl.la
+mx2_gl_model_glitch_LDADD         = libmxgl.la libmx.la
 
 mx2_gl_asteroids_SOURCES          = gl_asteroids/asteroids.cpp
-mx2_gl_asteroids_LDADD            = libmxgl.la
+mx2_gl_asteroids_LDADD            = libmxgl.la libmx.la
 
 mx2_gl_console_SOURCES            = gl_console/console_main.cpp
-mx2_gl_console_LDADD              = libmxgl.la
+mx2_gl_console_LDADD              = libmxgl.la libmx.la
 
 mx2_gl_console_skeleton_SOURCES   = gl_console_skeleton/console_skeleton.cpp
-mx2_gl_console_skeleton_LDADD     = libmxgl.la
+mx2_gl_console_skeleton_LDADD     = libmxgl.la libmx.la
 
 mx2_gl_console_full_SOURCES       = gl_console_full/console_full.cpp
-mx2_gl_console_full_LDADD         = libmxgl.la
+mx2_gl_console_full_LDADD         = libmxgl.la libmx.la
 
 mx2_gl_object_SOURCES             = gl_object/skeleton.cpp
-mx2_gl_object_LDADD               = libmxgl.la
+mx2_gl_object_LDADD               = libmxgl.la libmx.la
 
 
 mx2_gl_glitch_SOURCES             = gl_glitch/glitch.cpp
-mx2_gl_glitch_LDADD               = libmxgl.la
+mx2_gl_glitch_LDADD               = libmxgl.la libmx.la
 
 mx2_gl_glitch_cube_SOURCES        = gl_glitch_cube/glitch.cpp
-mx2_gl_glitch_cube_LDADD          = libmxgl.la
+mx2_gl_glitch_cube_LDADD          = libmxgl.la libmx.la
 
 mx2_gl_glitch_cube2_SOURCES       = gl_glitch_cube2/glitch.cpp
-mx2_gl_glitch_cube2_LDADD         = libmxgl.la
+mx2_gl_glitch_cube2_LDADD         = libmxgl.la libmx.la
 
 mx2_gl_glitch_cube3_SOURCES       = gl_glitch_cube3/glitch.cpp
-mx2_gl_glitch_cube3_LDADD         = libmxgl.la
+mx2_gl_glitch_cube3_LDADD         = libmxgl.la libmx.la
 
 mx2_gl_texture_map_SOURCES        = gl_texture_map/texture.cpp
-mx2_gl_texture_map_LDADD          = libmxgl.la
+mx2_gl_texture_map_LDADD          = libmxgl.la libmx.la
 
 mx2_gl_glitch_ex_SOURCES          = gl_glitch_ex/model_glitch.cpp
-mx2_gl_glitch_ex_LDADD            = libmxgl.la
+mx2_gl_glitch_ex_LDADD            = libmxgl.la libmx.la
 
 ## ── OpenGL ES3 examples ────────────────────────────────────────────────────
 
 mx2_gl_es3_SOURCES                = gl_es3/skeleton.cpp
-mx2_gl_es3_LDADD                  = libmxgl.la
+mx2_gl_es3_LDADD                  = libmxgl.la libmx.la
 
 mx2_gl_warp_model_SOURCES         = gl_warp_model/skeleton.cpp
-mx2_gl_warp_model_LDADD           = libmxgl.la
+mx2_gl_warp_model_LDADD           = libmxgl.la libmx.la
 
 ## ── OpenGL + OpenCV examples ───────────────────────────────────────────────
 
 mx2_gl_cv_skeleton_SOURCES        = gl_cv_skeleton/skeleton.cpp
-mx2_gl_cv_skeleton_LDADD          = libmxgl_cv.la libmxgl.la $(OPENCV_LIBS)
+mx2_gl_cv_skeleton_LDADD          = libmxgl_cv.la libmxgl.la libmx.la $(OPENCV_LIBS)
 
 mx2_gl_walktest_cv_SOURCES        = gl_walktest_cv/room.cpp
-mx2_gl_walktest_cv_LDADD          = libmxgl_cv.la libmxgl.la $(OPENCV_LIBS)
+mx2_gl_walktest_cv_LDADD          = libmxgl_cv.la libmxgl.la libmx.la $(OPENCV_LIBS)
 
 ## ── Vulkan examples ────────────────────────────────────────────────────────
 
