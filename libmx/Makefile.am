@@ -296,7 +296,7 @@ EXTRA_PROGRAMS += \
 	mx2-gl-matrix-room mx2-gl-matrix-glitch mx2-gl-matrix-psyche \
 	mx2-gl-blank-model mx2-gl-intro-screen mx2-gl-model-explode mx2-gl-model-glitch \
 	mx2-gl-asteroids mx2-gl-console mx2-gl-console-skeleton mx2-gl-console-full \
-	mx2-gl-object mx2-gl-about \
+	mx2-gl-object \
 	mx2-gl-glitch mx2-gl-glitch-cube mx2-gl-glitch-cube2 mx2-gl-glitch-cube3 \
 	mx2-gl-texture-map mx2-gl-glitch-ex \
 	mx2-gl-es3 mx2-gl-warp-model \
@@ -524,9 +524,6 @@ mx2_gl_console_full_LDADD         = libmxgl.la
 mx2_gl_object_SOURCES             = gl_object/skeleton.cpp
 mx2_gl_object_LDADD               = libmxgl.la
 
-#mx2_gl_about_SOURCES              = gl_about/about.cpp
-#mx2_gl_about_LDADD                = libmxgl.la
-
 
 mx2_gl_glitch_SOURCES             = gl_glitch/glitch.cpp
 mx2_gl_glitch_LDADD               = libmxgl.la
@@ -716,7 +713,7 @@ noinst_PROGRAMS += \
 	mx2-gl-matrix-room mx2-gl-matrix-glitch mx2-gl-matrix-psyche \
 	mx2-gl-blank-model mx2-gl-intro-screen mx2-gl-model-explode mx2-gl-model-glitch \
 	mx2-gl-asteroids mx2-gl-console mx2-gl-console-skeleton mx2-gl-console-full \
-	mx2-gl-object mx2-gl-about \
+	mx2-gl-object \
 	mx2-gl-glitch mx2-gl-glitch-cube mx2-gl-glitch-cube2 mx2-gl-glitch-cube3 \
 	mx2-gl-texture-map mx2-gl-glitch-ex
 
