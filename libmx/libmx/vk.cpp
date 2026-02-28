@@ -379,10 +379,18 @@ namespace mx {
             queueCreateInfos.push_back(queueInfo);
         }
         
+        VkPhysicalDeviceFeatures supportedFeatures{};
+        vkGetPhysicalDeviceFeatures(physicalDevice, &supportedFeatures);
+
         VkPhysicalDeviceFeatures deviceFeatures{};
-        deviceFeatures.samplerAnisotropy = VK_TRUE;
-    
-        
+        deviceFeatures.samplerAnisotropy = supportedFeatures.samplerAnisotropy;
+        supportsWireFrame = (supportedFeatures.fillModeNonSolid == VK_TRUE);
+        deviceFeatures.fillModeNonSolid = supportsWireFrame ? VK_TRUE : VK_FALSE;
+
+        if (!supportsWireFrame) {
+            std::cout << "[Vulkan] fillModeNonSolid not supported; wireframe pipeline will use fill mode fallback.\n";
+        }
+
         std::vector<const char*> deviceExtensions = {
             VK_KHR_SWAPCHAIN_EXTENSION_NAME
         };
@@ -1416,7 +1424,7 @@ namespace mx {
                 throw mx::Exception("Failed to create graphics pipeline!");
             }
             
-            rasterizer.polygonMode = VK_POLYGON_MODE_LINE;
+            rasterizer.polygonMode = supportsWireFrame ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
             if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipelineMatrix) != VK_SUCCESS) {
                 throw mx::Exception("Failed to create Matrix graphics pipeline!");
             }

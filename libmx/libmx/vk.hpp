@@ -346,6 +346,7 @@ namespace mx {
         VkPipeline graphicsPipelineMatrix = VK_NULL_HANDLE;
         VkPolygonMode currentPolygonMode = VK_POLYGON_MODE_FILL;
         bool useWireFrame = false;
+        bool supportsWireFrame = false;
         std::vector<VkFramebuffer> swapChainFramebuffers;
 
         VkCommandPool commandPool = VK_NULL_HANDLE;
