@@ -13,7 +13,7 @@ namespace mx {
     }
 
     void VKWindow::initWindow(const std::string &title, int width, int height, bool full) {
-        if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER) != 0) {
+        if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) {
             throw mx::Exception("SDL_Init: Failure: " + std::string(SDL_GetError()));
         }
         if(full)
@@ -38,6 +38,25 @@ namespace mx {
         if (textRenderer) {
             textRenderer->setFont(util.getFilePath(font), size);
         }
+    }
+
+    bool VKWindow::enableControllerInput() {
+        if (inputControllersInitialized) {
+            return true;
+        }
+
+        const Uint32 controllerFlags = SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER;
+        if ((SDL_WasInit(controllerFlags) & controllerFlags) != controllerFlags) {
+            if (SDL_InitSubSystem(controllerFlags) != 0) {
+                std::cerr << "Warning: SDL controller subsystem init failed: " << SDL_GetError() << std::endl;
+                return false;
+            }
+        }
+
+        SDL_GameControllerEventState(SDL_ENABLE);
+        SDL_JoystickEventState(SDL_ENABLE);
+        inputControllersInitialized = true;
+        return true;
     }
 
     void VKWindow::initVulkan() {
@@ -1722,6 +1741,10 @@ namespace mx {
         if (window != nullptr) {
             std::cout << "   Destroying SDL window and quitting SDL\n";
             SDL_DestroyWindow(window);
+            if (inputControllersInitialized) {
+                SDL_QuitSubSystem(SDL_INIT_GAMECONTROLLER | SDL_INIT_JOYSTICK);
+                inputControllersInitialized = false;
+            }
             SDL_Quit();
         }
 

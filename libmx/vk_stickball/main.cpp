@@ -142,15 +142,18 @@ public:
     ~PoolWindow() override = default;
     void initVulkan() override {
         mx::VKWindow::initVulkan();
-        SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER);
-        for (int i = 0; i < SDL_NumJoysticks(); i++) {
-            if (SDL_IsGameController(i)) {
-                gameController = SDL_GameControllerOpen(i);
-                if (gameController) {
-                    SDL_Log("Controller opened: %s", SDL_GameControllerName(gameController));
-                    break;
+        if (enableControllerInput()) {
+            for (int i = 0; i < SDL_NumJoysticks(); i++) {
+                if (SDL_IsGameController(i)) {
+                    gameController = SDL_GameControllerOpen(i);
+                    if (gameController) {
+                        SDL_Log("Controller opened: %s", SDL_GameControllerName(gameController));
+                        break;
+                    }
                 }
             }
+        } else {
+            SDL_Log("Controller subsystem unavailable: %s", SDL_GetError());
         }
         {
             uint32_t white = 0xFFFFFFFF;

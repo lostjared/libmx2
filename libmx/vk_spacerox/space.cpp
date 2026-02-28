@@ -124,6 +124,9 @@ public:
     
     void initVulkan() override {
         mx::VKWindow::initVulkan();
+        if (!enableControllerInput()) {
+            SDL_Log("Controller input unavailable; continuing with keyboard input.");
+        }
         
         SDL_Surface *starSurf = SDL_CreateRGBSurfaceWithFormat(0, 4, 4, 32, SDL_PIXELFORMAT_RGBA32);
         Uint32 *pixels = (Uint32*)starSurf->pixels;

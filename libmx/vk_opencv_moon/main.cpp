@@ -123,7 +123,7 @@ public:
         if (!shaderDir.empty()) {
             loadShaderIndex(shaderDir);
         }
-        if (SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER) == 0) {
+        if (enableControllerInput()) {
             for (int i = 0; i < SDL_NumJoysticks(); ++i) {
                 if (SDL_IsGameController(i)) {
                     controller = SDL_GameControllerOpen(i);
@@ -133,6 +133,8 @@ public:
                     }
                 }
             }
+        } else {
+            SDL_Log("Controller subsystem unavailable: %s", SDL_GetError());
         }
     }
 

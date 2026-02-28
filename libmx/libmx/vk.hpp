@@ -303,6 +303,15 @@ namespace mx {
         void resizeWindow(int width, int height);
 
         /**
+         * @brief Enable joystick and game controller subsystems on demand.
+         * @return @c true if controller input is ready, @c false on failure.
+         */
+        bool enableControllerInput();
+
+        /** @return @c true if controller input subsystem was enabled. */
+        bool controllerInputEnabled() const { return inputControllersInitialized; }
+
+        /**
          * @brief Enable or disable wireframe rendering.
          * @param enable @c true to draw in wireframe.
          */
@@ -310,16 +319,10 @@ namespace mx {
 
         /** @return @c true if wireframe mode is active. */
         bool getWireFrame() const { return useWireFrame; }
-
-        /** @brief Raycaster player state uploaded as a uniform every frame. */
-        struct {
-            float posX = 8.0f, posY = 2.0f;    ///< Player position.
-            float dirX = 0.0f, dirY = 1.0f;    ///< Player direction vector.
-            float planeX = 0.66f, planeY = 0.0f; ///< Camera plane vector.
-        } raycastPlayer;
-        
+       
     protected:
         bool active = true;
+        bool inputControllersInitialized = false;
         bool enableValidation = true;
         std::string font = "font.ttf";
         int font_size = 24;
