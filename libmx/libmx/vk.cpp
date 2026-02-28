@@ -231,6 +231,11 @@ namespace mx {
         VkDebugUtilsMessageTypeFlagsEXT messageType,
         const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
         void* pUserData) {
+        if (pCallbackData && pCallbackData->pMessage &&
+            std::strstr(pCallbackData->pMessage, "VK_LAYER_VKBASALT_post_processing") &&
+            std::strstr(pCallbackData->pMessage, "duplicate")) {
+            return VK_FALSE;
+        }
         std::cerr << "[Vulkan Validation] " << pCallbackData->pMessage << std::endl;
         return VK_FALSE; 
     }
