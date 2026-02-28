@@ -123,6 +123,7 @@ namespace mx {
         VkImage textureImage = VK_NULL_HANDLE;
         VkDeviceMemory textureImageMemory = VK_NULL_HANDLE;
         VkImageView textureImageView = VK_NULL_HANDLE;
+        VkImageLayout textureImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         VkSampler textureSampler = VK_NULL_HANDLE;
         VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
         std::vector<VkDescriptorSet> descriptorSets;

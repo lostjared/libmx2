@@ -903,6 +903,7 @@ namespace mx {
         if (textureImage != VK_NULL_HANDLE) {
             vkDestroyImage(device, textureImage, nullptr);
             textureImage = VK_NULL_HANDLE;
+            textureImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         }
         if (textureImageMemory != VK_NULL_HANDLE) {
             vkFreeMemory(device, textureImageMemory, nullptr);
@@ -926,8 +927,10 @@ namespace mx {
             VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
         transitionImageLayout(textureImage, textureFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        textureImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
         copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
         transitionImageLayout(textureImage, textureFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        textureImageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         vkDestroyBuffer(device, stagingBuffer, nullptr);
         vkFreeMemory(device, stagingBufferMemory, nullptr);
     }
@@ -1023,6 +1026,7 @@ namespace mx {
         if (textureImage != VK_NULL_HANDLE) {
             vkDestroyImage(device, textureImage, nullptr);
             vkFreeMemory(device, textureImageMemory, nullptr);
+            textureImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         }
         width = w;
         height = h;
@@ -1032,6 +1036,7 @@ namespace mx {
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
 
         transitionImageLayout(textureImage, textureFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        textureImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
     }
 
     void VKWindow::updateTexture(void* pixels, VkDeviceSize imageSize) {
@@ -1045,9 +1050,16 @@ namespace mx {
         memcpy(data, pixels, static_cast<size_t>(imageSize));
         vkUnmapMemory(device, stagingBufferMemory);
         VkFormat textureFormat = VK_FORMAT_R8G8B8A8_UNORM;
-        transitionImageLayout(textureImage, textureFormat, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        if (textureImageLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+            transitionImageLayout(textureImage, textureFormat, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+            textureImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        } else if (textureImageLayout == VK_IMAGE_LAYOUT_UNDEFINED) {
+            transitionImageLayout(textureImage, textureFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+            textureImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        }
         copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
         transitionImageLayout(textureImage, textureFormat, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        textureImageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         vkDestroyBuffer(device, stagingBuffer, nullptr);
         vkFreeMemory(device, stagingBufferMemory, nullptr);
     }
