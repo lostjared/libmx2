@@ -564,7 +564,7 @@ mx2_gl_walktest_cv_LDADD          = libmxgl_cv.la libmxgl.la $(OPENCV_LIBS)
 
 ## ── Vulkan examples ────────────────────────────────────────────────────────
 
-mx2_vk_skeleton_SOURCES           = vk_skeleton/skeleton.cpp vk_skeleton/vk.cpp
+mx2_vk_skeleton_SOURCES           = vk_skeleton/skeleton.cpp
 mx2_vk_skeleton_LDADD             = libmxvk.la libvolk.la
 
 mx2_vk_example_SOURCES            = vk_example/main.cpp
@@ -609,16 +609,16 @@ mx2_vk_matrix_LDADD               = libmxvk.la libvolk.la
 mx2_vk_matrix_ray_SOURCES         = vk_matrix_ray/skeleton.cpp vk_matrix_ray/vk.cpp
 mx2_vk_matrix_ray_LDADD           = libmxvk.la libvolk.la
 
-mx2_vk_sprite_SOURCES             = vk_sprite/skeleton.cpp vk_sprite/vk.cpp
+mx2_vk_sprite_SOURCES             = vk_sprite/skeleton.cpp
 mx2_vk_sprite_LDADD               = libmxvk.la libvolk.la
 
-mx2_vk_point_sprite_SOURCES       = vk_point_sprite/skeleton.cpp vk_point_sprite/vk.cpp
+mx2_vk_point_sprite_SOURCES       = vk_point_sprite/skeleton.cpp
 mx2_vk_point_sprite_LDADD         = libmxvk.la libvolk.la
 
 mx2_vk_point_sprite3D_SOURCES     = vk_point_sprite3D/skeleton.cpp
 mx2_vk_point_sprite3D_LDADD       = libmxvk.la libvolk.la
 
-mx2_vk_2D_MasterPiece_SOURCES     = vk_2D_MasterPiece/skeleton.cpp vk_2D_MasterPiece/vk.cpp
+mx2_vk_2D_MasterPiece_SOURCES     = vk_2D_MasterPiece/skeleton.cpp
 mx2_vk_2D_MasterPiece_LDADD       = libmxvk.la libvolk.la
 
 mx2_vk_spacerox_SOURCES           = vk_spacerox/space.cpp
