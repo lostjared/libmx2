@@ -312,56 +312,56 @@ EXTRA_PROGRAMS += \
 ## ── Base (SDL2-only) examples ──────────────────────────────────────────────
 
 mx2_test_SOURCES              = test/main.cpp
-mx2_test_LDADD                = libmx.la $(SDL2_LIBS)
+mx2_test_LDADD                = libmx.la $(SDL2_LIBS) $(SDL2_TTF_LIBS)
 
 mx2_controller_test_SOURCES   = controller_test/main.cpp
-mx2_controller_test_LDADD     = libmx.la $(SDL2_LIBS)
+mx2_controller_test_LDADD     = libmx.la $(SDL2_LIBS) $(SDL2_TTF_LIBS)
 
 mx2_input_test_SOURCES        = input_test/main.cpp
-mx2_input_test_LDADD          = libmx.la
+mx2_input_test_LDADD          = libmx.la $(SDL2_LIBS) $(SDL2_TTF_LIBS)
 
 mx2_image_test_SOURCES        = image_test/main.cpp
-mx2_image_test_LDADD          = libmx.la
+mx2_image_test_LDADD          = libmx.la $(SDL2_LIBS) $(SDL2_TTF_LIBS)
 
 mx2_knights_tour_SOURCES      = knights_tour/knight.cpp
-mx2_knights_tour_LDADD        = libmx.la
+mx2_knights_tour_LDADD        = libmx.la $(SDL2_LIBS) $(SDL2_TTF_LIBS)
 
 mx2_pong_SOURCES              = pong/pong.cpp
-mx2_pong_LDADD                = libmx.la
+mx2_pong_LDADD                = libmx.la $(SDL2_LIBS) $(SDL2_TTF_LIBS)
 
 mx2_asteroids_SOURCES         = asteroids/asteroids.cpp asteroids/game.cpp
-mx2_asteroids_LDADD           = libmx.la
+mx2_asteroids_LDADD           = libmx.la $(SDL2_LIBS) $(SDL2_TTF_LIBS)
 
 mx2_blocks_SOURCES            = blocks/blocks.cpp
-mx2_blocks_LDADD              = libmx.la
+mx2_blocks_LDADD              = libmx.la $(SDL2_LIBS) $(SDL2_TTF_LIBS)
 
 mx2_piece_SOURCES             = piece/piece.cpp
-mx2_piece_LDADD               = libmx.la
+mx2_piece_LDADD               = libmx.la $(SDL2_LIBS) $(SDL2_TTF_LIBS)
 
 mx2_matrix_SOURCES            = matrix/matrix.cpp
-mx2_matrix_LDADD              = libmx.la
+mx2_matrix_LDADD              = libmx.la $(SDL2_LIBS) $(SDL2_TTF_LIBS)
 
 mx2_breakout_SOURCES          = breakout/breakout.cpp
-mx2_breakout_LDADD            = libmx.la
+mx2_breakout_LDADD            = libmx.la $(SDL2_LIBS) $(SDL2_TTF_LIBS)
 
 mx2_frogger_SOURCES           = frogger/frogger.cpp
-mx2_frogger_LDADD             = libmx.la
+mx2_frogger_LDADD             = libmx.la $(SDL2_LIBS) $(SDL2_TTF_LIBS)
 
 mx2_mad_SOURCES               = mad/mad.cpp
-mx2_mad_LDADD                 = libmx.la
+mx2_mad_LDADD                 = libmx.la $(SDL2_LIBS) $(SDL2_TTF_LIBS)
 
 mx2_space_SOURCES             = space/space.cpp
-mx2_space_LDADD               = libmx.la
+mx2_space_LDADD               = libmx.la $(SDL2_LIBS) $(SDL2_TTF_LIBS)
 
 ## ── Mixer example ──────────────────────────────────────────────────────────
 
 mx2_sound_test_SOURCES        = sound_test/main.cpp
-mx2_sound_test_LDADD          = libmx.la
+mx2_sound_test_LDADD          = libmx.la $(SDL2_LIBS) $(SDL2_TTF_LIBS)
 
 ## ── JPEG example ───────────────────────────────────────────────────────────
 
 mx2_jpeg_test_SOURCES         = jpeg_test/main.cpp
-mx2_jpeg_test_LDADD           = libmx.la
+mx2_jpeg_test_LDADD           = libmx.la $(SDL2_LIBS) $(SDL2_TTF_LIBS)
 
 ## ── OpenGL examples ────────────────────────────────────────────────────────
 
