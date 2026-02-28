@@ -524,8 +524,8 @@ mx2_gl_console_full_LDADD         = libmxgl.la
 mx2_gl_object_SOURCES             = gl_object/skeleton.cpp
 mx2_gl_object_LDADD               = libmxgl.la
 
-mx2_gl_about_SOURCES              = gl_about/about.cpp
-mx2_gl_about_LDADD                = libmxgl.la
+#mx2_gl_about_SOURCES              = gl_about/about.cpp
+#mx2_gl_about_LDADD                = libmxgl.la
 
 
 mx2_gl_glitch_SOURCES             = gl_glitch/glitch.cpp
