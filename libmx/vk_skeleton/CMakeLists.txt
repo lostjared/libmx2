@@ -1,4 +1,4 @@
-add_executable(vk_skeleton ${CMAKE_SOURCE_DIR}/vk_skeleton/skeleton.cpp ${CMAKE_SOURCE_DIR}/vk_skeleton/vk.cpp)
+add_executable(vk_skeleton ${CMAKE_SOURCE_DIR}/vk_skeleton/skeleton.cpp)
 target_include_directories(vk_skeleton PRIVATE 
     ${CMAKE_SOURCE_DIR}/libmx 
     ${SDL2_INCLUDE_DIRS} 

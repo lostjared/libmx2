@@ -1,4 +1,4 @@
-add_executable(vk_2D_MasterPiece ${CMAKE_SOURCE_DIR}/vk_2D_MasterPiece/skeleton.cpp ${CMAKE_SOURCE_DIR}/vk_2D_MasterPiece/vk.cpp)
+add_executable(vk_2D_MasterPiece ${CMAKE_SOURCE_DIR}/vk_2D_MasterPiece/skeleton.cpp)
 target_include_directories(vk_2D_MasterPiece PRIVATE 
     ${CMAKE_SOURCE_DIR}/libmx 
     ${SDL2_INCLUDE_DIRS} 

@@ -856,6 +856,18 @@ namespace mx {
         if (!surfacex) {
             throw mx::Exception("SDL_Surface is null!");
         }
+        if (textureImageView != VK_NULL_HANDLE) {
+            vkDestroyImageView(device, textureImageView, nullptr);
+            textureImageView = VK_NULL_HANDLE;
+        }
+        if (textureImage != VK_NULL_HANDLE) {
+            vkDestroyImage(device, textureImage, nullptr);
+            textureImage = VK_NULL_HANDLE;
+        }
+        if (textureImageMemory != VK_NULL_HANDLE) {
+            vkFreeMemory(device, textureImageMemory, nullptr);
+            textureImageMemory = VK_NULL_HANDLE;
+        }
 
         VkDeviceSize imageSize = surfacex->w * surfacex->h * 4; 
         width = surfacex->w;
@@ -1114,6 +1126,18 @@ namespace mx {
         if (!surfacex) {
             throw mx::Exception("SDL_Surface is null for floor texture!");
         }
+        if (floorTextureImageView != VK_NULL_HANDLE) {
+            vkDestroyImageView(device, floorTextureImageView, nullptr);
+            floorTextureImageView = VK_NULL_HANDLE;
+        }
+        if (floorTextureImage != VK_NULL_HANDLE) {
+            vkDestroyImage(device, floorTextureImage, nullptr);
+            floorTextureImage = VK_NULL_HANDLE;
+        }
+        if (floorTextureImageMemory != VK_NULL_HANDLE) {
+            vkFreeMemory(device, floorTextureImageMemory, nullptr);
+            floorTextureImageMemory = VK_NULL_HANDLE;
+        }
 
         VkDeviceSize imageSize = surfacex->w * surfacex->h * 4; 
         VkBuffer stagingBuffer;
@@ -1137,6 +1161,18 @@ namespace mx {
     }
 
     void VKWindow::setupFloorTextureImage(uint32_t w, uint32_t h) {
+        if (floorTextureImageView != VK_NULL_HANDLE) {
+            vkDestroyImageView(device, floorTextureImageView, nullptr);
+            floorTextureImageView = VK_NULL_HANDLE;
+        }
+        if (floorTextureImage != VK_NULL_HANDLE) {
+            vkDestroyImage(device, floorTextureImage, nullptr);
+            floorTextureImage = VK_NULL_HANDLE;
+        }
+        if (floorTextureImageMemory != VK_NULL_HANDLE) {
+            vkFreeMemory(device, floorTextureImageMemory, nullptr);
+            floorTextureImageMemory = VK_NULL_HANDLE;
+        }
         
         VkDeviceSize imageSize = w * h * 4;
         std::vector<uint8_t> pixels(imageSize, 128); 
@@ -1162,6 +1198,10 @@ namespace mx {
     }
 
     void VKWindow::createFloorTextureImageView() {
+        if (floorTextureImageView != VK_NULL_HANDLE) {
+            vkDestroyImageView(device, floorTextureImageView, nullptr);
+            floorTextureImageView = VK_NULL_HANDLE;
+        }
         floorTextureImageView = createImageView(floorTextureImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
     }
 

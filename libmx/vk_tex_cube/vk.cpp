@@ -838,6 +838,18 @@ namespace mx {
         if (!surface) {
             throw mx::Exception("SDL_Surface is null!");
         }
+        if (textureImageView != VK_NULL_HANDLE) {
+            vkDestroyImageView(device, textureImageView, nullptr);
+            textureImageView = VK_NULL_HANDLE;
+        }
+        if (textureImage != VK_NULL_HANDLE) {
+            vkDestroyImage(device, textureImage, nullptr);
+            textureImage = VK_NULL_HANDLE;
+        }
+        if (textureImageMemory != VK_NULL_HANDLE) {
+            vkFreeMemory(device, textureImageMemory, nullptr);
+            textureImageMemory = VK_NULL_HANDLE;
+        }
 
         VkDeviceSize imageSize = surface->w * surface->h * 4;
         width = surface->w;
@@ -1068,6 +1080,18 @@ namespace mx {
         if (!surface) {
             throw mx::Exception("SDL_Surface is null!");
         }
+        if (bgTextureImageView != VK_NULL_HANDLE) {
+            vkDestroyImageView(device, bgTextureImageView, nullptr);
+            bgTextureImageView = VK_NULL_HANDLE;
+        }
+        if (bgTextureImage != VK_NULL_HANDLE) {
+            vkDestroyImage(device, bgTextureImage, nullptr);
+            bgTextureImage = VK_NULL_HANDLE;
+        }
+        if (bgTextureImageMemory != VK_NULL_HANDLE) {
+            vkFreeMemory(device, bgTextureImageMemory, nullptr);
+            bgTextureImageMemory = VK_NULL_HANDLE;
+        }
 
         VkDeviceSize imageSize = surface->w * surface->h * 4;
 
@@ -1095,6 +1119,10 @@ namespace mx {
     }
 
     void VKWindow::createBackgroundTextureImageView() {
+        if (bgTextureImageView != VK_NULL_HANDLE) {
+            vkDestroyImageView(device, bgTextureImageView, nullptr);
+            bgTextureImageView = VK_NULL_HANDLE;
+        }
         bgTextureImageView = createImageView(bgTextureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
     }
 

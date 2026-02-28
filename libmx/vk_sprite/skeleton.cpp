@@ -1,4 +1,4 @@
-#include "vk.hpp"
+#include <vk.hpp>
 #include "SDL.h"
 #include <random>
 #include "argz.hpp"
@@ -18,7 +18,7 @@ public:
         const char *szBlocks[] = {"red1.png", "red2.png", "red3.png", "green1.png", "green2.png", "green3.png", "blue1.png", "blue2.png", "blue3.png", nullptr };
         mx::VKWindow::initVulkan();
         for(int i = 0; szBlocks[i] != nullptr; ++i) {
-            blocks[i] = createSprite(util.path + "/data/img/" + szBlocks[i]);
+            blocks[i] = createSprite(util.path + "/data/img/" + szBlocks[i], "");
         }
     }
     

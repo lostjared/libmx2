@@ -1,4 +1,4 @@
-#include "vk.hpp"
+#include <vk.hpp>
 #include "SDL.h"
 #include <random>
 
@@ -20,7 +20,7 @@ public:
     
     void initVulkan() override {
         mx::VKWindow::initVulkan();
-        logoSprite = createSprite(filename);
+        logoSprite = createSprite(filename, "");
     }
     
     void proc() override {

@@ -766,6 +766,18 @@ namespace mx {
         if (!surfacex) {
             throw mx::Exception("SDL_Surface is null!");
         }
+        if (textureImageView != VK_NULL_HANDLE) {
+            vkDestroyImageView(device, textureImageView, nullptr);
+            textureImageView = VK_NULL_HANDLE;
+        }
+        if (textureImage != VK_NULL_HANDLE) {
+            vkDestroyImage(device, textureImage, nullptr);
+            textureImage = VK_NULL_HANDLE;
+        }
+        if (textureImageMemory != VK_NULL_HANDLE) {
+            vkFreeMemory(device, textureImageMemory, nullptr);
+            textureImageMemory = VK_NULL_HANDLE;
+        }
 
         VkDeviceSize imageSize = surfacex->w * surfacex->h * 4; 
         width = surfacex->w;

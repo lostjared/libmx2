@@ -1,4 +1,4 @@
-add_executable(vk_point_sprite ${CMAKE_SOURCE_DIR}/vk_point_sprite/skeleton.cpp ${CMAKE_SOURCE_DIR}/vk_point_sprite/vk.cpp)
+add_executable(vk_point_sprite ${CMAKE_SOURCE_DIR}/vk_point_sprite/skeleton.cpp)
 target_include_directories(vk_point_sprite PRIVATE 
     ${CMAKE_SOURCE_DIR}/libmx 
     ${SDL2_INCLUDE_DIRS} 
