@@ -658,6 +658,8 @@ namespace mx {
     }
 
     void VKWindow::cleanupSwapChain() {
+        std::cout << ">> [CleanupSwapChain] Releasing swapchain-dependent resources...\n";
+        std::cout << "   Framebuffers: " << swapChainFramebuffers.size() << "\n";
 
         for (auto framebuffer : swapChainFramebuffers) {
             if (framebuffer != VK_NULL_HANDLE) {
@@ -667,23 +669,28 @@ namespace mx {
         swapChainFramebuffers.clear();
 
         if (!commandBuffers.empty()) {
+            std::cout << "   Command buffers: " << commandBuffers.size() << "\n";
             vkFreeCommandBuffers(device, commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
             commandBuffers.clear();
         }
 
         if (graphicsPipeline != VK_NULL_HANDLE) {
+            std::cout << "   Destroying graphics pipeline\n";
             vkDestroyPipeline(device, graphicsPipeline, nullptr);
             graphicsPipeline = VK_NULL_HANDLE;
         }
         if (graphicsPipelineMatrix != VK_NULL_HANDLE) {
+            std::cout << "   Destroying matrix graphics pipeline\n";
             vkDestroyPipeline(device, graphicsPipelineMatrix, nullptr);
             graphicsPipelineMatrix = VK_NULL_HANDLE;
         }
         if (pipelineLayout != VK_NULL_HANDLE) {
+            std::cout << "   Destroying pipeline layout\n";
             vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
             pipelineLayout = VK_NULL_HANDLE;
         }
         if (renderPass != VK_NULL_HANDLE) {
+            std::cout << "   Destroying render pass\n";
             vkDestroyRenderPass(device, renderPass, nullptr);
             renderPass = VK_NULL_HANDLE;
         }
@@ -696,6 +703,7 @@ namespace mx {
         swapChainImageViews.clear();
 
         if (swapChain != VK_NULL_HANDLE) {
+            std::cout << "   Destroying swapchain\n";
             vkDestroySwapchainKHR(device, swapChain, nullptr);
             swapChain = VK_NULL_HANDLE;
         }
@@ -712,6 +720,8 @@ namespace mx {
             vkFreeMemory(device, depthImageMemory, nullptr);
             depthImageMemory = VK_NULL_HANDLE;
         }
+
+        std::cout << ">> [CleanupSwapChain] Complete\n";
     }
 
     VkFormat VKWindow::findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) {
@@ -1609,12 +1619,17 @@ namespace mx {
 
     
     void VKWindow::cleanup() {
+        std::cout << ">> [Cleanup] Releasing Vulkan resources...\n";
         vkDeviceWaitIdle(device);
         
         if (textRenderer != nullptr) {
+            std::cout << "   Releasing text renderer\n";
             textRenderer.reset();
         }
         
+        if (!sprites.empty()) {
+            std::cout << "   Releasing sprites: " << sprites.size() << "\n";
+        }
         sprites.clear();
         
         if (spritePipeline != VK_NULL_HANDLE) {
@@ -1644,6 +1659,7 @@ namespace mx {
         }
         
         cleanupSwapChain();
+        std::cout << "   Releasing uniform buffers: " << uniformBuffers.size() << "\n";
         for (size_t i = 0; i < uniformBuffers.size(); i++) {
             vkDestroyBuffer(device, uniformBuffers[i], nullptr);
             vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
@@ -1677,16 +1693,20 @@ namespace mx {
         }
 
         if (device != VK_NULL_HANDLE) {
+            std::cout << "   Destroying logical device\n";
             vkDestroyDevice(device, nullptr);
         }
         if (surface != VK_NULL_HANDLE) {
+            std::cout << "   Destroying surface\n";
             vkDestroySurfaceKHR(instance, surface, nullptr);
         }
 
         if (enableValidation) {
+            std::cout << "   Destroying debug messenger\n";
             vkDestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
         }
         if (instance != VK_NULL_HANDLE) {
+            std::cout << "   Destroying Vulkan instance\n";
             vkDestroyInstance(instance, nullptr);
         }
 
@@ -1695,9 +1715,12 @@ namespace mx {
     #endif
 
         if (window != nullptr) {
+            std::cout << "   Destroying SDL window and quitting SDL\n";
             SDL_DestroyWindow(window);
             SDL_Quit();
         }
+
+        std::cout << ">> [Cleanup] Complete\n";
     }
 
     void VKWindow::setFullScreen(const bool full) {
