@@ -224,7 +224,15 @@ namespace mx {
             draw();
         }
     }
-    void VKWindow::proc() {
+    void VKWindow::proc() {}
+
+    static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
+        VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+        VkDebugUtilsMessageTypeFlagsEXT messageType,
+        const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+        void* pUserData) {
+        std::cerr << "[Vulkan Validation] " << pCallbackData->pMessage << std::endl;
+        return VK_FALSE; 
     }
     
     void VKWindow::createInstance() {
@@ -312,6 +320,20 @@ namespace mx {
 #ifndef WITH_MOLTEN
         volkLoadInstance(instance);
 #endif
+        if (enableValidation) {
+            VkDebugUtilsMessengerCreateInfoEXT messengerInfo{};
+            messengerInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+            messengerInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | 
+                                            VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+            messengerInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | 
+                                        VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | 
+                                        VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+            messengerInfo.pfnUserCallback = debugCallback;
+               if (vkCreateDebugUtilsMessengerEXT(instance, &messengerInfo, nullptr, &debugMessenger) != VK_SUCCESS) {
+                throw mx::Exception("Failed to set up debug messenger!");
+            }
+        }
+
     }
 
     void VKWindow::createSurface() {
@@ -1655,6 +1677,10 @@ namespace mx {
         }
         if (surface != VK_NULL_HANDLE) {
             vkDestroySurfaceKHR(instance, surface, nullptr);
+        }
+
+        if (enableValidation) {
+            vkDestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
         }
         if (instance != VK_NULL_HANDLE) {
             vkDestroyInstance(instance, nullptr);

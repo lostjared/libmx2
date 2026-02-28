@@ -388,7 +388,7 @@ namespace mx {
         VkPipelineLayout spritePipelineLayout = VK_NULL_HANDLE;
         VkDescriptorPool spriteDescriptorPool = VK_NULL_HANDLE;
         VkDescriptorSetLayout spriteDescriptorSetLayout = VK_NULL_HANDLE;
-        
+        VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
         uint32_t width, height;
         void createDescriptorSetLayout();
         void createDepthResources();
