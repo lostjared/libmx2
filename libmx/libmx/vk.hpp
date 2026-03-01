@@ -95,7 +95,7 @@ namespace mx {
  * @brief Standard UBO layout uploaded to shaders each frame.
  *
  * Provides model/view/projection matrices plus application-defined
- * parameters, a colour tint, and raycaster player state.
+ * parameters and a colour tint.
  */
     struct UniformBufferObject {
         alignas(16) glm::mat4 model;        ///< Model transform matrix.
@@ -103,8 +103,6 @@ namespace mx {
         alignas(16) glm::mat4 proj;         ///< Projection matrix.
         alignas(16) glm::vec4 params;       ///< Application-defined shader parameters.
         alignas(16) glm::vec4 color;        ///< Global colour tint.
-        alignas(16) glm::vec4 playerPos;    ///< Raycaster player position.
-        alignas(16) glm::vec4 playerPlane;  ///< Raycaster camera plane vector.
     };
 
 /**
@@ -122,7 +120,6 @@ namespace mx {
  * - Sprite rendering via VKSprite
  * - Texture upload (SDL_Surface or raw pixels)
  * - Wireframe toggle
- * - Raycaster player state (uniform)
  */
     class VKWindow {
     public:
