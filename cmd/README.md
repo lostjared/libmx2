@@ -17,8 +17,21 @@ Create a Shared Library / module for MX2 to run in the interpreter as standalone
 
 # Issues:
 
-In the embdded termianal,  commands run single threaded in the foreground thread, I need to make them run
-in a background thread so the foreground thread doesn't lock up when in a loop or processing a script.
+Previously reported embedded-terminal threading/lockup behavior has been addressed.
+
+# Recent Bug Fix Log (Yesterday & Today)
+
+## 2026-03-03
+- `f88092b` Updated output behavior so text is streamed during execution instead of being buffered until program completion.
+- `3760ad4` Removed stray characters.
+- `9f8c19b` Fixed ABI bug by using a C interface.
+
+## 2026-03-02
+- `3926526` Removed duplicate print.
+- `f64772f` Removed duplicate print (follow-up cleanup).
+- `6be3021` Updated command handling for multiline input.
+- `552d066` General update.
+- `a8b1f4d` Added shutdown log messages and reload-on-load behavior for shader program.
 
 
 ## How to build from source:
