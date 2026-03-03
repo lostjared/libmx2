@@ -380,15 +380,12 @@ namespace gl {
         }
         
         if (vertex_shader && glIsShader(vertex_shader)) {
-            mx::system_out << "libmx2: releasing vertex shader " << vertex_shader << "\n";
             glDeleteShader(vertex_shader);
         }
         if (fragment_shader && glIsShader(fragment_shader)) {
-            mx::system_out << "libmx2: releasing fragment shader " << fragment_shader << "\n";
             glDeleteShader(fragment_shader);
         }
         if (shader_id && glIsProgram(shader_id)) {
-            mx::system_out << "libmx2: releasing shader program " << shader_id << "\n";
             glDeleteProgram(shader_id);
         }
     }
@@ -403,8 +400,14 @@ namespace gl {
     }
 
     void ShaderProgram::release() {
-        if (state && (state->shader_id != 0 || state->vertex_shader != 0 || state->fragment_shader != 0)) {
-            mx::system_out << "libmx2: ShaderProgram::release clearing current GPU resources\n";
+        int releasedShaderCount = 0;
+        if (state) {
+            if (state->vertex_shader != 0) ++releasedShaderCount;
+            if (state->fragment_shader != 0) ++releasedShaderCount;
+            if (state->shader_id != 0) ++releasedShaderCount;
+        }
+        if (releasedShaderCount > 0) {
+            mx::system_out << "libmx2: released shaders: " << releasedShaderCount << "\n";
         }
         std::string existing_name;
         bool existing_silent = false;
