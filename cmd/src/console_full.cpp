@@ -492,7 +492,7 @@ class Game : public gl::GLObject {
         std::ostringstream shader_source;
         shader_source << file.rdbuf();
         file.close();
-	program.reset(new gl::ShaderProgram());
+    	program.reset(new gl::ShaderProgram());
         if(program->loadProgramFromText(vSource, shader_source.str())) {
             program->setSilent(true);
             program->useProgram();
@@ -501,6 +501,7 @@ class Game : public gl::GLObject {
             program->setUniform("alpha", 1.0f);
             GLint windowSizeLoc = glGetUniformLocation(program->id(), "iResolution");
             glUniform2f(windowSizeLoc, static_cast<float>(win->w), static_cast<float>(win->h));
+            logo.setShader(program.get());
         } else {
             std::cerr << "Failed to load shader program from file: " << filename  << std::endl;
         }
@@ -525,6 +526,7 @@ class Game : public gl::GLObject {
             program->setUniform("alpha", 1.0f);
             GLint windowSizeLoc = glGetUniformLocation(program->id(), "iResolution");
             glUniform2f(windowSizeLoc, static_cast<float>(win->w), static_cast<float>(win->h));
+            logo.setShader(program.get());
             win->console.thread_safe_print("Shader program loaded successfully from file: " + shader_path + "\n");
             win->console.process_message_queue();
         } else {
