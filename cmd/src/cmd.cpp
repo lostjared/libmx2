@@ -594,12 +594,11 @@ cmd::AstExecutor::getExecutor().getRegistry().registerTypedCommand("exec",
                     cmdLine = "\"" + bashPath + "\" -c \"" + command_str + "\"";
                 }
             } else {
-                CloseHandle(hStdOutRead);
-                CloseHandle(hStdOutWrite);
-                CloseHandle(hStdInRead);
-                CloseHandle(hStdInWrite);
-                output << "exec: bash not found" << std::endl;
-                return 1;
+                std::string shell = cmd::cmd_type;
+                if (shell.empty() || shell.find("wsl.exe") != std::string::npos) {
+                    shell = "cmd.exe /c";
+                }
+                cmdLine = shell + " " + command_str;
             }
         }
         
