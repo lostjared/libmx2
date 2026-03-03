@@ -353,7 +353,7 @@ void execute_command(const std::string &text) {
 
 int main(int argc, char **argv) {
 #ifdef WINDOWS_MODE
-    cmd::AstExecutor::getExectur().windows_mode = true;
+    cmd::AstExecutor::getExecutor().windows_mode = true;
 #endif
 
     std::setvbuf(stdout, nullptr, _IONBF, 0);
