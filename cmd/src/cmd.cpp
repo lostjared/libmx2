@@ -203,6 +203,114 @@ static MultiLineState checkMultiLineState(const std::string& input) {
     return state;
 }
 
+static bool astContainsExecCommand(const std::shared_ptr<cmd::Node> &node) {
+    if (!node) {
+        return false;
+    }
+
+    if (auto command = std::dynamic_pointer_cast<cmd::Command>(node)) {
+        if (command->name == "exec") {
+            return true;
+        }
+        for (const auto &arg : command->args) {
+            if (arg.cmdNode && astContainsExecCommand(arg.cmdNode)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    if (auto pipeline = std::dynamic_pointer_cast<cmd::Pipeline>(node)) {
+        for (const auto &pipelineCommand : pipeline->commands) {
+            if (astContainsExecCommand(pipelineCommand)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    if (auto sequence = std::dynamic_pointer_cast<cmd::Sequence>(node)) {
+        for (const auto &child : sequence->commands) {
+            if (astContainsExecCommand(child)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    if (auto redirection = std::dynamic_pointer_cast<cmd::Redirection>(node)) {
+        return astContainsExecCommand(redirection->command);
+    }
+
+    if (auto logicalAnd = std::dynamic_pointer_cast<cmd::LogicalAnd>(node)) {
+        return astContainsExecCommand(logicalAnd->left) || astContainsExecCommand(logicalAnd->right);
+    }
+
+    if (auto logicalOr = std::dynamic_pointer_cast<cmd::LogicalOr>(node)) {
+        return astContainsExecCommand(logicalOr->left) || astContainsExecCommand(logicalOr->right);
+    }
+
+    if (auto logicalNot = std::dynamic_pointer_cast<cmd::LogicalNot>(node)) {
+        return astContainsExecCommand(logicalNot->operand);
+    }
+
+    if (auto ifStatement = std::dynamic_pointer_cast<cmd::IfStatement>(node)) {
+        for (const auto &branch : ifStatement->branches) {
+            if (astContainsExecCommand(branch.condition) || astContainsExecCommand(branch.action)) {
+                return true;
+            }
+        }
+        return astContainsExecCommand(ifStatement->elseAction);
+    }
+
+    if (auto whileStatement = std::dynamic_pointer_cast<cmd::WhileStatement>(node)) {
+        return astContainsExecCommand(whileStatement->condition) || astContainsExecCommand(whileStatement->body);
+    }
+
+    if (auto forStatement = std::dynamic_pointer_cast<cmd::ForStatement>(node)) {
+        for (const auto &value : forStatement->values) {
+            if (value.cmdNode && astContainsExecCommand(value.cmdNode)) {
+                return true;
+            }
+        }
+        return astContainsExecCommand(forStatement->body);
+    }
+
+    if (auto commandDefinition = std::dynamic_pointer_cast<cmd::CommandDefinition>(node)) {
+        return astContainsExecCommand(commandDefinition->body);
+    }
+
+    if (auto variableAssignment = std::dynamic_pointer_cast<cmd::VariableAssignment>(node)) {
+        return astContainsExecCommand(variableAssignment->value);
+    }
+
+    if (auto commandSubstitution = std::dynamic_pointer_cast<cmd::CommandSubstitution>(node)) {
+        return astContainsExecCommand(commandSubstitution->command);
+    }
+
+    return false;
+}
+
+#ifndef _WIN32
+struct ExecCallbackScope {
+    explicit ExecCallbackScope(bool enableCallback) {
+        if (enableCallback) {
+            cmd::AstExecutor::getExecutor().setUpdateCallback(
+                [](const std::string &chunk) {
+                    std::cout << chunk;
+                }
+            );
+        } else {
+            cmd::AstExecutor::getExecutor().setUpdateCallback(nullptr);
+        }
+    }
+
+    ~ExecCallbackScope() {
+        cmd::AstExecutor::getExecutor().setUpdateCallback(nullptr);
+    }
+};
+#endif
+
 void execute_command(const std::string &text) {
     fflush(stdout);
     try {
@@ -213,6 +321,9 @@ void execute_command(const std::string &text) {
         auto ast = parser.parse();
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
         program_running = 1;
+#endif
+#ifndef _WIN32
+    ExecCallbackScope callbackScope(astContainsExecCommand(ast));
 #endif
         executor.execute(std::cin, std::cout, ast);
         fflush(stdout);
@@ -525,6 +636,9 @@ cmd::AstExecutor::getExecutor().getRegistry().registerTypedCommand("exec",
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
                             program_running = 1;
 #endif
+#ifndef _WIN32
+                            ExecCallbackScope callbackScope(astContainsExecCommand(ast));
+#endif
                             executor.execute(std::cin, std::cout, ast);
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
                             program_running = 0;
@@ -583,6 +697,9 @@ cmd::AstExecutor::getExecutor().getRegistry().registerTypedCommand("exec",
                         auto ast = parser.parse();
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
                         program_running = 1;
+#endif
+#ifndef _WIN32
+                        ExecCallbackScope callbackScope(astContainsExecCommand(ast));
 #endif
                         executor.execute(std::cin, std::cout, ast);
 
@@ -681,6 +798,9 @@ cmd::AstExecutor::getExecutor().getRegistry().registerTypedCommand("exec",
                 program_running = 1;
     #endif
                 executor.setPath(std::filesystem::path(app_name).parent_path().string());
+    #ifndef _WIN32
+                ExecCallbackScope callbackScope(astContainsExecCommand(ast));
+    #endif
                 executor.execute(std::cin, std::cout, ast);
 
                 std::cout.flush();
@@ -727,6 +847,9 @@ cmd::AstExecutor::getExecutor().getRegistry().registerTypedCommand("exec",
             auto ast = parser.parse();
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
             program_running = 1;
+#endif
+#ifndef _WIN32
+            ExecCallbackScope callbackScope(astContainsExecCommand(ast));
 #endif
             executor.execute(std::cin, std::cout, ast);
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
