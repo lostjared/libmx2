@@ -22,6 +22,26 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(OpenGL_GL_PREFERENCE "GLVND")
 
+option(STATIC_RT  "Turn on / Static Linkint to GCDC lis" OFF)
+
+if(MINGW)
+    set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+    set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+    set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+    set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+    # GCC 15 MinGW workarounds:
+    # - <ratio> has narrowing conversion errors (long long -> long on 32-bit long)
+    # - <semaphore> tries POSIX sem_timedwait which is unavailable; use Win32 backend
+    add_compile_options(-Wno-narrowing)
+    add_compile_definitions(_GLIBCXX_USE_POSIX_SEMAPHORE=0 _GLIBCXX_USE_CXX11_ABI=1)
+  if(STATIC_RT)
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static -static-libgcc -static-libstdc++")
+   set(RT_STATUS "Static")
+  else()
+  set(RT_STATUS "Dynamic")
+  endif()
+endif()
+
 message(STATUS "Checking C++20 compiler support...")
 
 
@@ -587,5 +607,10 @@ if(DEFINED DL_LIBRARY AND DL_LIBRARY)
 elseif(HAVE_DLOPEN_IN_LIBC)
     message(STATUS "    Dynamic loading: YES (libc)")
 endif()
+
+if(MINGW)
+message(STATUS "    Static Runtime:   ${RT_STATUS}")
+endif()
+
 message(STATUS "============================================================")
 message(STATUS "")
