@@ -30,7 +30,7 @@ printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
 
 
 class Game : public gl::GLObject {
-    int start_shader = -1;
+    int start_shader = 10;
     public:
 
     Game(int start_shader_ = -1) : gl::GLObject(), start_shader(start_shader_) {
@@ -188,7 +188,7 @@ class Game : public gl::GLObject {
                     return 0;
                 } else if(text == "about") {
                     window->console.thread_safe_print("Console Skeleton Example v1.0\n");
-                    window->console.thread_safe_print("MX2 version " + std::to_string(PROJECT_VERSION_MAJOR) + "." + std::to_string(PROJECT_VERSION_MINOR) + "\n");
+                    window->console.thread_safe_print("MX2 version v" + std::to_string(PROJECT_VERSION_MAJOR) + "." + std::to_string(PROJECT_VERSION_MINOR) + "\n");
                     window->console.thread_safe_print("Written by Jared Bruni\n");
                     window->console.thread_safe_print("https://lostsidedead.biz\n");
                     window->console.process_message_queue();
@@ -324,7 +324,7 @@ class Game : public gl::GLObject {
         std::string img_index = img.at(mx::generateRandomInt(0, img.size()-1));
         setRandomShader(win, start_shader);
         logo.initSize(win->w, win->h);
-        logo.loadTexture(&program, win->util.getFilePath(img_index), 0.0f, 0.0f, win->w, win->h);
+        logo.loadTexture(program.get(), win->util.getFilePath(img_index), 0.0f, 0.0f, win->w, win->h);
         CHECK_GL_ERROR();
     }
     
@@ -364,13 +364,14 @@ class Game : public gl::GLObject {
         std::ostringstream shader_source;
         shader_source << file.rdbuf();
         file.close();
-        if(program.loadProgramFromText(vSource, shader_source.str())) {
-            program.setSilent(true);
-            program.useProgram();
-            program.setUniform("textTexture", 0);
-            program.setUniform("time_f", 0.0f);
-            program.setUniform("alpha", 1.0f);
-            GLint windowSizeLoc = glGetUniformLocation(program.id(), "iResolution");
+	program.reset(new gl::ShaderProgram());
+        if(program->loadProgramFromText(vSource, shader_source.str())) {
+            program->setSilent(true);
+            program->useProgram();
+            program->setUniform("textTexture", 0);
+            program->setUniform("time_f", 0.0f);
+            program->setUniform("alpha", 1.0f);
+            GLint windowSizeLoc = glGetUniformLocation(program->id(), "iResolution");
             glUniform2f(windowSizeLoc, static_cast<float>(win->w), static_cast<float>(win->h));
         } else {
             std::cerr << "Failed to load shader program from file: " << filename  << std::endl;
@@ -387,14 +388,14 @@ class Game : public gl::GLObject {
         std::ostringstream shader_source;
         shader_source << file.rdbuf();  
         file.close();
-
-        if(program.loadProgramFromText(vSource, shader_source.str())) {
-            program.setSilent(true);
-            program.useProgram();
-            program.setUniform("textTexture", 0);
-            program.setUniform("time_f", 0.0f);
-            program.setUniform("alpha", 1.0f);
-            GLint windowSizeLoc = glGetUniformLocation(program.id(), "iResolution");
+	program.reset(new gl::ShaderProgram());
+        if(program->loadProgramFromText(vSource, shader_source.str())) {
+            program->setSilent(true);
+            program->useProgram();
+            program->setUniform("textTexture", 0);
+            program->setUniform("time_f", 0.0f);
+            program->setUniform("alpha", 1.0f);
+            GLint windowSizeLoc = glGetUniformLocation(program->id(), "iResolution");
             glUniform2f(windowSizeLoc, static_cast<float>(win->w), static_cast<float>(win->h));
             win->console.thread_safe_print("Shader program loaded successfully from file: " + shader_path + "\n");
             win->console.process_message_queue();
@@ -439,12 +440,12 @@ class Game : public gl::GLObject {
     void update(float deltaTime) {
         float time_f = 0.0f;
         time_f = fmod(static_cast<float>(SDL_GetTicks()) / 1000.0f, 10000.0f);
-        program.setUniform("time_f", time_f);
+        program->setUniform("time_f", time_f);
     }
 private:
     mx::Font font;
     gl::GLSprite logo;
-    gl::ShaderProgram program;
+    std::unique_ptr<gl::ShaderProgram> program;
     Uint32 lastUpdateTime = SDL_GetTicks();
 };
 

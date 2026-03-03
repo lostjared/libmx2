@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(mxcmd_cxx VERSION 1.11 LANGUAGES CXX C)
+project(mxcmd_cxx VERSION 2.1 LANGUAGES CXX C)
 
 
 include(CheckIncludeFile)

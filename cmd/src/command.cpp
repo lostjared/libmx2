@@ -17,7 +17,12 @@
 #include<signal.h>
 #include<fcntl.h>
 #include<sys/select.h>
+#include<sys/ioctl.h>
+#ifdef __APPLE__
+#include<util.h>
+#else
 #include<pty.h>
+#endif
 #include<sys/stat.h>
 #endif
 #if !defined(__EMSCRIPTEN__) && defined(_WIN32)
@@ -1344,7 +1349,7 @@ namespace cmd {
             }
         }
         std::string command_str = all_args.str();
-#if !defined(__EMSCRIPTEN__) && !defined(_WIN32) && defined(__linux__)
+#if !defined(__EMSCRIPTEN__) && !defined(_WIN32) && defined(__linux__) || defined(__APPLE__)
         int master_fd, slave_fd;
         pid_t pid;
         
