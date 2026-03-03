@@ -11,12 +11,18 @@
 #include <vector>
 #include <string>
 #include <sstream>
+#include <atomic>
+#include <cstdlib>
 
 static SDL_Window* g_window = nullptr;
 static SDL_Renderer* g_renderer = nullptr;
-static bool g_running = true;
+static std::atomic<bool> g_running{true};
+static Uint32 g_window_id = 0;
+static bool g_event_watch_registered = false;
 static int g_window_width = 800;
 static int g_window_height = 600;
+static Uint32 g_plugin_init_flags = 0;
+static bool g_ttf_initialized_by_plugin = false;
 static bool g_keys[SDL_NUM_SCANCODES] = {false};
 static int g_mouse_x = 0;
 static int g_mouse_y = 0;
@@ -30,19 +36,78 @@ std::unordered_map<std::string, SDL_Texture*> textures;
 
 class Raii {
 public:
-    ~Raii() {
-        for(auto &s : surfaces) {
-            SDL_FreeSurface(s.second);
-        }
-        surfaces.clear();
-        
-        for(auto &t : textures) {
-            SDL_DestroyTexture(t.second);
-        }
-        textures.clear();
-    }
+    ~Raii() {}
 };
 static Raii raii;
+
+static std::unordered_map<std::string, TTF_Font*> g_font_cache;
+static void cleanupFonts();
+
+static void cleanupPluginResources(bool destroyWindow) {
+    cleanupFonts();
+    for (auto& pair : textures) {
+        SDL_DestroyTexture(pair.second);
+    }
+    textures.clear();
+
+    for (auto& pair : surfaces) {
+        SDL_FreeSurface(pair.second);
+    }
+    surfaces.clear();
+
+    if (g_renderer) {
+        SDL_DestroyRenderer(g_renderer);
+        g_renderer = nullptr;
+    }
+
+    if (g_window) {
+        if (destroyWindow) {
+            SDL_DestroyWindow(g_window);
+            g_window = nullptr;
+        } else {
+            SDL_HideWindow(g_window);
+        }
+    }
+}
+
+static int sdl_event_watch(void* userdata, SDL_Event* event) {
+    if (event == nullptr) {
+        return 1;
+    }
+
+    if (event->type == SDL_WINDOWEVENT &&
+        event->window.windowID == g_window_id &&
+        (event->window.event == SDL_WINDOWEVENT_CLOSE ||
+         event->window.event == SDL_WINDOWEVENT_HIDDEN)) {
+        g_running = false;
+    }
+
+    if (event->type == SDL_QUIT) {
+        g_running = false;
+    }
+
+    if (event->type == SDL_KEYDOWN &&
+        event->key.windowID == g_window_id &&
+        event->key.keysym.sym == SDLK_ESCAPE &&
+        event->key.repeat == 0) {
+        g_running = false;
+    }
+
+    return 1;
+}
+
+static void cleanupFonts() {
+    for (auto& pair : g_font_cache) {
+        if (pair.second) {
+            TTF_CloseFont(pair.second);
+        }
+    }
+    g_font_cache.clear();
+    if (g_ttf_initialized_by_plugin && TTF_WasInit()) {
+        TTF_Quit();
+        g_ttf_initialized_by_plugin = false;
+    }
+}
 
 float degToRad(float degrees) {
     return degrees * (M_PI / 180.0f);
@@ -91,10 +156,17 @@ extern "C" {
             if (flag_str.find("haptic") != std::string::npos) flags |= SDL_INIT_HAPTIC;
         }
         
-        if(SDL_Init(flags) < 0) {
-            output << "SDL_Init Error: " << SDL_GetError() << std::endl;
-            return 1;
+        Uint32 alreadyInitialized = SDL_WasInit(0);
+        Uint32 flagsToInit = flags & ~alreadyInitialized;
+
+        if (flagsToInit != 0) {
+            if (SDL_InitSubSystem(flagsToInit) < 0) {
+                output << "SDL_InitSubSystem Error: " << SDL_GetError() << std::endl;
+                return 1;
+            }
+            g_plugin_init_flags |= flagsToInit;
         }
+
         g_last_frame_time = SDL_GetTicks();
         return 0;
     }
@@ -121,6 +193,23 @@ extern "C" {
             if (flag_str.find("borderless") != std::string::npos) flags |= SDL_WINDOW_BORDERLESS;
             if (flag_str.find("opengl") != std::string::npos) flags |= SDL_WINDOW_OPENGL;
         }
+
+        const char* cmdMode = std::getenv("MXCMD_CMD_MODE");
+        if (cmdMode != nullptr && std::string(cmdMode) == "1" && g_window != nullptr) {
+            SDL_SetWindowTitle(g_window, title.c_str());
+            SDL_SetWindowSize(g_window, width, height);
+            SDL_SetWindowPosition(g_window, x, y);
+            SDL_ShowWindow(g_window);
+            g_window_width = width;
+            g_window_height = height;
+            g_window_id = SDL_GetWindowID(g_window);
+            g_running = true;
+            if (!g_event_watch_registered) {
+                SDL_AddEventWatch(sdl_event_watch, nullptr);
+                g_event_watch_registered = true;
+            }
+            return 0;
+        }
         
         g_window = SDL_CreateWindow(
             title.c_str(),
@@ -135,6 +224,13 @@ extern "C" {
         if (g_window == nullptr) {
             output << "SDL_CreateWindow Error: " << SDL_GetError() << std::endl;
             return 1;
+        }
+
+        g_window_id = SDL_GetWindowID(g_window);
+        g_running = true;
+        if (!g_event_watch_registered) {
+            SDL_AddEventWatch(sdl_event_watch, nullptr);
+            g_event_watch_registered = true;
         }
         return 0;
     }
@@ -478,20 +574,6 @@ extern "C" {
     
     int sdl_draw_text(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {       
         PluginOutput output(out_ctx, out_fn);
-        static std::unordered_map<std::string, TTF_Font*> font_cache;
-        class FontCacheRaii {
-        public:
-            ~FontCacheRaii() {
-                for (auto& pair : font_cache) {
-                    TTF_CloseFont(pair.second);
-                }
-                font_cache.clear();
-                if (TTF_WasInit()) {
-                    TTF_Quit();
-                }
-            }
-        };
-        static FontCacheRaii font_cache_raii;
         
         if (g_renderer == nullptr) {
             output << "Renderer must be created first" << std::endl;
@@ -503,6 +585,7 @@ extern "C" {
                 output << "TTF_Init Error: " << TTF_GetError() << std::endl;
                 return 1;
             }
+            g_ttf_initialized_by_plugin = true;
         }
         
         if (argc < 4) {
@@ -527,15 +610,15 @@ extern "C" {
         if (argc > 8) color.a = static_cast<Uint8>(std::stoi(argv[8]));
         std::string font_key = font_path + "_" + std::to_string(font_size);
         TTF_Font* font = nullptr;
-        auto it = font_cache.find(font_key);
+        auto it = g_font_cache.find(font_key);
         
-        if (it == font_cache.end()) {
+        if (it == g_font_cache.end()) {
             font = TTF_OpenFont(font_path.c_str(), font_size);
             if (font == nullptr) {
                 output << "TTF_OpenFont Error: " << TTF_GetError() << " (Path: " << font_path << ")" << std::endl;
                 return 1;
             }
-            font_cache[font_key] = font;
+            g_font_cache[font_key] = font;
         } else {
             font = it->second;
         }
@@ -737,6 +820,11 @@ extern "C" {
         PluginOutput output(out_ctx, out_fn);
         static SDL_Event event;
         bool verbose = argc > 0 && std::string(argv[0]) == "verbose";
+
+        if (!g_running.load()) {
+            output << "0";
+            return 0;
+        }
         
         
         int mouse_buttons;
@@ -750,6 +838,15 @@ extern "C" {
 #else
 	while(SDL_PollEvent(&event)) {
 #endif
+            if (g_window_id != 0) {
+                if (event.type == SDL_WINDOWEVENT && event.window.windowID != g_window_id) continue;
+                if (event.type == SDL_KEYDOWN && event.key.windowID != g_window_id) continue;
+                if (event.type == SDL_KEYUP && event.key.windowID != g_window_id) continue;
+                if (event.type == SDL_MOUSEMOTION && event.motion.windowID != g_window_id) continue;
+                if (event.type == SDL_MOUSEBUTTONDOWN && event.button.windowID != g_window_id) continue;
+                if (event.type == SDL_MOUSEBUTTONUP && event.button.windowID != g_window_id) continue;
+            }
+
             auto it = g_event_handlers.find(event.type);
             if (it != g_event_handlers.end()) {
                 it->second(event);
@@ -793,6 +890,12 @@ extern "C" {
                     break;
                     
                 case SDL_WINDOWEVENT:
+                    if (event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == g_window_id) {
+                        if (verbose) output << "Event: Window close" << std::endl;
+                        g_running = false;
+                        output << "0";
+                        return 0;
+                    }
                     if (event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
                         g_window_width = event.window.data1;
                         g_window_height = event.window.data2;
@@ -947,29 +1050,37 @@ extern "C" {
     }
     
     int sdl_destroy(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {
-        for (auto& pair : textures) {
-            SDL_DestroyTexture(pair.second);
-        }
-        textures.clear();       
-        for (auto& pair : surfaces) {
-            SDL_FreeSurface(pair.second);
-        }
-        surfaces.clear();
-        if (g_renderer) {
-            SDL_DestroyRenderer(g_renderer);
-            g_renderer = nullptr;
-        }
-        if (g_window) {
-            SDL_DestroyWindow(g_window);
-            g_window = nullptr;
+        cleanupPluginResources(true);
+        g_window_id = 0;
+        g_running = false;
+        if (g_event_watch_registered) {
+            SDL_DelEventWatch(sdl_event_watch, nullptr);
+            g_event_watch_registered = false;
         }
         return 0;
     }
     
     int sdl_quit(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {
+        const char* cmdMode = std::getenv("MXCMD_CMD_MODE");
+        if (cmdMode != nullptr && std::string(cmdMode) == "1") {
+            cleanupPluginResources(false);
+            g_window_id = 0;
+            g_running = false;
+            if (g_event_watch_registered) {
+                SDL_DelEventWatch(sdl_event_watch, nullptr);
+                g_event_watch_registered = false;
+            }
+            SDL_PumpEvents();
+            return 0;
+        }
+
         sdl_destroy(argc, argv, out_ctx, out_fn);
-    	SDL_PumpEvents();
-        SDL_Quit();
+        SDL_PumpEvents();
+
+        if (g_plugin_init_flags != 0) {
+            SDL_QuitSubSystem(g_plugin_init_flags);
+            g_plugin_init_flags = 0;
+        }
         return 0;
     }
 }
