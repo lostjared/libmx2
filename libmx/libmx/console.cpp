@@ -840,6 +840,18 @@ namespace console {
         }
     }
 
+    void Console::moveCursorHome() {
+        THREAD_GUARD(console_mutex);
+        inputCursorPos = 0;
+        updateInputScrollOffset();
+    }
+
+    void Console::moveCursorEnd() {
+        THREAD_GUARD(console_mutex);
+        inputCursorPos = inputBuffer.length();
+        updateInputScrollOffset();
+    }
+
     void Console::moveHistoryUp() {
         THREAD_GUARD(console_mutex);
         if (historyIndex == -1 && !inputBuffer.empty()) {
@@ -1231,6 +1243,12 @@ namespace console {
                 return;
             } else if(e.key.keysym.sym == SDLK_RIGHT) {
                 console.moveCursorRight();
+                return;
+            } else if(e.key.keysym.sym == SDLK_HOME) {
+                console.moveCursorHome();
+                return;
+            } else if(e.key.keysym.sym == SDLK_END) {
+                console.moveCursorEnd();
                 return;
             } else if(e.key.keysym.sym == SDLK_UP) {
                 console.moveHistoryUp();

@@ -240,6 +240,8 @@ namespace console {
 
         void moveCursorLeft();   ///< Move caret one character to the left.
         void moveCursorRight();  ///< Move caret one character to the right.
+        void moveCursorHome();   ///< Move caret to start of input line.
+        void moveCursorEnd();    ///< Move caret to end of input line.
         void moveHistoryUp();    ///< Recall the previous command from history.
         void moveHistoryDown();  ///< Move forward through command history.
         void updateInputScrollOffset(); ///< Recalculate horizontal scroll for long input lines.
