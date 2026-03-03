@@ -75,6 +75,16 @@ static int sdl_event_watch(void* userdata, SDL_Event* event) {
         return 1;
     }
 
+    if (event->type == SDL_KEYDOWN && event->key.windowID == g_window_id) {
+        if (event->key.keysym.scancode >= 0 && event->key.keysym.scancode < SDL_NUM_SCANCODES) {
+            g_keys[event->key.keysym.scancode] = true;
+        }
+    } else if (event->type == SDL_KEYUP && event->key.windowID == g_window_id) {
+        if (event->key.keysym.scancode >= 0 && event->key.keysym.scancode < SDL_NUM_SCANCODES) {
+            g_keys[event->key.keysym.scancode] = false;
+        }
+    }
+
     if (event->type == SDL_WINDOWEVENT &&
         event->window.windowID == g_window_id &&
         (event->window.event == SDL_WINDOWEVENT_CLOSE ||
@@ -194,21 +204,15 @@ extern "C" {
             if (flag_str.find("opengl") != std::string::npos) flags |= SDL_WINDOW_OPENGL;
         }
 
-        const char* cmdMode = std::getenv("MXCMD_CMD_MODE");
-        if (cmdMode != nullptr && std::string(cmdMode) == "1" && g_window != nullptr) {
-            SDL_SetWindowTitle(g_window, title.c_str());
-            SDL_SetWindowSize(g_window, width, height);
-            SDL_SetWindowPosition(g_window, x, y);
-            SDL_ShowWindow(g_window);
-            g_window_width = width;
-            g_window_height = height;
-            g_window_id = SDL_GetWindowID(g_window);
-            g_running = true;
-            if (!g_event_watch_registered) {
-                SDL_AddEventWatch(sdl_event_watch, nullptr);
-                g_event_watch_registered = true;
-            }
-            return 0;
+        if (g_renderer != nullptr) {
+            SDL_DestroyRenderer(g_renderer);
+            g_renderer = nullptr;
+        }
+
+        if (g_window != nullptr) {
+            SDL_DestroyWindow(g_window);
+            g_window = nullptr;
+            g_window_id = 0;
         }
         
         g_window = SDL_CreateWindow(
@@ -255,6 +259,11 @@ extern "C" {
             }
             if (flag_str.find("vsync") != std::string::npos) flags |= SDL_RENDERER_PRESENTVSYNC;
             if (flag_str.find("target") != std::string::npos) flags |= SDL_RENDERER_TARGETTEXTURE;
+        }
+
+        if (g_renderer != nullptr) {
+            SDL_DestroyRenderer(g_renderer);
+            g_renderer = nullptr;
         }
         
         g_renderer = SDL_CreateRenderer(g_window, index, flags);
@@ -1063,7 +1072,7 @@ extern "C" {
     int sdl_quit(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {
         const char* cmdMode = std::getenv("MXCMD_CMD_MODE");
         if (cmdMode != nullptr && std::string(cmdMode) == "1") {
-            cleanupPluginResources(false);
+            cleanupPluginResources(true);
             g_window_id = 0;
             g_running = false;
             if (g_event_watch_registered) {
