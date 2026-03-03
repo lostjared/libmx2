@@ -1815,9 +1815,95 @@ namespace cmd {
         std::string libPath = getVar(args[0]);
         std::string funcName = getVar(args[1]);
         std::string cmdName = getVar(args[2]);
-        
+
+        auto endsWithInsensitive = [](const std::string& text, const std::string& suffix) {
+            if (text.size() < suffix.size()) return false;
+            for (size_t i = 0; i < suffix.size(); ++i) {
+                char a = static_cast<char>(std::tolower(static_cast<unsigned char>(text[text.size() - suffix.size() + i])));
+                char b = static_cast<char>(std::tolower(static_cast<unsigned char>(suffix[i])));
+                if (a != b) return false;
+            }
+            return true;
+        };
+
+        std::string libLookup = libPath;
+        if (endsWithInsensitive(libLookup, ".dll") || endsWithInsensitive(libLookup, ".so") || endsWithInsensitive(libLookup, ".dylib")) {
+            auto dotPos = libLookup.find_last_of('.');
+            if (dotPos != std::string::npos) {
+                libLookup = libLookup.substr(0, dotPos);
+            }
+        }
+
+        std::vector<std::string> lookupCandidates;
+        auto addCandidate = [&lookupCandidates](const std::filesystem::path& value) {
+            std::string normalized = value.lexically_normal().string();
+            for (const auto& existing : lookupCandidates) {
+                if (existing == normalized) {
+                    return;
+                }
+            }
+            lookupCandidates.push_back(normalized);
+        };
+
+        try {
+            std::filesystem::path requested(libLookup);
+            if (requested.is_absolute()) {
+                addCandidate(requested);
+            } else {
+                addCandidate(std::filesystem::absolute(requested));
+            }
+
+            std::filesystem::path appDir = std::filesystem::path(app_name).parent_path();
+            if (!appDir.empty()) {
+                addCandidate(std::filesystem::absolute(appDir / requested));
+                addCandidate(std::filesystem::absolute(appDir / requested.filename()));
+            }
+
+#ifdef _WIN32
+            char modulePath[MAX_PATH] = {0};
+            DWORD modulePathLen = GetModuleFileNameA(nullptr, modulePath, MAX_PATH);
+            if (modulePathLen > 0 && modulePathLen < MAX_PATH) {
+                std::filesystem::path exeDir = std::filesystem::path(modulePath).parent_path();
+                addCandidate(std::filesystem::absolute(exeDir / requested));
+                addCandidate(std::filesystem::absolute(exeDir / requested.filename()));
+            }
+#endif
+        } catch (...) {
+            lookupCandidates.push_back(libLookup);
+        }
+
+        std::vector<std::string> orderedCandidates;
+#ifdef _WIN32
+        for (const auto& candidate : lookupCandidates) {
+            try {
+                std::filesystem::path dllPath = std::filesystem::path(candidate + ".dll");
+                if (std::filesystem::exists(dllPath)) {
+                    orderedCandidates.push_back(candidate);
+                }
+            } catch (...) {
+            }
+        }
+        for (const auto& candidate : lookupCandidates) {
+            if (std::find(orderedCandidates.begin(), orderedCandidates.end(), candidate) == orderedCandidates.end()) {
+                orderedCandidates.push_back(candidate);
+            }
+        }
+#else
+        orderedCandidates = lookupCandidates;
+#endif
+
         auto &reg = AstExecutor::getRegistry();
-        std::shared_ptr<Library> &lib = reg.setLibrary(libPath);
+        std::shared_ptr<Library> lib;
+        std::string loadedLibraryPath = libPath;
+        for (const auto& candidate : orderedCandidates) {
+            std::shared_ptr<Library> &candidateLib = reg.setLibrary(candidate);
+            if (candidateLib) {
+                lib = candidateLib;
+                loadedLibraryPath = candidate;
+                break;
+            }
+        }
+
         if(!lib) {
             std::cerr << "extern: failed to load library " << libPath << "\n";
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
@@ -1840,7 +1926,7 @@ namespace cmd {
         info.library = lib;
         info.func = lib->getFunction<plugin_func_t>(funcName);
         info.functionName = funcName;
-        info.libraryPath = libPath;
+        info.libraryPath = loadedLibraryPath;
 
         if(info.func) {
             reg.registerExternCommand(cmdName, info);            

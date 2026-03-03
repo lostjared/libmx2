@@ -30,6 +30,29 @@ if(WIN32)
     set_target_properties(sdl-mod PROPERTIES 
         PREFIX ""  
     )
+    if(MINGW)
+        target_link_options(sdl-mod PRIVATE
+            -static-libgcc
+            -static-libstdc++
+            -Wl,-Bstatic
+            -lwinpthread
+            -Wl,-Bdynamic
+        )
+
+        execute_process(
+            COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libwinpthread-1.dll
+            OUTPUT_VARIABLE WINPTHREAD_DLL
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+
+        if(WINPTHREAD_DLL AND EXISTS "${WINPTHREAD_DLL}")
+            add_custom_command(TARGET sdl-mod POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${WINPTHREAD_DLL}"
+                    $<TARGET_FILE_DIR:sdl-mod>
+            )
+        endif()
+    endif()
 else()
     set_target_properties(sdl-mod PROPERTIES 
         INSTALL_RPATH "${MODULE_INSTALL_DIR}"
@@ -43,6 +66,11 @@ if(WIN32)
     install(TARGETS sdl-mod
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} 
     )
+    if(MINGW AND WINPTHREAD_DLL AND EXISTS "${WINPTHREAD_DLL}")
+        install(FILES "${WINPTHREAD_DLL}"
+            DESTINATION ${CMAKE_INSTALL_BINDIR}
+        )
+    endif()
 else()
     install(TARGETS sdl-mod
         LIBRARY DESTINATION ${MODULE_INSTALL_DIR}

@@ -272,7 +272,11 @@ protected:
 
     static native_handle_type open(const char *path) noexcept {
 #if (defined(_WIN32) || defined(_WIN64))
-        return LoadLibraryA(path);
+        native_handle_type handle = LoadLibraryExA(path, nullptr, LOAD_WITH_ALTERED_SEARCH_PATH);
+        if (!handle) {
+            handle = LoadLibraryA(path);
+        }
+        return handle;
 #else
         return dlopen(path, RTLD_NOW | RTLD_LOCAL);
 #endif
