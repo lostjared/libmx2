@@ -1134,6 +1134,40 @@ namespace cmd {
             scriptExecutor.setPath(parent.string());
         }
 
+        struct CmdModeEnvGuard {
+            std::string previous;
+            bool hadPrevious = false;
+
+            CmdModeEnvGuard() {
+                const char* value = std::getenv("MXCMD_CMD_MODE");
+                if (value != nullptr) {
+                    hadPrevious = true;
+                    previous = value;
+                }
+#ifdef _WIN32
+                _putenv_s("MXCMD_CMD_MODE", "1");
+#else
+                setenv("MXCMD_CMD_MODE", "1", 1);
+#endif
+            }
+
+            ~CmdModeEnvGuard() {
+                if (hadPrevious) {
+#ifdef _WIN32
+                    _putenv_s("MXCMD_CMD_MODE", previous.c_str());
+#else
+                    setenv("MXCMD_CMD_MODE", previous.c_str(), 1);
+#endif
+                } else {
+#ifdef _WIN32
+                    _putenv_s("MXCMD_CMD_MODE", "");
+#else
+                    unsetenv("MXCMD_CMD_MODE");
+#endif
+                }
+            }
+        } cmdModeGuard;
+
         try {
             scan::TString string_buffer(script);
             scan::Scanner scanner(string_buffer);

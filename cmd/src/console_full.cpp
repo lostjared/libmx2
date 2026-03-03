@@ -103,9 +103,21 @@ class Game : public gl::GLObject {
     Game(int start_shader_ = -1) : gl::GLObject(), start_shader(start_shader_) {
         cmd::AstExecutor::getExecutor().setInterrupt(&interrupt_command);
     }
-    virtual ~Game() override {}
+    virtual ~Game() override {
+        interrupt_command = true;
+        executor.setUpdateCallback(nullptr);
+        std::lock_guard<std::mutex> lock(worker_mutex);
+        for (auto &worker : workers) {
+            if (worker.joinable()) {
+                worker.join();
+            }
+        }
+        workers.clear();
+        executor.setInterrupt(nullptr);
+    }
     std::atomic<bool> interrupt_command{false};
     std::atomic<bool> program_running{false};
+    std::atomic<bool> command_active{false};
     cmd::AstExecutor &executor = cmd::AstExecutor::getExecutor();
     bool cmd_echo = true;
     std::string multiLineBuffer;
@@ -114,6 +126,8 @@ class Game : public gl::GLObject {
     std::string savedPrompt;
     std::mutex task_mutex;
     std::vector<std::function<void(gl::GLWindow*)>> main_thread_tasks;
+    std::mutex worker_mutex;
+    std::vector<std::thread> workers;
 
     void queueTaskForMainThread(std::function<void(gl::GLWindow*)> task) {
         std::lock_guard<std::mutex> lock(task_mutex);
@@ -358,13 +372,32 @@ class Game : public gl::GLObject {
                     window->console.thread_safe_print("$ " + text + "\n");
                     window->console.process_message_queue();
                 }
-                std::thread([this, text, window]() {
+
+                bool expected = false;
+                if (!command_active.compare_exchange_strong(expected, true)) {
+                    window->console.thread_safe_print("A command is already running. Press CTRL+C to interrupt.\n");
+                    window->console.process_message_queue();
+                    return 0;
+                }
+
+                auto runCommand = [this, text, window]() {
                     try {
                         executor.setInterrupt(&this->interrupt_command);
                         std::cout << "Executing: " << text << std::endl;
                         std::string lineBuf;
                         bool update_callback_printed = false;
+                        struct ExecutionGuard {
+                            cmd::AstExecutor &exec;
+                            std::atomic<bool> &running;
+                            std::atomic<bool> &active;
+                            ~ExecutionGuard() {
+                                exec.setUpdateCallback(nullptr);
+                                running = false;
+                                active = false;
+                            }
+                        } guard{executor, program_running, command_active};
 
+                        program_running = true;
                         executor.setUpdateCallback(
                             [&lineBuf,window,this,&update_callback_printed](const std::string &chunk) {
                                 lineBuf += chunk;
@@ -389,7 +422,6 @@ class Game : public gl::GLObject {
                         cmd::Parser parser(scanner);
                         auto ast = parser.parse();
                         std::ostringstream out_stream;
-                        program_running = true;
                         executor.execute(input_stream, out_stream, ast);
                         if(update_callback_printed) {
                             if(!lineBuf.empty()) {
@@ -402,7 +434,6 @@ class Game : public gl::GLObject {
                                 window->console.process_message_queue();
                             }
                         }
-                        program_running = false;
                     } catch(const scan::ScanExcept &e) {
                         window->console.thread_safe_print("Scanner Exception: " + e.why() + "\n");
                         window->console.process_message_queue();
@@ -431,8 +462,35 @@ class Game : public gl::GLObject {
                     } catch(...) {
                         window->console.thread_safe_print("Unknown Error: Command execution failed\n");
                         window->console.process_message_queue();
+                        command_active = false;
                     }
-                }).detach();
+                };
+
+                auto trimLeft = [](const std::string &value) {
+                    size_t first = value.find_first_not_of(" \t\r\n");
+                    if (first == std::string::npos) {
+                        return std::string();
+                    }
+                    return value.substr(first);
+                };
+
+                std::string commandText = trimLeft(text);
+                bool runOnMainThread = false;
+                if (commandText.rfind("cmd ", 0) == 0 || commandText.rfind("cmd\t", 0) == 0) {
+                    runOnMainThread = true;
+                }
+
+                if (runOnMainThread) {
+                    runCommand();
+                } else {
+                    try {
+                        std::lock_guard<std::mutex> lock(worker_mutex);
+                        workers.emplace_back(std::move(runCommand));
+                    } catch (...) {
+                        command_active = false;
+                        throw;
+                    }
+                }
                 
                 return 0;
             } catch(const std::exception &e) {

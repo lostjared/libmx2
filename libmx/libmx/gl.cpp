@@ -321,10 +321,28 @@ namespace gl {
     void GLWindow::delay() {}
 
     void GLWindow::proc() {
+        Uint32 hostWindowId = window ? SDL_GetWindowID(window) : 0;
         while(SDL_PollEvent(&e)) {
+            bool eventForHostWindow = true;
+            if (hostWindowId != 0) {
+                if (e.type == SDL_WINDOWEVENT) {
+                    eventForHostWindow = (e.window.windowID == hostWindowId);
+                } else if (e.type == SDL_KEYDOWN || e.type == SDL_KEYUP) {
+                    eventForHostWindow = (e.key.windowID == hostWindowId);
+                } else if (e.type == SDL_TEXTINPUT || e.type == SDL_TEXTEDITING) {
+                    eventForHostWindow = (e.text.windowID == hostWindowId);
+                } else if (e.type == SDL_MOUSEMOTION) {
+                    eventForHostWindow = (e.motion.windowID == hostWindowId);
+                } else if (e.type == SDL_MOUSEBUTTONDOWN || e.type == SDL_MOUSEBUTTONUP) {
+                    eventForHostWindow = (e.button.windowID == hostWindowId);
+                } else if (e.type == SDL_MOUSEWHEEL) {
+                    eventForHostWindow = (e.wheel.windowID == hostWindowId);
+                }
+            }
+
             if(e.type == SDL_USEREVENT) {
                 console.refresh();
-            } else if(console_active && e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_F3) {
+            } else if(console_active && eventForHostWindow && e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_F3) {
                 if(console_active) {
                     if(!console_visible) {
                         console_visible = true;
@@ -334,22 +352,24 @@ namespace gl {
                         console.hide();
                     }
                 }
-            } else if(e.type == SDL_QUIT || (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE)) {
+            } else if(e.type == SDL_QUIT || (eventForHostWindow && e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE)) {
                 active = false;
                 return;
-            } else if (e.type == SDL_WINDOWEVENT) {
+            } else if (eventForHostWindow && e.type == SDL_WINDOWEVENT) {
                 if (e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
                     updateViewport();
                 }
             } 
             else {
-                if(console_visible && console_active) {
-                    console.event(this, e);
-                } else {
-                    event(e);
+                if (eventForHostWindow) {
+                    if(console_visible && console_active) {
+                        console.event(this, e);
+                    } else {
+                        event(e);
+                    }
+                    if(object)
+                        object->event(this, e);
                 }
-                if(object)
-                    object->event(this, e);
             }
         }
         draw();
