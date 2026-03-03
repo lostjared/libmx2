@@ -15,6 +15,7 @@
 #include<thread>
 #include<filesystem>
 #include<mutex>
+#include<condition_variable>
 #include<fstream>
 #include<iostream>
 #include"loadpng.hpp"
@@ -168,6 +169,7 @@ class Game : public gl::GLObject {
     std::vector<std::function<void(gl::GLWindow*)>> main_thread_tasks;
     std::mutex worker_mutex;
     std::vector<std::thread> workers;
+    std::thread::id ui_thread_id;
 
     void queueTaskForMainThread(std::function<void(gl::GLWindow*)> task) {
         std::lock_guard<std::mutex> lock(task_mutex);
@@ -207,6 +209,7 @@ class Game : public gl::GLObject {
     }
     
     void load(gl::GLWindow *win) override {
+        ui_thread_id = std::this_thread::get_id();
         font.loadFont(win->util.getFilePath("data/font.ttf"), 36);
         win->console.print("Console Skeleton Example\nLostSideDead Software\nhttps://lostsidedead.biz\n");
         win->console.setPrompt("$> ");
@@ -509,7 +512,25 @@ class Game : public gl::GLObject {
                 }
 
                 if (runOnMainThread) {
-                    runCommand();
+                    if (std::this_thread::get_id() == ui_thread_id) {
+                        runCommand();
+                    } else {
+                        std::mutex done_mutex;
+                        std::condition_variable done_cv;
+                        bool done = false;
+
+                        queueTaskForMainThread([runCommand, &done_mutex, &done_cv, &done](gl::GLWindow*) mutable {
+                            runCommand();
+                            {
+                                std::lock_guard<std::mutex> lock(done_mutex);
+                                done = true;
+                            }
+                            done_cv.notify_one();
+                        });
+
+                        std::unique_lock<std::mutex> lock(done_mutex);
+                        done_cv.wait(lock, [&done]() { return done; });
+                    }
                 } else {
                     try {
                         std::lock_guard<std::mutex> lock(worker_mutex);
@@ -624,6 +645,9 @@ class Game : public gl::GLObject {
     }
     void draw(gl::GLWindow *win) override {
         processMainThreadTasks(win);
+        // Restore this window's GL context in case a plugin script
+        // (e.g. SDL_CreateRenderer) stole it on the main thread.
+        win->makeCurrent();
         glDisable(GL_DEPTH_TEST);
         Uint32 currentTime = SDL_GetTicks();
         float deltaTime = (currentTime - lastUpdateTime) / 1000.0f; 

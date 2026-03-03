@@ -1950,6 +1950,43 @@ namespace cmd {
         }
     }
 
+    int externCleanupCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
+        auto& reg = AstExecutor::getRegistry();
+
+        if (args.empty()) {
+            std::size_t removedCommands = reg.clearExternCommands();
+            std::size_t removedLibraries = reg.pruneLibraries();
+            output << "extern_cleanup: removed " << removedCommands << " command(s), released "
+                   << removedLibraries << " librar(y/ies)" << std::endl;
+            return 0;
+        }
+
+        if (args.size() != 1) {
+            output << "Usage: extern_cleanup [--all|<command_name>]" << std::endl;
+            return 1;
+        }
+
+        std::string arg = getVar(args[0]);
+        if (arg == "--all" || arg == "all") {
+            std::size_t removedCommands = reg.clearExternCommands();
+            std::size_t removedLibraries = reg.pruneLibraries();
+            output << "extern_cleanup: removed " << removedCommands << " command(s), released "
+                   << removedLibraries << " librar(y/ies)" << std::endl;
+            return 0;
+        }
+
+        bool removed = reg.unregisterExternCommand(arg);
+        std::size_t removedLibraries = reg.pruneLibraries();
+        if (!removed) {
+            output << "extern_cleanup: command not found: " << arg << std::endl;
+            return 1;
+        }
+
+        output << "extern_cleanup: removed command '" << arg << "', released "
+               << removedLibraries << " librar(y/ies)" << std::endl;
+        return 0;
+    }
+
     
     int newListCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
         if (args.empty()) {

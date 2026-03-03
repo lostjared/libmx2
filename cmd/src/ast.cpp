@@ -70,6 +70,7 @@ namespace cmd {
             registry.registerTypedCommand("debug_cmd", cmd::commandListCommand);
             registry.registerTypedCommand("argv", cmd::argvCommand);
             registry.registerTypedCommand("extern", cmd::externCommand);
+            registry.registerTypedCommand("extern_cleanup", cmd::externCleanupCommand);
             registry.registerTypedCommand("list_new", cmd::newListCommand);
             registry.registerTypedCommand("list_add", cmd::newListAddCommand);
             registry.registerTypedCommand("list_remove", cmd::newListRemoveCommand); 

@@ -2,6 +2,7 @@
 #include"ast.hpp"
 #include<vector>
 #include<cstdio>
+#include<unordered_set>
 
 namespace cmd {
 
@@ -127,6 +128,43 @@ namespace cmd {
             }
         }
             return 0;
+    }
+
+    bool CommandRegistry::unregisterExternCommand(const std::string& name) {
+        auto it = externCommands.find(name);
+        if (it == externCommands.end()) {
+            return false;
+        }
+        externCommands.erase(it);
+        return true;
+    }
+
+    std::size_t CommandRegistry::clearExternCommands() {
+        std::size_t count = externCommands.size();
+        externCommands.clear();
+        return count;
+    }
+
+    std::size_t CommandRegistry::pruneLibraries() {
+        std::unordered_set<Library*> referenced;
+        referenced.reserve(externCommands.size());
+        for (const auto& kv : externCommands) {
+            if (kv.second.library) {
+                referenced.insert(kv.second.library.get());
+            }
+        }
+
+        std::size_t removed = 0;
+        for (auto it = libraries.begin(); it != libraries.end();) {
+            const auto& libPtr = it->second;
+            if (!libPtr || referenced.find(libPtr.get()) == referenced.end()) {
+                it = libraries.erase(it);
+                ++removed;
+            } else {
+                ++it;
+            }
+        }
+        return removed;
     }
     
     int CommandRegistry::executeUserDefinedCommand(

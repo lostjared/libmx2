@@ -43,6 +43,9 @@ namespace cmd {
         void registerExternCommand(const std::string& name, const ExternCommandInfo& info);
         int executeExternCommand(const std::string& name, const std::vector<Argument>& args, 
                                  std::istream& input, std::ostream& output);
+        bool unregisterExternCommand(const std::string& name);
+        std::size_t clearExternCommands();
+        std::size_t pruneLibraries();
 
         void printInfo(std::ostream &out);
         bool empty() const;

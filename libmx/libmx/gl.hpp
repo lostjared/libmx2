@@ -565,6 +565,9 @@ namespace gl {
 
         /** @return Pointer to the underlying SDL_Window. */
         SDL_Window *getWindow() { return window; }
+
+        /** @brief Restore this window's GL context as current on the calling thread. */
+        void makeCurrent();
 #ifdef WITH_MIXER
         mx::Mixer mixer;
 #endif

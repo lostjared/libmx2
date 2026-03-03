@@ -57,6 +57,7 @@ namespace cmd {
     int commandListCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
     int argvCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
     int externCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
+    int externCleanupCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
     int newListCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
     int newListAddCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);
     int newListRemoveCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output);

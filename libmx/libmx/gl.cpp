@@ -307,6 +307,12 @@ namespace gl {
         }
     }
 
+    void GLWindow::makeCurrent() {
+        if (window && glContext) {
+            SDL_GL_MakeCurrent(window, glContext);
+        }
+    }
+
     void GLWindow::quit() {
         active = false;
     }
