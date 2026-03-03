@@ -875,6 +875,16 @@ namespace cmd {
                         updateCallback(defaultOutput.str());
                     }
                 }
+            } catch (const AstFailure& e) {
+                // Flush buffered output before re-throwing
+                if(windows_mode) {
+                    printf("%s", defaultOutput.str().c_str());
+                    fflush(stdout);
+                } else {
+                    defaultOutputStream << defaultOutput.str();
+                    defaultOutputStream.flush();
+                }
+                throw;
             } catch (const std::exception& e) {
                 defaultOutput << "Exception: " << e.what() << std::endl;
                 execUpdateCallback(defaultOutput.str());

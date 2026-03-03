@@ -1090,11 +1090,22 @@ namespace cmd {
              (filename.front() == '\'' && filename.back() == '\''))) {
             filename = filename.substr(1, filename.size() - 2);
         }
-        cmd::app_name = filename;
-        std::ifstream file(filename);
+        cmd::AstExecutor &scriptExecutor = cmd::AstExecutor::getExecutor();
+        std::filesystem::path resolvedPath(filename);
+        if (!resolvedPath.is_absolute()) {
+            std::string basePath = scriptExecutor.getPath();
+            if (basePath.empty()) {
+                basePath = std::filesystem::current_path().string();
+            }
+            resolvedPath = std::filesystem::path(basePath) / resolvedPath;
+        }
+        resolvedPath = resolvedPath.lexically_normal();
+
+        cmd::app_name = resolvedPath.string();
+        std::ifstream file(resolvedPath);
         if (!file.is_open()) {
-            output << "cmd: cannot open file '" << filename << "': No such file or directory" << std::endl;
-            throw AstFailure("Exception: Script: " + filename + " execution failed. File not found\n");
+            output << "cmd: cannot open file '" << resolvedPath.string() << "': No such file or directory" << std::endl;
+            throw AstFailure("Exception: Script: " + resolvedPath.string() + " execution failed. File not found\n");
         }
         std::stringstream buffer;
         buffer << file.rdbuf();
@@ -1115,12 +1126,19 @@ namespace cmd {
             return 1;
         }
 
+        std::string previousPath = scriptExecutor.getPath();
+        std::filesystem::path parent = resolvedPath.parent_path();
+        if (parent.empty()) {
+            scriptExecutor.setPath(std::filesystem::current_path().string());
+        } else {
+            scriptExecutor.setPath(parent.string());
+        }
+
         try {
             scan::TString string_buffer(script);
             scan::Scanner scanner(string_buffer);
             cmd::Parser parser(scanner);
             auto ast = parser.parse();
-            cmd::AstExecutor &scriptExecutor = cmd::AstExecutor::getExecutor();
 
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
             program_running = 1;
@@ -1129,20 +1147,25 @@ namespace cmd {
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
             program_running = 0;
 #endif
+            scriptExecutor.setPath(previousPath);
 
             return 0;
         } catch (const scan::ScanExcept &e) {
-            output << "cmd: Scan error in " << filename << ": " << e.why() << std::endl;
+            scriptExecutor.setPath(previousPath);
+            output << "cmd: Scan error in " << resolvedPath.string() << ": " << e.why() << std::endl;
             return 1;
         } catch (const std::exception &e) {
-            output << "cmd: Error in " << filename << ": " << e.what() << std::endl;
+            scriptExecutor.setPath(previousPath);
+            output << "cmd: Error in " << resolvedPath.string() << ": " << e.what() << std::endl;
             return 1;
         } 
         catch(const AstFailure &e) {
-            throw AstFailure("Exception: Script: " + filename + " execution failed: " + std::string(e.what()) + "\n");
+            scriptExecutor.setPath(previousPath);
+            throw AstFailure("Exception: Script: " + resolvedPath.string() + " execution failed: " + std::string(e.what()) + "\n");
         } 
         catch (...) {
-            output << "cmd: Unknown error occurred while executing " << filename << std::endl;
+            scriptExecutor.setPath(previousPath);
+            output << "cmd: Unknown error occurred while executing " << resolvedPath.string() << std::endl;
             return 1;
         }
         return 0;
@@ -1240,7 +1263,7 @@ namespace cmd {
         }
         return 0;
     }
-    // index <string> start len
+    
     int indexCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
         if(args.empty() || args.size() != 3) {
             output << "Usage: index <string> start leenn\n";
@@ -1367,7 +1390,6 @@ namespace cmd {
         }
         
         if (pid == 0) {
-            // Child process
             close(master_fd);
             setsid();
             ioctl(slave_fd, TIOCSCTTY, 0);
@@ -1380,7 +1402,6 @@ namespace cmd {
             execl("/bin/sh", "sh", "-c", command_str.c_str(), NULL);
             exit(127);
         } else {
-            // Parent process
             close(slave_fd);
             
             int flags = fcntl(master_fd, F_GETFL, 0);
@@ -1495,7 +1516,6 @@ namespace cmd {
     iss >> first_word;
     
     if (first_word.ends_with(".exe") || first_word.ends_with(".EXE")) {
-        // Your existing .exe handling code stays the same...
         SECURITY_ATTRIBUTES sa;
         sa.nLength = sizeof(SECURITY_ATTRIBUTES);
         sa.bInheritHandle = TRUE;
@@ -1528,7 +1548,6 @@ namespace cmd {
         PROCESS_INFORMATION pi;
         ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
 
-        // Use the command directly without bash
         if (!CreateProcess(NULL, const_cast<LPSTR>(command_str.c_str()), 
                           NULL, NULL, TRUE, CREATE_NO_WINDOW, 
                           NULL, NULL, &si, &pi)) {
@@ -1544,7 +1563,6 @@ namespace cmd {
         CloseHandle(hStdInRead);
         CloseHandle(hStdInWrite);
 
-        // Check if we're outputting to std::cout for special handling
         bool isStdOut = (&output == &std::cout);
         
         std::string line_buffer;
@@ -1565,7 +1583,7 @@ namespace cmd {
                     buffer[bytesRead] = '\0';
                     line_buffer += buffer;
                     
-                    // Process complete lines
+                    
                     size_t pos = 0;
                     while ((pos = line_buffer.find('\n')) != std::string::npos) {
                         std::string line = line_buffer.substr(0, pos + 1);
@@ -1581,7 +1599,6 @@ namespace cmd {
                         line_buffer.erase(0, pos + 1);
                     }
                     
-                    // Handle long lines without newlines
                     if (line_buffer.length() > 80) {
                         if (isStdOut) {
                             printf("%s", line_buffer.c_str());
@@ -1600,7 +1617,6 @@ namespace cmd {
                 DWORD currentChildExitCode;
                 if (GetExitCodeProcess(pi.hProcess, &currentChildExitCode)) {
                     if (currentChildExitCode != STILL_ACTIVE) {
-                        // Output any remaining buffer
                         if (!line_buffer.empty()) {
                             if (isStdOut) {
                                 printf("%s", line_buffer.c_str());
@@ -1633,8 +1649,6 @@ namespace cmd {
         
         return static_cast<int>(final_child_exit_code);
     } else {
-        // ADD THIS ELSE BLOCK for non-.exe commands
-        // Use cmd_type (which should be "cmd.exe /c " or similar) for other commands
         std::string fullCommand = cmd::cmd_type + " " + command_str;
         
         SECURITY_ATTRIBUTES sa;
@@ -1688,7 +1702,7 @@ namespace cmd {
         CloseHandle(hStdInRead);
         CloseHandle(hStdInWrite);
 
-        // Same output handling as above...
+        
         bool isStdOut = (&output == &std::cout);
         std::string line_buffer;
         bool still_running = true;
@@ -1849,7 +1863,7 @@ namespace cmd {
         }
         ExternCommandInfo info;
         info.library = lib;
-        info.func = lib->getFunction<int(*)(const std::vector<cmd::Argument>&, std::istream&, std::ostream&)>(funcName);
+        info.func = lib->getFunction<plugin_func_t>(funcName);
         info.functionName = funcName;
         info.libraryPath = libPath;
 

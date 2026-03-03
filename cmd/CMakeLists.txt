@@ -257,6 +257,8 @@ list(APPEND header
     ${CMAKE_SOURCE_DIR}/include/command_reg.hpp
     ${CMAKE_SOURCE_DIR}/include/library.hpp
     ${CMAKE_SOURCE_DIR}/include/version_info.hpp
+    ${CMAKE_SOURCE_DIR}/include/plugin_api.h
+    ${CMAKE_SOURCE_DIR}/include/plugin_output.hpp
 )
 include_directories(${PROJECT_SOURCE_DIR}/include ${CMAKE_INSTALL_PREFIX}/include)
 

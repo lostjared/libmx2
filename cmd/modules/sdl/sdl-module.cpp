@@ -1,6 +1,7 @@
 #include "SDL.h"
 #include "SDL_ttf.h"
-#include "ast.hpp"
+#include "plugin_api.h"
+#include "plugin_output.hpp"
 #include <map>
 #include <unordered_map>
 #include <memory>
@@ -8,6 +9,8 @@
 #include <chrono>
 #include <functional>
 #include <vector>
+#include <string>
+#include <sstream>
 
 static SDL_Window* g_window = nullptr;
 static SDL_Renderer* g_renderer = nullptr;
@@ -57,13 +60,31 @@ void updateTiming() {
     g_last_frame_time = current_time;
 }
 
+bool ensureRenderer(PluginOutput& output) {
+    if (g_renderer != nullptr) {
+        return true;
+    }
+    if (g_window == nullptr) {
+        output << "Window must be created first" << std::endl;
+        return false;
+    }
+    g_renderer = SDL_CreateRenderer(g_window, -1, SDL_RENDERER_SOFTWARE);
+    if (g_renderer == nullptr) {
+        output << "SDL_CreateRenderer Error: " << SDL_GetError() << std::endl;
+        return false;
+    }
+    SDL_SetRenderDrawBlendMode(g_renderer, SDL_BLENDMODE_BLEND);
+    return true;
+}
+
 extern "C" {
     
-    int sdl_init(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
+    int sdl_init(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {
+        PluginOutput output(out_ctx, out_fn);
         Uint32 flags = SDL_INIT_VIDEO | SDL_INIT_TIMER;
         
-        if (args.size() > 0) {
-            std::string flag_str = cmd::getVar(args[0]);
+        if (argc > 0) {
+            std::string flag_str = argv[0];
             if (flag_str.find("audio") != std::string::npos) flags |= SDL_INIT_AUDIO;
             if (flag_str.find("joystick") != std::string::npos) flags |= SDL_INIT_JOYSTICK;
             if (flag_str.find("gamepad") != std::string::npos) flags |= SDL_INIT_GAMECONTROLLER;
@@ -78,7 +99,8 @@ extern "C" {
         return 0;
     }
     
-    int sdl_create_window(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
+    int sdl_create_window(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {
+        PluginOutput output(out_ctx, out_fn);
         std::string title = "SDL Window";
         int width = 800;
         int height = 600;
@@ -86,13 +108,13 @@ extern "C" {
         int y = SDL_WINDOWPOS_CENTERED;
         Uint32 flags = SDL_WINDOW_SHOWN;
         
-        if (args.size() > 0) title = cmd::getVar(args[0]);
-        if (args.size() > 1) width = std::stoi(cmd::getVar(args[1]));
-        if (args.size() > 2) height = std::stoi(cmd::getVar(args[2]));
-        if (args.size() > 3) x = std::stoi(cmd::getVar(args[3]));
-        if (args.size() > 4) y = std::stoi(cmd::getVar(args[4]));
-        if (args.size() > 5) {
-            std::string flag_str = cmd::getVar(args[5]);
+        if (argc > 0) title = argv[0];
+        if (argc > 1) width = std::stoi(argv[1]);
+        if (argc > 2) height = std::stoi(argv[2]);
+        if (argc > 3) x = std::stoi(argv[3]);
+        if (argc > 4) y = std::stoi(argv[4]);
+        if (argc > 5) {
+            std::string flag_str = argv[5];
             if (flag_str.find("fullscreen") != std::string::npos) flags |= SDL_WINDOW_FULLSCREEN;
             if (flag_str.find("desktop") != std::string::npos) flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
             if (flag_str.find("resizable") != std::string::npos) flags |= SDL_WINDOW_RESIZABLE;
@@ -117,7 +139,8 @@ extern "C" {
         return 0;
     }
     
-    int sdl_create_renderer(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
+    int sdl_create_renderer(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {
+        PluginOutput output(out_ctx, out_fn);
         if (g_window == nullptr) {
             output << "Window must be created first" << std::endl;
             return 1;
@@ -125,16 +148,27 @@ extern "C" {
         
         int index = -1;  
         Uint32 flags = SDL_RENDERER_ACCELERATED;
+        bool requested_software = false;
         
-        if (args.size() > 0) index = std::stoi(cmd::getVar(args[0]));
-        if (args.size() > 1) {
-            std::string flag_str = cmd::getVar(args[1]);
-            if (flag_str.find("software") != std::string::npos) flags = SDL_RENDERER_SOFTWARE;
+        if (argc > 0) index = std::stoi(argv[0]);
+        if (argc > 1) {
+            std::string flag_str = argv[1];
+            if (flag_str.find("software") != std::string::npos) {
+                flags = SDL_RENDERER_SOFTWARE;
+                requested_software = true;
+            }
             if (flag_str.find("vsync") != std::string::npos) flags |= SDL_RENDERER_PRESENTVSYNC;
             if (flag_str.find("target") != std::string::npos) flags |= SDL_RENDERER_TARGETTEXTURE;
         }
         
         g_renderer = SDL_CreateRenderer(g_window, index, flags);
+
+        if (g_renderer == nullptr && !requested_software) {
+            Uint32 fallback_flags = SDL_RENDERER_SOFTWARE;
+            if (flags & SDL_RENDERER_PRESENTVSYNC) fallback_flags |= SDL_RENDERER_PRESENTVSYNC;
+            if (flags & SDL_RENDERER_TARGETTEXTURE) fallback_flags |= SDL_RENDERER_TARGETTEXTURE;
+            g_renderer = SDL_CreateRenderer(g_window, index, fallback_flags);
+        }
         
         if (g_renderer == nullptr) {
             output << "SDL_CreateRenderer Error: " << SDL_GetError() << std::endl;
@@ -146,28 +180,29 @@ extern "C" {
     }
     
     
-    int sdl_loadsurface(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
+    int sdl_loadsurface(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {
+        PluginOutput output(out_ctx, out_fn);
         if (g_window == nullptr) {
             output << "Window must be created first" << std::endl;
             return 1;
         }
         
-        if (args.size() < 1) {
+        if (argc < 1) {
             output << "Usage: sdl_loadsurface <filename>" << std::endl;
             return 1;
         }
         
-        std::string filename = cmd::getVar(args[0]);
+        std::string filename = argv[0];
         SDL_Surface* surface = SDL_LoadBMP(filename.c_str());
         
         if (surface == nullptr) {
             output << "SDL_LoadBMP Error: " << SDL_GetError() << std::endl;
             return 1;
         }
-        if (args.size() >= 4) {
-            int r = std::stoi(cmd::getVar(args[1]));
-            int g = std::stoi(cmd::getVar(args[2]));
-            int b = std::stoi(cmd::getVar(args[3]));    
+        if (argc >= 4) {
+            int r = std::stoi(argv[1]);
+            int g = std::stoi(argv[2]);
+            int b = std::stoi(argv[3]);    
             Uint32 colorkey = SDL_MapRGB(surface->format, r, g, b);
             SDL_SetColorKey(surface, SDL_TRUE, colorkey);
         }
@@ -178,18 +213,19 @@ extern "C" {
         return 0;
     }
     
-    int sdl_create_texture(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
+    int sdl_create_texture(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {
+        PluginOutput output(out_ctx, out_fn);
         if (g_renderer == nullptr) {
             output << "Renderer must be created first" << std::endl;
             return 1;
         }
         
-        if (args.size() < 1) {
+        if (argc < 1) {
             output << "Usage: sdl_create_texture <surface_id> [blend_mode]" << std::endl;
             return 1;
         }
         
-        std::string surface_id = cmd::getVar(args[0]);
+        std::string surface_id = argv[0];
         auto it = surfaces.find(surface_id);
         
         if (it == surfaces.end()) {
@@ -205,8 +241,8 @@ extern "C" {
         }
         
         
-        if (args.size() > 1) {
-            std::string blend_mode = cmd::getVar(args[1]);
+        if (argc > 1) {
+            std::string blend_mode = argv[1];
             SDL_BlendMode mode = SDL_BLENDMODE_NONE;
             
             if (blend_mode == "blend") mode = SDL_BLENDMODE_BLEND;
@@ -222,13 +258,14 @@ extern "C" {
         return 0;
     }
     
-    int sdl_freesurface(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
-        if (args.size() < 1) {
+    int sdl_freesurface(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {
+        PluginOutput output(out_ctx, out_fn);
+        if (argc < 1) {
             output << "Usage: sdl_freesurface <surface_id>" << std::endl;
             return 1;
         }
         
-        std::string id = cmd::getVar(args[0]);
+        std::string id = argv[0];
         auto it = surfaces.find(id);
         
         if (it == surfaces.end()) {
@@ -241,13 +278,14 @@ extern "C" {
         return 0;
     }
     
-    int sdl_freetexture(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
-        if (args.size() < 1) {
+    int sdl_freetexture(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {
+        PluginOutput output(out_ctx, out_fn);
+        if (argc < 1) {
             output << "Usage: sdl_freetexture <texture_id>" << std::endl;
             return 1;
         }
         
-        std::string id = cmd::getVar(args[0]);
+        std::string id = argv[0];
         auto it = textures.find(id);
         
         if (it == textures.end()) {
@@ -261,18 +299,16 @@ extern "C" {
     }
     
     
-    int sdl_set_color(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
-        if (g_renderer == nullptr) {
-            output << "Renderer must be created first" << std::endl;
+    int sdl_set_color(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {
+        PluginOutput output(out_ctx, out_fn);
+        if (!ensureRenderer(output)) {
             return 1;
         }
-        
         Uint8 r = 0, g = 0, b = 0, a = 255;
-        
-        if (args.size() > 0) r = static_cast<Uint8>(std::stoi(cmd::getVar(args[0])));
-        if (args.size() > 1) g = static_cast<Uint8>(std::stoi(cmd::getVar(args[1])));
-        if (args.size() > 2) b = static_cast<Uint8>(std::stoi(cmd::getVar(args[2])));
-        if (args.size() > 3) a = static_cast<Uint8>(std::stoi(cmd::getVar(args[3])));
+        if (argc > 0) r = static_cast<Uint8>(std::stoi(argv[0]));
+        if (argc > 1) g = static_cast<Uint8>(std::stoi(argv[1]));
+        if (argc > 2) b = static_cast<Uint8>(std::stoi(argv[2]));
+        if (argc > 3) a = static_cast<Uint8>(std::stoi(argv[3]));
         
         if (SDL_SetRenderDrawColor(g_renderer, r, g, b, a) < 0) {
             output << "SDL_SetRenderDrawColor Error: " << SDL_GetError() << std::endl;
@@ -281,9 +317,9 @@ extern "C" {
         return 0;
     }
     
-    int sdl_clear(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
-        if (g_renderer == nullptr) {
-            output << "Renderer must be created first" << std::endl;
+    int sdl_clear(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {
+        PluginOutput output(out_ctx, out_fn);
+        if (!ensureRenderer(output)) {
             return 1;
         }
         
@@ -294,7 +330,8 @@ extern "C" {
         return 0;
     }
     
-    int sdl_draw_rect(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
+    int sdl_draw_rect(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {
+        PluginOutput output(out_ctx, out_fn);
         if (g_renderer == nullptr) {
             output << "Renderer must be created first" << std::endl;
             return 1;
@@ -303,11 +340,11 @@ extern "C" {
         SDL_Rect rect = {0, 0, 100, 100};
         bool filled = true;
         
-        if (args.size() > 0) rect.x = std::stoi(cmd::getVar(args[0]));
-        if (args.size() > 1) rect.y = std::stoi(cmd::getVar(args[1]));
-        if (args.size() > 2) rect.w = std::stoi(cmd::getVar(args[2]));
-        if (args.size() > 3) rect.h = std::stoi(cmd::getVar(args[3]));
-        if (args.size() > 4) filled = cmd::getVar(args[4]) != "0";
+        if (argc > 0) rect.x = std::stoi(argv[0]);
+        if (argc > 1) rect.y = std::stoi(argv[1]);
+        if (argc > 2) rect.w = std::stoi(argv[2]);
+        if (argc > 3) rect.h = std::stoi(argv[3]);
+        if (argc > 4) filled = std::string(argv[4]) != "0";
         
         int result;
         if (filled) {
@@ -323,7 +360,8 @@ extern "C" {
         return 0;
     }
     
-    int sdl_draw_line(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
+    int sdl_draw_line(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {
+        PluginOutput output(out_ctx, out_fn);
         if (g_renderer == nullptr) {
             output << "Renderer must be created first" << std::endl;
             return 1;
@@ -331,10 +369,10 @@ extern "C" {
         
         int x1 = 0, y1 = 0, x2 = 100, y2 = 100;
         
-        if (args.size() > 0) x1 = std::stoi(cmd::getVar(args[0]));
-        if (args.size() > 1) y1 = std::stoi(cmd::getVar(args[1]));
-        if (args.size() > 2) x2 = std::stoi(cmd::getVar(args[2]));
-        if (args.size() > 3) y2 = std::stoi(cmd::getVar(args[3]));
+        if (argc > 0) x1 = std::stoi(argv[0]);
+        if (argc > 1) y1 = std::stoi(argv[1]);
+        if (argc > 2) x2 = std::stoi(argv[2]);
+        if (argc > 3) y2 = std::stoi(argv[3]);
         
         if (SDL_RenderDrawLine(g_renderer, x1, y1, x2, y2) < 0) {
             output << "SDL_RenderDrawLine Error: " << SDL_GetError() << std::endl;
@@ -343,7 +381,8 @@ extern "C" {
         return 0;
     }
     
-    int sdl_draw_circle(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
+    int sdl_draw_circle(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {
+        PluginOutput output(out_ctx, out_fn);
         if (g_renderer == nullptr) {
             output << "Renderer must be created first" << std::endl;
             return 1;
@@ -354,10 +393,10 @@ extern "C" {
         int radius = 50;
         bool filled = false;
         
-        if (args.size() > 0) x = std::stoi(cmd::getVar(args[0]));
-        if (args.size() > 1) y = std::stoi(cmd::getVar(args[1]));
-        if (args.size() > 2) radius = std::stoi(cmd::getVar(args[2]));
-        if (args.size() > 3) filled = cmd::getVar(args[3]) != "0";
+        if (argc > 0) x = std::stoi(argv[0]);
+        if (argc > 1) y = std::stoi(argv[1]);
+        if (argc > 2) radius = std::stoi(argv[2]);
+        if (argc > 3) filled = std::string(argv[3]) != "0";
         
         if (filled) {
             for (int dy = -radius; dy <= radius; dy++) {
@@ -397,14 +436,15 @@ extern "C" {
     }
 
     
-    int sdl_color_string(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
-        if(args.empty()) {
+    int sdl_color_string(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {
+        PluginOutput output(out_ctx, out_fn);
+        if(argc == 0) {
             output << "Usage: color_string \"r g b a\"" << std::endl;
             return 1;
         }
         int r = 0, g = 0, b = 0, a = 255;
-        if (args.size() > 0) {
-            std::string value = getVar(args[0]);
+        if (argc > 0) {
+            std::string value = argv[0];
             auto tokenize = [](const std::string& str) -> std::vector<std::string> {
                 std::vector<std::string> tokens;
                 std::istringstream iss(str);
@@ -436,7 +476,8 @@ extern "C" {
         return 0;
     }
     
-    int sdl_draw_text(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {       
+    int sdl_draw_text(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {       
+        PluginOutput output(out_ctx, out_fn);
         static std::unordered_map<std::string, TTF_Font*> font_cache;
         class FontCacheRaii {
         public:
@@ -464,26 +505,26 @@ extern "C" {
             }
         }
         
-        if (args.size() < 4) {
+        if (argc < 4) {
             output << "Usage: sdl_draw_text <text> <x> <y> <font_path> [size=24] [r=255] [g=255] [b=255] [a=255]" << std::endl;
             return 1;
         }
         
-        std::string text = cmd::getVar(args[0]);
-        int x = std::stoi(cmd::getVar(args[1]));
-        int y = std::stoi(cmd::getVar(args[2]));
-        std::string font_path = cmd::getVar(args[3]);
+        std::string text = argv[0];
+        int x = std::stoi(argv[1]);
+        int y = std::stoi(argv[2]);
+        std::string font_path = argv[3];
         
         int font_size = 24;  
-        if (args.size() > 4) {
-            font_size = std::stoi(cmd::getVar(args[4]));
+        if (argc > 4) {
+            font_size = std::stoi(argv[4]);
         }
         
         SDL_Color color = {255, 255, 255, 255};
-        if (args.size() > 5) color.r = static_cast<Uint8>(std::stoi(cmd::getVar(args[5])));
-        if (args.size() > 6) color.g = static_cast<Uint8>(std::stoi(cmd::getVar(args[6])));
-        if (args.size() > 7) color.b = static_cast<Uint8>(std::stoi(cmd::getVar(args[7])));
-        if (args.size() > 8) color.a = static_cast<Uint8>(std::stoi(cmd::getVar(args[8])));
+        if (argc > 5) color.r = static_cast<Uint8>(std::stoi(argv[5]));
+        if (argc > 6) color.g = static_cast<Uint8>(std::stoi(argv[6]));
+        if (argc > 7) color.b = static_cast<Uint8>(std::stoi(argv[7]));
+        if (argc > 8) color.a = static_cast<Uint8>(std::stoi(argv[8]));
         std::string font_key = font_path + "_" + std::to_string(font_size);
         TTF_Font* font = nullptr;
         auto it = font_cache.find(font_key);
@@ -518,7 +559,8 @@ extern "C" {
     }
     
 
-    int sdl_draw_triangle(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
+    int sdl_draw_triangle(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {
+        PluginOutput output(out_ctx, out_fn);
         if (g_renderer == nullptr) {
             output << "Renderer must be created first" << std::endl;
             return 1;
@@ -532,13 +574,13 @@ extern "C" {
         int y3 = g_window_height / 2 + 50;
         bool filled = false;
         
-        if (args.size() > 0) x1 = std::stoi(cmd::getVar(args[0]));
-        if (args.size() > 1) y1 = std::stoi(cmd::getVar(args[1]));
-        if (args.size() > 2) x2 = std::stoi(cmd::getVar(args[2]));
-        if (args.size() > 3) y2 = std::stoi(cmd::getVar(args[3]));
-        if (args.size() > 4) x3 = std::stoi(cmd::getVar(args[4]));
-        if (args.size() > 5) y3 = std::stoi(cmd::getVar(args[5]));
-        if (args.size() > 6) filled = cmd::getVar(args[6]) != "0";
+        if (argc > 0) x1 = std::stoi(argv[0]);
+        if (argc > 1) y1 = std::stoi(argv[1]);
+        if (argc > 2) x2 = std::stoi(argv[2]);
+        if (argc > 3) y2 = std::stoi(argv[3]);
+        if (argc > 4) x3 = std::stoi(argv[4]);
+        if (argc > 5) y3 = std::stoi(argv[5]);
+        if (argc > 6) filled = std::string(argv[6]) != "0";
         
         SDL_RenderDrawLine(g_renderer, x1, y1, x2, y2);
         SDL_RenderDrawLine(g_renderer, x2, y2, x3, y3);
@@ -575,38 +617,35 @@ extern "C" {
     }
 
     
-    int sdl_copysurface(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
+    int sdl_copysurface(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {
+        PluginOutput output(out_ctx, out_fn);
         if (g_renderer == nullptr) {
             output << "Renderer must be created first" << std::endl;
-            throw cmd::AstFailure("Renderer must be created first");
             return 1;
         }
-        if (args.size() < 3) {
+        if (argc < 3) {
             output << "Usage: copysurface <surface_id> <x> <y>" << std::endl;
-            throw cmd::AstFailure("Not enough arguments for copysurface");
             return 1;
         }
-        std::string surface_id = cmd::getVar(args[0]);
-        int x = std::stoi(cmd::getVar(args[1]));
-        int y = std::stoi(cmd::getVar(args[2]));
+        std::string surface_id = argv[0];
+        int x = std::stoi(argv[1]);
+        int y = std::stoi(argv[2]);
         auto it = surfaces.find(surface_id);
         if (it == surfaces.end()) {
             output << "Surface not found: " << surface_id << std::endl;
-            throw cmd::AstFailure("Surface not found");
             return 1;
         }
         SDL_Surface* surface = it->second;
         int w = surface->w;
         int h = surface->h;
-        if(args.size() >= 5) {
-            w = std::stoi(cmd::getVar(args[3]));
-            h = std::stoi(cmd::getVar(args[4]));
+        if(argc >= 5) {
+            w = std::stoi(argv[3]);
+            h = std::stoi(argv[4]);
         }
 
         SDL_Texture* texture = SDL_CreateTextureFromSurface(g_renderer, surface);
         if (texture == nullptr) {
             output << "Failed to create texture: " << SDL_GetError() << std::endl;
-            throw cmd::AstFailure("Failed to create texture");
             return 1;
         }
         SDL_Rect dst_rect = {x, y, w, h};
@@ -615,20 +654,21 @@ extern "C" {
         return 0;
     }
     
-    int sdl_render_texture(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
+    int sdl_render_texture(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {
+        PluginOutput output(out_ctx, out_fn);
         if (g_renderer == nullptr) {
             output << "Renderer must be created first" << std::endl;
             return 1;
         }
         
-        if (args.size() < 3) {
+        if (argc < 3) {
             output << "Usage: sdl_render_texture <texture_id> <x> <y> [w h] [angle] [flip]" << std::endl;
             return 1;
         }
         
-        std::string texture_id = cmd::getVar(args[0]);
-        int x = std::stoi(cmd::getVar(args[1]));
-        int y = std::stoi(cmd::getVar(args[2]));
+        std::string texture_id = argv[0];
+        int x = std::stoi(argv[1]);
+        int y = std::stoi(argv[2]);
         
         auto it = textures.find(texture_id);
         if (it == textures.end()) {
@@ -642,9 +682,9 @@ extern "C" {
         SDL_QueryTexture(texture, nullptr, nullptr, &w, &h);
         
         
-        if (args.size() > 4) {
-            w = std::stoi(cmd::getVar(args[3]));
-            h = std::stoi(cmd::getVar(args[4]));
+        if (argc > 4) {
+            w = std::stoi(argv[3]);
+            h = std::stoi(argv[4]);
         }
         
         
@@ -653,12 +693,12 @@ extern "C" {
         double angle = 0.0;
         SDL_RendererFlip flip = SDL_FLIP_NONE;
         
-        if (args.size() > 5) {
-            angle = std::stod(cmd::getVar(args[5]));
+        if (argc > 5) {
+            angle = std::stod(argv[5]);
         }
         
-        if (args.size() > 6) {
-            std::string flip_str = cmd::getVar(args[6]);
+        if (argc > 6) {
+            std::string flip_str = argv[6];
             if (flip_str == "h") flip = SDL_FLIP_HORIZONTAL;
             else if (flip_str == "v") flip = SDL_FLIP_VERTICAL;
             else if (flip_str == "hv") flip = (SDL_RendererFlip)(SDL_FLIP_HORIZONTAL | SDL_FLIP_VERTICAL);
@@ -680,7 +720,8 @@ extern "C" {
         return 0;
     }
     
-    int sdl_present(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
+    int sdl_present(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {
+        PluginOutput output(out_ctx, out_fn);
         if (g_renderer == nullptr) {
             output << "Renderer must be created first" << std::endl;
             return 1;
@@ -692,9 +733,10 @@ extern "C" {
     }
     
     
-    int sdl_process_events(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
+    int sdl_process_events(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {
+        PluginOutput output(out_ctx, out_fn);
         static SDL_Event event;
-        bool verbose = args.size() > 0 && cmd::getVar(args[0]) == "verbose";
+        bool verbose = argc > 0 && std::string(argv[0]) == "verbose";
         
         
         int mouse_buttons;
@@ -763,13 +805,14 @@ extern "C" {
         return 0;
     }
     
-    int sdl_is_key_pressed(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
-        if (args.size() < 1) {
+    int sdl_is_key_pressed(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {
+        PluginOutput output(out_ctx, out_fn);
+        if (argc < 1) {
             output << "Usage: sdl_is_key_pressed <key_name>" << std::endl;
             return 1;
         }
         
-        std::string key_name = cmd::getVar(args[0]);
+        std::string key_name = argv[0];
         SDL_Scancode scancode = SDL_GetScancodeFromName(key_name.c_str());
         
         if (scancode == SDL_SCANCODE_UNKNOWN) {
@@ -786,16 +829,18 @@ extern "C" {
         }
     }
     
-    int sdl_get_mouse_pos(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
+    int sdl_get_mouse_pos(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {
+        PluginOutput output(out_ctx, out_fn);
         output << g_mouse_x << " " << g_mouse_y;
         return 0;
     }
     
-    int sdl_is_mouse_button_pressed(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
+    int sdl_is_mouse_button_pressed(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {
+        PluginOutput output(out_ctx, out_fn);
         int button = 0;  
         
-        if (args.size() > 0) {
-            button = std::stoi(cmd::getVar(args[0]));
+        if (argc > 0) {
+            button = std::stoi(argv[0]);
         }
         
         if (button < 0 || button >= 3) {
@@ -808,23 +853,25 @@ extern "C" {
     }
     
  
-    int sdl_set_window_title(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
+    int sdl_set_window_title(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {
+        PluginOutput output(out_ctx, out_fn);
         if (g_window == nullptr) {
             output << "Window must be created first" << std::endl;
             return 1;
         }
         
-        if (args.size() < 1) {
+        if (argc < 1) {
             output << "Usage: sdl_set_window_title <title>" << std::endl;
             return 1;
         }
         
-        std::string title = cmd::getVar(args[0]);
+        std::string title = argv[0];
         SDL_SetWindowTitle(g_window, title.c_str());
         return 0;
     }
     
-    int sdl_set_fullscreen(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
+    int sdl_set_fullscreen(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {
+        PluginOutput output(out_ctx, out_fn);
         if (g_window == nullptr) {
             output << "Window must be created first" << std::endl;
             return 1;
@@ -833,8 +880,8 @@ extern "C" {
         bool fullscreen = true;
         bool desktop = true;
         
-        if (args.size() > 0) fullscreen = cmd::getVar(args[0]) != "0";
-        if (args.size() > 1) desktop = cmd::getVar(args[1]) != "0";
+        if (argc > 0) fullscreen = std::string(argv[0]) != "0";
+        if (argc > 1) desktop = std::string(argv[1]) != "0";
         
         Uint32 flags = 0;
         if (fullscreen) {
@@ -849,7 +896,8 @@ extern "C" {
         return 0;
     }
     
-    int sdl_get_window_size(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
+    int sdl_get_window_size(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {
+        PluginOutput output(out_ctx, out_fn);
         if (g_window == nullptr) {
             output << "Window must be created first" << std::endl;
             return 1;
@@ -860,10 +908,11 @@ extern "C" {
     }
 
     
-    int sdl_delay(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
+    int sdl_delay(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {
+        PluginOutput output(out_ctx, out_fn);
         int ms = 16;  
-        if (args.size() > 0) {
-            ms = std::stoi(cmd::getVar(args[0]));
+        if (argc > 0) {
+            ms = std::stoi(argv[0]);
         }
         
         if (ms < 0) {
@@ -875,12 +924,14 @@ extern "C" {
         return 0;
     }
     
-    int sdl_get_delta_time(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
+    int sdl_get_delta_time(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {
+        PluginOutput output(out_ctx, out_fn);
         output << g_delta_time;
         return 0;
     }
     
-    int sdl_get_fps(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
+    int sdl_get_fps(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {
+        PluginOutput output(out_ctx, out_fn);
         if (g_delta_time > 0) {
             output << (1.0f / g_delta_time);
         } else {
@@ -889,12 +940,13 @@ extern "C" {
         return 0;
     }
     
-    int sdl_get_ticks(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
+    int sdl_get_ticks(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {
+        PluginOutput output(out_ctx, out_fn);
         output << SDL_GetTicks();
         return 0;
     }
     
-    int sdl_destroy(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
+    int sdl_destroy(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {
         for (auto& pair : textures) {
             SDL_DestroyTexture(pair.second);
         }
@@ -914,8 +966,8 @@ extern "C" {
         return 0;
     }
     
-    int sdl_quit(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
-        sdl_destroy(args, input, output);
+    int sdl_quit(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {
+        sdl_destroy(argc, argv, out_ctx, out_fn);
     	SDL_PumpEvents();
         SDL_Quit();
         return 0;

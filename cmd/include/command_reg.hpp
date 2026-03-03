@@ -9,6 +9,7 @@
 #include<vector>    
 #include<memory>
 #include"library.hpp"
+#include"plugin_api.h"
 namespace cmd {
 
     
@@ -24,7 +25,7 @@ namespace cmd {
         std::string libraryPath;
         std::string functionName;
         std::shared_ptr<Library> library;
-        std::function<int(const std::vector<Argument>&, std::istream&, std::ostream&)> func;
+        plugin_func_t func;  // C-compatible function pointer (no C++ types cross the DLL boundary)
     };
     class CommandRegistry {
     public:
