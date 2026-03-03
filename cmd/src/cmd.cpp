@@ -314,6 +314,108 @@ struct ExecCallbackScope {
 };
 #endif
 
+#ifdef _WIN32
+#include <conio.h>
+static char *win_readline(const char *prompt) {
+    if (prompt) { printf("%s", prompt); fflush(stdout); }
+
+    std::string line;
+    int cursor = 0;
+    int hist_pos = history_length;
+    std::string saved_line;
+    auto redraw_tail = [&]() {
+        int tail = (int)line.size() - cursor;
+        for (int i = cursor; i < (int)line.size(); i++) putchar(line[i]);
+        putchar(' ');                                   // erase the extra char
+        for (int i = 0; i < tail + 1; i++) putchar('\b'); // back to cursor
+        fflush(stdout);
+    };
+    auto replace_line = [&](const std::string &old_line) {
+        for (int i = 0; i < (int)old_line.size(); i++) putchar('\b');
+        for (char c : line) putchar(c);
+        int diff = (int)old_line.size() - (int)line.size();
+        for (int i = 0; i < diff; i++) putchar(' ');
+        for (int i = 0; i < diff; i++) putchar('\b');
+        cursor = (int)line.size();
+        fflush(stdout);
+    };
+
+    while (true) {
+        int c = _getch();
+        if (c == 0 || c == 224) {
+            int ext = _getch();
+            switch (ext) {
+                case 72: { 
+                    if (hist_pos > 0) {
+                        if (hist_pos == history_length) saved_line = line;
+                        hist_pos--;
+                        HIST_ENTRY *e = history_get(history_base + hist_pos);
+                        std::string old = line;
+                        line = e ? e->line : "";
+                        replace_line(old);
+                    }
+                    break;
+                }
+                case 80: { 
+                    if (hist_pos < history_length) {
+                        hist_pos++;
+                        std::string old = line;
+                        if (hist_pos == history_length) line = saved_line;
+                        else { HIST_ENTRY *e = history_get(history_base + hist_pos); line = e ? e->line : ""; }
+                        replace_line(old);
+                    }
+                    break;
+                }
+                case 75: 
+                    if (cursor > 0) { cursor--; putchar('\b'); fflush(stdout); }
+                    break;
+                case 77: 
+                    if (cursor < (int)line.size()) { putchar(line[cursor]); cursor++; fflush(stdout); }
+                    break;
+                case 71: 
+                    while (cursor > 0) { putchar('\b'); cursor--; } fflush(stdout);
+                    break;
+                case 79: 
+                    while (cursor < (int)line.size()) { putchar(line[cursor]); cursor++; } fflush(stdout);
+                    break;
+                case 83: 
+                    if (cursor < (int)line.size()) { line.erase(cursor, 1); redraw_tail(); }
+                    break;
+            }
+        } else if (c == '\r' || c == '\n') {
+            printf("\n"); fflush(stdout);
+            break;
+        } else if (c == 8 || c == 127) {
+            if (cursor > 0 && !line.empty()) {
+                cursor--;
+                line.erase(cursor, 1);
+                putchar('\b');
+                redraw_tail();
+            }
+        } else if (c == 3) {
+            printf("\n"); fflush(stdout);
+            return nullptr;
+        } else if (c == 4) {
+            if (line.empty()) { printf("\n"); fflush(stdout); return nullptr; }
+        } else if (c == 21) {
+            while (cursor > 0) { putchar('\b'); cursor--; }
+            for (int i = 0; i < (int)line.size(); i++) putchar(' ');
+            for (int i = 0; i < (int)line.size(); i++) putchar('\b');
+            line.clear(); cursor = 0; fflush(stdout);
+        } else if (c >= 32 && c < 256) {
+            line.insert(cursor, 1, static_cast<char>(c));
+            cursor++;
+            for (int i = cursor - 1; i < (int)line.size(); i++) putchar(line[i]);
+            for (int i = cursor; i < (int)line.size(); i++) putchar('\b');
+            fflush(stdout);
+        }
+    }
+    char *result = static_cast<char *>(malloc(line.size() + 1));
+    if (result) memcpy(result, line.c_str(), line.size() + 1);
+    return result;
+}
+#endif
+
 void execute_command(const std::string &text) {
     fflush(stdout);
     try {
@@ -486,7 +588,6 @@ cmd::AstExecutor::getExecutor().getRegistry().registerTypedCommand("exec",
             }
             
             if (!bashPath.empty() && std::filesystem::exists(bashPath)) {
-                // Use stdbuf with environment variables for maximum unbuffering
                 if (bashPath.find("msys64") != std::string::npos) {
                     cmdLine = "\"" + bashPath + "\" -c \"stdbuf -o0 -e0 " + command_str + "\"";
                 } else {
@@ -504,7 +605,7 @@ cmd::AstExecutor::getExecutor().getRegistry().registerTypedCommand("exec",
         
         if (!CreateProcess(NULL, const_cast<LPSTR>(cmdLine.c_str()), NULL, NULL, TRUE, 
                         CREATE_NO_WINDOW, 
-                        const_cast<LPSTR>(envBlock.c_str()), // Use custom environment
+                        const_cast<LPSTR>(envBlock.c_str()), 
                         NULL, &si, &pi)) {
             CloseHandle(hStdOutRead);
             CloseHandle(hStdOutWrite);
@@ -564,8 +665,16 @@ cmd::AstExecutor::getExecutor().getRegistry().registerTypedCommand("exec",
         bool debug_cmd = false;
         try {
             cmd::AstExecutor &executor = cmd::AstExecutor::getExecutor();
+#ifdef _WIN32
+            rl_variable_bind("bell-style", "none");
+#endif
             using_history();
             read_history(".cmd_history");
+#ifdef _WIN32
+            auto prompt_readline = [](const char *p) -> char* { return win_readline(p); };
+#else
+            auto prompt_readline = [](const char *p) -> char* { return readline(p); };
+#endif
             std::ostringstream input_stream;
             std::string multiLineBuffer;
             bool isMultiLineInput = false;
@@ -576,7 +685,7 @@ cmd::AstExecutor::getExecutor().getRegistry().registerTypedCommand("exec",
                 try {
                     std::string prompt = executor.getPath() + " $> ";
                     const char *activePrompt = isMultiLineInput ? ".. " : prompt.c_str();
-                    char* line = readline(activePrompt);
+                    char* line = prompt_readline(activePrompt);
                     if (line == nullptr) {
                         std::cout << std::endl;  
                         write_history(".cmd_history");
@@ -622,7 +731,7 @@ cmd::AstExecutor::getExecutor().getRegistry().registerTypedCommand("exec",
                             std::string iline;
                             input_stream.str("");
                             while(true) {
-                                char *in_line = readline("... ");
+                                char *in_line = prompt_readline("... ");
                                 iline = in_line;
                                 if(in_line != nullptr) {
                                     free(in_line);
