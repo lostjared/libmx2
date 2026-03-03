@@ -19,7 +19,7 @@ Create a Shared Library / module for MX2 to run in the interpreter as standalone
 
 Previously reported embedded-terminal threading/lockup behavior has been addressed.
 
-# Recent Bug Fix Log (Yesterday & Today)
+# Recent Bug Fix Log
 
 ## 2026-03-03
 - `f88092b` Updated output behavior so text is streamed during execution instead of being buffered until program completion.
