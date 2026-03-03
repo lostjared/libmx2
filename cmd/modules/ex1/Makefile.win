@@ -1,5 +1,5 @@
 all:
-	$(CXX) -std=c++20 -I/usr/local/include/mxcmd mod.cpp -shared -o module.dll -L/usr/local/lib -lmxcmd -fPIC
+	$(CXX) -std=c++20 -I/usr/local/include/mxcmd mod.cpp -shared -o module.dll -fPIC
 install:
 	cp -rf module.dll /usr/local/bin
 clean:

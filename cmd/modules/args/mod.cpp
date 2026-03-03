@@ -1,13 +1,11 @@
-#include"ast.hpp"
+#include "plugin_api.h"
+#include "plugin_output.hpp"
+
 extern "C" {
-    int HeyCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& output) {
-        int count = 0;
-        for(auto &arg : args) {
-            try {
-                output << count++ << " " << getVar(arg) << "\n";
-            } catch(const std::runtime_error &) {
-                output << arg.value << " ";
-            }
+    int HeyCommand(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {
+        PluginOutput output(out_ctx, out_fn);
+        for (int index = 0; index < argc; ++index) {
+            output << index << " " << (argv[index] ? argv[index] : "") << "\n";
         }
         return 0;
     }
