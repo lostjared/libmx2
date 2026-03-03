@@ -28,6 +28,73 @@ printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
 #define M_PI 3.14159265358979323846
 #endif
 
+struct MultiLineState {
+    bool needsMoreInput;
+    int blockDepth;
+    bool lineContinuation;
+};
+
+static int countWord(const std::string& input, const std::string& word) {
+    int count = 0;
+    size_t pos = 0;
+    while ((pos = input.find(word, pos)) != std::string::npos) {
+        bool validStart = (pos == 0 || !std::isalnum(input[pos - 1]));
+        bool validEnd = (pos + word.length() >= input.length() || 
+                        !std::isalnum(input[pos + word.length()]));
+        if (validStart && validEnd) {
+            count++;
+        }
+        pos += word.length();
+    }
+    return count;
+}
+
+static bool endsWithBackslash(const std::string& input) {
+    if (input.empty()) return false;
+    size_t lastNonSpace = input.find_last_not_of(" \t\n\r");
+    if (lastNonSpace != std::string::npos && input[lastNonSpace] == '\\') {
+        return true;
+    }
+    return false;
+}
+
+static MultiLineState checkMultiLineState(const std::string& input) {
+    MultiLineState state;
+    state.needsMoreInput = false;
+    state.blockDepth = 0;
+    state.lineContinuation = false;
+    
+    if (input.empty()) {
+        return state;
+    }
+    
+    if (endsWithBackslash(input)) {
+        state.lineContinuation = true;
+        state.needsMoreInput = true;
+        return state;
+    }
+    
+    int forCount = countWord(input, "for");
+    int whileCount = countWord(input, "while");
+    int ifCount = countWord(input, "if");
+    int defineCount = countWord(input, "define");
+    
+    int doneCount = countWord(input, "done");
+    int fiCount = countWord(input, "fi");
+    int endCount = countWord(input, "end");
+    
+    int loopDepth = (forCount + whileCount) - doneCount;
+    int ifDepth = ifCount - fiCount;
+    int defineDepth = defineCount - endCount;
+    
+    state.blockDepth = loopDepth + ifDepth + defineDepth;
+    
+    if (state.blockDepth > 0) {
+        state.needsMoreInput = true;
+    }
+    
+    return state;
+}
 
 class Game : public gl::GLObject {
     int start_shader = 10;
@@ -41,6 +108,10 @@ class Game : public gl::GLObject {
     std::atomic<bool> program_running{false};
     cmd::AstExecutor &executor = cmd::AstExecutor::getExecutor();
     bool cmd_echo = true;
+    std::string multiLineBuffer;
+    bool isMultiLineInput = false;
+    int blockDepth = 0;
+    std::string savedPrompt;
     std::mutex task_mutex;
     std::vector<std::function<void(gl::GLWindow*)>> main_thread_tasks;
 
@@ -117,13 +188,66 @@ class Game : public gl::GLObject {
 
             try {
                 if(text.empty()) {
+                    if(isMultiLineInput) {
+                        multiLineBuffer += "\n";
+                        window->console.thread_safe_print("\n");
+                        window->console.process_message_queue();
+                        return 0;
+                    }
                     return 0; 
+                }
+
+                bool lineContinuation = false;
+                std::string inputLine = text;
+
+                if (!inputLine.empty()) {
+                    size_t lastNonSpace = inputLine.find_last_not_of(" \t");
+                    if (lastNonSpace != std::string::npos && inputLine[lastNonSpace] == '\\') {
+                        lineContinuation = true;
+                        inputLine = inputLine.substr(0, lastNonSpace);
+                    }
+                }
+
+                if (isMultiLineInput) {
+                    multiLineBuffer += "\n" + inputLine;
+                    MultiLineState state = checkMultiLineState(multiLineBuffer);
+
+                    if (lineContinuation || state.needsMoreInput) {
+                        blockDepth = state.blockDepth;
+                        window->console.thread_safe_print(".. " + text + "\n");
+                        window->console.process_message_queue();
+                        return 0;
+                    } else {
+                        window->console.thread_safe_print(".. " + text + "\n");
+                        window->console.process_message_queue();
+                        std::string fullCommand = multiLineBuffer;
+                        isMultiLineInput = false;
+                        multiLineBuffer.clear();
+                        blockDepth = 0;
+                        window->console.setPrompt(savedPrompt);
+                        const_cast<std::string&>(text) = fullCommand;
+                    }
+                } else {
+                    MultiLineState state = checkMultiLineState(inputLine);
+
+                    if (lineContinuation || state.needsMoreInput) {
+                        isMultiLineInput = true;
+                        multiLineBuffer = inputLine;
+                        blockDepth = state.blockDepth;
+                        savedPrompt = "$> ";
+                        window->console.setPrompt(".. ");
+                        if(cmd_echo) {
+                            window->console.thread_safe_print("$> " + text + "\n");
+                            window->console.process_message_queue();
+                        }
+                        return 0;
+                    }
                 }
                 if(text == "random_shader") {
                     queueTaskForMainThread([this](gl::GLWindow* main_thread_win_param) {
                         this->setRandomShader(main_thread_win_param, -1);
                     });
-                    window->console.thread_safe_print("Random shader command queued.\n"); // Feedback
+                    window->console.thread_safe_print("Random shader command queued.\n"); 
                     window->console.process_message_queue();
                     return 0;
                 } else if(text == "default_shader") {
@@ -207,6 +331,10 @@ class Game : public gl::GLObject {
                     window->console.thread_safe_print(" - clear: Clear the console.\n");
                     window->console.thread_safe_print(" - about: Show information about this application.\n");
                     window->console.thread_safe_print(" - exit: Exit the application.\n");
+                    window->console.thread_safe_print("\nMulti-line Input:\n");
+                    window->console.thread_safe_print("  for/while ... done, if ... fi, define ... end\n");
+                    window->console.thread_safe_print("  Use \\ at end of line for line continuation\n");
+                    window->console.thread_safe_print("  CTRL+C cancels multi-line input\n");
                     window->console.process_message_queue();
                     return 0;
                 }
@@ -419,6 +547,15 @@ class Game : public gl::GLObject {
     void event(gl::GLWindow *win, SDL_Event &e) override {
         if(e.type == SDL_KEYDOWN) {
             if(e.key.keysym.sym == SDLK_c && (e.key.keysym.mod & KMOD_CTRL)) {
+                if(isMultiLineInput) {
+                    win->console.thread_safe_print("\n^C - Multi-line input cancelled\n");
+                    multiLineBuffer.clear();
+                    isMultiLineInput = false;
+                    blockDepth = 0;
+                    win->console.setPrompt(savedPrompt);
+                    win->console.process_message_queue();
+                    return;
+                }
                 if(program_running && interrupt_command == false) {
                     win->console.thread_safe_print("\nCTRL+C Interrupt - Command interrupted\n");
                     interrupt_command = true;

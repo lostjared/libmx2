@@ -30,12 +30,24 @@ namespace mx {
     }
     
     mxWindow::~mxWindow() {
-        if(object)
+        mx::system_out << "libmx2: mxWindow shutting down\n";
+        if(object) {
+            mx::system_out << "libmx2: releasing bound object\n";
             object.reset();
-        SDL_DestroyRenderer(renderer);
-        SDL_DestroyWindow(window);
+        }
+        if(renderer) {
+            mx::system_out << "libmx2: destroying SDL renderer\n";
+            SDL_DestroyRenderer(renderer);
+        }
+        if(window) {
+            mx::system_out << "libmx2: destroying SDL window\n";
+            SDL_DestroyWindow(window);
+        }
+        mx::system_out << "libmx2: shutting down SDL_ttf\n";
         TTF_Quit();
+        mx::system_out << "libmx2: shutting down SDL\n";
         SDL_Quit();
+        mx::system_out.flush();
     }
     SDL_Texture *mxWindow::createTexture(int w, int h) {
         SDL_Texture *tex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, w, h);

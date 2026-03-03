@@ -19,20 +19,28 @@
 namespace gl {
    
     GLWindow::~GLWindow() {
+        mx::system_out << "libmx2: GLWindow shutting down\n";
         if(object) {
+            mx::system_out << "libmx2: releasing GL object\n";
             object.reset();  
         }
+        mx::system_out << "libmx2: releasing console resources\n";
         console.release();
         if (glContext) {
+            mx::system_out << "libmx2: deleting OpenGL context\n";
             SDL_GL_DeleteContext(glContext);
             glContext = nullptr;
         }
         if(window) {
+            mx::system_out << "libmx2: destroying SDL window\n";
             SDL_DestroyWindow(window);
             window = nullptr;
         }
+        mx::system_out << "libmx2: shutting down SDL_ttf\n";
         TTF_Quit();
+        mx::system_out << "libmx2: shutting down SDL\n";
         SDL_Quit();
+        mx::system_out.flush();
     }
 
     void GLWindow::updateViewport() {
@@ -372,12 +380,15 @@ namespace gl {
         }
         
         if (vertex_shader && glIsShader(vertex_shader)) {
+            mx::system_out << "libmx2: releasing vertex shader " << vertex_shader << "\n";
             glDeleteShader(vertex_shader);
         }
         if (fragment_shader && glIsShader(fragment_shader)) {
+            mx::system_out << "libmx2: releasing fragment shader " << fragment_shader << "\n";
             glDeleteShader(fragment_shader);
         }
         if (shader_id && glIsProgram(shader_id)) {
+            mx::system_out << "libmx2: releasing shader program " << shader_id << "\n";
             glDeleteProgram(shader_id);
         }
     }
@@ -392,8 +403,18 @@ namespace gl {
     }
 
     void ShaderProgram::release() {
-        
+        if (state && (state->shader_id != 0 || state->vertex_shader != 0 || state->fragment_shader != 0)) {
+            mx::system_out << "libmx2: ShaderProgram::release clearing current GPU resources\n";
+        }
+        std::string existing_name;
+        bool existing_silent = false;
+        if (state) {
+            existing_name = state->name_;
+            existing_silent = state->silent_;
+        }
         state = std::make_shared<SharedState>();
+        state->name_ = existing_name;
+        state->silent_ = existing_silent;
     }
 
     GLuint ShaderProgram::id() const {
@@ -550,12 +571,16 @@ namespace gl {
 
     bool ShaderProgram::loadProgram(const std::string &v, const std::string &f) {
         if (!state) return false;
+        release();
+        mx::system_out << "libmx2: ShaderProgram::loadProgram reloading from files\n";
         state->shader_id = createProgramFromFile(v, f);
         return state->shader_id != 0;
     }
 
     bool ShaderProgram::loadProgramFromText(const std::string &v, const std::string &f) {
         if (!state) return false;
+        release();
+        mx::system_out << "libmx2: ShaderProgram::loadProgramFromText reloading from source text\n";
         state->shader_id = createProgram(v.c_str(), f.c_str());
         return state->shader_id != 0;
     }
@@ -947,10 +972,12 @@ namespace gl {
             return;
         }
         if (VAO && glIsVertexArray(VAO)) {
+            mx::system_out << "libmx2: releasing sprite VAO " << VAO << "\n";
             glDeleteVertexArrays(1, &VAO);
             VAO = 0;
         }
         if (VBO && glIsBuffer(VBO)) {
+            mx::system_out << "libmx2: releasing sprite VBO " << VBO << "\n";
             glDeleteBuffers(1, &VBO);
             VBO = 0;
         }
@@ -959,6 +986,7 @@ namespace gl {
 
     GLSprite::~GLSprite() {
         if (texture != 0 && SDL_GL_GetCurrentContext()) {
+            mx::system_out << "libmx2: releasing sprite texture " << texture << "\n";
             glDeleteTextures(1, &texture);
             texture = 0;
         }
