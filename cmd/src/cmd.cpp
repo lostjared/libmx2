@@ -243,14 +243,6 @@ int main(int argc, char **argv) {
 #ifdef WINDOWS_MODE
     cmd::AstExecutor::getExectur().windows_mode = true;
 #endif
-#ifndef _WIN32
-    cmd::AstExecutor::getExecutor().setUpdateCallback(
-        [](const std::string &chunk) {
-            std::cout << chunk;
-        }
-    );
-#endif
-
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
     struct sigaction sa;
     sa.sa_handler = sigint_handler;
