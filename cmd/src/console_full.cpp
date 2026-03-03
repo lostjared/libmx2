@@ -459,12 +459,10 @@ class Game : public gl::GLObject {
                         scan::Scanner scanner(string_buffer);
                         cmd::Parser parser(scanner);
                         auto ast = parser.parse();
-                        // Use a real-time forwarding stream instead of ostringstream
-                        // so output appears immediately in the console
                         ConsoleStreamBuf consoleBuf(window);
                         std::ostream out_stream(&consoleBuf);
                         executor.execute(input_stream, out_stream, ast);
-                        out_stream.flush(); // flush any remaining partial line
+                        out_stream.flush(); 
                     } catch(const scan::ScanExcept &e) {
                         window->console.thread_safe_print("Scanner Exception: " + e.why() + "\n");
                         window->console.process_message_queue();
@@ -624,7 +622,7 @@ class Game : public gl::GLObject {
         std::ostringstream shader_source;
         shader_source << file.rdbuf();  
         file.close();
-	program.reset(new gl::ShaderProgram());
+	    program.reset(new gl::ShaderProgram());
         if(program->loadProgramFromText(vSource, shader_source.str())) {
             program->setSilent(true);
             program->useProgram();
@@ -645,8 +643,6 @@ class Game : public gl::GLObject {
     }
     void draw(gl::GLWindow *win) override {
         processMainThreadTasks(win);
-        // Restore this window's GL context in case a plugin script
-        // (e.g. SDL_CreateRenderer) stole it on the main thread.
         win->makeCurrent();
         glDisable(GL_DEPTH_TEST);
         Uint32 currentTime = SDL_GetTicks();
