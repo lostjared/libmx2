@@ -28,6 +28,46 @@ printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
 #define M_PI 3.14159265358979323846
 #endif
 
+// Real-time console output stream: every write is immediately forwarded
+// to the GLWindow console instead of buffering in an ostringstream.
+class ConsoleStreamBuf : public std::streambuf {
+public:
+    ConsoleStreamBuf(gl::GLWindow *win) : window(win) {}
+protected:
+    int overflow(int c) override {
+        if (c != EOF) {
+            char ch = static_cast<char>(c);
+            buf += ch;
+            if (ch == '\n') {
+                flush_buf();
+            }
+        }
+        return c;
+    }
+    std::streamsize xsputn(const char *s, std::streamsize n) override {
+        buf.append(s, static_cast<size_t>(n));
+        // flush on every newline or when buffer gets large
+        if (buf.find('\n') != std::string::npos || buf.size() > 256) {
+            flush_buf();
+        }
+        return n;
+    }
+    int sync() override {
+        flush_buf();
+        return 0;
+    }
+private:
+    void flush_buf() {
+        if (!buf.empty()) {
+            window->console.thread_safe_print(buf);
+            window->console.process_message_queue();
+            buf.clear();
+        }
+    }
+    gl::GLWindow *window;
+    std::string buf;
+};
+
 struct MultiLineState {
     bool needsMoreInput;
     int blockDepth;
@@ -384,7 +424,6 @@ class Game : public gl::GLObject {
                     try {
                         executor.setInterrupt(&this->interrupt_command);
                         std::cout << "Executing: " << text << std::endl;
-                        std::string lineBuf;
                         bool update_callback_printed = false;
                         struct ExecutionGuard {
                             cmd::AstExecutor &exec;
@@ -399,15 +438,11 @@ class Game : public gl::GLObject {
 
                         program_running = true;
                         executor.setUpdateCallback(
-                            [&lineBuf,window,this,&update_callback_printed](const std::string &chunk) {
-                                lineBuf += chunk;
-                                size_t nl;
-                                while ((nl = lineBuf.find('\n')) != std::string::npos) {
-                                    std::string oneLine = lineBuf.substr(0, nl+1);
-                                    lineBuf.erase(0, nl+1);
-                                    window->console.thread_safe_print(oneLine);
+                            [window,this,&update_callback_printed](const std::string &chunk) {
+                                if(!chunk.empty()) {
+                                    window->console.thread_safe_print(chunk);
                                     window->console.process_message_queue();
-                                    update_callback_printed = true;             
+                                    update_callback_printed = true;
                                 }
                                 if(interrupt_command) {
                                     interrupt_command = false;
@@ -421,19 +456,12 @@ class Game : public gl::GLObject {
                         scan::Scanner scanner(string_buffer);
                         cmd::Parser parser(scanner);
                         auto ast = parser.parse();
-                        std::ostringstream out_stream;
+                        // Use a real-time forwarding stream instead of ostringstream
+                        // so output appears immediately in the console
+                        ConsoleStreamBuf consoleBuf(window);
+                        std::ostream out_stream(&consoleBuf);
                         executor.execute(input_stream, out_stream, ast);
-                        if(update_callback_printed) {
-                            if(!lineBuf.empty()) {
-                                window->console.thread_safe_print(lineBuf);
-                                window->console.process_message_queue();
-                            }
-                        } else {
-                            if(!out_stream.str().empty()) {
-                                window->console.thread_safe_print(out_stream.str());
-                                window->console.process_message_queue();
-                            }
-                        }
+                        out_stream.flush(); // flush any remaining partial line
                     } catch(const scan::ScanExcept &e) {
                         window->console.thread_safe_print("Scanner Exception: " + e.why() + "\n");
                         window->console.process_message_queue();

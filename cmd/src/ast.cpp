@@ -3,12 +3,27 @@
 
 namespace cmd {
 
+    namespace {
+        thread_local std::function<void(const std::string&)> g_updateCallback = nullptr;
+    }
+
     CommandRegistry AstExecutor::registry;
     AstExecutor AstExecutor::instance;
     
     AstExecutor& AstExecutor::getExecutor() {
         return instance;
     } 
+
+    void AstExecutor::setUpdateCallback(std::function<void(const std::string &)> callback) {
+        g_updateCallback = std::move(callback);
+    }
+
+    void AstExecutor::execUpdateCallback(const std::string &text) {
+        if (g_updateCallback) {
+            g_updateCallback(text);
+        }
+    }
+
     AstExecutor::AstExecutor() {
         if(registry.empty()) {
             registry.registerTypedCommand("echo", cmd::echoCommand);

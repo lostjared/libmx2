@@ -1599,7 +1599,6 @@ namespace cmd {
 
         bool isStdOut = (&output == &std::cout);
         
-        std::string line_buffer;
         bool still_running = true;
         
         while (still_running) {
@@ -1615,33 +1614,13 @@ namespace cmd {
                 
                 if (ReadFile(hStdOutRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0) {
                     buffer[bytesRead] = '\0';
-                    line_buffer += buffer;
-                    
-                    
-                    size_t pos = 0;
-                    while ((pos = line_buffer.find('\n')) != std::string::npos) {
-                        std::string line = line_buffer.substr(0, pos + 1);
-                        
-                        if (isStdOut) {
-                            printf("%s", line.c_str());
-                            fflush(stdout);
-                        } else {
-                            output << line;
-                            output.flush();
-                        }
-                        
-                        line_buffer.erase(0, pos + 1);
-                    }
-                    
-                    if (line_buffer.length() > 80) {
-                        if (isStdOut) {
-                            printf("%s", line_buffer.c_str());
-                            fflush(stdout);
-                        } else {
-                            output << line_buffer;
-                            output.flush();
-                        }
-                        line_buffer.clear();
+
+                    if (isStdOut) {
+                        printf("%s", buffer);
+                        fflush(stdout);
+                    } else {
+                        output << buffer;
+                        output.flush();
                     }
                 } else {
                     still_running = false;
@@ -1651,15 +1630,6 @@ namespace cmd {
                 DWORD currentChildExitCode;
                 if (GetExitCodeProcess(pi.hProcess, &currentChildExitCode)) {
                     if (currentChildExitCode != STILL_ACTIVE) {
-                        if (!line_buffer.empty()) {
-                            if (isStdOut) {
-                                printf("%s", line_buffer.c_str());
-                                fflush(stdout);
-                            } else {
-                                output << line_buffer;
-                                output.flush();
-                            }
-                        }
                         still_running = false;
                     }
                 } else {
@@ -1738,7 +1708,6 @@ namespace cmd {
 
         
         bool isStdOut = (&output == &std::cout);
-        std::string line_buffer;
         bool still_running = true;
         
         while (still_running) {
@@ -1754,32 +1723,13 @@ namespace cmd {
                 
                 if (ReadFile(hStdOutRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0) {
                     buffer[bytesRead] = '\0';
-                    line_buffer += buffer;
-                    
-                    size_t pos = 0;
-                    while ((pos = line_buffer.find('\n')) != std::string::npos) {
-                        std::string line = line_buffer.substr(0, pos + 1);
-                        
-                        if (isStdOut) {
-                            printf("%s", line.c_str());
-                            fflush(stdout);
-                        } else {
-                            output << line;
-                            output.flush();
-                        }
-                        
-                        line_buffer.erase(0, pos + 1);
-                    }
-                    
-                    if (line_buffer.length() > 80) {
-                        if (isStdOut) {
-                            printf("%s", line_buffer.c_str());
-                            fflush(stdout);
-                        } else {
-                            output << line_buffer;
-                            output.flush();
-                        }
-                        line_buffer.clear();
+
+                    if (isStdOut) {
+                        printf("%s", buffer);
+                        fflush(stdout);
+                    } else {
+                        output << buffer;
+                        output.flush();
                     }
                 } else {
                     still_running = false;
@@ -1789,15 +1739,6 @@ namespace cmd {
                 DWORD currentChildExitCode;
                 if (GetExitCodeProcess(pi.hProcess, &currentChildExitCode)) {
                     if (currentChildExitCode != STILL_ACTIVE) {
-                        if (!line_buffer.empty()) {
-                            if (isStdOut) {
-                                printf("%s", line_buffer.c_str());
-                                fflush(stdout);
-                            } else {
-                                output << line_buffer;
-                                output.flush();
-                            }
-                        }
                         still_running = false;
                     }
                 } else {

@@ -299,6 +299,8 @@ struct ExecCallbackScope {
             cmd::AstExecutor::getExecutor().setUpdateCallback(
                 [](const std::string &chunk) {
                     std::cout << chunk;
+                    std::cout.flush();
+                    fflush(stdout);
                 }
             );
         } else {
@@ -453,8 +455,8 @@ cmd::AstExecutor::getExecutor().getRegistry().registerTypedCommand("exec",
         envVars.push_back("TERM=dumb");           // Force dumb terminal
         envVars.push_back("COLUMNS=80");          // Set terminal width
         envVars.push_back("LINES=24");            // Set terminal height
-        envVars.push_back("_STDBUF_O=L");         // Force line buffering for stdout
-        envVars.push_back("_STDBUF_E=L");         // Force line buffering for stderr
+        envVars.push_back("_STDBUF_O=0");         // Force unbuffered stdout
+        envVars.push_back("_STDBUF_E=0");         // Force unbuffered stderr
         envVars.push_back("MSYS=enable_pcon");    // Enable pseudo console in MSYS2
         envVars.push_back("CYGWIN=disable_pcon"); // Disable pseudo console buffering in Cygwin
         
@@ -486,7 +488,7 @@ cmd::AstExecutor::getExecutor().getRegistry().registerTypedCommand("exec",
             if (!bashPath.empty() && std::filesystem::exists(bashPath)) {
                 // Use stdbuf with environment variables for maximum unbuffering
                 if (bashPath.find("msys64") != std::string::npos) {
-                    cmdLine = "\"" + bashPath + "\" -c \"stdbuf -oL -eL " + command_str + "\"";
+                    cmdLine = "\"" + bashPath + "\" -c \"stdbuf -o0 -e0 " + command_str + "\"";
                 } else {
                     cmdLine = "\"" + bashPath + "\" -c \"" + command_str + "\"";
                 }

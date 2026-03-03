@@ -803,16 +803,8 @@ namespace cmd {
         }
 
         bool on_fail = true;
-        std::function<void(const std::string &)> updateCallback = nullptr;
-        void setUpdateCallback(std::function<void(const std::string &)> callback) {
-            updateCallback = std::move(callback);
-        }
-
-        void execUpdateCallback(const std::string &text) {
-            if (updateCallback) {
-                updateCallback(text);
-            }
-        }
+        void setUpdateCallback(std::function<void(const std::string &)> callback);
+        void execUpdateCallback(const std::string &text);
 
         void setTerm(const bool &t) {
             on_fail = t;
