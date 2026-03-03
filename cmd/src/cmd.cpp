@@ -15,6 +15,7 @@
 #include<unordered_map>
 #include<sstream>
 #include <iomanip>
+#include<cctype>
 #include<readline/readline.h>
 #include<readline/history.h>
 #include"version_info.hpp"
@@ -132,6 +133,74 @@ void dumpTokens(scan::Scanner &scan, std::ostream& out = std::cout) {
             << std::setw(14) << data.str() << " | "
             << scan[i].getTokenValue() << "\n";
     }
+}
+
+struct MultiLineState {
+    bool needsMoreInput;
+    int blockDepth;
+    bool lineContinuation;
+};
+
+static int countWord(const std::string& input, const std::string& word) {
+    int count = 0;
+    size_t pos = 0;
+    while ((pos = input.find(word, pos)) != std::string::npos) {
+        bool validStart = (pos == 0 || !std::isalnum(static_cast<unsigned char>(input[pos - 1])));
+        bool validEnd = (pos + word.length() >= input.length() || 
+                        !std::isalnum(static_cast<unsigned char>(input[pos + word.length()])));
+        if (validStart && validEnd) {
+            count++;
+        }
+        pos += word.length();
+    }
+    return count;
+}
+
+static bool endsWithBackslash(const std::string& input) {
+    if (input.empty()) return false;
+    size_t lastNonSpace = input.find_last_not_of(" \t\n\r");
+    if (lastNonSpace != std::string::npos && input[lastNonSpace] == '\\') {
+        return true;
+    }
+    return false;
+}
+
+static MultiLineState checkMultiLineState(const std::string& input) {
+    MultiLineState state;
+    state.needsMoreInput = false;
+    state.blockDepth = 0;
+    state.lineContinuation = false;
+    
+    if (input.empty()) {
+        return state;
+    }
+    
+    if (endsWithBackslash(input)) {
+        state.lineContinuation = true;
+        state.needsMoreInput = true;
+        return state;
+    }
+    
+    int forCount = countWord(input, "for");
+    int whileCount = countWord(input, "while");
+    int ifCount = countWord(input, "if");
+    int defineCount = countWord(input, "define");
+    
+    int doneCount = countWord(input, "done");
+    int fiCount = countWord(input, "fi");
+    int endCount = countWord(input, "end");
+    
+    int loopDepth = (forCount + whileCount) - doneCount;
+    int ifDepth = ifCount - fiCount;
+    int defineDepth = defineCount - endCount;
+    
+    state.blockDepth = loopDepth + ifDepth + defineDepth;
+    
+    if (state.blockDepth > 0) {
+        state.needsMoreInput = true;
+    }
+    
+    return state;
 }
 
 void execute_command(const std::string &text) {
@@ -386,13 +455,16 @@ cmd::AstExecutor::getExecutor().getRegistry().registerTypedCommand("exec",
             using_history();
             read_history(".cmd_history");
             std::ostringstream input_stream;
+            std::string multiLineBuffer;
+            bool isMultiLineInput = false;
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
             signal(SIGINT, sigint_handler);
 #endif
             while(active) {
                 try {
                     std::string prompt = executor.getPath() + " $> ";
-                    char* line = readline(prompt.c_str());
+                    const char *activePrompt = isMultiLineInput ? ".. " : prompt.c_str();
+                    char* line = readline(activePrompt);
                     if (line == nullptr) {
                         std::cout << std::endl;  
                         write_history(".cmd_history");
@@ -400,8 +472,41 @@ cmd::AstExecutor::getExecutor().getRegistry().registerTypedCommand("exec",
                     }
 
                     if (line[0] != '\0') {
+                        std::string command_data;
+                        std::string inputLine = line;
+                        free(line);
 
-                        if(line[0] == '{') {
+                        bool lineContinuation = false;
+                        if (!inputLine.empty()) {
+                            size_t lastNonSpace = inputLine.find_last_not_of(" \t");
+                            if (lastNonSpace != std::string::npos && inputLine[lastNonSpace] == '\\') {
+                                lineContinuation = true;
+                                inputLine = inputLine.substr(0, lastNonSpace);
+                            }
+                        }
+
+                        if (isMultiLineInput) {
+                            multiLineBuffer += "\n" + inputLine;
+                            MultiLineState state = checkMultiLineState(multiLineBuffer);
+                            if (lineContinuation || state.needsMoreInput) {
+                                continue;
+                            }
+                            command_data = multiLineBuffer;
+                            isMultiLineInput = false;
+                            multiLineBuffer.clear();
+                        } else {
+                            MultiLineState state = checkMultiLineState(inputLine);
+                            if (lineContinuation || state.needsMoreInput) {
+                                isMultiLineInput = true;
+                                multiLineBuffer = inputLine;
+                                continue;
+                            }
+                            command_data = inputLine;
+                        }
+
+                        add_history(command_data.c_str());
+
+                        if(!command_data.empty() && command_data[0] == '{') {
                             std::string iline;
                             input_stream.str("");
                             while(true) {
@@ -437,10 +542,6 @@ cmd::AstExecutor::getExecutor().getRegistry().registerTypedCommand("exec",
                             }
                             continue;
                         }
-                        std::string command_data;
-                        add_history(line);
-                        command_data = line;
-                        free(line);
 
                         if(command_data == "wsl_on") {
 
