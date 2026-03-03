@@ -239,7 +239,6 @@ namespace cmd {
         try {
             libraries[name] = std::make_shared<cmd::Library>(name);
         } catch (const std::exception &e) {
-            std::cerr << "extern: failed to load library \"" << name << "\": " << e.what() << std::endl;
             libraries[name] = nullptr;
         }
         return libraries[name];

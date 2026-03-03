@@ -1816,23 +1816,7 @@ namespace cmd {
         std::string funcName = getVar(args[1]);
         std::string cmdName = getVar(args[2]);
 
-        auto endsWithInsensitive = [](const std::string& text, const std::string& suffix) {
-            if (text.size() < suffix.size()) return false;
-            for (size_t i = 0; i < suffix.size(); ++i) {
-                char a = static_cast<char>(std::tolower(static_cast<unsigned char>(text[text.size() - suffix.size() + i])));
-                char b = static_cast<char>(std::tolower(static_cast<unsigned char>(suffix[i])));
-                if (a != b) return false;
-            }
-            return true;
-        };
-
         std::string libLookup = libPath;
-        if (endsWithInsensitive(libLookup, ".dll") || endsWithInsensitive(libLookup, ".so") || endsWithInsensitive(libLookup, ".dylib")) {
-            auto dotPos = libLookup.find_last_of('.');
-            if (dotPos != std::string::npos) {
-                libLookup = libLookup.substr(0, dotPos);
-            }
-        }
 
         std::vector<std::string> lookupCandidates;
         auto addCandidate = [&lookupCandidates](const std::filesystem::path& value) {
@@ -1858,6 +1842,30 @@ namespace cmd {
                 addCandidate(std::filesystem::absolute(appDir / requested));
                 addCandidate(std::filesystem::absolute(appDir / requested.filename()));
             }
+
+#if defined(__linux__)
+            addCandidate(std::filesystem::path("/usr/local/lib") / requested);
+            addCandidate(std::filesystem::path("/usr/local/lib") / requested.filename());
+            if (!requested.has_extension()) {
+                std::string baseName = requested.filename().string();
+                if (baseName.rfind("lib", 0) == 0) {
+                    addCandidate(std::filesystem::path("/usr/local/lib") / (baseName + ".so"));
+                } else {
+                    addCandidate(std::filesystem::path("/usr/local/lib") / ("lib" + baseName + ".so"));
+                }
+            }
+#elif defined(__APPLE__)
+            addCandidate(std::filesystem::path("/usr/local/lib") / requested);
+            addCandidate(std::filesystem::path("/usr/local/lib") / requested.filename());
+            if (!requested.has_extension()) {
+                std::string baseName = requested.filename().string();
+                if (baseName.rfind("lib", 0) == 0) {
+                    addCandidate(std::filesystem::path("/usr/local/lib") / (baseName + ".dylib"));
+                } else {
+                    addCandidate(std::filesystem::path("/usr/local/lib") / ("lib" + baseName + ".dylib"));
+                }
+            }
+#endif
 
 #ifdef _WIN32
             char modulePath[MAX_PATH] = {0};
