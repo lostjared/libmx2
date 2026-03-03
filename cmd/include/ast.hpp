@@ -13,6 +13,7 @@
 #include<iostream>
 #include<filesystem>
 #include<sstream>
+#include<cstdio>
 #include<atomic>
 #include<set>
 #include<cmath>
@@ -839,7 +840,6 @@ namespace cmd {
             program_running = 1;
 #endif
             returnSignal = false;         
-            std::ostringstream defaultOutput;
             try {
                 #ifdef DEBUG_MODE_ON
                 if (std::dynamic_pointer_cast<cmd::Command>(node)) {
@@ -858,36 +858,28 @@ namespace cmd {
                 #endif
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
                 if (program_running == 0) {
-                    defaultOutput << "Command interrupted" << std::endl;
+                    defaultOutputStream << "Command interrupted" << std::endl;
+                    defaultOutputStream.flush();
                     return;
                 }
 #endif
-                executeNode(node, defaultInput, defaultOutput);   
-
-                if(windows_mode) {
-                    printf("%s", defaultOutput.str().c_str());
-                    fflush(stdout);
-                }
-                else {
-                    defaultOutputStream << defaultOutput.str();
-                    defaultOutputStream.flush();
-                    if(updateCallback) {
-                        updateCallback(defaultOutput.str());
-                    }
+                executeNode(node, defaultInput, defaultOutputStream);
+                defaultOutputStream.flush();
+                if (&defaultOutputStream == &std::cout) {
+                    std::fflush(stdout);
                 }
             } catch (const AstFailure& e) {
-                // Flush buffered output before re-throwing
-                if(windows_mode) {
-                    printf("%s", defaultOutput.str().c_str());
-                    fflush(stdout);
-                } else {
-                    defaultOutputStream << defaultOutput.str();
-                    defaultOutputStream.flush();
+                defaultOutputStream.flush();
+                if (&defaultOutputStream == &std::cout) {
+                    std::fflush(stdout);
                 }
                 throw;
             } catch (const std::exception& e) {
-                defaultOutput << "Exception: " << e.what() << std::endl;
-                execUpdateCallback(defaultOutput.str());
+                defaultOutputStream << "Exception: " << e.what() << std::endl;
+                defaultOutputStream.flush();
+                if (&defaultOutputStream == &std::cout) {
+                    std::fflush(stdout);
+                }
             }
         }
 
@@ -1075,6 +1067,10 @@ namespace cmd {
             }
 
             lastExitStatus = registry.executeCommand(cmd->name, cmd->args, input, output);
+            output.flush();
+            if (&output == &std::cout) {
+                std::fflush(stdout);
+            }
             if (lastExitStatus != 0 && cmd->name != "test") {
                 //output << cmd->name << ": command failed with exit status " << lastExitStatus << std::endl;
                 throw AstFailure(cmd->name + ": command failed with exit status " + std::to_string(lastExitStatus));        
@@ -1283,6 +1279,10 @@ namespace cmd {
                         iterationCount = 0;
                     }
                     outputStream << output.str();
+                    outputStream.flush();
+                    if (&outputStream == &std::cout) {
+                        std::fflush(stdout);
+                    }
                 }
             }
             catch (const BreakException&) {

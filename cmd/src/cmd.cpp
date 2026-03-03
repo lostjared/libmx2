@@ -16,6 +16,7 @@
 #include<sstream>
 #include <iomanip>
 #include<cctype>
+#include<cstdio>
 #include<readline/readline.h>
 #include<readline/history.h>
 #include"version_info.hpp"
@@ -354,6 +355,12 @@ int main(int argc, char **argv) {
 #ifdef WINDOWS_MODE
     cmd::AstExecutor::getExectur().windows_mode = true;
 #endif
+
+    std::setvbuf(stdout, nullptr, _IONBF, 0);
+    std::setvbuf(stderr, nullptr, _IONBF, 0);
+    std::cout << std::unitbuf;
+    std::cerr << std::unitbuf;
+
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
     struct sigaction sa;
     sa.sa_handler = sigint_handler;

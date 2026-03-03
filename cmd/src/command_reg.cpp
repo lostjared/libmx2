@@ -1,6 +1,7 @@
 #include"command_reg.hpp"
 #include"ast.hpp"
 #include<vector>
+#include<cstdio>
 
 namespace cmd {
 
@@ -71,7 +72,12 @@ namespace cmd {
     // The void* ctx is a pointer to the host's std::ostream — no C++ types
     // cross the DLL boundary because the callback is compiled into the host.
     static void plugin_write_callback(void* ctx, const char* text) {
-        *static_cast<std::ostream*>(ctx) << text;
+        auto* out = static_cast<std::ostream*>(ctx);
+        *out << text;
+        out->flush();
+        if (out == &std::cout) {
+            std::fflush(stdout);
+        }
     }
 
     int CommandRegistry::executeExternCommand(const std::string& name, const std::vector<Argument>& args, 
