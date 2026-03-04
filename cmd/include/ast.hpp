@@ -1072,6 +1072,9 @@ namespace cmd {
         void executeSequence(const std::shared_ptr<cmd::Sequence>& seq, std::istream& input, std::ostream& output) {
             for (const auto& cmd : seq->commands) {
                 executeNode(cmd, input, output);
+                if (returnSignal) {
+                    break;
+                }
             }
         }
         
@@ -1255,12 +1258,18 @@ namespace cmd {
 #endif
 
                     executeNode(whileStmt->condition, input, output);
+                    if (returnSignal) {
+                        break;
+                    }
                     if (lastExitStatus != 0) {
                         execUpdateCallback(output.str());    
                         break;
                     }
                     try {
                         executeNode(whileStmt->body, input, output);
+                        if (returnSignal) {
+                            break;
+                        }
                     } catch(const ContinueException&) {
                        continue;
                     }
