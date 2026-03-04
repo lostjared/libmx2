@@ -6,6 +6,7 @@
 #include<iomanip>
 #include<cstdlib>
 #include<random>
+#include<algorithm>
 #include"game_state.hpp"
 #include"parser.hpp"
 #include"html.hpp"
@@ -41,6 +42,152 @@ namespace state {
 }
 
 namespace cmd {
+
+    namespace {
+        class PathPatternMatcher {
+        public:
+            static std::vector<std::string> expand(const std::string& token,
+                                                   bool matchFiles,
+                                                   bool matchDirectories,
+                                                   bool keepUnmatched = true) {
+                if (!containsWildcard(token)) {
+                    return {token};
+                }
+
+                std::filesystem::path raw(token);
+                const std::filesystem::path cwd = std::filesystem::current_path();
+                std::vector<std::filesystem::path> candidates;
+
+                if (raw.is_absolute()) {
+                    candidates.push_back(raw.root_path());
+                } else {
+                    candidates.push_back(cwd);
+                }
+
+                std::filesystem::path relative = raw.is_absolute() ? raw.relative_path() : raw;
+                std::vector<std::string> segments;
+                for (const auto& part : relative) {
+                    std::string segment = part.string();
+                    if (!segment.empty()) {
+                        segments.push_back(segment);
+                    }
+                }
+
+                for (const auto& segment : segments) {
+                    std::vector<std::filesystem::path> nextCandidates;
+
+                    if (segment == ".") {
+                        nextCandidates = candidates;
+                    } else if (segment == "..") {
+                        for (const auto& base : candidates) {
+                            nextCandidates.push_back(base.parent_path());
+                        }
+                    } else if (!containsWildcard(segment)) {
+                        for (const auto& base : candidates) {
+                            std::filesystem::path candidate = base / segment;
+                            if (std::filesystem::exists(candidate)) {
+                                nextCandidates.push_back(candidate);
+                            }
+                        }
+                    } else {
+                        std::regex matcher = wildcardToRegex(segment);
+                        for (const auto& base : candidates) {
+                            if (!std::filesystem::exists(base) || !std::filesystem::is_directory(base)) {
+                                continue;
+                            }
+                            try {
+                                for (const auto& entry : std::filesystem::directory_iterator(base)) {
+                                    if (std::regex_match(entry.path().filename().string(), matcher)) {
+                                        nextCandidates.push_back(entry.path());
+                                    }
+                                }
+                            } catch (const std::filesystem::filesystem_error&) {
+                            }
+                        }
+                    }
+
+                    candidates = dedupe(nextCandidates);
+                    if (candidates.empty()) {
+                        break;
+                    }
+                }
+
+                std::vector<std::string> expanded;
+                for (const auto& path : candidates) {
+                    if (!std::filesystem::exists(path)) {
+                        continue;
+                    }
+                    if (std::filesystem::is_directory(path) && !matchDirectories) {
+                        continue;
+                    }
+                    if (std::filesystem::is_regular_file(path) && !matchFiles) {
+                        continue;
+                    }
+                    if (!std::filesystem::is_directory(path) && !std::filesystem::is_regular_file(path)) {
+                        continue;
+                    }
+
+                    if (raw.is_absolute()) {
+                        expanded.push_back(path.lexically_normal().string());
+                    } else {
+                        std::filesystem::path relativePath = path.lexically_relative(cwd);
+                        if (relativePath.empty()) {
+                            expanded.push_back(path.lexically_normal().string());
+                        } else {
+                            expanded.push_back(relativePath.lexically_normal().string());
+                        }
+                    }
+                }
+
+                std::sort(expanded.begin(), expanded.end());
+                expanded.erase(std::unique(expanded.begin(), expanded.end()), expanded.end());
+
+                if (expanded.empty() && keepUnmatched) {
+                    return {token};
+                }
+                return expanded;
+            }
+
+        private:
+            static bool containsWildcard(const std::string& value) {
+                return value.find('*') != std::string::npos;
+            }
+
+            static std::regex wildcardToRegex(const std::string& wildcardSegment) {
+                std::string pattern;
+                pattern.reserve(wildcardSegment.size() * 2);
+                pattern += '^';
+
+                for (char c : wildcardSegment) {
+                    if (c == '*') {
+                        pattern += ".*";
+                    } else {
+                        if (c == '.' || c == '^' || c == '$' || c == '|' || c == '(' || c == ')' ||
+                            c == '[' || c == ']' || c == '{' || c == '}' || c == '+' || c == '?' || c == '\\') {
+                            pattern += '\\';
+                        }
+                        pattern += c;
+                    }
+                }
+
+                pattern += '$';
+                return std::regex(pattern);
+            }
+
+            static std::vector<std::filesystem::path> dedupe(const std::vector<std::filesystem::path>& values) {
+                std::vector<std::filesystem::path> result = values;
+                std::sort(result.begin(), result.end(), [](const std::filesystem::path& left,
+                                                           const std::filesystem::path& right) {
+                    return left.lexically_normal().string() < right.lexically_normal().string();
+                });
+                result.erase(std::unique(result.begin(), result.end(), [](const std::filesystem::path& left,
+                                                                           const std::filesystem::path& right) {
+                    return left.lexically_normal().string() == right.lexically_normal().string();
+                }), result.end());
+                return result;
+            }
+        };
+    }
 
     std::vector<std::string> argv;
     std::string app_name;    
@@ -92,16 +239,19 @@ namespace cmd {
         } else {
             bool success = true;
             for (const auto& filename : args) {
-                std::string filen_ = getVar(filename);
-                std::ifstream file(filen_);
-                if (!file) {
-                    output << "cat: " << filen_ << ": No such file" << std::endl;
-                    success = false;
-                    continue;
-                }
-                std::string line;
-                while (std::getline(file, line)) {
-                    output << line << std::endl;
+                std::string fileToken = getVar(filename);
+                auto expanded = PathPatternMatcher::expand(fileToken, true, false, true);
+                for (const auto& filen_ : expanded) {
+                    std::ifstream file(filen_);
+                    if (!file) {
+                        output << "cat: " << filen_ << ": No such file" << std::endl;
+                        success = false;
+                        continue;
+                    }
+                    std::string line;
+                    while (std::getline(file, line)) {
+                        output << line << std::endl;
+                    }
                 }
             }
     
@@ -135,7 +285,8 @@ namespace cmd {
         std::vector<std::string> fileNames;
         for (size_t i = patternIndex + 1; i < args.size(); i++) {
             std::string file_n = getVar(args[i]);
-            fileNames.push_back(file_n);
+            auto expanded = PathPatternMatcher::expand(file_n, true, false, true);
+            fileNames.insert(fileNames.end(), expanded.begin(), expanded.end());
         }
         
         if (useRegex) {
@@ -239,6 +390,19 @@ namespace cmd {
             return 1;
         }
         std::string path = getVar(args[0]);
+        auto expanded = PathPatternMatcher::expand(path, false, true, false);
+        if (expanded.empty()) {
+            output << "cd: " << path << ": No matches found" << std::endl;
+            return 1;
+        }
+        if (expanded.size() > 1) {
+            output << "cd: " << path << ": matches multiple directories" << std::endl;
+            for (const auto& match : expanded) {
+                output << "  " << match << std::endl;
+            }
+            return 1;
+        }
+        path = expanded.front();
         try {
             std::filesystem::current_path(path);
             return 0;
@@ -249,12 +413,32 @@ namespace cmd {
     }
 
     int listCommand(const std::vector<Argument> &args, std::istream& input, std::ostream& output) {
-        std::string path = args.empty() ? "." : getVar(args[0]);
-        try {
-            for (const auto& entry : std::filesystem::directory_iterator(path)) {
-                output << entry.path().filename().string() << std::endl;
+        std::vector<std::string> targets;
+        if (args.empty()) {
+            targets.push_back(".");
+        } else {
+            for (const auto& arg : args) {
+                std::string token = getVar(arg);
+                auto expanded = PathPatternMatcher::expand(token, true, true, true);
+                targets.insert(targets.end(), expanded.begin(), expanded.end());
             }
-            return 0;
+        }
+
+        bool success = true;
+        try {
+            for (const auto& path : targets) {
+                if (std::filesystem::is_directory(path)) {
+                    for (const auto& entry : std::filesystem::directory_iterator(path)) {
+                        output << entry.path().filename().string() << std::endl;
+                    }
+                } else if (std::filesystem::exists(path)) {
+                    output << std::filesystem::path(path).filename().string() << std::endl;
+                } else {
+                    output << "ls: cannot access '" << path << "': No such file or directory" << std::endl;
+                    success = false;
+                }
+            }
+            return success ? 0 : 1;
         } catch (const std::filesystem::filesystem_error& e) {
             output << "ls: " << e.what() << std::endl;
             return 1;
@@ -271,14 +455,17 @@ namespace cmd {
             }
         } else {
             for (const auto& filename : args) {
-                std::string file_n = getVar(filename);
-                std::ifstream file(file_n);
-                if (!file) {
-                    output << "sort: " << file_n << ": No such file" << std::endl;
-                    return 1;
-                } 
-                while (std::getline(file, line)) {
-                    lines.push_back(line);
+                std::string token = getVar(filename);
+                auto expanded = PathPatternMatcher::expand(token, true, false, true);
+                for (const auto& file_n : expanded) {
+                    std::ifstream file(file_n);
+                    if (!file) {
+                        output << "sort: " << file_n << ": No such file" << std::endl;
+                        return 1;
+                    }
+                    while (std::getline(file, line)) {
+                        lines.push_back(line);
+                    }
                 }
             }
         }
@@ -294,20 +481,29 @@ namespace cmd {
             output << "find: expected at least two arguments" << std::endl;
             return 1;
         }
-        std::string path = getVar(args[0]);
+        std::string pathToken = getVar(args[0]);
         std::string pattern = getVar(args[1]);
-        
-        try {
-            for (const auto& entry : std::filesystem::recursive_directory_iterator(path)) {
-                if (entry.path().filename().string().find(pattern) != std::string::npos) {
-                    output << entry.path().string() << std::endl;
-                }
-            }
-            return 0;
-        } catch (const std::filesystem::filesystem_error& e) {
-            output << "find: " << e.what() << std::endl;
+        auto roots = PathPatternMatcher::expand(pathToken, false, true, false);
+        if (roots.empty()) {
+            output << "find: " << pathToken << ": No matches found" << std::endl;
             return 1;
         }
+
+        bool success = true;
+        try {
+            for (const auto& root : roots) {
+                for (const auto& entry : std::filesystem::recursive_directory_iterator(root)) {
+                    if (entry.path().filename().string().find(pattern) != std::string::npos) {
+                        output << entry.path().string() << std::endl;
+                    }
+                }
+            }
+            return success ? 0 : 1;
+        } catch (const std::filesystem::filesystem_error& e) {
+            output << "find: " << e.what() << std::endl;
+            success = false;
+        }
+        return success ? 0 : 1;
     }
 
     int pwdCommand(const std::vector<std::string>& args, std::istream& input, std::ostream& output) {
@@ -376,9 +572,19 @@ namespace cmd {
         
         std::string dest = files.back();
         files.pop_back();
+
+        std::vector<std::string> expandedSources;
+        for (const auto& src : files) {
+            auto expanded = PathPatternMatcher::expand(src, true, true, true);
+            expandedSources.insert(expandedSources.end(), expanded.begin(), expanded.end());
+        }
+        if (expandedSources.empty()) {
+            output << "cp: missing source file operand" << std::endl;
+            return 1;
+        }
         
         bool success = true;
-        for (const auto& src : files) {
+        for (const auto& src : expandedSources) {
             try {
                 if (recursive && std::filesystem::is_directory(src)) {
                     std::filesystem::copy(src, dest, std::filesystem::copy_options::recursive);
@@ -401,15 +607,25 @@ namespace cmd {
         }
         
         std::string dest = getVar(args.back());
+
+        std::vector<std::string> sources;
+        for (size_t i = 0; i < args.size() - 1; ++i) {
+            std::string token = getVar(args[i]);
+            auto expanded = PathPatternMatcher::expand(token, true, true, true);
+            sources.insert(sources.end(), expanded.begin(), expanded.end());
+        }
+        if (sources.empty()) {
+            output << "mv: missing source file operand" << std::endl;
+            return 1;
+        }
         
         bool success = true;
 
-        for (size_t i = 0; i < args.size() - 1; ++i) {
+        for (const auto& src : sources) {
             try {  
-                std::string a = getVar(args[i]);
-                std::filesystem::rename(a, dest);
+                std::filesystem::rename(src, dest);
             } catch (const std::filesystem::filesystem_error& e) {
-                output << "mv: cannot move '" << args[i].value << "' to '" << dest << "': " << e.what() << std::endl;
+                output << "mv: cannot move '" << src << "' to '" << dest << "': " << e.what() << std::endl;
                 success = false;
             } 
         }
@@ -425,12 +641,15 @@ namespace cmd {
         bool success = true;
         for (const auto& file : args) {
             try {
-                std::string f = getVar(file);
-                if (!std::filesystem::exists(f)) {
-                    std::ofstream(f).close();
-                } else {
-                    auto now = std::filesystem::file_time_type::clock::now();
-                    std::filesystem::last_write_time(f, now);
+                std::string token = getVar(file);
+                auto expanded = PathPatternMatcher::expand(token, true, true, true);
+                for (const auto& f : expanded) {
+                    if (!std::filesystem::exists(f)) {
+                        std::ofstream(f).close();
+                    } else {
+                        auto now = std::filesystem::file_time_type::clock::now();
+                        std::filesystem::last_write_time(f, now);
+                    }
                 }
             } catch (const std::filesystem::filesystem_error& e) {
                 output << "touch: cannot touch '" << file.value << "': " << e.what() << std::endl;
@@ -454,7 +673,8 @@ namespace cmd {
                     return 1;
                 }
             } else {
-                files.push_back(args[i]);
+                auto expanded = PathPatternMatcher::expand(args[i], true, false, true);
+                files.insert(files.end(), expanded.begin(), expanded.end());
             }
         }
         
@@ -504,7 +724,8 @@ namespace cmd {
                     return 1;
                 }
             } else {
-                files.push_back(args[i]);
+                auto expanded = PathPatternMatcher::expand(args[i], true, false, true);
+                files.insert(files.end(), expanded.begin(), expanded.end());
             }
         }
         
@@ -565,7 +786,8 @@ namespace cmd {
             } else if (a == "--c") {
                 countChars = true;
             } else {
-                files.push_back(a);
+                auto expanded = PathPatternMatcher::expand(a, true, false, true);
+                files.insert(files.end(), expanded.begin(), expanded.end());
             }
         }
         
@@ -655,6 +877,22 @@ namespace cmd {
             } else {
                 filename = a;
             }
+        }
+
+        if (!filename.empty()) {
+            auto expanded = PathPatternMatcher::expand(filename, true, false, false);
+            if (expanded.empty()) {
+                output << "Error: Cannot open file '" << filename << "'" << std::endl;
+                return 1;
+            }
+            if (expanded.size() > 1) {
+                output << "Error: sed filename pattern matches multiple files:" << std::endl;
+                for (const auto& match : expanded) {
+                    output << "  " << match << std::endl;
+                }
+                return 1;
+            }
+            filename = expanded.front();
         }
 
         if (expression.empty() || expression[0] != 's') {
@@ -1090,6 +1328,21 @@ namespace cmd {
              (filename.front() == '\'' && filename.back() == '\''))) {
             filename = filename.substr(1, filename.size() - 2);
         }
+
+        auto expandedScript = PathPatternMatcher::expand(filename, true, false, false);
+        if (expandedScript.empty()) {
+            output << "cmd: cannot open file '" << filename << "': No such file or directory" << std::endl;
+            throw AstFailure("Exception: Script: " + filename + " execution failed. File not found\n");
+        }
+        if (expandedScript.size() > 1) {
+            output << "cmd: script pattern matches multiple files:" << std::endl;
+            for (const auto& match : expandedScript) {
+                output << "  " << match << std::endl;
+            }
+            throw AstFailure("Exception: Script pattern matched multiple files.\n");
+        }
+        filename = expandedScript.front();
+
         cmd::AstExecutor &scriptExecutor = cmd::AstExecutor::getExecutor();
         std::filesystem::path resolvedPath(filename);
         if (!resolvedPath.is_absolute()) {
