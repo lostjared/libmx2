@@ -170,6 +170,7 @@ class Game : public gl::GLObject {
     std::mutex worker_mutex;
     std::vector<std::thread> workers;
     std::thread::id ui_thread_id;
+    bool background_shader_enabled = true;
 
     void queueTaskForMainThread(std::function<void(gl::GLWindow*)> task) {
         std::lock_guard<std::mutex> lock(task_mutex);
@@ -648,8 +649,12 @@ class Game : public gl::GLObject {
         Uint32 currentTime = SDL_GetTicks();
         float deltaTime = (currentTime - lastUpdateTime) / 1000.0f; 
         lastUpdateTime = currentTime;
-        logo.draw();
-        update(deltaTime);
+        if(background_shader_enabled) {
+            logo.draw();
+            update(deltaTime);
+        } else {
+            glUseProgram(0);
+        }
     }
     
     void event(gl::GLWindow *win, SDL_Event &e) override {
@@ -677,6 +682,16 @@ class Game : public gl::GLObject {
                 win->console.thread_safe_print("\nCTRL+R - Reloading Random shader\n");
                 win->console.process_message_queue();
                 setRandomShader(win, -1);
+                return;
+            }
+            if(e.key.keysym.sym == SDLK_F10) {
+                background_shader_enabled = !background_shader_enabled;
+                if(background_shader_enabled) {
+                    win->console.thread_safe_print("\nF10 - Shader background enabled\n");
+                } else {
+                    win->console.thread_safe_print("\nF10 - Shader background disabled (black screen mode)\n");
+                }
+                win->console.process_message_queue();
                 return;
             }
         }
