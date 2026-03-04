@@ -152,14 +152,25 @@ bool ensureRenderer(PluginOutput& output) {
     return true;
 }
 
+const char* getArgOrNull(int argc, const char** argv, int index) {
+    if (argv == nullptr || index < 0 || index >= argc) {
+        return nullptr;
+    }
+    return argv[index];
+}
+
+bool isTruthyArg(const char* arg) {
+    return arg != nullptr && std::string(arg) != "0";
+}
+
 extern "C" {
     
     int sdl_init(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {
         PluginOutput output(out_ctx, out_fn);
         Uint32 flags = SDL_INIT_VIDEO | SDL_INIT_TIMER;
         
-        if (argc > 0) {
-            std::string flag_str = argv[0];
+        if (const char* flag_arg = getArgOrNull(argc, argv, 0)) {
+            std::string flag_str = flag_arg;
             if (flag_str.find("audio") != std::string::npos) flags |= SDL_INIT_AUDIO;
             if (flag_str.find("joystick") != std::string::npos) flags |= SDL_INIT_JOYSTICK;
             if (flag_str.find("gamepad") != std::string::npos) flags |= SDL_INIT_GAMECONTROLLER;
@@ -190,13 +201,13 @@ extern "C" {
         int y = SDL_WINDOWPOS_CENTERED;
         Uint32 flags = SDL_WINDOW_SHOWN;
         
-        if (argc > 0) title = argv[0];
-        if (argc > 1) width = std::stoi(argv[1]);
-        if (argc > 2) height = std::stoi(argv[2]);
-        if (argc > 3) x = std::stoi(argv[3]);
-        if (argc > 4) y = std::stoi(argv[4]);
-        if (argc > 5) {
-            std::string flag_str = argv[5];
+        if (const char* arg = getArgOrNull(argc, argv, 0)) title = arg;
+        if (const char* arg = getArgOrNull(argc, argv, 1)) width = std::stoi(arg);
+        if (const char* arg = getArgOrNull(argc, argv, 2)) height = std::stoi(arg);
+        if (const char* arg = getArgOrNull(argc, argv, 3)) x = std::stoi(arg);
+        if (const char* arg = getArgOrNull(argc, argv, 4)) y = std::stoi(arg);
+        if (const char* arg = getArgOrNull(argc, argv, 5)) {
+            std::string flag_str = arg;
             if (flag_str.find("fullscreen") != std::string::npos) flags |= SDL_WINDOW_FULLSCREEN;
             if (flag_str.find("desktop") != std::string::npos) flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
             if (flag_str.find("resizable") != std::string::npos) flags |= SDL_WINDOW_RESIZABLE;
@@ -250,9 +261,9 @@ extern "C" {
         Uint32 flags = SDL_RENDERER_ACCELERATED;
         bool requested_software = false;
         
-        if (argc > 0) index = std::stoi(argv[0]);
-        if (argc > 1) {
-            std::string flag_str = argv[1];
+        if (const char* arg = getArgOrNull(argc, argv, 0)) index = std::stoi(arg);
+        if (const char* arg = getArgOrNull(argc, argv, 1)) {
+            std::string flag_str = arg;
             if (flag_str.find("software") != std::string::npos) {
                 flags = SDL_RENDERER_SOFTWARE;
                 requested_software = true;
@@ -297,17 +308,25 @@ extern "C" {
             return 1;
         }
         
-        std::string filename = argv[0];
+        const char* filename_arg = getArgOrNull(argc, argv, 0);
+        if (filename_arg == nullptr) {
+            output << "Usage: sdl_loadsurface <filename>" << std::endl;
+            return 1;
+        }
+        std::string filename = filename_arg;
         SDL_Surface* surface = SDL_LoadBMP(filename.c_str());
         
         if (surface == nullptr) {
             output << "SDL_LoadBMP Error: " << SDL_GetError() << std::endl;
             return 1;
         }
-        if (argc >= 4) {
-            int r = std::stoi(argv[1]);
-            int g = std::stoi(argv[2]);
-            int b = std::stoi(argv[3]);    
+        const char* r_arg = getArgOrNull(argc, argv, 1);
+        const char* g_arg = getArgOrNull(argc, argv, 2);
+        const char* b_arg = getArgOrNull(argc, argv, 3);
+        if (r_arg && g_arg && b_arg) {
+            int r = std::stoi(r_arg);
+            int g = std::stoi(g_arg);
+            int b = std::stoi(b_arg);
             Uint32 colorkey = SDL_MapRGB(surface->format, r, g, b);
             SDL_SetColorKey(surface, SDL_TRUE, colorkey);
         }
@@ -330,7 +349,12 @@ extern "C" {
             return 1;
         }
         
-        std::string surface_id = argv[0];
+        const char* surface_id_arg = getArgOrNull(argc, argv, 0);
+        if (surface_id_arg == nullptr) {
+            output << "Usage: sdl_create_texture <surface_id> [blend_mode]" << std::endl;
+            return 1;
+        }
+        std::string surface_id = surface_id_arg;
         auto it = surfaces.find(surface_id);
         
         if (it == surfaces.end()) {
@@ -346,8 +370,8 @@ extern "C" {
         }
         
         
-        if (argc > 1) {
-            std::string blend_mode = argv[1];
+        if (const char* arg = getArgOrNull(argc, argv, 1)) {
+            std::string blend_mode = arg;
             SDL_BlendMode mode = SDL_BLENDMODE_NONE;
             
             if (blend_mode == "blend") mode = SDL_BLENDMODE_BLEND;
@@ -370,7 +394,12 @@ extern "C" {
             return 1;
         }
         
-        std::string id = argv[0];
+        const char* id_arg = getArgOrNull(argc, argv, 0);
+        if (id_arg == nullptr) {
+            output << "Usage: sdl_freesurface <surface_id>" << std::endl;
+            return 1;
+        }
+        std::string id = id_arg;
         auto it = surfaces.find(id);
         
         if (it == surfaces.end()) {
@@ -390,7 +419,12 @@ extern "C" {
             return 1;
         }
         
-        std::string id = argv[0];
+        const char* id_arg = getArgOrNull(argc, argv, 0);
+        if (id_arg == nullptr) {
+            output << "Usage: sdl_freetexture <texture_id>" << std::endl;
+            return 1;
+        }
+        std::string id = id_arg;
         auto it = textures.find(id);
         
         if (it == textures.end()) {
@@ -410,10 +444,10 @@ extern "C" {
             return 1;
         }
         Uint8 r = 0, g = 0, b = 0, a = 255;
-        if (argc > 0) r = static_cast<Uint8>(std::stoi(argv[0]));
-        if (argc > 1) g = static_cast<Uint8>(std::stoi(argv[1]));
-        if (argc > 2) b = static_cast<Uint8>(std::stoi(argv[2]));
-        if (argc > 3) a = static_cast<Uint8>(std::stoi(argv[3]));
+        if (const char* arg = getArgOrNull(argc, argv, 0)) r = static_cast<Uint8>(std::stoi(arg));
+        if (const char* arg = getArgOrNull(argc, argv, 1)) g = static_cast<Uint8>(std::stoi(arg));
+        if (const char* arg = getArgOrNull(argc, argv, 2)) b = static_cast<Uint8>(std::stoi(arg));
+        if (const char* arg = getArgOrNull(argc, argv, 3)) a = static_cast<Uint8>(std::stoi(arg));
         
         if (SDL_SetRenderDrawColor(g_renderer, r, g, b, a) < 0) {
             output << "SDL_SetRenderDrawColor Error: " << SDL_GetError() << std::endl;
@@ -445,11 +479,11 @@ extern "C" {
         SDL_Rect rect = {0, 0, 100, 100};
         bool filled = true;
         
-        if (argc > 0) rect.x = std::stoi(argv[0]);
-        if (argc > 1) rect.y = std::stoi(argv[1]);
-        if (argc > 2) rect.w = std::stoi(argv[2]);
-        if (argc > 3) rect.h = std::stoi(argv[3]);
-        if (argc > 4) filled = std::string(argv[4]) != "0";
+        if (const char* arg = getArgOrNull(argc, argv, 0)) rect.x = std::stoi(arg);
+        if (const char* arg = getArgOrNull(argc, argv, 1)) rect.y = std::stoi(arg);
+        if (const char* arg = getArgOrNull(argc, argv, 2)) rect.w = std::stoi(arg);
+        if (const char* arg = getArgOrNull(argc, argv, 3)) rect.h = std::stoi(arg);
+        if (const char* arg = getArgOrNull(argc, argv, 4)) filled = isTruthyArg(arg);
         
         int result;
         if (filled) {
@@ -474,10 +508,10 @@ extern "C" {
         
         int x1 = 0, y1 = 0, x2 = 100, y2 = 100;
         
-        if (argc > 0) x1 = std::stoi(argv[0]);
-        if (argc > 1) y1 = std::stoi(argv[1]);
-        if (argc > 2) x2 = std::stoi(argv[2]);
-        if (argc > 3) y2 = std::stoi(argv[3]);
+        if (const char* arg = getArgOrNull(argc, argv, 0)) x1 = std::stoi(arg);
+        if (const char* arg = getArgOrNull(argc, argv, 1)) y1 = std::stoi(arg);
+        if (const char* arg = getArgOrNull(argc, argv, 2)) x2 = std::stoi(arg);
+        if (const char* arg = getArgOrNull(argc, argv, 3)) y2 = std::stoi(arg);
         
         if (SDL_RenderDrawLine(g_renderer, x1, y1, x2, y2) < 0) {
             output << "SDL_RenderDrawLine Error: " << SDL_GetError() << std::endl;
@@ -498,10 +532,10 @@ extern "C" {
         int radius = 50;
         bool filled = false;
         
-        if (argc > 0) x = std::stoi(argv[0]);
-        if (argc > 1) y = std::stoi(argv[1]);
-        if (argc > 2) radius = std::stoi(argv[2]);
-        if (argc > 3) filled = std::string(argv[3]) != "0";
+        if (const char* arg = getArgOrNull(argc, argv, 0)) x = std::stoi(arg);
+        if (const char* arg = getArgOrNull(argc, argv, 1)) y = std::stoi(arg);
+        if (const char* arg = getArgOrNull(argc, argv, 2)) radius = std::stoi(arg);
+        if (const char* arg = getArgOrNull(argc, argv, 3)) filled = isTruthyArg(arg);
         
         if (filled) {
             for (int dy = -radius; dy <= radius; dy++) {
@@ -548,8 +582,8 @@ extern "C" {
             return 1;
         }
         int r = 0, g = 0, b = 0, a = 255;
-        if (argc > 0) {
-            std::string value = argv[0];
+        if (const char* arg = getArgOrNull(argc, argv, 0)) {
+            std::string value = arg;
             auto tokenize = [](const std::string& str) -> std::vector<std::string> {
                 std::vector<std::string> tokens;
                 std::istringstream iss(str);
@@ -602,21 +636,29 @@ extern "C" {
             return 1;
         }
         
-        std::string text = argv[0];
-        int x = std::stoi(argv[1]);
-        int y = std::stoi(argv[2]);
-        std::string font_path = argv[3];
+        const char* text_arg = getArgOrNull(argc, argv, 0);
+        const char* x_arg = getArgOrNull(argc, argv, 1);
+        const char* y_arg = getArgOrNull(argc, argv, 2);
+        const char* font_path_arg = getArgOrNull(argc, argv, 3);
+        if (text_arg == nullptr || x_arg == nullptr || y_arg == nullptr || font_path_arg == nullptr) {
+            output << "Usage: sdl_draw_text <text> <x> <y> <font_path> [size=24] [r=255] [g=255] [b=255] [a=255]" << std::endl;
+            return 1;
+        }
+        std::string text = text_arg;
+        int x = std::stoi(x_arg);
+        int y = std::stoi(y_arg);
+        std::string font_path = font_path_arg;
         
         int font_size = 24;  
-        if (argc > 4) {
-            font_size = std::stoi(argv[4]);
+        if (const char* arg = getArgOrNull(argc, argv, 4)) {
+            font_size = std::stoi(arg);
         }
         
         SDL_Color color = {255, 255, 255, 255};
-        if (argc > 5) color.r = static_cast<Uint8>(std::stoi(argv[5]));
-        if (argc > 6) color.g = static_cast<Uint8>(std::stoi(argv[6]));
-        if (argc > 7) color.b = static_cast<Uint8>(std::stoi(argv[7]));
-        if (argc > 8) color.a = static_cast<Uint8>(std::stoi(argv[8]));
+        if (const char* arg = getArgOrNull(argc, argv, 5)) color.r = static_cast<Uint8>(std::stoi(arg));
+        if (const char* arg = getArgOrNull(argc, argv, 6)) color.g = static_cast<Uint8>(std::stoi(arg));
+        if (const char* arg = getArgOrNull(argc, argv, 7)) color.b = static_cast<Uint8>(std::stoi(arg));
+        if (const char* arg = getArgOrNull(argc, argv, 8)) color.a = static_cast<Uint8>(std::stoi(arg));
         std::string font_key = font_path + "_" + std::to_string(font_size);
         TTF_Font* font = nullptr;
         auto it = g_font_cache.find(font_key);
@@ -666,13 +708,13 @@ extern "C" {
         int y3 = g_window_height / 2 + 50;
         bool filled = false;
         
-        if (argc > 0) x1 = std::stoi(argv[0]);
-        if (argc > 1) y1 = std::stoi(argv[1]);
-        if (argc > 2) x2 = std::stoi(argv[2]);
-        if (argc > 3) y2 = std::stoi(argv[3]);
-        if (argc > 4) x3 = std::stoi(argv[4]);
-        if (argc > 5) y3 = std::stoi(argv[5]);
-        if (argc > 6) filled = std::string(argv[6]) != "0";
+        if (const char* arg = getArgOrNull(argc, argv, 0)) x1 = std::stoi(arg);
+        if (const char* arg = getArgOrNull(argc, argv, 1)) y1 = std::stoi(arg);
+        if (const char* arg = getArgOrNull(argc, argv, 2)) x2 = std::stoi(arg);
+        if (const char* arg = getArgOrNull(argc, argv, 3)) y2 = std::stoi(arg);
+        if (const char* arg = getArgOrNull(argc, argv, 4)) x3 = std::stoi(arg);
+        if (const char* arg = getArgOrNull(argc, argv, 5)) y3 = std::stoi(arg);
+        if (const char* arg = getArgOrNull(argc, argv, 6)) filled = isTruthyArg(arg);
         
         SDL_RenderDrawLine(g_renderer, x1, y1, x2, y2);
         SDL_RenderDrawLine(g_renderer, x2, y2, x3, y3);
@@ -719,9 +761,16 @@ extern "C" {
             output << "Usage: copysurface <surface_id> <x> <y>" << std::endl;
             return 1;
         }
-        std::string surface_id = argv[0];
-        int x = std::stoi(argv[1]);
-        int y = std::stoi(argv[2]);
+        const char* surface_id_arg = getArgOrNull(argc, argv, 0);
+        const char* x_arg = getArgOrNull(argc, argv, 1);
+        const char* y_arg = getArgOrNull(argc, argv, 2);
+        if (surface_id_arg == nullptr || x_arg == nullptr || y_arg == nullptr) {
+            output << "Usage: copysurface <surface_id> <x> <y>" << std::endl;
+            return 1;
+        }
+        std::string surface_id = surface_id_arg;
+        int x = std::stoi(x_arg);
+        int y = std::stoi(y_arg);
         auto it = surfaces.find(surface_id);
         if (it == surfaces.end()) {
             output << "Surface not found: " << surface_id << std::endl;
@@ -730,9 +779,11 @@ extern "C" {
         SDL_Surface* surface = it->second;
         int w = surface->w;
         int h = surface->h;
-        if(argc >= 5) {
-            w = std::stoi(argv[3]);
-            h = std::stoi(argv[4]);
+        const char* w_arg = getArgOrNull(argc, argv, 3);
+        const char* h_arg = getArgOrNull(argc, argv, 4);
+        if (w_arg && h_arg) {
+            w = std::stoi(w_arg);
+            h = std::stoi(h_arg);
         }
 
         SDL_Texture* texture = SDL_CreateTextureFromSurface(g_renderer, surface);
@@ -758,9 +809,16 @@ extern "C" {
             return 1;
         }
         
-        std::string texture_id = argv[0];
-        int x = std::stoi(argv[1]);
-        int y = std::stoi(argv[2]);
+        const char* texture_id_arg = getArgOrNull(argc, argv, 0);
+        const char* x_arg = getArgOrNull(argc, argv, 1);
+        const char* y_arg = getArgOrNull(argc, argv, 2);
+        if (texture_id_arg == nullptr || x_arg == nullptr || y_arg == nullptr) {
+            output << "Usage: sdl_render_texture <texture_id> <x> <y> [w h] [angle] [flip]" << std::endl;
+            return 1;
+        }
+        std::string texture_id = texture_id_arg;
+        int x = std::stoi(x_arg);
+        int y = std::stoi(y_arg);
         
         auto it = textures.find(texture_id);
         if (it == textures.end()) {
@@ -774,9 +832,11 @@ extern "C" {
         SDL_QueryTexture(texture, nullptr, nullptr, &w, &h);
         
         
-        if (argc > 4) {
-            w = std::stoi(argv[3]);
-            h = std::stoi(argv[4]);
+        const char* w_arg = getArgOrNull(argc, argv, 3);
+        const char* h_arg = getArgOrNull(argc, argv, 4);
+        if (w_arg && h_arg) {
+            w = std::stoi(w_arg);
+            h = std::stoi(h_arg);
         }
         
         
@@ -785,12 +845,12 @@ extern "C" {
         double angle = 0.0;
         SDL_RendererFlip flip = SDL_FLIP_NONE;
         
-        if (argc > 5) {
-            angle = std::stod(argv[5]);
+        if (const char* arg = getArgOrNull(argc, argv, 5)) {
+            angle = std::stod(arg);
         }
         
-        if (argc > 6) {
-            std::string flip_str = argv[6];
+        if (const char* arg = getArgOrNull(argc, argv, 6)) {
+            std::string flip_str = arg;
             if (flip_str == "h") flip = SDL_FLIP_HORIZONTAL;
             else if (flip_str == "v") flip = SDL_FLIP_VERTICAL;
             else if (flip_str == "hv") flip = (SDL_RendererFlip)(SDL_FLIP_HORIZONTAL | SDL_FLIP_VERTICAL);
@@ -828,7 +888,10 @@ extern "C" {
     int sdl_process_events(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {
         PluginOutput output(out_ctx, out_fn);
         static SDL_Event event;
-        bool verbose = argc > 0 && std::string(argv[0]) == "verbose";
+        bool verbose = false;
+        if (const char* arg = getArgOrNull(argc, argv, 0)) {
+            verbose = std::string(arg) == "verbose";
+        }
 
         if (!g_running.load()) {
             output << "0";
@@ -924,7 +987,12 @@ extern "C" {
             return 1;
         }
         
-        std::string key_name = argv[0];
+        const char* key_name_arg = getArgOrNull(argc, argv, 0);
+        if (key_name_arg == nullptr) {
+            output << "Usage: sdl_is_key_pressed <key_name>" << std::endl;
+            return 1;
+        }
+        std::string key_name = key_name_arg;
         SDL_Scancode scancode = SDL_GetScancodeFromName(key_name.c_str());
         
         if (scancode == SDL_SCANCODE_UNKNOWN) {
@@ -951,8 +1019,8 @@ extern "C" {
         PluginOutput output(out_ctx, out_fn);
         int button = 0;  
         
-        if (argc > 0) {
-            button = std::stoi(argv[0]);
+        if (const char* arg = getArgOrNull(argc, argv, 0)) {
+            button = std::stoi(arg);
         }
         
         if (button < 0 || button >= 3) {
@@ -977,7 +1045,12 @@ extern "C" {
             return 1;
         }
         
-        std::string title = argv[0];
+        const char* title_arg = getArgOrNull(argc, argv, 0);
+        if (title_arg == nullptr) {
+            output << "Usage: sdl_set_window_title <title>" << std::endl;
+            return 1;
+        }
+        std::string title = title_arg;
         SDL_SetWindowTitle(g_window, title.c_str());
         return 0;
     }
@@ -992,8 +1065,8 @@ extern "C" {
         bool fullscreen = true;
         bool desktop = true;
         
-        if (argc > 0) fullscreen = std::string(argv[0]) != "0";
-        if (argc > 1) desktop = std::string(argv[1]) != "0";
+        if (const char* arg = getArgOrNull(argc, argv, 0)) fullscreen = isTruthyArg(arg);
+        if (const char* arg = getArgOrNull(argc, argv, 1)) desktop = isTruthyArg(arg);
         
         Uint32 flags = 0;
         if (fullscreen) {
@@ -1023,8 +1096,8 @@ extern "C" {
     int sdl_delay(int argc, const char** argv, void* out_ctx, plugin_output_fn out_fn) {
         PluginOutput output(out_ctx, out_fn);
         int ms = 16;  
-        if (argc > 0) {
-            ms = std::stoi(argv[0]);
+        if (const char* arg = getArgOrNull(argc, argv, 0)) {
+            ms = std::stoi(arg);
         }
         
         if (ms < 0) {
