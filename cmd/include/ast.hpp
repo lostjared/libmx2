@@ -1586,7 +1586,7 @@ namespace cmd {
                     Argument expandedArg;
                     if (arg.type == ARG_VARIABLE) {
                         expandedArg.value = executor.expandVariables(arg.value);
-                        expandedArg.type = ARG_LITERAL;
+                        expandedArg.type = ARG_STRING_LITERAL;
                     } else if (arg.type == ARG_STRING_LITERAL) {
                         expandedArg.value = arg.value;
                         expandedArg.type = ARG_STRING_LITERAL;
@@ -1598,7 +1598,7 @@ namespace cmd {
                                (expandedArg.value.back() == '\n' || expandedArg.value.back() == '\r')) {
                             expandedArg.value.pop_back();
                         }
-                        expandedArg.type = ARG_LITERAL;
+                        expandedArg.type = ARG_STRING_LITERAL;
                     } else {
                         expandedArg.value = arg.value;
                         expandedArg.type = arg.type;
