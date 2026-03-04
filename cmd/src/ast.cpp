@@ -26,6 +26,7 @@ namespace cmd {
 
     AstExecutor::AstExecutor() {
         if(registry.empty()) {
+            registry.registerTypedCommand("help", cmd::helpCommand);
             registry.registerTypedCommand("echo", cmd::echoCommand);
             registry.registerTypedCommand("test",cmd::testCommand);
             registry.registerTypedCommand("cmd", cmd::cmdCommand);

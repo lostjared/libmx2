@@ -7,6 +7,7 @@
 #include<cstdlib>
 #include<random>
 #include<algorithm>
+#include<cctype>
 #include"game_state.hpp"
 #include"parser.hpp"
 #include"html.hpp"
@@ -187,6 +188,153 @@ namespace cmd {
                 return result;
             }
         };
+
+        class CommandArgumentValidator {
+        public:
+            static bool ensureQuotedStringOrVariable(const Argument& arg,
+                                                     const std::string& commandName,
+                                                     std::ostream& output,
+                                                     const std::string& usageExample,
+                                                     bool allowOptionLiteral = false) {
+                if (arg.type == ARG_STRING_LITERAL || arg.type == ARG_COMMAND_SUBST) {
+                    return true;
+                }
+
+                if (arg.type == ARG_VARIABLE) {
+                    try {
+                        (void)getVar(arg);
+                        return true;
+                    } catch (const std::runtime_error&) {
+                        output << commandName << ": variable '" << arg.value << "' was not found." << std::endl;
+                        output << "If this is a literal path/string, wrap it in quotes." << std::endl;
+                        output << "Example: " << usageExample << std::endl;
+                        return false;
+                    }
+                }
+
+                if (arg.type == ARG_LITERAL) {
+                    if (isIntegerLiteral(arg.value)) {
+                        return true;
+                    }
+                    if (allowOptionLiteral && !arg.value.empty() && arg.value[0] == '-') {
+                        return true;
+                    }
+                }
+
+                output << commandName << ": unquoted string argument '" << arg.value << "'" << std::endl;
+                output << "MXCMD reminder: non-variable string arguments must be wrapped in quotes." << std::endl;
+                output << "Example: " << usageExample << std::endl;
+                output << "Allowed without quotes: variables (ex: $path) and integers." << std::endl;
+                return false;
+            }
+
+            static bool ensureAllQuotedStringOrVariable(const std::vector<Argument>& args,
+                                                        const std::string& commandName,
+                                                        std::ostream& output,
+                                                        const std::string& usageExample,
+                                                        bool allowOptionLiteral = false) {
+                for (const auto& arg : args) {
+                    if (!ensureQuotedStringOrVariable(arg, commandName, output, usageExample, allowOptionLiteral)) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+        private:
+            static bool isIntegerLiteral(const std::string& value) {
+                if (value.empty()) {
+                    return false;
+                }
+                size_t index = (value[0] == '+' || value[0] == '-') ? 1 : 0;
+                if (index >= value.size()) {
+                    return false;
+                }
+                for (; index < value.size(); ++index) {
+                    if (!std::isdigit(static_cast<unsigned char>(value[index]))) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+        };
+
+        const std::vector<std::pair<std::string, std::string>>& builtinHelpEntries() {
+            static const std::vector<std::pair<std::string, std::string>> entries = {
+                {"help", "help [\"command\"]"},
+                {"echo", "echo \"text\""},
+                {"print", "print [--i|--f] value"},
+                {"cat", "cat \"file\""},
+                {"grep", "grep [--r|--e] \"pattern\" \"file\""},
+                {"cd", "cd \"path\""},
+                {"ls", "ls \"path\""},
+                {"dir", "dir \"path\""},
+                {"find", "find \"path\" \"pattern\""},
+                {"sort", "sort \"file\""},
+                {"pwd", "pwd"},
+                {"mkdir", "mkdir [--p] \"dir\""},
+                {"cp", "cp [--r] \"src\" \"dest\""},
+                {"mv", "mv \"src\" \"dest\""},
+                {"touch", "touch \"file\""},
+                {"head", "head [--n N] \"file\""},
+                {"tail", "tail [--n N] \"file\""},
+                {"wc", "wc [--l] [--w] [--c] \"file\""},
+                {"sed", "sed [--n] [--i] \"s/old/new/g\" \"file\""},
+                {"printf", "printf \"format\" \"arg\" ..."},
+                {"stringf", "stringf \"format\" \"arg\" ..."},
+                {"test", "test value --eq value"},
+                {"cmd", "cmd \"script.mx\" [args...]"},
+                {"visual", "visual \"script.mx\" \"output.html\""},
+                {"at", "at \"list\" index"},
+                {"len", "len \"list\""},
+                {"index", "index \"string\" start length"},
+                {"strlen", "strlen \"string\""},
+                {"strfind", "strfind start \"string\" \"search\""},
+                {"strfindr", "strfindr start \"string\" \"search\""},
+                {"strtok", "strtok \"string\" \"separator\""},
+                {"exec", "exec \"shell command\""},
+                {"cmdlist", "cmdlist"},
+                {"debug_cmd", "debug_cmd"},
+                {"argv", "argv \"length\" | argv index"},
+                {"extern", "extern \"library\" \"function\" \"command\""},
+                {"extern_cleanup", "extern_cleanup [--all|\"command\"]"},
+                {"debug_set", "debug_set \"name\" value"},
+                {"debug_get", "debug_get \"name\""},
+                {"debug_list", "debug_list"},
+                {"debug_clear", "debug_clear \"name\""},
+                {"debug_clear_all", "debug_clear_all"},
+                {"debug_search", "debug_search \"pattern\""},
+                {"debug_dump", "debug_dump"},
+                {"list_new", "list_new \"name\""},
+                {"list_add", "list_add \"name\" \"value\""},
+                {"list_remove", "list_remove \"name\" index"},
+                {"list_get", "list_get \"name\" index"},
+                {"list_set", "list_set \"name\" index \"value\""},
+                {"list_clear", "list_clear \"name\""},
+                {"list_erase", "list_erase \"name\""},
+                {"list_exists", "list_exists \"name\""},
+                {"list_init", "list_init \"name\" size \"value\""},
+                {"list_len", "list_len \"name\""},
+                {"list_tokens", "list_tokens \"name\""},
+                {"list_sort", "list_sort \"name\""},
+                {"list_reverse", "list_reverse \"name\""},
+                {"list_shuffle", "list_shuffle \"name\""},
+                {"list_copy", "list_copy \"from\" \"to\""},
+                {"list_pop", "list_pop \"name\""},
+                {"list_concat", "list_concat \"name1\" \"name2\""},
+                {"rand", "rand min max"},
+                {"expr", "expr \"expression\""},
+                {"getline", "getline var"},
+                {"regex_match", "regex_match \"pattern\" \"string\""},
+                {"regex_replace", "regex_replace \"pattern\" \"replacement\" \"string\""},
+                {"regex_search", "regex_search \"pattern\" \"string\""},
+                {"regex_split", "regex_split \"pattern\" \"string\""},
+                {"tokenize", "tokenize \"file\""},
+                {"exit", "exit [code]"},
+                {"quit", "quit [code]"}
+            };
+            return entries;
+        }
     }
 
     std::vector<std::string> argv;
@@ -203,6 +351,45 @@ namespace cmd {
         }
         throw Exit_Exception(0);
         return 0;     
+    }
+
+    int helpCommand(const std::vector<Argument>& args, std::istream& input, std::ostream& output) {
+        if (args.size() > 1) {
+            output << "Usage: help [\"command\"]" << std::endl;
+            return 1;
+        }
+
+        const auto& entries = builtinHelpEntries();
+        std::vector<std::pair<std::string, std::string>> sortedEntries(entries.begin(), entries.end());
+        std::sort(sortedEntries.begin(), sortedEntries.end(),
+                  [](const auto& left, const auto& right) {
+                      return left.first < right.first;
+                  });
+        if (args.size() == 1) {
+            if (!CommandArgumentValidator::ensureQuotedStringOrVariable(args[0], "help", output, "help \"cd\"")) {
+                return 1;
+            }
+            std::string requested = getVar(args[0]);
+            bool found = false;
+            for (const auto& entry : sortedEntries) {
+                if (entry.first == requested) {
+                    output << entry.first << " - " << entry.second << std::endl;
+                    found = true;
+                }
+            }
+            if (!found) {
+                output << "help: no built-in command named '" << requested << "'" << std::endl;
+                output << "Run help with no arguments to list all commands." << std::endl;
+                return 1;
+            }
+            return 0;
+        }
+
+        output << "Built-in commands:" << std::endl;
+        for (const auto& entry : sortedEntries) {
+            output << "  " << std::left << std::setw(16) << entry.first << " " << entry.second << std::endl;
+        }
+        return 0;
     }
     
     int echoCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream& stream) {
@@ -239,6 +426,9 @@ namespace cmd {
         } else {
             bool success = true;
             for (const auto& filename : args) {
+                if (!CommandArgumentValidator::ensureQuotedStringOrVariable(filename, "cat", output, "cat \"file.txt\"")) {
+                    return 1;
+                }
                 std::string fileToken = getVar(filename);
                 auto expanded = PathPatternMatcher::expand(fileToken, true, false, true);
                 for (const auto& filen_ : expanded) {
@@ -265,6 +455,12 @@ namespace cmd {
         if (args.empty()) {
             output << "grep: missing pattern" << std::endl;
             return 1;
+        }
+
+        for (const auto& arg : args) {
+            if (!CommandArgumentValidator::ensureQuotedStringOrVariable(arg, "grep", output, "grep \"pattern\" \"file.txt\"", true)) {
+                return 1;
+            }
         }
         
         bool useRegex = false;
@@ -387,6 +583,10 @@ namespace cmd {
     int cdCommand(const std::vector<Argument> &args, std::istream& input, std::ostream& output) {
         if (args.size() != 1) {
             output << "cd: expected exactly one argument" << std::endl;
+            output << "cd: this command requires a single quoted string path." << std::endl;
+            return 1;
+        }
+        if (!CommandArgumentValidator::ensureQuotedStringOrVariable(args[0], "cd", output, "cd \"sdl\"")) {
             return 1;
         }
         std::string path = getVar(args[0]);
@@ -418,6 +618,9 @@ namespace cmd {
             targets.push_back(".");
         } else {
             for (const auto& arg : args) {
+                if (!CommandArgumentValidator::ensureQuotedStringOrVariable(arg, "ls", output, "ls \"path\"")) {
+                    return 1;
+                }
                 std::string token = getVar(arg);
                 auto expanded = PathPatternMatcher::expand(token, true, true, true);
                 targets.insert(targets.end(), expanded.begin(), expanded.end());
@@ -455,6 +658,9 @@ namespace cmd {
             }
         } else {
             for (const auto& filename : args) {
+                if (!CommandArgumentValidator::ensureQuotedStringOrVariable(filename, "sort", output, "sort \"file.txt\"")) {
+                    return 1;
+                }
                 std::string token = getVar(filename);
                 auto expanded = PathPatternMatcher::expand(token, true, false, true);
                 for (const auto& file_n : expanded) {
@@ -479,6 +685,12 @@ namespace cmd {
     int findCommand(const std::vector<Argument> &args, std::istream& input, std::ostream& output) {
         if (args.size() < 2) {
             output << "find: expected at least two arguments" << std::endl;
+            return 1;
+        }
+        if (!CommandArgumentValidator::ensureQuotedStringOrVariable(args[0], "find", output, "find \"path\" \"pattern\"")) {
+            return 1;
+        }
+        if (!CommandArgumentValidator::ensureQuotedStringOrVariable(args[1], "find", output, "find \"path\" \"pattern\"")) {
             return 1;
         }
         std::string pathToken = getVar(args[0]);
@@ -525,6 +737,9 @@ namespace cmd {
         std::vector<std::string> dirs;
         bool success = true;
         for (const auto& arg : args) {
+            if (!CommandArgumentValidator::ensureQuotedStringOrVariable(arg, "mkdir", output, "mkdir \"new_dir\"", true)) {
+                return 1;
+            }
             std::string a = getVar(arg);
             if (a == "--p") {
                 parents = true;
@@ -551,6 +766,12 @@ namespace cmd {
         if (args.size() < 2) {
             output << "cp: missing destination file operand after '" << (args.empty() ? "cp" : args[0].value) << "'" << std::endl;
             return 1;
+        }
+
+        for (const auto& arg : args) {
+            if (!CommandArgumentValidator::ensureQuotedStringOrVariable(arg, "cp", output, "cp \"src.txt\" \"dest.txt\"", true)) {
+                return 1;
+            }
         }
         
         bool recursive = false;
@@ -605,6 +826,12 @@ namespace cmd {
             output << "mv: missing destination file operand after '" << (args.empty() ? "mv" : args[0].value) << "'" << std::endl;
             return 1;
         }
+
+        for (const auto& arg : args) {
+            if (!CommandArgumentValidator::ensureQuotedStringOrVariable(arg, "mv", output, "mv \"src.txt\" \"dest.txt\"")) {
+                return 1;
+            }
+        }
         
         std::string dest = getVar(args.back());
 
@@ -640,6 +867,9 @@ namespace cmd {
         }
         bool success = true;
         for (const auto& file : args) {
+            if (!CommandArgumentValidator::ensureQuotedStringOrVariable(file, "touch", output, "touch \"file.txt\"")) {
+                return 1;
+            }
             try {
                 std::string token = getVar(file);
                 auto expanded = PathPatternMatcher::expand(token, true, true, true);
@@ -778,6 +1008,9 @@ namespace cmd {
         std::vector<std::string> files;
     
         for (const auto& arg : args) {
+            if (!CommandArgumentValidator::ensureQuotedStringOrVariable(arg, "wc", output, "wc --l \"file.txt\"", true)) {
+                return 1;
+            }
             std::string a = getVar(arg);
             if (a == "--l") {
                 countLines = true;
@@ -862,6 +1095,12 @@ namespace cmd {
         bool editInPlace = false;
         std::string expression;
         std::string filename;
+
+        for (const auto& arg : args) {
+            if (!CommandArgumentValidator::ensureQuotedStringOrVariable(arg, "sed", output, "sed \"s/old/new/g\" \"file.txt\"", true)) {
+                return 1;
+            }
+        }
         
         for (const auto& arg : args) {
             std::string a = getVar(arg);
@@ -981,6 +1220,9 @@ namespace cmd {
         if (args.empty()) {
             output << "Usage: printf FORMAT [ARGUMENTS...]" << std::endl;
             output << "Print ARGUMENTS according to FORMAT" << std::endl;
+            return 1;
+        }
+        if (!CommandArgumentValidator::ensureAllQuotedStringOrVariable(args, "printf", stream_output, "printf \"%s\" \"text\"")) {
             return 1;
         }
         std::vector<std::string> expandedArgs;
@@ -1224,6 +1466,9 @@ namespace cmd {
             return 1; 
         }
 
+        if (!CommandArgumentValidator::ensureAllQuotedStringOrVariable(args, "test", output, "test \"left\" --eq \"right\"", true)) {
+            return 1;
+        }
         if (args.size() == 2) {
             const std::string& op = args[0].value;
             const std::string value = getVar(args[1]);
@@ -1320,6 +1565,10 @@ namespace cmd {
         if (args.empty()) {
             output << "cmd: missing file operand" << std::endl;
             throw AstFailure("Exception: Script: execution failed missing operand.\n");
+        }
+
+        if (!CommandArgumentValidator::ensureQuotedStringOrVariable(args[0], "cmd", output, "cmd \"script.mx\"")) {
+            throw AstFailure("Exception: Script: execution failed invalid argument format.\n");
         }
 
         std::string filename = getVar(args[0]);
@@ -1463,6 +1712,9 @@ namespace cmd {
             output << "Usage: visual script output_filel.\n";
             return 1;
         }
+        if (!CommandArgumentValidator::ensureAllQuotedStringOrVariable(args, "visual", output, "visual \"script.mx\" \"out.html\"")) {
+            return 1;
+        }
         std::string op1 = getVar(args[0]), op2 = getVar(args[1]);
         std::ifstream infile(op1);
         if(!infile.is_open()) {
@@ -1505,6 +1757,9 @@ namespace cmd {
             output << "Usage: at <list> index\n";
             return 1;
         }
+        if (!CommandArgumentValidator::ensureAllQuotedStringOrVariable(args, "at", output, "at \"item1 item2\" 0")) {
+            return 1;
+        }
 
         std::string op1= getVar(args[0]);
         std::string op2= getVar(args[1]);
@@ -1523,6 +1778,9 @@ namespace cmd {
     int lenCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
         if(args.empty() || args.size() != 1) {
             output << "Usage: len <list>\n";
+            return 1;
+        }
+        if (!CommandArgumentValidator::ensureAllQuotedStringOrVariable(args, "len", output, "len \"a b c\"")) {
             return 1;
         }
         std::string op1 = getVar(args[0]);          
@@ -1556,6 +1814,9 @@ namespace cmd {
             output << "Usage: index <string> start leenn\n";
             return 1;
         }
+        if (!CommandArgumentValidator::ensureAllQuotedStringOrVariable(args, "index", output, "index \"hello\" 1 3")) {
+            return 1;
+        }
 
         std::string operands[3];
         operands[0] = getVar(args[0]);
@@ -1579,6 +1840,9 @@ namespace cmd {
             output <<  "Usage: strlen <string>\n";
             return 1;
         }
+        if (!CommandArgumentValidator::ensureAllQuotedStringOrVariable(args, "strlen", output, "strlen \"hello\"")) {
+            return 1;
+        }
         std::string v = getVar(args[0]);
         output << v.length();
         return 0;
@@ -1589,6 +1853,9 @@ namespace cmd {
             output << "Usage: <start> <string> <search>\n";
             return 1;
          }
+            if (!CommandArgumentValidator::ensureAllQuotedStringOrVariable(args, "strfind", output, "strfind 0 \"hello world\" \"world\"")) {
+                return 1;
+            }
 
          std::string op1 = getVar(args[0]);
          std::string op2 = getVar(args[1]);
@@ -1609,6 +1876,9 @@ namespace cmd {
             output << "Usage: <start> <string> <search>\n";
             return 1;
          }
+            if (!CommandArgumentValidator::ensureAllQuotedStringOrVariable(args, "strfindr", output, "strfindr 0 \"hello world\" \"world\"")) {
+                return 1;
+            }
 
          std::string op1 = getVar(args[0]);
          std::string op2 = getVar(args[1]);
@@ -1627,6 +1897,9 @@ namespace cmd {
     int strtokCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
         if(args.empty() || args.size() != 2) {
             output << "Usage: strtok string seperator\n";
+            return 1;
+        }
+        if (!CommandArgumentValidator::ensureAllQuotedStringOrVariable(args, "strtok", output, "strtok \"a,b,c\" \",\"")) {
             return 1;
         }
         std::string op1 = getVar(args[0]);
@@ -2028,6 +2301,9 @@ namespace cmd {
             output << "Usage: argv <index>\n";
             return 1;
         }
+        if (!CommandArgumentValidator::ensureQuotedStringOrVariable(args[0], "argv", output, "argv \"length\"")) {
+            return 1;
+        }
         if(args[0].type == ArgType::ARG_STRING_LITERAL && args[0].value == "length") {
             output << argv.size();
             return 0;
@@ -2063,6 +2339,9 @@ namespace cmd {
                 output << arg.value << " ";
             }
             output << "\n";
+            return 1;
+        }
+        if (!CommandArgumentValidator::ensureAllQuotedStringOrVariable(args, "extern", output, "extern \"libname.so\" \"func\" \"cmdname\"")) {
             return 1;
         }
         std::string libPath = getVar(args[0]);
@@ -2219,6 +2498,10 @@ namespace cmd {
             return 1;
         }
 
+        if (!CommandArgumentValidator::ensureQuotedStringOrVariable(args[0], "extern_cleanup", output, "extern_cleanup \"command_name\"", true)) {
+            return 1;
+        }
+
         std::string arg = getVar(args[0]);
         if (arg == "--all" || arg == "all") {
             std::size_t removedCommands = reg.clearExternCommands();
@@ -2246,6 +2529,9 @@ namespace cmd {
             output << "Usage: list_new <name>\n";
             return 1;
         }
+        if (!CommandArgumentValidator::ensureAllQuotedStringOrVariable(args, "list_new", output, "list_new \"my_list\"")) {
+            return 1;
+        }
         std::string name = getVar(args[0]);
         state::GameState *gameState = state::getGameState();
         if (gameState->hasList(name)) {
@@ -2265,6 +2551,9 @@ namespace cmd {
             output << "Usage: list_add <name> <value>\n";
             return 1;
         }
+        if (!CommandArgumentValidator::ensureAllQuotedStringOrVariable(args, "list_add", output, "list_add \"my_list\" \"value\"")) {
+            return 1;
+        }
         std::string name = getVar(args[0]);
         std::string value = getVar(args[1]);
         state::GameState *gameState = state::getGameState();
@@ -2278,6 +2567,9 @@ namespace cmd {
     int newListRemoveCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
         if (args.size() < 2) {
             output << "Usage: list_remove <name> <value>\n";
+            return 1;
+        }
+        if (!CommandArgumentValidator::ensureAllQuotedStringOrVariable(args, "list_remove", output, "list_remove \"my_list\" 0")) {
             return 1;
         }
         std::string name = getVar(args[0]);
@@ -2294,6 +2586,9 @@ namespace cmd {
     int newListGetCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
         if (args.size() < 2) {
             throw cmd::AstFailure("Usage: list_get <name> <index>");
+            return 1;
+        }
+        if (!CommandArgumentValidator::ensureAllQuotedStringOrVariable(args, "list_get", output, "list_get \"my_list\" 0")) {
             return 1;
         }
         std::string name = getVar(args[0]);
@@ -2318,6 +2613,9 @@ namespace cmd {
             output << "Usage: list_set <name> <index> <value>\n";
             return 1;
         }
+        if (!CommandArgumentValidator::ensureAllQuotedStringOrVariable(args, "list_set", output, "list_set \"my_list\" 0 \"value\"")) {
+            return 1;
+        }
         std::string name = getVar(args[0]);
         std::string indexStr = getVar(args[1]);
         std::string value = getVar(args[2]);
@@ -2334,6 +2632,9 @@ namespace cmd {
     int newListClearCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
         if (args.empty()) {
             output << "Usage: list_clear <name>\n";
+            return 1;
+        }
+        if (!CommandArgumentValidator::ensureAllQuotedStringOrVariable(args, "list_clear", output, "list_clear \"my_list\"")) {
             return 1;
         }
         std::string name = getVar(args[0]);
@@ -2355,6 +2656,9 @@ namespace cmd {
             throw cmd::AstFailure("Usage: list_exists <name>");
             return 1;
         }
+        if (!CommandArgumentValidator::ensureAllQuotedStringOrVariable(args, "list_exists", output, "list_exists \"my_list\"")) {
+            return 1;
+        }
         std::string name = getVar(args[0]);
         state::GameState *gameState = state::getGameState();
         if (gameState->hasList(name)) {
@@ -2367,6 +2671,9 @@ namespace cmd {
     int newListInitCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
         if(args.empty()) {
             output << "Usage: list_init <name> <size> <value>\n";
+            return 1;
+        }
+        if (!CommandArgumentValidator::ensureAllQuotedStringOrVariable(args, "list_init", output, "list_init \"my_list\" 10 \"value\"")) {
             return 1;
         }
         std::string name = getVar(args[0]);
@@ -2387,6 +2694,9 @@ namespace cmd {
             throw cmd::AstFailure("Usage: list_len <name>");
             return 1;
         }
+        if (!CommandArgumentValidator::ensureAllQuotedStringOrVariable(args, "list_len", output, "list_len \"my_list\"")) {
+            return 1;
+        }
         std::string name = getVar(args[0]);
         state::GameState *gameState = state::getGameState();
         if (!gameState->hasList(name)) {
@@ -2403,6 +2713,9 @@ namespace cmd {
             throw cmd::AstFailure("Usage: list_tokens <name>");
             return 1;
         }   
+        if (!CommandArgumentValidator::ensureAllQuotedStringOrVariable(args, "list_tokens", output, "list_tokens \"my_list\"")) {
+            return 1;
+        }
         std::string name = getVar(args[0]);
         state::GameState *gameState = state::getGameState();
         if (!gameState->hasList(name)) {
@@ -2422,6 +2735,9 @@ namespace cmd {
             throw cmd::AstFailure("Usage: list_sort <name>");
             return 1;
         }
+        if (!CommandArgumentValidator::ensureAllQuotedStringOrVariable(args, "list_sort", output, "list_sort \"my_list\"")) {
+            return 1;
+        }
         std::string name = getVar(args[0]); 
         state::GameState *gameState = state::getGameState();
         if (!gameState->hasList(name)) {
@@ -2436,6 +2752,9 @@ namespace cmd {
             throw cmd::AstFailure("Usage: list_reverse <name>");
             return 1;
         }
+        if (!CommandArgumentValidator::ensureAllQuotedStringOrVariable(args, "list_reverse", output, "list_reverse \"my_list\"")) {
+            return 1;
+        }
         std::string name = getVar(args[0]);
         state::GameState *gameState = state::getGameState();
         if (!gameState->hasList(name)) {
@@ -2448,6 +2767,9 @@ namespace cmd {
     int newListShuffleCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream  &output) {
         if (args.empty()) {
             throw cmd::AstFailure("Usage: list_shuffle <name>");
+            return 1;
+        }
+        if (!CommandArgumentValidator::ensureAllQuotedStringOrVariable(args, "list_shuffle", output, "list_shuffle \"my_list\"")) {
             return 1;
         }
         std::string name = getVar(args[0]); 
@@ -2469,6 +2791,9 @@ namespace cmd {
             throw cmd::AstFailure("Usage: list_copy <name> <name2>");
             return 1;
         }
+        if (!CommandArgumentValidator::ensureAllQuotedStringOrVariable(args, "list_copy", output, "list_copy \"list1\" \"list2\"")) {
+            return 1;
+        }
         std::string name1 = getVar(args[0]);
         std::string name2 = getVar(args[1]);
 
@@ -2484,6 +2809,9 @@ namespace cmd {
     int newListPopCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
         if (args.empty()) {
             throw cmd::AstFailure("Usage: list_pop <name>");
+            return 1;
+        }
+        if (!CommandArgumentValidator::ensureAllQuotedStringOrVariable(args, "list_pop", output, "list_pop \"my_list\"")) {
             return 1;
         }
         std::string name = getVar(args[0]);
@@ -2503,6 +2831,9 @@ namespace cmd {
         }
         if(args.size() < 2) {
             throw cmd::AstFailure("Usage: list_concat <name1> <name2> <name3>");
+            return 1;
+        }
+        if (!CommandArgumentValidator::ensureAllQuotedStringOrVariable(args, "list_concat", output, "list_concat \"list1\" \"list2\"")) {
             return 1;
         }
         std::string name1 = getVar(args[0]);
@@ -2771,6 +3102,9 @@ namespace cmd {
             throw AstFailure("Usage: expr <expression>\n");
             return 1;
         }
+        if (!CommandArgumentValidator::ensureAllQuotedStringOrVariable(args, "expr", output, "expr \"1 + 2 * 3\"")) {
+            return 1;
+        }
         std::string expression = getVar(args[0]);
         try {
             expr_parser::ExprLexer lexer(expression);
@@ -2806,6 +3140,9 @@ namespace cmd {
             output << "Usage: regex_match <pattern> <string>\n";
             return 1;
         }
+        if (!CommandArgumentValidator::ensureAllQuotedStringOrVariable(args, "regex_match", output, "regex_match \"pattern\" \"text\"")) {
+            return 1;
+        }
         std::string pattern = getVar(args[0]);
         std::string str = getVar(args[1]);
         std::regex re(pattern);
@@ -2821,6 +3158,9 @@ namespace cmd {
             output << "Usage: regex_replace <pattern> <replacement> <string>\n";
             return 1;
         }
+        if (!CommandArgumentValidator::ensureAllQuotedStringOrVariable(args, "regex_replace", output, "regex_replace \"pattern\" \"replacement\" \"text\"")) {
+            return 1;
+        }
         std::string pattern = getVar(args[0]);
         std::string replacement = getVar(args[1]);
         std::string str = getVar(args[2]);
@@ -2832,6 +3172,9 @@ namespace cmd {
     int regexSearchCommand(const std::vector<cmd::Argument>& args, std::istream& input, std::ostream &output) {
         if (args.empty() || args.size() != 2) {
             output << "Usage: regex_search <pattern> <string>\n";
+            return 1;
+        }
+        if (!CommandArgumentValidator::ensureAllQuotedStringOrVariable(args, "regex_search", output, "regex_search \"pattern\" \"text\"")) {
             return 1;
         }
         std::string pattern = getVar(args[0]);
@@ -2849,6 +3192,9 @@ namespace cmd {
             output << "Usage: regex_split <pattern> <string>\n";
             return 1;
         }
+        if (!CommandArgumentValidator::ensureAllQuotedStringOrVariable(args, "regex_split", output, "regex_split \"pattern\" \"text\"")) {
+            return 1;
+        }
         std::string pattern = getVar(args[0]);
         std::string str = getVar(args[1]);
         std::regex re(pattern);
@@ -2864,6 +3210,9 @@ namespace cmd {
         if(args.empty()) {
             output << "Usage: tokenize <filename>\n";
             return 1; 
+        }
+        if (!CommandArgumentValidator::ensureAllQuotedStringOrVariable(args, "tokenize", output, "tokenize \"script.mx\"")) {
+            return 1;
         }
         if(args.size() > 0) {
             std::string filename = getVar(args[0]);
