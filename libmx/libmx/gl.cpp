@@ -490,7 +490,7 @@ namespace gl {
         int len = 0;
         int ch = 0;
         char *log;
-        glGetShaderiv(p, GL_INFO_LOG_LENGTH, &len);
+        glGetProgramiv(p, GL_INFO_LOG_LENGTH, &len);
         if(len > 0) {
             log = new char [len+1];
             glGetProgramInfoLog(p, len, &ch, log);
