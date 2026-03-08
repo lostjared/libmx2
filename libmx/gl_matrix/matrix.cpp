@@ -398,11 +398,9 @@ private:
     }
 
     void setMouseCapture(bool capture) {
-#ifndef __EMSCRIPTEN__
         mouseCaptured = capture;
         SDL_SetRelativeMouseMode(capture ? SDL_TRUE : SDL_FALSE);
         SDL_ShowCursor(capture ? SDL_DISABLE : SDL_ENABLE);
-#endif
     }
 
     void applyMouseLook(float dx, float dy) {
@@ -770,8 +768,8 @@ private:
         glDepthMask(GL_TRUE);
         if (showHud) {
             std::string modeText = insideMatrix ? "Mode: Inside Matrix (WASD to move)" : "Mode: Orbital View";
-            win->text.printText_Solid(font, 10.0f, 100.0f, modeText);
-            win->text.printText_Solid(font, 10.0f, 130.0f, "Press SPACE to toggle mode");
+            win->text.printText_Solid(font, 10.0f, 190.0f, modeText);
+            win->text.printText_Solid(font, 10.0f, 220.0f, "Press SPACE to toggle mode");
         }
     }
     
