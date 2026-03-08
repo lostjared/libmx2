@@ -21,6 +21,12 @@ printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
 
 class Matrix3D : public gl::GLObject {
 public:
+    enum class QualityPreset {
+        Ultra,
+        High,
+        Medium
+    };
+
     Matrix3D() = default;
     ~Matrix3D() override {
         release();
@@ -125,7 +131,7 @@ public:
             throw mx::Exception("Failed to load matrix shader");
         }
         
-        initMatrix3DData(win->w, win->h);
+        applyQualityPreset(qualityPreset, win);
     }
 
     void draw(gl::GLWindow *win) override {
@@ -135,92 +141,125 @@ public:
         Uint32 currentTime = SDL_GetTicks();
         float deltaTime = (currentTime - lastUpdateTime) / 1000.0f;
         lastUpdateTime = currentTime;
+        float frameScale = deltaTime * 60.0f;
+        if (frameScale > 3.0f) {
+            frameScale = 3.0f;
+        }
+        float rotationStep = 0.1f * frameScale;
+        float movementStep = 0.4f * frameScale;
         
         
         glEnable(GL_DEPTH_TEST);
         
         updateMatrix3DData(deltaTime, win->w, win->h);
         drawMatrix3D(win);
-        win->text.setColor({0, 255, 0, 255});
-        int fps = deltaTime > 0 ? (int)(1.0f / deltaTime) : 0;
-        win->text.printText_Solid(font, 10.0f, 10.0f, "FPS: " + std::to_string(fps));
-        
+        if (showHud) {
+            win->text.setColor({0, 255, 0, 255});
+            int fps = deltaTime > 0 ? (int)(1.0f / deltaTime) : 0;
+            win->text.printText_Solid(font, 10.0f, 10.0f, "FPS: " + std::to_string(fps));
+            
 
-        win->text.setColor({255, 255, 255, 255});
-        std::string cameraInfo = "Rotation: " + std::to_string(cameraRotationY) + 
-                               ", Zoom: " + std::to_string(cameraDistance);
-        win->text.printText_Solid(font, 10.0f, 40.0f, cameraInfo);
-        win->text.printText_Solid(font, 10.0f, 70.0f, "Use Arrow Keys to Navigate");
+            win->text.setColor({255, 255, 255, 255});
+            std::string cameraInfo = "Rotation: " + std::to_string(cameraRotationY) + 
+                                   ", Zoom: " + std::to_string(cameraDistance);
+            win->text.printText_Solid(font, 10.0f, 40.0f, cameraInfo);
+            win->text.printText_Solid(font, 10.0f, 70.0f, "Use Arrow Keys to Navigate");
+            win->text.printText_Solid(font, 10.0f, 100.0f, mouseCaptured ? "Mouse: Captured (ESC to release)" : "Mouse: Click to capture");
+            win->text.printText_Solid(font, 10.0f, 160.0f, "Quality: " + qualityPresetName() + " (F1 Ultra / F2 High / F3 Medium)");
+        }
+
+        const Uint8 *keys = SDL_GetKeyboardState(nullptr);
+        if(keys[SDL_SCANCODE_LEFT]) {
+            if (insideMatrix) {
+                glm::vec3 dir = glm::normalize(cameraTarget - cameraPosition);
+                glm::mat4 rot = glm::rotate(glm::mat4(1.0f), rotationStep, glm::vec3(0, 1, 0));
+                glm::vec4 rotated = rot * glm::vec4(dir, 0.0f);
+                cameraTarget = cameraPosition + glm::vec3(rotated);
+            } else {
+                cameraRotationY -= rotationStep;
+                updateCameraPosition();
+            }
+        }
+        if(keys[SDL_SCANCODE_RIGHT]) {
+            if (insideMatrix) {
+                glm::vec3 dir = glm::normalize(cameraTarget - cameraPosition);
+                glm::mat4 rot = glm::rotate(glm::mat4(1.0f), -rotationStep, glm::vec3(0, 1, 0));
+                glm::vec4 rotated = rot * glm::vec4(dir, 0.0f);
+                cameraTarget = cameraPosition + glm::vec3(rotated);
+            } else {
+                cameraRotationY += rotationStep;
+                updateCameraPosition();
+            }
+        }
+        if(keys[SDL_SCANCODE_W]) {
+            if (insideMatrix) {
+                glm::vec3 dir = glm::normalize(cameraTarget - cameraPosition);
+                cameraPosition += dir * movementStep;
+                cameraTarget += dir * movementStep;
+            } else {
+                cameraRotationX = std::min(0.8f, cameraRotationX + rotationStep);
+                updateCameraPosition();
+            }
+        }
+        if(keys[SDL_SCANCODE_S]) {
+            if (insideMatrix) {
+                glm::vec3 dir = glm::normalize(cameraTarget - cameraPosition);
+                cameraPosition -= dir * movementStep;
+                cameraTarget -= dir * movementStep;
+            } else {
+                cameraRotationX = std::max(-0.8f, cameraRotationX - rotationStep);
+                updateCameraPosition();
+            }
+        }
+        if(keys[SDL_SCANCODE_A]) {
+            if (insideMatrix) {
+                glm::vec3 dir = glm::normalize(cameraTarget - cameraPosition);
+                glm::vec3 right = glm::cross(glm::vec3(0, 1, 0), dir);
+                cameraPosition += right * movementStep;
+                cameraTarget += right * movementStep;
+            }
+        }
+        if(keys[SDL_SCANCODE_D]) {
+            if (insideMatrix) {
+                glm::vec3 dir = glm::normalize(cameraTarget - cameraPosition);
+                glm::vec3 right = glm::cross(glm::vec3(0, 1, 0), dir);
+                cameraPosition -= right * movementStep;
+                cameraTarget -= right * movementStep;
+            }
+        }
     }
     
     void event(gl::GLWindow *win, SDL_Event &e) override {
-        const float moveSpeed = 1.0f;
-        
+        if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
+            setMouseCapture(true);
+        }
+
+        if (e.type == SDL_MOUSEMOTION && mouseCaptured) {
+            applyMouseLook(static_cast<float>(e.motion.xrel), static_cast<float>(e.motion.yrel));
+        }
+
         if (e.type == SDL_KEYDOWN) {
             switch (e.key.keysym.sym) {
-                case SDLK_LEFT:
-                    if (insideMatrix) {
-                        glm::vec3 dir = glm::normalize(cameraTarget - cameraPosition);
-                        glm::mat4 rot = glm::rotate(glm::mat4(1.0f), 0.1f, glm::vec3(0, 1, 0));
-                        glm::vec4 rotated = rot * glm::vec4(dir, 0.0f);
-                        cameraTarget = cameraPosition + glm::vec3(rotated);
-                    } else {
-                        cameraRotationY -= 0.1f;
-                        updateCameraPosition();
-                    }
-                    break;
-                case SDLK_RIGHT:
-                    if (insideMatrix) {
-                        glm::vec3 dir = glm::normalize(cameraTarget - cameraPosition);
-                        glm::mat4 rot = glm::rotate(glm::mat4(1.0f), -0.1f, glm::vec3(0, 1, 0));
-                        glm::vec4 rotated = rot * glm::vec4(dir, 0.0f);
-                        cameraTarget = cameraPosition + glm::vec3(rotated);
-                    } else {
-                        cameraRotationY += 0.1f;
-                        updateCameraPosition();
-                    }
-                    break;
-                case SDLK_w:
-                    if (insideMatrix) {
-                        glm::vec3 dir = glm::normalize(cameraTarget - cameraPosition);
-                        cameraPosition += dir * moveSpeed;
-                        cameraTarget += dir * moveSpeed;
-                    } else {
-                        cameraRotationX = std::min(0.8f, cameraRotationX + 0.1f);
-                        updateCameraPosition();
-                    }
-                    break;
-                case SDLK_s:
-                    if (insideMatrix) {
-                        glm::vec3 dir = glm::normalize(cameraTarget - cameraPosition);
-                        cameraPosition -= dir * moveSpeed;
-                        cameraTarget -= dir * moveSpeed;
-                    } else {
-                        cameraRotationX = std::max(-0.8f, cameraRotationX - 0.1f);
-                        updateCameraPosition();
-                    }
-                    break;
-                case SDLK_a:
-                    if (insideMatrix) {
-                        glm::vec3 dir = glm::normalize(cameraTarget - cameraPosition);
-                        glm::vec3 right = glm::cross(glm::vec3(0, 1, 0), dir);
-                        cameraPosition += right * moveSpeed;
-                        cameraTarget += right * moveSpeed;
-                    }
-                    break;
-                case SDLK_d:
-                    if (insideMatrix) {
-                        glm::vec3 dir = glm::normalize(cameraTarget - cameraPosition);
-                        glm::vec3 right = glm::cross(glm::vec3(0, 1, 0), dir);
-                        cameraPosition -= right * moveSpeed;
-                        cameraTarget -= right * moveSpeed;
-                    }
+                case SDLK_ESCAPE:
+                    setMouseCapture(false);
                     break;
                 case SDLK_SPACE:
                     insideMatrix = !insideMatrix;
                     if (!insideMatrix) {
                         updateCameraPosition();
                     }
+                    break;
+                case SDLK_F1:
+                    applyQualityPreset(QualityPreset::Ultra, win);
+                    break;
+                case SDLK_F2:
+                    applyQualityPreset(QualityPreset::High, win);
+                    break;
+                case SDLK_F3:
+                    applyQualityPreset(QualityPreset::Medium, win);
+                    break;
+                case SDLK_F7:
+                    showHud = !showHud;
                     break;
             }
         }
@@ -238,6 +277,9 @@ private:
     float cameraDistance;
     float cameraRotationY;
     float cameraRotationX;
+    bool mouseCaptured = false;
+    float mouseSensitivity = 0.0022f;
+    bool showHud = true;
     bool insideMatrix; 
 
     struct Char3DData {
@@ -250,10 +292,18 @@ private:
     };
     
     
-    int gridSizeX = 40;  
-    int gridSizeY = 40;  
-    int gridSizeZ = 40;  
-    float gridSpacing = 0.8f;  
+    int gridSizeX = 56;
+    int gridSizeY = 64;
+    int gridSizeZ = 56;
+    float gridSpacing = 1.05f;
+    int trailMinLength = 18;
+    int trailLengthRange = 24;
+    int maxTrailLength = 44;
+    int columnLayerCount = 1;
+    float renderDistanceInside = 95.0f;
+    float renderDistanceOutside = 170.0f;
+    int refreshCounter = 0;
+    QualityPreset qualityPreset = QualityPreset::High;
     std::vector<Char3DData> characters;
     std::vector<int> columnHeads;  
     std::vector<int> trailLengths; 
@@ -273,6 +323,70 @@ private:
         {0x30A0, 0x30FF},  
         {0x4E00, 0x4FFF}   
     };
+
+    std::string qualityPresetName() const {
+        switch (qualityPreset) {
+            case QualityPreset::Ultra: return "Ultra";
+            case QualityPreset::High: return "High";
+            case QualityPreset::Medium: return "Medium";
+        }
+        return "High";
+    }
+
+    void applyQualityPreset(QualityPreset preset, gl::GLWindow *win) {
+        qualityPreset = preset;
+
+        switch (qualityPreset) {
+            case QualityPreset::Ultra:
+                gridSizeX = 68;
+                gridSizeY = 78;
+                gridSizeZ = 68;
+                gridSpacing = 1.05f;
+                trailMinLength = 22;
+                trailLengthRange = 30;
+                maxTrailLength = 56;
+                columnLayerCount = 1;
+                renderDistanceInside = 120.0f;
+                renderDistanceOutside = 220.0f;
+                break;
+            case QualityPreset::High:
+                gridSizeX = 56;
+                gridSizeY = 64;
+                gridSizeZ = 56;
+                gridSpacing = 1.05f;
+                trailMinLength = 18;
+                trailLengthRange = 24;
+                maxTrailLength = 44;
+                columnLayerCount = 1;
+                renderDistanceInside = 95.0f;
+                renderDistanceOutside = 170.0f;
+                break;
+            case QualityPreset::Medium:
+                gridSizeX = 46;
+                gridSizeY = 52;
+                gridSizeZ = 46;
+                gridSpacing = 1.12f;
+                trailMinLength = 14;
+                trailLengthRange = 18;
+                maxTrailLength = 34;
+                columnLayerCount = 1;
+                renderDistanceInside = 75.0f;
+                renderDistanceOutside = 130.0f;
+                break;
+        }
+
+        if (vbo != 0) {
+            glDeleteBuffers(1, &vbo);
+            vbo = 0;
+        }
+        if (vao != 0) {
+            glDeleteVertexArrays(1, &vao);
+            vao = 0;
+        }
+
+        refreshCounter = 0;
+        initMatrix3DData(win->w, win->h);
+    }
     
     void updateCameraPosition() {
         float x = cameraDistance * sin(cameraRotationY) * cos(cameraRotationX);
@@ -281,6 +395,45 @@ private:
         cameraPosition = glm::vec3(x, y, z);
         cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f); 
         cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);     
+    }
+
+    void setMouseCapture(bool capture) {
+#ifndef __EMSCRIPTEN__
+        mouseCaptured = capture;
+        SDL_SetRelativeMouseMode(capture ? SDL_TRUE : SDL_FALSE);
+        SDL_ShowCursor(capture ? SDL_DISABLE : SDL_ENABLE);
+#endif
+    }
+
+    void applyMouseLook(float dx, float dy) {
+        float yawDelta = -dx * mouseSensitivity;
+        float pitchDelta = -dy * mouseSensitivity;
+
+        if (insideMatrix) {
+            glm::vec3 worldUp(0.0f, 1.0f, 0.0f);
+            glm::vec3 dir = glm::normalize(cameraTarget - cameraPosition);
+
+            glm::mat4 yawRot = glm::rotate(glm::mat4(1.0f), yawDelta, worldUp);
+            dir = glm::normalize(glm::vec3(yawRot * glm::vec4(dir, 0.0f)));
+
+            glm::vec3 right = glm::cross(dir, worldUp);
+            if (glm::length(right) > 0.0001f) {
+                right = glm::normalize(right);
+                glm::mat4 pitchRot = glm::rotate(glm::mat4(1.0f), pitchDelta, right);
+                glm::vec3 pitchedDir = glm::normalize(glm::vec3(pitchRot * glm::vec4(dir, 0.0f)));
+                float upDot = glm::dot(pitchedDir, worldUp);
+                if (upDot < 0.995f && upDot > -0.995f) {
+                    dir = pitchedDir;
+                }
+            }
+
+            cameraTarget = cameraPosition + dir;
+        } else {
+            cameraRotationY += yawDelta;
+            cameraRotationX += pitchDelta;
+            cameraRotationX = std::max(-1.4f, std::min(1.4f, cameraRotationX));
+            updateCameraPosition();
+        }
     }
     
     void release() {
@@ -382,12 +535,11 @@ private:
     }
     
     void initMatrix3DData(int screenWidth, int screenHeight) {
-        int totalColumns = gridSizeX * gridSizeZ; 
+        int totalColumns = gridSizeX * gridSizeZ * columnLayerCount;
         columnHeads.resize(totalColumns, -1);
         trailLengths.resize(totalColumns);
         
-        
-        int maxChars = totalColumns * gridSizeY * 15; 
+        int maxChars = totalColumns * (maxTrailLength + 8);
         characters.resize(maxChars);
         
         for (int i = 0; i < maxChars; ++i) {
@@ -397,10 +549,13 @@ private:
         
         for (int x = 0; x < gridSizeX; ++x) {
             for (int z = 0; z < gridSizeZ; ++z) {
-                int columnIndex = x * gridSizeZ + z;
-                trailLengths[columnIndex] = rand() % 30 + 15; 
-                float startY = (rand() % (2 * gridSizeY)) * gridSpacing - gridSizeY * gridSpacing;
-                addColumnChars3D(x, z, startY);
+                for (int layer = 0; layer < columnLayerCount; ++layer) {
+                    int columnIndex = ((x * gridSizeZ) + z) * columnLayerCount + layer;
+                    trailLengths[columnIndex] = rand() % trailLengthRange + trailMinLength;
+                    float fullHeight = 2.0f * gridSizeY * gridSpacing;
+                    float startY = gridSizeY * gridSpacing - ((rand() % 1000) / 1000.0f) * fullHeight;
+                    addColumnChars3D(columnIndex, x, z, startY);
+                }
             }
         }
         
@@ -421,8 +576,7 @@ private:
         glEnableVertexAttribArray(3);
     }
     
-    void addColumnChars3D(int x, int z, float startY) {
-        int columnIndex = x * gridSizeZ + z;
+    void addColumnChars3D(int columnIndex, int x, int z, float startY) {
         int trailLength = trailLengths[columnIndex];
         int firstCharIndex = -1;
         
@@ -455,10 +609,8 @@ private:
     }
     
     void updateMatrix3DData(float deltaTime, int screenWidth, int screenHeight) {
-        int totalColumns = gridSizeX * gridSizeZ;
+        int totalColumns = gridSizeX * gridSizeZ * columnLayerCount;
         
-        
-        static int refreshCounter = 0;
         refreshCounter++;
         
         
@@ -466,11 +618,12 @@ private:
             refreshCounter = 0;
             for (int columnIndex = 0; columnIndex < totalColumns; ++columnIndex) {
                 if (columnHeads[columnIndex] < 0) {
-                    int x = columnIndex / gridSizeZ;
-                    int z = columnIndex % gridSizeZ;
-                    trailLengths[columnIndex] = rand() % 10 + 10; 
-                    float startY = gridSizeY * gridSpacing * 1.1f;
-                    addColumnChars3D(x, z, startY);
+                    int baseIndex = columnIndex / columnLayerCount;
+                    int x = baseIndex / gridSizeZ;
+                    int z = baseIndex % gridSizeZ;
+                    trailLengths[columnIndex] = rand() % trailLengthRange + trailMinLength;
+                    float startY = gridSizeY * gridSpacing + ((rand() % 1000) / 1000.0f) * (gridSpacing * 2.0f);
+                    addColumnChars3D(columnIndex, x, z, startY);
                 }
             }
         }
@@ -512,18 +665,13 @@ private:
                 }
                 
             
-                int x = columnIndex / gridSizeZ;
-                int z = columnIndex % gridSizeZ;
+                int baseIndex = columnIndex / columnLayerCount;
+                int x = baseIndex / gridSizeZ;
+                int z = baseIndex % gridSizeZ;
                 
-                trailLengths[columnIndex] = rand() % 20 + 15;  
-                float startY = gridSizeY * gridSpacing * 1.1f; 
-                
-                
-                if (rand() % 10 > 7) { 
-                    addColumnChars3D(x, z, startY);
-                } else {
-                    addColumnChars3D(x, z, startY);
-                }
+                trailLengths[columnIndex] = rand() % trailLengthRange + trailMinLength;
+                float startY = gridSizeY * gridSpacing + ((rand() % 1000) / 1000.0f) * (gridSpacing * 2.0f);
+                addColumnChars3D(columnIndex, x, z, startY);
             }
         }
     }
@@ -538,7 +686,7 @@ private:
         shader.useProgram();
         
         
-        glm::mat4 projection = glm::perspective(glm::radians(70.0f), (float)win->w / (float)win->h, 0.1f, 100.0f);
+        glm::mat4 projection = glm::perspective(glm::radians(70.0f), (float)win->w / (float)win->h, 0.1f, 320.0f);
         GLint projectionLoc = glGetUniformLocation(shader.id(), "projection");
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
         
@@ -561,10 +709,22 @@ private:
         glUniform1i(glGetUniformLocation(shader.id(), "fontTexture"), 0);
         
         std::vector<float> vertices;
+        vertices.reserve(characters.size() * 66);
+        glm::vec3 cameraForward = glm::normalize(cameraTarget - cameraPosition);
+        const float maxRenderDistance = insideMatrix ? renderDistanceInside : renderDistanceOutside;
+        const float maxRenderDistanceSq = maxRenderDistance * maxRenderDistance;
         int activeChars = 0;
         
         for (const auto &ch : characters) {
             if (!ch.active) continue;
+
+            glm::vec3 toChar = ch.position - cameraPosition;
+            float distSq = glm::dot(toChar, toChar);
+            if (distSq > maxRenderDistanceSq) continue;
+            if (distSq > 0.0001f) {
+                glm::vec3 toCharDir = glm::normalize(toChar);
+                if (glm::dot(cameraForward, toCharDir) < 0.02f) continue;
+            }
             
             glm::vec2 texOffset{0,0}, texSize{0,0};
             for (const auto &info : charAtlas) {
@@ -608,9 +768,11 @@ private:
         glBindVertexArray(0);
         glDisable(GL_BLEND);
         glDepthMask(GL_TRUE);
-        std::string modeText = insideMatrix ? "Mode: Inside Matrix (WASD to move)" : "Mode: Orbital View";
-        win->text.printText_Solid(font, 10.0f, 100.0f, modeText);
-        win->text.printText_Solid(font, 10.0f, 130.0f, "Press SPACE to toggle mode");
+        if (showHud) {
+            std::string modeText = insideMatrix ? "Mode: Inside Matrix (WASD to move)" : "Mode: Orbital View";
+            win->text.printText_Solid(font, 10.0f, 100.0f, modeText);
+            win->text.printText_Solid(font, 10.0f, 130.0f, "Press SPACE to toggle mode");
+        }
     }
     
     void addCharacterQuad3D(std::vector<float> &vertices, 
@@ -743,6 +905,7 @@ int main(int argc, char **argv) {
     Arguments args = proc_args(argc, argv);
     try {
         MainWindow main_window(args.path, args.width, args.height);
+        main_window.setFullScreen(args.fullscreen);
         main_window.loop();
     } catch(const mx::Exception &e) {
         mx::system_err << "mx: Exception: " << e.text() << "\n";
