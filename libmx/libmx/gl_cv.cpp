@@ -15,7 +15,11 @@ namespace mx {
     bool MXCapture::open(int id, int mode) {
         if(mode == 0)
             mode = cv::CAP_V4L2;
-        return cap.open(id, mode);
+        if(cap.open(id, mode)) {
+            cap.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M','J','P','G'));
+            return true;
+        }
+        return false;
     }
     
     void MXCapture::close() {
