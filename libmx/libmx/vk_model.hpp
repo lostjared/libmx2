@@ -76,6 +76,24 @@ namespace mx {
         }
     };
 
+
+ /* Load textures per sub-mesh
+for (size_t i = 0; i < model.subMeshCount(); ++i) {
+    uint32_t texIdx = model.subMesh(i).textureIndex;
+    // bind texture[texIdx] to descriptor set
+    model.drawSubMesh(cmd, i);
+}*/
+
+/**
+ * @struct SubMesh
+ * @brief A range of indices within the shared index buffer, with its own texture.
+ */
+    struct SubMesh {
+        uint32_t firstIndex  = 0;  ///< Offset into the index buffer.
+        uint32_t indexCount  = 0;  ///< Number of indices in this sub-mesh.
+        uint32_t textureIndex = 0; ///< Texture slot for this sub-mesh.
+    };
+
 /**
  * @class MXModel
  * @brief Vulkan mesh loader and GPU resource manager.
@@ -83,6 +101,7 @@ namespace mx {
  * Loads a Wavefront OBJ file, optionally deduplicates vertices
  * (compressIndices), uploads the geometry to device-local Vulkan buffers,
  * and provides a draw() helper that records indexed draw commands.
+ * Supports multiple sub-meshes (groups) with separate texture indices.
  */
     class MXModel {
     public:
@@ -97,8 +116,8 @@ namespace mx {
         MXModel& operator=(MXModel&&) = delete;
 
         /**
-         * @brief Parse an OBJ file and populate the vertex/index vectors.
-         * @param path          Path to the .obj file.
+         * @brief Parse a model file (.mxmod, .mxmod.z, or .obj) and populate the vertex/index vectors.
+         * @param path          Path to the model file.
          * @param positionScale Uniform scale applied to all vertex positions.
          */
         void load(const std::string &path, float positionScale = 1.0f);
@@ -144,12 +163,28 @@ namespace mx {
         VkBuffer vertexBuffer() const { return vertexBuffer_; }
         /** @return Vulkan index buffer handle. */
         VkBuffer indexBuffer()  const { return indexBuffer_; }
-        /** @return Texture sub-mesh index encoded in the OBJ file. */
+        /** @return Texture sub-mesh index encoded in the OBJ file (first sub-mesh). */
         uint32_t textureIndex() const { return textureIndex_; }
+
+        /** @return Number of sub-meshes (groups) in the model. */
+        size_t subMeshCount() const { return subMeshes_.size(); }
+        /** @return Read-only reference to a sub-mesh by index. */
+        const SubMesh& subMesh(size_t i) const { return subMeshes_[i]; }
+        /** @return Read-only reference to all sub-meshes. */
+        const std::vector<SubMesh>& subMeshes() const { return subMeshes_; }
+
+        /**
+         * @brief Draw a single sub-mesh (binds vertex/index buffers and issues indexed draw).
+         * @param cmd   Active command buffer.
+         * @param index Sub-mesh index.
+         */
+        void drawSubMesh(VkCommandBuffer cmd, size_t index) const;
+
     private:
         std::vector<VKVertex>  vertices_;  ///< Parsed vertex data.
         std::vector<uint32_t>  indices_;   ///< Parsed index data.
         uint32_t textureIndex_ = 0;        ///< Sub-mesh texture index.
+        std::vector<SubMesh>   subMeshes_; ///< Sub-mesh ranges (one per group).
 
         VkBuffer       vertexBuffer_       = VK_NULL_HANDLE;
         VkDeviceMemory vertexBufferMemory_ = VK_NULL_HANDLE;
@@ -170,6 +205,12 @@ namespace mx {
         static void copyBuffer(VkDevice device, VkCommandPool commandPool,
                                VkQueue graphicsQueue,
                                VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+
+        /** @brief Load a Wavefront OBJ file. */
+        void loadOBJ(const std::string &path, float positionScale);
+
+        /** @brief Load an MXMOD format file. */
+        void loadMXMOD(const std::string &path, float positionScale);
     };
 }
 

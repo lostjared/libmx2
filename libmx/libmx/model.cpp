@@ -17,6 +17,7 @@
 #include <functional>
 #include <cstddef>
 #include <cmath>
+#include <cstdio>
 #include <random>
 #include <algorithm>
 #include <iostream>
@@ -614,6 +615,10 @@ namespace mx {
 
         meshes.clear();
 
+        if (ends_with(filename, ".obj")) {
+            return openOBJ(filename, compress);
+        }
+
         std::vector<char> buffer;
         std::string text;
 
@@ -924,6 +929,150 @@ namespace mx {
         }
     }
 
+    bool Model::openOBJ(const std::string &filename, bool compress) {
+        std::ifstream f(filename);
+        if (!f.is_open()) {
+            std::cerr << "mx: Error - Cannot open OBJ file: " << filename << std::endl;
+            return false;
+        }
+
+        struct V3 { float x, y, z; };
+        struct V2 { float x, y; };
+
+        std::vector<V3> positions;
+        std::vector<V2> texcoords;
+        std::vector<V3> normals;
+
+        Mesh currentMesh;
+        currentMesh.setShapeType(GL_TRIANGLES);
+        currentMesh.texture = 0;
+        GLuint nextTextureIndex = 0;
+
+        auto finalizeMesh = [&]() {
+            if (currentMesh.vert.empty()) return;
+
+            bool didCompress = false;
+
+            if (currentMesh.norm.empty()) {
+                mx::system_out << "mx: OBJ normals missing, recalculating\n";
+                currentMesh.recalculateNormals();
+            }
+
+            if (!currentMesh.tex.empty()) {
+                if (currentMesh.tangent.empty() || currentMesh.bitangent.empty())
+                    currentMesh.generateTangentBitangent();
+            }
+
+            if (compress && currentMesh.indices.empty()) {
+                currentMesh.compressIndices();
+                didCompress = true;
+            }
+
+            dumpMeshStats(currentMesh, meshes.size(), didCompress, compress);
+            currentMesh.generateBuffers();
+            meshes.push_back(std::move(currentMesh));
+
+            currentMesh = Mesh();
+            currentMesh.setShapeType(GL_TRIANGLES);
+            currentMesh.texture = nextTextureIndex;
+        };
+
+        std::string line;
+        while (std::getline(f, line)) {
+            if (line.empty() || line[0] == '#') continue;
+
+            std::istringstream s(line);
+            std::string tag;
+            s >> tag;
+
+            if (tag == "v") {
+                float x, y, z;
+                if (s >> x >> y >> z)
+                    positions.push_back({x, y, z});
+            } else if (tag == "vt") {
+                float u, v;
+                if (s >> u >> v)
+                    texcoords.push_back({u, v});
+            } else if (tag == "vn") {
+                float x, y, z;
+                if (s >> x >> y >> z)
+                    normals.push_back({x, y, z});
+            } else if (tag == "f") {
+                struct FaceVert { int vi, ti, ni; };
+                std::vector<FaceVert> faceVerts;
+                std::string token;
+                while (s >> token) {
+                    int vi = 0, ti = 0, ni = 0;
+                    if (sscanf(token.c_str(), "%d/%d/%d", &vi, &ti, &ni) == 3) {
+                    } else if (sscanf(token.c_str(), "%d//%d", &vi, &ni) == 2) {
+                        ti = 0;
+                    } else if (sscanf(token.c_str(), "%d/%d", &vi, &ti) == 2) {
+                        ni = 0;
+                    } else {
+                        sscanf(token.c_str(), "%d", &vi);
+                        ti = 0; ni = 0;
+                    }
+                    faceVerts.push_back({vi, ti, ni});
+                }
+                // Fan-triangulate and expand into flat arrays
+                for (size_t i = 2; i < faceVerts.size(); ++i) {
+                    int triIdx[3] = {0, static_cast<int>(i - 1), static_cast<int>(i)};
+                    for (int j = 0; j < 3; ++j) {
+                        auto &fv = faceVerts[triIdx[j]];
+                        int pidx = fv.vi > 0 ? fv.vi - 1 : static_cast<int>(positions.size()) + fv.vi;
+                        if (pidx >= 0 && pidx < static_cast<int>(positions.size())) {
+                            currentMesh.vert.push_back(positions[pidx].x);
+                            currentMesh.vert.push_back(positions[pidx].y);
+                            currentMesh.vert.push_back(positions[pidx].z);
+                        }
+                        if (fv.ti != 0) {
+                            int tidx = fv.ti > 0 ? fv.ti - 1 : static_cast<int>(texcoords.size()) + fv.ti;
+                            if (tidx >= 0 && tidx < static_cast<int>(texcoords.size())) {
+                                currentMesh.tex.push_back(texcoords[tidx].x);
+                                currentMesh.tex.push_back(texcoords[tidx].y);
+                            }
+                        }
+                        if (fv.ni != 0) {
+                            int nidx = fv.ni > 0 ? fv.ni - 1 : static_cast<int>(normals.size()) + fv.ni;
+                            if (nidx >= 0 && nidx < static_cast<int>(normals.size())) {
+                                currentMesh.norm.push_back(normals[nidx].x);
+                                currentMesh.norm.push_back(normals[nidx].y);
+                                currentMesh.norm.push_back(normals[nidx].z);
+                            }
+                        }
+                    }
+                }
+            } else if (tag == "g" || tag == "o" || tag == "usemtl") {
+                finalizeMesh();
+                nextTextureIndex = static_cast<GLuint>(meshes.size());
+                currentMesh.texture = nextTextureIndex;
+            }
+            // mtllib, s lines are silently ignored
+        }
+
+        finalizeMesh();
+
+        if (meshes.empty()) {
+            std::cerr << "mx: Warning - No meshes loaded from OBJ " << filename << std::endl;
+            return false;
+        }
+
+        size_t totalVerts = 0, totalIdx = 0;
+        for (const auto &m : meshes) {
+            totalVerts += m.vert.size() / 3;
+            totalIdx += m.indices.size();
+        }
+
+        mx::system_out
+            << "mx: Model summary (OBJ)\n"
+            << "mx: meshes: " << meshes.size() << "\n"
+            << "mx: total vertices: " << totalVerts << "\n"
+            << "mx: total indices:  " << totalIdx << "\n"
+            << "mx: Model Loaded: " << filename << "\n";
+
+        return true;
+    }
+
     void Model::setShaderProgram(gl::ShaderProgram *shader_program, const std::string texture_name) {
         program = shader_program;
         tex_name = texture_name;
@@ -955,7 +1104,7 @@ namespace mx {
         for (size_t i = 0; i < meshes.size(); ++i) {
             GLuint pos = meshes.at(i).texture;
             if (pos < textures.size()) meshes.at(i).texture = textures[pos];
-            else throw mx::Exception("Texture index out of range for this model");
+            else meshes.at(i).texture = textures[textures.size() - 1];
         }
     }
 

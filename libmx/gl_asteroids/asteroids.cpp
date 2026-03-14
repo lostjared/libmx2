@@ -1,4 +1,4 @@
-#define ASTEROIDS_VERSION "v1.1"
+#define ASTEROIDS_VERSION "v2.0"
 #include"mx.hpp"
 #include"argz.hpp"
 
@@ -1722,14 +1722,14 @@ public:
     }
 
     void load(gl::GLWindow *win) {
-        if(!model.openModel(win->util.getFilePath("data/bird.mxmod.z"))) {
+        if(!model.openModel(win->util.getFilePath("data/starship.obj"))) {
             throw mx::Exception("Failed to load model");
         }
         if(!shader.loadProgramFromText(star_vSource, star_fSource)) {
             throw mx::Exception("Failed to load shader program");
         }
         model.setShaderProgram(&shader, "starTexture");
-        model.setTextures(win, win->util.getFilePath("data/bird.tex"), win->util.getFilePath("data"));
+        model.setTextures(win, win->util.getFilePath("data/starship.tex"), win->util.getFilePath("data"));
         
         position = glm::vec3(0.0f, 0.0f, 0.0f);
         rotation = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -1885,7 +1885,7 @@ public:
         modelMatrix = glm::rotate(modelMatrix, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
         modelMatrix = glm::rotate(modelMatrix, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
         
-        modelMatrix = glm::scale(modelMatrix, glm::vec3(0.5f, 0.5f, 0.5f));
+        modelMatrix = glm::scale(modelMatrix, glm::vec3(2.1f, 2.1f, 2.1f));
         
         shader.setUniform("model", modelMatrix);
         shader.setUniform("view", viewMatrix);

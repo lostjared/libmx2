@@ -4,6 +4,8 @@
  */
 #include"vk_model.hpp"
 #include<filesystem>
+#include<cmath>
+#include<cstdio>
 
 namespace mx {
 
@@ -41,6 +43,163 @@ namespace mx {
     }
 
     void MXModel::load(const std::string &path, float positionScale) {
+        if (ends_with(path, ".obj")) {
+            loadOBJ(path, positionScale);
+            return;
+        }
+        loadMXMOD(path, positionScale);
+    }
+
+    void MXModel::loadOBJ(const std::string &path, float positionScale) {
+        std::ifstream f(path);
+        if (!f.is_open())
+            throw mx::Exception("MXModel::load: failed to open file: " + path);
+
+        std::vector<Vec3> positions;
+        std::vector<Vec2> texcoords;
+        std::vector<Vec3> normals;
+
+        vertices_.clear();
+        indices_.clear();
+        subMeshes_.clear();
+        textureIndex_ = 0;
+
+        // Temporary per-group vertex accumulator
+        std::vector<VKVertex> currentVerts;
+        uint32_t currentTexIdx = 0;
+
+        auto finalizeGroup = [&]() {
+            if (currentVerts.empty()) return;
+            SubMesh sm;
+            sm.firstIndex   = static_cast<uint32_t>(vertices_.size());
+            sm.indexCount   = static_cast<uint32_t>(currentVerts.size());
+            sm.textureIndex = currentTexIdx;
+            for (auto &v : currentVerts)
+                vertices_.push_back(v);
+            subMeshes_.push_back(sm);
+            currentVerts.clear();
+        };
+
+        std::string line;
+        while (std::getline(f, line)) {
+            if (line.empty() || line[0] == '#') continue;
+
+            std::istringstream s(line);
+            std::string tag;
+            s >> tag;
+
+            if (tag == "v") {
+                float x, y, z;
+                if (s >> x >> y >> z)
+                    positions.push_back({x * positionScale, y * positionScale, z * positionScale});
+            } else if (tag == "vt") {
+                float u, v;
+                if (s >> u >> v)
+                    texcoords.push_back({u, v});
+            } else if (tag == "vn") {
+                float x, y, z;
+                if (s >> x >> y >> z)
+                    normals.push_back({x, y, z});
+            } else if (tag == "g" || tag == "o" || tag == "usemtl") {
+                finalizeGroup();
+                currentTexIdx = static_cast<uint32_t>(subMeshes_.size());
+            } else if (tag == "f") {
+                std::vector<VKVertex> faceVerts;
+                std::string token;
+                while (s >> token) {
+                    int vi = 0, ti = 0, ni = 0;
+                    if (sscanf(token.c_str(), "%d/%d/%d", &vi, &ti, &ni) == 3) {
+                    } else if (sscanf(token.c_str(), "%d//%d", &vi, &ni) == 2) {
+                        ti = 0;
+                    } else if (sscanf(token.c_str(), "%d/%d", &vi, &ti) == 2) {
+                        ni = 0;
+                    } else {
+                        sscanf(token.c_str(), "%d", &vi);
+                        ti = 0; ni = 0;
+                    }
+
+                    VKVertex vtx{};
+                    if (vi != 0) {
+                        int idx = vi > 0 ? vi - 1 : static_cast<int>(positions.size()) + vi;
+                        if (idx >= 0 && idx < static_cast<int>(positions.size())) {
+                            vtx.pos[0] = positions[idx].x;
+                            vtx.pos[1] = positions[idx].y;
+                            vtx.pos[2] = positions[idx].z;
+                        }
+                    }
+                    if (ti != 0) {
+                        int idx = ti > 0 ? ti - 1 : static_cast<int>(texcoords.size()) + ti;
+                        if (idx >= 0 && idx < static_cast<int>(texcoords.size())) {
+                            vtx.texCoord[0] = texcoords[idx].x;
+                            vtx.texCoord[1] = texcoords[idx].y;
+                        }
+                    }
+                    if (ni != 0) {
+                        int idx = ni > 0 ? ni - 1 : static_cast<int>(normals.size()) + ni;
+                        if (idx >= 0 && idx < static_cast<int>(normals.size())) {
+                            vtx.normal[0] = normals[idx].x;
+                            vtx.normal[1] = normals[idx].y;
+                            vtx.normal[2] = normals[idx].z;
+                        }
+                    }
+                    faceVerts.push_back(vtx);
+                }
+                for (size_t i = 2; i < faceVerts.size(); ++i) {
+                    currentVerts.push_back(faceVerts[0]);
+                    currentVerts.push_back(faceVerts[i - 1]);
+                    currentVerts.push_back(faceVerts[i]);
+                }
+            }
+        }
+
+        finalizeGroup();
+
+        if (vertices_.empty())
+            throw mx::Exception("MXModel::load: no vertices found in " + path);
+
+        // If no groups were found, create a single sub-mesh covering everything
+        if (subMeshes_.empty()) {
+            SubMesh sm;
+            sm.firstIndex = 0;
+            sm.indexCount = static_cast<uint32_t>(vertices_.size());
+            sm.textureIndex = 0;
+            subMeshes_.push_back(sm);
+        }
+
+        // Generate flat normals for faces that had no normals
+        bool hasNormals = !normals.empty();
+        if (!hasNormals) {
+            for (size_t i = 0; i + 2 < vertices_.size(); i += 3) {
+                float ax = vertices_[i+1].pos[0] - vertices_[i].pos[0];
+                float ay = vertices_[i+1].pos[1] - vertices_[i].pos[1];
+                float az = vertices_[i+1].pos[2] - vertices_[i].pos[2];
+                float bx = vertices_[i+2].pos[0] - vertices_[i].pos[0];
+                float by = vertices_[i+2].pos[1] - vertices_[i].pos[1];
+                float bz = vertices_[i+2].pos[2] - vertices_[i].pos[2];
+                float nx = ay * bz - az * by;
+                float ny = az * bx - ax * bz;
+                float nz = ax * by - ay * bx;
+                float len = std::sqrt(nx*nx + ny*ny + nz*nz);
+                if (len > 0.0f) { nx /= len; ny /= len; nz /= len; }
+                for (int j = 0; j < 3; ++j) {
+                    vertices_[i+j].normal[0] = nx;
+                    vertices_[i+j].normal[1] = ny;
+                    vertices_[i+j].normal[2] = nz;
+                }
+            }
+        }
+
+        indices_.clear();
+        indices_.reserve(vertices_.size());
+        for (uint32_t i = 0; i < static_cast<uint32_t>(vertices_.size()); ++i)
+            indices_.push_back(i);
+
+        compressIndices();
+        std::cout << ">> MXModel::load (OBJ): " << std::filesystem::path(path).filename().string()
+                  << " - " << subMeshes_.size() << " sub-mesh(es) [OK]\n";
+    }
+
+    void MXModel::loadMXMOD(const std::string &path, float positionScale) {
         std::string text;
         if (ends_with(path, ".mxmod.z")) {
             auto buffer = mx::readFile(path);
@@ -56,7 +215,6 @@ namespace mx {
             text = ss.str();
         }
 
-        
         if (text.size() >= 3 &&
             (unsigned char)text[0] == 0xEF &&
             (unsigned char)text[1] == 0xBB &&
@@ -181,6 +339,15 @@ namespace mx {
                 indices_.push_back(i);
             compressIndices();
         }
+
+        // MXMOD files produce a single sub-mesh
+        subMeshes_.clear();
+        SubMesh sm;
+        sm.firstIndex   = 0;
+        sm.indexCount   = static_cast<uint32_t>(indices_.size());
+        sm.textureIndex = textureIndex_;
+        subMeshes_.push_back(sm);
+
         std::cout << ">> MXModel::load: " << std::filesystem::path(path).filename().string() << " - [OK]\n";
     }
 
@@ -269,7 +436,19 @@ namespace mx {
         vkCmdDrawIndexed(cmd, indexCount(), 1, 0, 0, 0);
     }
 
-    
+    void MXModel::drawSubMesh(VkCommandBuffer cmd, size_t index) const {
+        if (vertexBuffer_ == VK_NULL_HANDLE || indexBuffer_ == VK_NULL_HANDLE)
+            return;
+        if (index >= subMeshes_.size()) return;
+
+        VkBuffer buffers[] = { vertexBuffer_ };
+        VkDeviceSize offsets[] = { 0 };
+        vkCmdBindVertexBuffers(cmd, 0, 1, buffers, offsets);
+        vkCmdBindIndexBuffer(cmd, indexBuffer_, 0, VK_INDEX_TYPE_UINT32);
+
+        const auto &sm = subMeshes_[index];
+        vkCmdDrawIndexed(cmd, sm.indexCount, 1, sm.firstIndex, 0, 0);
+    }
 
     void MXModel::createBuffer(VkDevice device, VkPhysicalDevice physicalDevice,
                                VkDeviceSize size, VkBufferUsageFlags usage,

@@ -117,7 +117,7 @@ void MainWindow::setupCentralWidget() {
     
     QHBoxLayout *modelLayout = new QHBoxLayout();
     modelLineEdit = new QLineEdit(this);
-    modelLineEdit->setPlaceholderText(tr("Select a .mxmod or .mxmod.z file..."));
+    modelLineEdit->setPlaceholderText(tr("Select a .mxmod/.mxmod.z file/.obj file..."));
     QPushButton *modelBrowseButton = new QPushButton(style()->standardIcon(QStyle::SP_DirIcon), tr("Browse..."), this);
     modelLayout->addWidget(modelLineEdit, 1);
     modelLayout->addWidget(modelBrowseButton);
@@ -278,7 +278,7 @@ void MainWindow::dropEvent(QDropEvent *event) {
             QString filePath = urls.first().toLocalFile();
             QFileInfo fileInfo(filePath);
             
-            if (fileInfo.suffix() == "mxmod" || filePath.endsWith(".mxmod.z")) {
+            if (fileInfo.suffix() == "mxmod" || filePath.endsWith(".mxmod.z") || fileInfo.suffix() == "obj") {
                 modelLineEdit->setText(filePath);
             } else if (fileInfo.suffix() == "tex" || fileInfo.suffix() == "png") {
                 textureLineEdit->setText(filePath);
@@ -294,7 +294,7 @@ void MainWindow::browseModelFile() {
     QString lastDir = settings->value("lastModelDir", QDir::homePath()).toString();
     QString fileName = QFileDialog::getOpenFileName(this,
         tr("Open Model File"), lastDir, 
-        tr("Model Files (*.mxmod *.mxmod.z);;All Files (*)"));
+        tr("Model Files (*.mxmod *.mxmod.z *.obj);;All Files (*)"));
     
     if (!fileName.isEmpty()) {
         modelLineEdit->setText(fileName);

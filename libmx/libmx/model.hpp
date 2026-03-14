@@ -464,8 +464,10 @@ namespace mx {
         void setCubemapBlending(GLuint cubemap1, GLuint cubemap2, float blendFactor);
 
     private:
-        /** @brief Parse a single OBJ line and accumulate into currentMesh. */
+        /** @brief Parse a single MXMOD line and accumulate into currentMesh. */
         void parseLine(const std::string &line, Mesh &currentMesh, int &type, size_t &count);
+        /** @brief Load a Wavefront OBJ file into meshes. */
+        bool openOBJ(const std::string &filename, bool compress);
         gl::ShaderProgram *program = nullptr; ///< Active shader program.
         std::string tex_name;                 ///< Sampler uniform name.
     };
