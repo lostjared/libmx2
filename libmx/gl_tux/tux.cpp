@@ -103,11 +103,9 @@ const char *shadowFSource = R"(#version 300 es
 precision highp float;
 
 out vec4 FragColor;
-uniform sampler2D texture1;
 
 void main() {
-    vec4 texColor = texture(texture1, vec2(0.5, 0.5));
-    FragColor = vec4(0.0, 0.0, 0.0, 0.45 * max(texColor.a, 0.2));
+    FragColor = vec4(0.18, 0.18, 0.22, 1.0);
 }
 )";
 #else
@@ -190,11 +188,9 @@ void main() {
 const char *shadowFSource = R"(#version 330 core
 
 out vec4 FragColor;
-uniform sampler2D texture1;
 
 void main() {
-    vec4 texColor = texture(texture1, vec2(0.5, 0.5));
-    FragColor = vec4(0.0, 0.0, 0.0, 0.45 * max(texColor.a, 0.2));
+    FragColor = vec4(0.18, 0.18, 0.22, 1.0);
 }
 )";
 #endif
@@ -477,6 +473,8 @@ public:
             throw mx::Exception("Failed to load shadow shader program");
         }
 
+        shadowShader.setSilent(true);
+
         if (!tuxModel.openModel(win->util.getFilePath("data/tux.obj"))) {
             throw mx::Exception("Failed to load tux.obj model");
         }
@@ -557,24 +555,26 @@ public:
 
             const glm::mat4 shadowModel = shadowMatrix * modelMatrix;
 
-            glEnable(GL_STENCIL_TEST);
-            glStencilFunc(GL_EQUAL, 0, 0xFF);
-            glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
-            glEnable(GL_BLEND);
-            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-            glDepthMask(GL_FALSE);
-            glEnable(GL_POLYGON_OFFSET_FILL);
-            glPolygonOffset(-1.0f, -1.0f);
             shadowShader.useProgram();
             shadowShader.setUniform("model", shadowModel);
             shadowShader.setUniform("view", viewMatrix);
             shadowShader.setUniform("projection", projMatrix);
+
+            shadowShader.setSilent(true);
             tuxModel.setShaderProgram(&shadowShader, "texture1");
+
+            // GL_MIN blending: overlapping triangles produce min(dark,dark)=dark
+            // so no double-darkening artifacts regardless of stencil support
+            glDisable(GL_DEPTH_TEST);
+            glEnable(GL_BLEND);
+            glBlendEquation(GL_MIN);
+            glBlendFunc(GL_ONE, GL_ONE);
+
             tuxModel.drawArrays();
-            glDisable(GL_POLYGON_OFFSET_FILL);
-            glDepthMask(GL_TRUE);
+
+            glBlendEquation(GL_FUNC_ADD);
             glDisable(GL_BLEND);
-            glDisable(GL_STENCIL_TEST);
+            glEnable(GL_DEPTH_TEST);
         }
 
         shader.useProgram();

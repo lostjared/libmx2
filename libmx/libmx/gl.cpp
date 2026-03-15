@@ -97,6 +97,12 @@ namespace gl {
             SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
             SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
         }
+#else
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+        SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+        SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 #endif
         window = SDL_CreateWindow("", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 
                                   width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN);
@@ -157,6 +163,12 @@ namespace gl {
             SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
             SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
         }
+#else
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+        SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+        SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 #endif
         mx::system_out << "libmx2: Creating SDL window...\n";
         mx::system_out.flush();
