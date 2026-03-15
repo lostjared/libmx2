@@ -123,7 +123,7 @@ public:
         modelRadius = glm::length(extent) * 0.5f;
         
         baseCameraDistance = modelRadius * 2.5f;
-        outsideCameraPos = glm::vec3(modelCenter.x, modelCenter.y + modelRadius * 0.3f, modelCenter.z + baseCameraDistance);
+        outsideCameraPos = glm::vec3(modelCenter.x, modelCenter.y, modelCenter.z + baseCameraDistance);
         
         zoom = 45.0f;
         outsideFOV = zoom;
@@ -243,9 +243,11 @@ public:
         }
         
         glm::mat4 modelMatrix = glm::mat4(1.0f);
+        modelMatrix = glm::translate(modelMatrix, modelCenter);
         modelMatrix = glm::rotate(modelMatrix, glm::radians(std::get<0>(rot_x)), glm::vec3(1.0f, 0.0f, 0.0f));
         modelMatrix = glm::rotate(modelMatrix, glm::radians(std::get<0>(rot_y)), glm::vec3(0.0f, 1.0f, 0.0f));
         modelMatrix = glm::rotate(modelMatrix, glm::radians(std::get<0>(rot_z)), glm::vec3(0.0f, 0.0f, 1.0f));
+        modelMatrix = glm::translate(modelMatrix, -modelCenter);
         glm::vec3 lightPos(std::get<0>(light), std::get<1>(light), std::get<2>(light));
         glm::vec4 lightPosView = viewMatrix * glm::vec4(lightPos, 1.0f);
         shaderProgram.setUniform("lightPos", glm::vec3(lightPosView));
