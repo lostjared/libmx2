@@ -12,7 +12,7 @@
 class TuxWindow : public mx::VKWindow {
 public:
     TuxWindow(const std::string& path, int wx, int wy, bool full)
-        : mx::VKWindow("-[ Vulkan Tux Model Viewer ]-", wx, wy, full) {
+        : mx::VKWindow("-[ Vulkan Tux Model ]-", wx, wy, full) {
         setPath(path);
     }
 
