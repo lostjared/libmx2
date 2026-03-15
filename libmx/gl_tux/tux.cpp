@@ -84,6 +84,32 @@ void main() {
     FragColor = vec4(result, texColor.a);
 }
 )";
+
+const char *shadowVSource = R"(#version 300 es
+precision highp float;
+
+layout (location = 0) in vec3 aPos;
+
+uniform mat4 model;
+uniform mat4 view;
+uniform mat4 projection;
+
+void main() {
+    gl_Position = projection * view * model * vec4(aPos, 1.0);
+}
+)";
+
+const char *shadowFSource = R"(#version 300 es
+precision highp float;
+
+out vec4 FragColor;
+uniform sampler2D texture1;
+
+void main() {
+    vec4 texColor = texture(texture1, vec2(0.5, 0.5));
+    FragColor = vec4(0.0, 0.0, 0.0, 0.45 * max(texColor.a, 0.2));
+}
+)";
 #else
 
 const char *g_vSource = R"(#version 330 core
@@ -145,6 +171,30 @@ void main() {
     vec4 texColor = texture(texture1, TexCoords);
     vec3 result = (ambient + diffuse + specular) * texColor.rgb;
     FragColor = vec4(result, texColor.a);
+}
+)";
+
+const char *shadowVSource = R"(#version 330 core
+
+layout (location = 0) in vec3 aPos;
+
+uniform mat4 model;
+uniform mat4 view;
+uniform mat4 projection;
+
+void main() {
+    gl_Position = projection * view * model * vec4(aPos, 1.0);
+}
+)";
+
+const char *shadowFSource = R"(#version 330 core
+
+out vec4 FragColor;
+uniform sampler2D texture1;
+
+void main() {
+    vec4 texColor = texture(texture1, vec2(0.5, 0.5));
+    FragColor = vec4(0.0, 0.0, 0.0, 0.45 * max(texColor.a, 0.2));
 }
 )";
 #endif
@@ -423,6 +473,10 @@ public:
             throw mx::Exception("Failed to load Phong shader program");
         }
 
+        if (!shadowShader.loadProgramFromText(shadowVSource, shadowFSource)) {
+            throw mx::Exception("Failed to load shadow shader program");
+        }
+
         if (!tuxModel.openModel(win->util.getFilePath("data/tux.obj"))) {
             throw mx::Exception("Failed to load tux.obj model");
         }
@@ -475,6 +529,55 @@ public:
         float aspect = static_cast<float>(win->w) / static_cast<float>(win->h);
         glm::mat4 projMatrix = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 100.0f);
 
+        if (shadowEnabled) {
+            const glm::vec4 groundPlane(0.0f, 1.0f, 0.0f, -groundY);
+            const glm::vec4 light4(lightPos, 1.0f);
+            const float dot = glm::dot(groundPlane, light4);
+
+            glm::mat4 shadowMatrix(0.0f);
+            shadowMatrix[0][0] = dot - light4.x * groundPlane.x;
+            shadowMatrix[1][0] = -light4.x * groundPlane.y;
+            shadowMatrix[2][0] = -light4.x * groundPlane.z;
+            shadowMatrix[3][0] = -light4.x * groundPlane.w;
+
+            shadowMatrix[0][1] = -light4.y * groundPlane.x;
+            shadowMatrix[1][1] = dot - light4.y * groundPlane.y;
+            shadowMatrix[2][1] = -light4.y * groundPlane.z;
+            shadowMatrix[3][1] = -light4.y * groundPlane.w;
+
+            shadowMatrix[0][2] = -light4.z * groundPlane.x;
+            shadowMatrix[1][2] = -light4.z * groundPlane.y;
+            shadowMatrix[2][2] = dot - light4.z * groundPlane.z;
+            shadowMatrix[3][2] = -light4.z * groundPlane.w;
+
+            shadowMatrix[0][3] = -light4.w * groundPlane.x;
+            shadowMatrix[1][3] = -light4.w * groundPlane.y;
+            shadowMatrix[2][3] = -light4.w * groundPlane.z;
+            shadowMatrix[3][3] = dot - light4.w * groundPlane.w;
+
+            const glm::mat4 shadowModel = shadowMatrix * modelMatrix;
+
+            glEnable(GL_STENCIL_TEST);
+            glStencilFunc(GL_EQUAL, 0, 0xFF);
+            glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glDepthMask(GL_FALSE);
+            glEnable(GL_POLYGON_OFFSET_FILL);
+            glPolygonOffset(-1.0f, -1.0f);
+            shadowShader.useProgram();
+            shadowShader.setUniform("model", shadowModel);
+            shadowShader.setUniform("view", viewMatrix);
+            shadowShader.setUniform("projection", projMatrix);
+            tuxModel.setShaderProgram(&shadowShader, "texture1");
+            tuxModel.drawArrays();
+            glDisable(GL_POLYGON_OFFSET_FILL);
+            glDepthMask(GL_TRUE);
+            glDisable(GL_BLEND);
+            glDisable(GL_STENCIL_TEST);
+        }
+
+        shader.useProgram();
         shader.setUniform("model", modelMatrix);
         shader.setUniform("view", viewMatrix);
         shader.setUniform("projection", projMatrix);
@@ -490,7 +593,7 @@ public:
         snowEmitter.draw(projMatrix, viewMatrix);
         win->text.setColor({255, 255, 255, 255});
         win->text.printText_Solid(font, 25.0f, 25.0f,
-            "Arrow keys / PgUp PgDn: move light  Enter: reset  Space: pause rotation");
+            "Arrow keys / PgUp PgDn: move light  Enter: reset  Space: pause  S: shadow");
         glEnable(GL_DEPTH_TEST);
     }
 
@@ -505,10 +608,13 @@ public:
                 case SDLK_PAGEUP:  lightPos.y += step; break;
                 case SDLK_PAGEDOWN:lightPos.y -= step; break;
                 case SDLK_RETURN:
-                    lightPos = glm::vec3(5.0f, 10.0f, 5.0f);
+                    lightPos = glm::vec3(1.5f, 6.0f, 3.0f);
                     break;
                 case SDLK_SPACE:
                     paused = !paused;
+                    break;
+                case SDLK_s:
+                    shadowEnabled = !shadowEnabled;
                     break;
             }
         }
@@ -516,7 +622,7 @@ public:
 
 private:
     mx::Font font;
-    gl::ShaderProgram shader, bg_shader;
+    gl::ShaderProgram shader, shadowShader, bg_shader;
     mx::Model tuxModel;
 
     float rotationAngle = 0.0f;
@@ -526,11 +632,13 @@ private:
     Uint32 lastTime = SDL_GetTicks();
 #endif
     bool paused = false;
+    bool shadowEnabled = false;
 
     glm::vec3 cameraPos    = glm::vec3(0.0f, 2.0f, 5.0f);
     glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
     glm::vec3 cameraUp     = glm::vec3(0.0f, 1.0f, 0.0f);
-    glm::vec3 lightPos     = glm::vec3(5.0f, 10.0f, 5.0f);
+    glm::vec3 lightPos     = glm::vec3(1.5f, 6.0f, 3.0f);
+    float groundY          = -1.0f;
     float modelYOffset     = -0.8f;
     SnowEmiter snowEmitter;
     gl::GLSprite background;
@@ -550,7 +658,7 @@ public:
 
     virtual void draw() override {
         glClearColor(0.1f, 0.1f, 0.15f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
         glEnable(GL_DEPTH_TEST);
         glViewport(0, 0, w, h);
         object->draw(this);
