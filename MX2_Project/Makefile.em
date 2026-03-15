@@ -8,10 +8,10 @@ MX_INCLUDE = -I$(LIBS_PATH)/mx2/include -I/usr/include/glm
 ZLIB_LIB = -s USE_ZLIB=1
 PNG_LIB = -s USE_LIBPNG=1
 LIBMX_LIB = $(LIBS_PATH)/mx2/lib/libmx.a 
-PRELOAD = #--preload-file data
+PRELOAD = --preload-file data
 SOURCES = main.cpp
 OBJECTS = $(SOURCES:.cpp=.o)
-OUTPUT = MX_app.html
+OUTPUT = MX_app.js
 
 .PHONY: all clean install
 

@@ -27,13 +27,15 @@ public:
     virtual ~Game() override {}
 
     void load(gl::GLWindow *win) override {
-
+	font.loadFont(win->util.getFilePath("data/font.ttf"), 20);
     }
 
     void draw(gl::GLWindow *win) override {
         glDisable(GL_DEPTH_TEST);
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        win->text.setColor({255,255,255,255});
+	win->text.printText_Solid(font, 15, 15, "Hello World in MX2");
         Uint32 currentTime = SDL_GetTicks();
         float deltaTime = (currentTime - lastUpdateTime) / 1000.0f; // Convert to seconds
         lastUpdateTime = currentTime;
@@ -45,6 +47,7 @@ public:
     
 private:
     Uint32 lastUpdateTime = SDL_GetTicks();
+    mx::Font font;
 };
 
 class MainWindow : public gl::GLWindow {
