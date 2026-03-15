@@ -1,4 +1,25 @@
 
+/**
+ * @file argz.hpp
+ * @brief Lightweight, header-only, template command-line argument parser.
+ *
+ * Supports both short options (@c -x) and long options (@c --name), with or
+ * without values, for any string type that satisfies the StringType concept
+ * (typically @c std::string or @c std::wstring).
+ *
+ * Typical usage:
+ * @code
+ * Argz<std::string> parser(argc, argv);
+ * parser.addOptionSingle('h', "Show help")
+ *       .addOptionSingleValue('o', "Output file");
+ * Argument<std::string> arg;
+ * int code;
+ * while ((code = parser.proc(arg)) != -1) { ... }
+ * @endcode
+ *
+ * A convenience wrapper proc_args() provides a pre-built parser that handles
+ * the options common to all libmx2 applications (-p path, -r resolution, -f fullscreen, …).
+ */
 
 #ifndef _ARGZ_HPP_X
 #define _ARGZ_HPP_X
@@ -12,6 +33,13 @@
 #include <utility>
 #include <vector>
 
+/**
+ * @concept StringType
+ * @brief Models a string-like class with indexing, concatenation, length, and value_type.
+ *
+ * Both @c std::string and @c std::wstring satisfy this concept.
+ * @tparam T The type to constrain.
+ */
 template <typename T>
 concept StringType = std::is_class_v<T> && requires(T type) {
 	type.length();
@@ -26,15 +54,25 @@ concept StringType = std::is_class_v<T> && requires(T type) {
 	{ type = T{} } -> std::same_as<T &>;
 };
 
+/** @brief Discriminator for option kind used inside Argument. */
 enum class ArgType { ARG_SINGLE, ARG_SINGLE_VALUE, ARG_DOUBLE, ARG_DOUBLE_VALUE, ARG_NONE };
 
+/**
+ * @struct Argument
+ * @brief Describes a single parsed argument entry returned by Argz::proc().
+ * @tparam String String type satisfying StringType.
+ *
+ * After a successful call to Argz::proc() the member @c arg_letter holds the
+ * matched code (or @c '-' for bare positional arguments) and @c arg_value holds
+ * any associated value string.
+ */
 template <StringType String>
 struct Argument {
-	String arg_name;
-	int arg_letter;
-	String arg_value;
-	ArgType arg_type;
-	String desc;
+	String arg_name;    ///< Long option name (e.g. @c "output").
+	int    arg_letter;  ///< Short option code (e.g. @c 'o') or unique integer for long-only options.
+	String arg_value;  ///< Value string supplied after the option, if any.
+	ArgType arg_type;  ///< Which @c ArgType variant this argument represents.
+	String desc;       ///< Human-readable description used in help output.
 	~Argument() = default;
 	Argument() : arg_name{}, arg_letter{}, arg_value{}, arg_type{}, desc{} {}
 	Argument(const Argument &a) : arg_name{a.arg_name}, arg_letter{a.arg_letter}, arg_value{a.arg_value}, arg_type{a.arg_type}, desc{a.desc} {}
@@ -49,10 +87,15 @@ struct Argument {
 	auto operator<=>(const Argument<String> &a) const { return (arg_letter <=> a.arg_letter); }
 };
 
+/**
+ * @struct ArgumentData
+ * @brief Holds the raw @c argv strings converted to the target @c String type.
+ * @tparam String String type satisfying StringType.
+ */
 template <StringType String>
 struct ArgumentData {
-	std::vector<String> args;
-	int argc;
+	std::vector<String> args; ///< Converted argv entries (argv[1] … argv[argc-1]).
+	int argc;                 ///< Original argc value.
 	~ArgumentData() = default;
 	ArgumentData() = default;
 	ArgumentData(const ArgumentData<String> &a) : args{a.args}, argc{a.argc} {}
@@ -72,6 +115,11 @@ struct ArgumentData {
 	}
 };
 
+/**
+ * @class ArgException
+ * @brief Exception thrown by Argz::proc() on unrecognised or malformed options.
+ * @tparam String String type satisfying StringType.
+ */
 template <StringType String>
 class ArgException {
 public:
@@ -83,11 +131,25 @@ private:
 	String value;
 };
 
+/**
+ * @class Argz
+ * @brief Template command-line argument parser.
+ * @tparam String String type satisfying StringType (usually @c std::string or @c std::wstring).
+ *
+ * Options are registered with addOption*() before parsing.
+ * Call proc() in a loop until it returns @c -1 to iterate over all arguments.
+ */
 template <StringType String>
 class Argz {
 public:
 	~Argz() = default;
 	Argz() = default;
+
+	/**
+	 * @brief Construct and immediately ingest argv.
+	 * @param argc Argument count from main().
+	 * @param argv Argument vector from main().
+	 */
 	Argz(int argc, char **argv) { initArgs(argc, argv); }
 	Argz(const Argz<String> &a) : arg_data{a.arg_data}, arg_info{a.arg_info}, index{a.index}, cindex{a.cindex} {}
 
@@ -114,6 +176,12 @@ public:
 		return *this;
 	}
 
+	/**
+	 * @brief Ingest argc/argv, converting to the target String type.
+	 * @param argc Argument count.
+	 * @param argv Argument vector.
+	 * @return Reference to @c *this for method chaining.
+	 */
 	Argz<String> &initArgs(int argc, char **argv) {
 		arg_data.argc = argc;
 		if constexpr(std::is_same<typename String::value_type, char>::value) {
@@ -140,11 +208,18 @@ public:
 		return *this;
 	}
 
+	/** @brief Reset the internal parse cursor to the beginning of argv. */
 	void reset() {
 		index = 0;
 		cindex = 1;
 	}
 
+	/**
+	 * @brief Register a flag-only short option (e.g. @c -v, @c -h).
+	 * @param c           Short option character code.
+	 * @param description Help text.
+	 * @return Reference to @c *this for chaining.
+	 */
 	Argz<String> &addOptionSingle(const int &c, const String &description) {
 		Argument<String> a{};
 		a.arg_letter = c;
@@ -154,6 +229,12 @@ public:
 		return *this;
 	}
 
+	/**
+	 * @brief Register a short option that requires a value argument (e.g. @c -o file).
+	 * @param c           Short option character code.
+	 * @param description Help text.
+	 * @return Reference to @c *this for chaining.
+	 */
 	Argz<String> &addOptionSingleValue(const int &c, const String &description) {
 		Argument<String> a{};
 		a.arg_letter = c;
@@ -163,6 +244,13 @@ public:
 		return *this;
 	}
 
+	/**
+	 * @brief Register a flag-only long option (e.g. @c --verbose).
+	 * @param code        Unique integer code associated with this option.
+	 * @param value       Long option name string (without @c --).
+	 * @param description Help text.
+	 * @return Reference to @c *this for chaining.
+	 */
 	Argz<String> &addOptionDouble(const int &code, const String &value, const String &description) {
 		Argument<String> a{};
 		a.arg_letter = code;
@@ -173,6 +261,13 @@ public:
 		return *this;
 	}
 
+	/**
+	 * @brief Register a long option that requires a value argument (e.g. @c --output file).
+	 * @param code        Unique integer code.
+	 * @param value       Long option name string.
+	 * @param description Help text.
+	 * @return Reference to @c *this for chaining.
+	 */
 	Argz<String> &addOptionDoubleValue(const int &code, const String &value, const String &description) {
 		Argument<String> a{};
 		a.arg_letter = code;
@@ -183,6 +278,11 @@ public:
 		return *this;
 	}
 
+	/**
+	 * @brief Look up the integer code registered for a long option name.
+	 * @param value Long option name (without @c --).
+	 * @return The registered code, or @c -1 if not found.
+	 */
 	int lookUpCode(const String &value) {
 		for(const auto &i : arg_info) {
 			if(i.second.arg_name == value) {
@@ -192,6 +292,12 @@ public:
 		return -1;
 	}
 
+	/**
+	 * @brief Advance the cursor and parse the next argument.
+	 * @param a Output: filled with the matched option details.
+	 * @return The option code on success; @c '-' for a positional argument; @c -1 when exhausted.
+	 * @throws ArgException<String> On unrecognised options or missing values.
+	 */
 	int proc(Argument<String> &a) {
 		if(index < static_cast<int>(arg_data.args.size())) {
 			const String &type{arg_data.args[index]};
@@ -328,6 +434,11 @@ public:
 		return -1;
 	}
 
+	/**
+	 * @brief Print all registered options to any ostream-like object.
+	 * @tparam T Output stream type (e.g. @c std::ostream, @c std::wostream).
+	 * @param cout Destination stream.
+	 */
 	template <typename T>
 	void help(T &cout) {
 		using char_type = typename std::decay<decltype(*std::declval<T>().rdbuf())>::type::char_type;
@@ -377,6 +488,7 @@ public:
 			}
 		}
 	}
+	/** @return Number of argv entries consumed so far. */
 	const size_t count() const { return index; }
 protected:
 	ArgumentData<String> arg_data;
@@ -385,15 +497,38 @@ private:
 	int index = 0, cindex = 1;
 };
 
+/**
+ * @struct Arguments
+ * @brief Plain data structure returned by proc_args() with all common libmx2 CLI options.
+ */
 struct Arguments {
-	int width, height;
-	std::string path;
-	bool fullscreen;
-	std::string filename;
-	std::string texture;
-	std::string shaderPath;
+	int width;         ///< Viewport width in pixels (default: 1280).
+	int height;        ///< Viewport height in pixels (default: 720).
+	std::string path;  ///< Asset search path (default: ".").
+	bool fullscreen;   ///< Whether fullscreen mode was requested.
+	std::string filename;    ///< Optional input filename (@c --filename).
+	std::string texture;     ///< Optional texture file path (@c --texture).
+	std::string shaderPath;  ///< Optional SPV shader folder path (@c -S / @c --shader-path).
 };
 
+/**
+ * @brief Parse standard libmx2 command-line options from main()'s argv.
+ *
+ * Registers and processes the following options:
+ * | Flag | Long form          | Description                                  |
+ * |------|--------------------|----------------------------------------------|
+ * | -h   |                    | Print help and exit                          |
+ * | -p   | --path             | Asset directory path                         |
+ * | -r   | --resolution       | Resolution as WxH (e.g. 1920x1080)           |
+ * | -f   | --fullscreen       | Enable fullscreen                            |
+ * |      | --filename         | Input filename                               |
+ * |      | --texture          | Texture file                                 |
+ * | -S   | --shader-path      | SPV shader folder (must contain index.txt)   |
+ *
+ * @param argc Reference to argc from main().
+ * @param argv argv from main().
+ * @return Populated Arguments struct; on parse error, returns a default-valued struct.
+ */
 inline Arguments proc_args(int &argc, char **argv) {
 	Arguments args;
 	Argz<std::string> parser(argc, argv);
