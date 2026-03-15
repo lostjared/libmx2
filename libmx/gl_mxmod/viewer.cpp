@@ -123,7 +123,7 @@ public:
         modelRadius = glm::length(extent) * 0.5f;
         
         baseCameraDistance = modelRadius * 2.5f;
-        outsideCameraPos = glm::vec3(modelCenter.x, modelCenter.y, modelCenter.z + baseCameraDistance);
+        outsideCameraPos = glm::vec3(modelCenter.x, modelCenter.y + modelRadius * 0.3f, modelCenter.z + baseCameraDistance);
         
         zoom = 45.0f;
         outsideFOV = zoom;
@@ -405,7 +405,7 @@ public:
     }
 private:
     bool insideCube = false;
-    glm::vec3 outsideCameraPos = glm::vec3(0.0f, 0.0f, 50.0f);
+    glm::vec3 outsideCameraPos = glm::vec3(0.0f, -2.0f, 50.0f);
     float outsideFOV = 45.0f;
 };
 
