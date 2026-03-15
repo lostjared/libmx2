@@ -36,20 +36,36 @@ namespace mx {
     }
     
     void VKText::createDescriptorPool() {
+        createDescriptorPool(maxPoolSets);
+    }
+
+    void VKText::createDescriptorPool(uint32_t maxSets) {
         VkDescriptorPoolSize poolSize{};
         poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        poolSize.descriptorCount = 100;
+        poolSize.descriptorCount = maxSets;
         
         VkDescriptorPoolCreateInfo poolInfo{};
         poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         poolInfo.poolSizeCount = 1;
         poolInfo.pPoolSizes = &poolSize;
-        poolInfo.maxSets = 100;
+        poolInfo.maxSets = maxSets;
         poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
         
         VK_CHECK_RESULT(vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool));
+        maxPoolSets = maxSets;
     }
     
+    void VKText::growDescriptorPool() {
+        vkDeviceWaitIdle(device);
+        textQuads.clear();
+        if (descriptorPool != VK_NULL_HANDLE) {
+            vkDestroyDescriptorPool(device, descriptorPool, nullptr);
+            descriptorPool = VK_NULL_HANDLE;
+        }
+        maxPoolSets *= 2;
+        createDescriptorPool(maxPoolSets);
+    }
+
     VkDescriptorSet VKText::createDescriptorSet(VkImageView imageView) {
         if (descriptorSetLayout == VK_NULL_HANDLE) {
             throw mx::Exception("VKText::createDescriptorSet called before setDescriptorSetLayout");
@@ -66,7 +82,14 @@ namespace mx {
         allocInfo.pSetLayouts = &descriptorSetLayout;
         
         VkDescriptorSet descriptorSet;
-        VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &allocInfo, &descriptorSet));
+        VkResult res = vkAllocateDescriptorSets(device, &allocInfo, &descriptorSet);
+        if (res == VK_ERROR_OUT_OF_POOL_MEMORY || res == VK_ERROR_FRAGMENTED_POOL) {
+            growDescriptorPool();
+            allocInfo.descriptorPool = descriptorPool;
+            VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &allocInfo, &descriptorSet));
+        } else if (res != VK_SUCCESS) {
+            throw mx::Exception("Fatal : VkResult is \"" + std::to_string(res) + "\" in " + std::string(__FILE__) + " at line " + std::to_string(__LINE__));
+        }
         
         VkDescriptorImageInfo imageInfo{};
         imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -254,7 +277,6 @@ namespace mx {
     }
     
     void VKText::clearQueue() {
-        VK_CHECK_RESULT(vkQueueWaitIdle(graphicsQueue));
         textQuads.clear();
         if (descriptorPool != VK_NULL_HANDLE) {
             VK_CHECK_RESULT(vkResetDescriptorPool(device, descriptorPool, 0));

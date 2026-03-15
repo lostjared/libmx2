@@ -208,9 +208,12 @@ namespace mx {
         std::vector<TextQuad> textQuads;
         VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
         VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
+        uint32_t maxPoolSets = 100;
         
         void initFont(const std::string &fontPath, int fontSize);
         void createDescriptorPool();
+        void createDescriptorPool(uint32_t maxSets);
+        void growDescriptorPool();
         VkDescriptorSet createDescriptorSet(VkImageView imageView);
         void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, 
                          VkMemoryPropertyFlags properties, VkBuffer& buffer, 

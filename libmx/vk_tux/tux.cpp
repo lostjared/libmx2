@@ -64,10 +64,14 @@ public:
         uint32_t imageIndex = 0;
         VkResult result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX,
                                                  imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
-        if (result == VK_ERROR_OUT_OF_DATE_KHR) return;
+        if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+            recreateSwapChain();
+            return;
+        }
         if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
             throw mx::Exception("Failed to acquire swap chain image!");
 
+        vkResetFences(device, 1, &inFlightFence);
         vkResetCommandBuffer(commandBuffers[imageIndex], 0);
 
         VkCommandBufferBeginInfo beginInfo{};
@@ -184,7 +188,7 @@ public:
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.pSignalSemaphores = signalSems;
 
-        if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS)
+        if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFence) != VK_SUCCESS)
             throw mx::Exception("Failed to submit draw command buffer!");
 
         VkPresentInfoKHR presentInfo{};
@@ -194,14 +198,14 @@ public:
         presentInfo.swapchainCount = 1;
         presentInfo.pSwapchains = &swapChain;
         presentInfo.pImageIndices = &imageIndex;
-
         result = vkQueuePresentKHR(presentQueue, &presentInfo);
         if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+            recreateSwapChain();
         } else if (result != VK_SUCCESS) {
             throw mx::Exception("Failed to present swap chain image!");
         }
-        vkQueueWaitIdle(presentQueue);
 
+        vkWaitForFences(device, 1, &inFlightFence, VK_TRUE, UINT64_MAX);
         clearTextQueue();
         for (auto &s : sprites) {
             if (s) s->clearQueue();
@@ -258,6 +262,16 @@ public:
             camDist -= e.wheel.y * 0.5f;
             camDist = glm::clamp(camDist, 0.1f, 100.0f);
         }
+    }
+
+    void onResize() override {
+        if (modelDescriptorPool != VK_NULL_HANDLE) {
+            vkDestroyDescriptorPool(device, modelDescriptorPool, nullptr);
+            modelDescriptorPool = VK_NULL_HANDLE;
+        }
+        modelDescriptorSets.clear();
+        createModelDescriptorPool();
+        createModelDescriptorSets();
     }
 
     void cleanup() override {
@@ -429,6 +443,13 @@ private:
     bool mousePressed = false;
     float mouseX = 0.0f, mouseY = 0.0f;
     int lastMouseX = 0, lastMouseY = 0;
+
+    void textQuads_clear() {
+        clearTextQueue();
+        for (auto &s : sprites) {
+            if (s) s->clearQueue();
+        }
+    }
 };
 
 int main(int argc, char **argv) {
