@@ -18,8 +18,13 @@ my %libmx2_flags = (
     "-DOPENGL" => "ON"
 );
 
+my $should_install = 0;
+
 for my $arg (@ARGV) {
-    if ($arg =~ /^([^=]+)=(.*)$/) {
+
+   if($arg eq "install") {
+        $should_install = 1;
+    } elsif ($arg =~ /^([^=]+)=(.*)$/) {
         $libmx2_flags{$1} = $2;
     }
 }
@@ -46,7 +51,9 @@ sub build_libmx2 {
 
     run_cmd("libmx2", "cmake -B . -S $source @flags");
     run_cmd("libmx2", "make -j$nproc");
-    #run_cmd("libmx2", "sudo make install");
+    if($should_install) { 
+    	run_cmd("libmx2", "sudo make install");
+    }
 }
 
 build_libmx2();
