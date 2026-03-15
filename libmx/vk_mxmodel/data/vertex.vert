@@ -20,7 +20,8 @@ layout(binding = 1) uniform UniformBufferObject {
 void main() {    
     fragTexCoord = inTexCoord;
     fragColor = ubo.color.rgb;
-    fragNormal = mat3(ubo.model) * inNormal;
+    mat3 normalMat = transpose(inverse(mat3(ubo.model)));
+    fragNormal = normalize(normalMat * inNormal);
     fragWorldPos = (ubo.model * vec4(inPosition, 1.0)).xyz;
     gl_Position = ubo.proj * ubo.view * ubo.model * vec4(inPosition, 1.0);
 }

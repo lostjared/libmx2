@@ -52,6 +52,36 @@ namespace mx {
     void ModelViewer::loadModelData() {
         std::string path = modelFilename.empty() ? util.getFilePath("lattice.mxmod") : modelFilename;
         model.load(path, 1.0f);
+
+        const auto &verts = model.vertices();
+        modelRenderScale = 1.0f;
+        modelCenterOffset = glm::vec3(0.0f);
+        if (!verts.empty()) {
+            float minX = verts[0].pos[0], maxX = verts[0].pos[0];
+            float minY = verts[0].pos[1], maxY = verts[0].pos[1];
+            float minZ = verts[0].pos[2], maxZ = verts[0].pos[2];
+
+            for (const auto &v : verts) {
+                minX = std::min(minX, v.pos[0]); maxX = std::max(maxX, v.pos[0]);
+                minY = std::min(minY, v.pos[1]); maxY = std::max(maxY, v.pos[1]);
+                minZ = std::min(minZ, v.pos[2]); maxZ = std::max(maxZ, v.pos[2]);
+            }
+
+
+            modelCenterOffset = glm::vec3(
+                -0.5f * (minX + maxX),
+                -0.5f * (minY + maxY),
+                -0.5f * (minZ + maxZ));
+
+            const float maxExtent = std::max(maxX - minX, std::max(maxY - minY, maxZ - minZ));
+            const float targetSize = 2.5f;
+            if (maxExtent > 1e-6f)
+                modelRenderScale = targetSize / maxExtent;
+
+            std::cout << ">> Model bounds: (" << (maxX-minX) << ", " << (maxY-minY) << ", " << (maxZ-minZ)
+                      << ") scale=" << modelRenderScale << "\n";
+        }
+
         model.upload(device, physicalDevice, commandPool, graphicsQueue);
         std::cout << ">> Loaded model: " << path << " (" << model.indexCount() << " indices)\n";
     }
@@ -169,10 +199,25 @@ namespace mx {
                     autoRotate = !autoRotate;
                     std::cout << ">> Auto-rotate: " << (autoRotate ? "ON" : "OFF") << "\n";
                     break;
-                case SDLK_UP:    rotationX -= 5.0f; break;
-                case SDLK_DOWN:  rotationX += 5.0f; break;
-                case SDLK_LEFT:  rotationY -= 5.0f; break;
-                case SDLK_RIGHT: rotationY += 5.0f; break;
+                case SDLK_SPACE: 
+                    rotationEnabled = !rotationEnabled;
+                    break;
+                case SDLK_UP:    
+                    if(rotationEnabled)
+                        rotationX -= 5.0f; 
+                    break;
+                case SDLK_DOWN:
+                     if(rotationEnabled)
+                        rotationX += 5.0f;
+                     break;
+                case SDLK_LEFT:
+                    if(rotationEnabled)
+                         rotationY -= 5.0f; 
+                     break;
+                case SDLK_RIGHT: 
+                    if(rotationEnabled)
+                        rotationY += 5.0f; 
+                    break;
                 case SDLK_EQUALS: case SDLK_PLUS:
                     cameraDistance -= 0.5f;
                     if (cameraDistance < 0.1f) cameraDistance = 0.1f;
@@ -256,13 +301,17 @@ namespace mx {
         ubo.params = glm::vec4(time, (float)swapChainExtent.width, (float)swapChainExtent.height, 0.0f);
         ubo.color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
 
-        
-        float autoAngle = autoRotate ? time * glm::radians(45.0f) : 0.0f;
+        float dt = time - lastTime;
+        lastTime = time;
+        if (autoRotate && rotationEnabled)
+            frozenAutoAngle += dt * glm::radians(45.0f);
+        float autoAngle = frozenAutoAngle;
         glm::mat4 modelMat = glm::mat4(1.0f);
+        modelMat = glm::scale(modelMat, glm::vec3(modelRenderScale));
         modelMat = glm::rotate(modelMat, glm::radians(rotationX), glm::vec3(1.0f, 0.0f, 0.0f));
         modelMat = glm::rotate(modelMat, glm::radians(rotationY) + autoAngle, glm::vec3(0.0f, 1.0f, 0.0f));
+        modelMat = glm::translate(modelMat, modelCenterOffset);
         ubo.model = modelMat;
-
         ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, cameraDistance), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         float aspect = (float)swapChainExtent.width / (float)swapChainExtent.height;
         ubo.proj = glm::perspective(glm::radians(45.0f), aspect, 0.01f, 1000.0f);
@@ -271,10 +320,25 @@ namespace mx {
         if (uniformBuffersMapped.size() > imageIndex && uniformBuffersMapped[imageIndex])
             memcpy(uniformBuffersMapped[imageIndex], &ubo, sizeof(ubo));
 
-        if (!descriptorSets.empty())
-            vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[imageIndex], 0, nullptr);
+        const size_t textureCount = std::max<size_t>(1, textures.size());
+        auto bindDescriptorForTexture = [&](size_t textureIndex) {
+            if (descriptorSets.empty()) return;
+            const size_t clampedTex = std::min(textureIndex, textureCount - 1);
+            const size_t setIndex = static_cast<size_t>(imageIndex) * textureCount + clampedTex;
+            if (setIndex >= descriptorSets.size()) return;
+            vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                    pipelineLayout, 0, 1, &descriptorSets[setIndex], 0, nullptr);
+        };
 
-        model.draw(commandBuffers[imageIndex]);
+        if (model.subMeshCount() > 0) {
+            for (size_t i = 0; i < model.subMeshCount(); ++i) {
+                bindDescriptorForTexture(model.subMesh(i).textureIndex);
+                model.drawSubMesh(commandBuffers[imageIndex], i);
+            }
+        } else {
+            bindDescriptorForTexture(model.textureIndex());
+            model.draw(commandBuffers[imageIndex]);
+        }
         vkCmdEndRenderPass(commandBuffers[imageIndex]);
 
         if (vkEndCommandBuffer(commandBuffers[imageIndex]) != VK_SUCCESS)
@@ -866,57 +930,67 @@ namespace mx {
 
     
     void ModelViewer::createDescriptorPool() {
+        const uint32_t textureCount = std::max<uint32_t>(1u, static_cast<uint32_t>(textures.size()));
+        const uint32_t setCount = static_cast<uint32_t>(swapChainImages.size()) * textureCount;
+
         std::array<VkDescriptorPoolSize, 2> sizes{};
-        sizes[0] = {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, (uint32_t)swapChainImages.size()};
-        sizes[1] = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, (uint32_t)swapChainImages.size()};
+        sizes[0] = {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, setCount};
+        sizes[1] = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, setCount};
 
         VkDescriptorPoolCreateInfo ci{};
         ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         ci.poolSizeCount = (uint32_t)sizes.size();
         ci.pPoolSizes = sizes.data();
-        ci.maxSets = (uint32_t)swapChainImages.size();
+        ci.maxSets = setCount;
         if (vkCreateDescriptorPool(device, &ci, nullptr, &descriptorPool) != VK_SUCCESS)
             throw mx::Exception("Failed to create descriptor pool!");
     }
 
     void ModelViewer::createDescriptorSets() {
-        std::vector<VkDescriptorSetLayout> layouts(swapChainImages.size(), descriptorSetLayout);
+        const size_t textureCount = std::max<size_t>(1, textures.size());
+        const size_t setCount = swapChainImages.size() * textureCount;
+
+        std::vector<VkDescriptorSetLayout> layouts(setCount, descriptorSetLayout);
         VkDescriptorSetAllocateInfo ai{};
         ai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         ai.descriptorPool = descriptorPool;
-        ai.descriptorSetCount = (uint32_t)swapChainImages.size();
+        ai.descriptorSetCount = static_cast<uint32_t>(setCount);
         ai.pSetLayouts = layouts.data();
-        descriptorSets.resize(swapChainImages.size());
+        descriptorSets.resize(setCount);
         if (vkAllocateDescriptorSets(device, &ai, descriptorSets.data()) != VK_SUCCESS)
             throw mx::Exception("Failed to allocate descriptor sets!");
 
-        for (size_t i = 0; i < swapChainImages.size(); i++) {
-            VkDescriptorImageInfo imgInfo{};
-            imgInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            imgInfo.imageView = textureImageView;
-            imgInfo.sampler = textureSampler;
-
+        for (size_t frame = 0; frame < swapChainImages.size(); ++frame) {
             VkDescriptorBufferInfo bufInfo{};
-            bufInfo.buffer = uniformBuffers[i];
+            bufInfo.buffer = uniformBuffers[frame];
             bufInfo.offset = 0;
             bufInfo.range = sizeof(UniformBufferObject);
 
-            std::array<VkWriteDescriptorSet, 2> writes{};
-            writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            writes[0].dstSet = descriptorSets[i];
-            writes[0].dstBinding = 0;
-            writes[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            writes[0].descriptorCount = 1;
-            writes[0].pImageInfo = &imgInfo;
+            for (size_t tex = 0; tex < textureCount; ++tex) {
+                const size_t setIndex = frame * textureCount + tex;
 
-            writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            writes[1].dstSet = descriptorSets[i];
-            writes[1].dstBinding = 1;
-            writes[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            writes[1].descriptorCount = 1;
-            writes[1].pBufferInfo = &bufInfo;
+                VkDescriptorImageInfo imgInfo{};
+                imgInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                imgInfo.imageView = textures[tex].view;
+                imgInfo.sampler = textureSampler;
 
-            vkUpdateDescriptorSets(device, (uint32_t)writes.size(), writes.data(), 0, nullptr);
+                std::array<VkWriteDescriptorSet, 2> writes{};
+                writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                writes[0].dstSet = descriptorSets[setIndex];
+                writes[0].dstBinding = 0;
+                writes[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                writes[0].descriptorCount = 1;
+                writes[0].pImageInfo = &imgInfo;
+
+                writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                writes[1].dstSet = descriptorSets[setIndex];
+                writes[1].dstBinding = 1;
+                writes[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                writes[1].descriptorCount = 1;
+                writes[1].pBufferInfo = &bufInfo;
+
+                vkUpdateDescriptorSets(device, (uint32_t)writes.size(), writes.data(), 0, nullptr);
+            }
         }
     }
 

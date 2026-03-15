@@ -90,6 +90,9 @@ namespace mx {
         std::string textureFilename;
 
         MXModel model;
+        bool rotationEnabled = true;
+        float frozenAutoAngle = 0.0f;
+        float lastTime = 0.0f;
 
         VkInstance instance = VK_NULL_HANDLE;
         VkSurfaceKHR surface = VK_NULL_HANDLE;
@@ -145,6 +148,8 @@ namespace mx {
         float cameraDistance = 5.0f;
         float rotationX = 0.0f;
         float rotationY = 0.0f;
+        float modelRenderScale = 1.0f;
+        glm::vec3 modelCenterOffset = glm::vec3(0.0f);
         bool mouseDown = false;
         int lastMouseX = 0, lastMouseY = 0;
         bool autoRotate = true;

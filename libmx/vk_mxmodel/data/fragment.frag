@@ -15,22 +15,29 @@ layout(binding = 1) uniform UniformBufferObject {
 } ubo;
 
 void main() {
-    vec3 lightPos = vec3(0.0, 5.0, 0.0);
-    vec3 lightDir = normalize(lightPos - fragWorldPos);
     vec3 normal = normalize(fragNormal);
-    float ambientStrength = 0.8;
-    vec3 ambient = ambientStrength * fragColor;
-    float diff = max(dot(normal, lightDir), 0.0);
-    vec3 diffuse = diff * fragColor;
-    float specularStrength = 0.8;
-    vec3 viewDir = normalize(-fragWorldPos);
-    vec3 reflectDir = reflect(-lightDir, normal);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
-    vec3 specular = specularStrength * spec * vec3(1.0, 1.0, 1.0);
-    float distance = length(lightPos - fragWorldPos);
-    float attenuation = 1.0 / (1.0 + 0.1 * distance + 0.01 * distance * distance);
     vec4 texColor = texture(texSampler, fragTexCoord);
-    vec3 lighting = ambient + (diffuse + specular) * attenuation;
-    vec3 result = texColor.rgb * lighting;
+
+    vec3 albedo = texColor.rgb * fragColor;
+
+    vec3 lightDir = normalize(vec3(0.35, 1.0, 0.55));
+    vec3 lightColor = vec3(1.0);
+
+    float ambientStrength = 0.20;
+    vec3 ambient = ambientStrength * lightColor;
+
+    float nDotL = max(dot(normal, lightDir), 0.0);
+    vec3 diffuse = nDotL * lightColor;
+
+    vec3 cameraPos = inverse(ubo.view)[3].xyz;
+    vec3 viewDir = normalize(cameraPos - fragWorldPos);
+    vec3 halfDir = normalize(lightDir + viewDir);
+    float specPow = 48.0;
+    float spec = pow(max(dot(normal, halfDir), 0.0), specPow);
+    float specStrength = 0.25;
+    vec3 specular = specStrength * spec * lightColor;
+
+    vec3 litColor = (ambient + diffuse) * albedo + specular;
+    vec3 result = litColor;
     outColor = vec4(result, texColor.a);
 }
