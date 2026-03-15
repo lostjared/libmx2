@@ -1020,20 +1020,28 @@ public:
             {10.0f, 25.0f, 5.0f, 15.0f, 3.0f, 4.0f, {0.8f, 0.2f, 0.1f}}
         };
         
-        int particleIndex = 0;
+        int spawned = 0;
+        int searchStart = 0;
         
         for (int wave = 0; wave < WAVE_COUNT; wave++) {
-            for (int i = 0; i < particlesPerWave && particleIndex < MAX_PARTICLES; i++) {
+            for (int i = 0; i < particlesPerWave; i++) {
+                int slotIndex = -1;
+                for (int s = searchStart; s < MAX_PARTICLES; s++) {
+                    if (!particles[s].active) {
+                        slotIndex = s;
+                        searchStart = s + 1;
+                        break;
+                    }
+                }
+                if (slotIndex < 0) break; 
+
                 float theta = generateRandomFloat(0.0f, 2.0f * M_PI);
                 float phi = generateRandomFloat(0.0f, M_PI);
                 float x = sin(phi) * cos(theta);
                 float y = sin(phi) * sin(theta);
                 float z = cos(phi);        
 
-                if (particleIndex >= MAX_PARTICLES) 
-                    break;
-
-                auto& p = particles[particleIndex++];
+                auto& p = particles[slotIndex];
                 float offset = 0.8f + 0.2f * static_cast<float>(wave) / WAVE_COUNT;
                 p.x = explosion.position.x + x * offset;
                 p.y = explosion.position.y + y * offset;
@@ -1054,9 +1062,15 @@ public:
                 p.maxLife = generateRandomFloat(waves[wave].minLife, waves[wave].maxLife);
                 p.life = 0.0f; 
                 p.active = true;
+                spawned++;
             }
+            if (spawned >= particlesPerWave * WAVE_COUNT) break;
         }
-        activeParticles = particleIndex;
+        int total = 0;
+        for (auto& p : particles) {
+            if (p.active) total++;
+        }
+        activeParticles = total;
     }
     
     void update(float deltaTime) {
