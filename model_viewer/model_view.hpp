@@ -84,6 +84,7 @@ private:
     QPushButton *clearButton;
     
     QComboBox *resolutionCombo;
+    QComboBox *backendCombo;
     QSpinBox *fpsSpinBox;
     QComboBox *recentFilesCombo;
     QCheckBox *compressCheckBox;

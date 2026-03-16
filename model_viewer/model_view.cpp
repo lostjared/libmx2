@@ -167,6 +167,13 @@ void MainWindow::setupCentralWidget() {
     resolutionCombo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     populateResolutionCombo();
     
+    QLabel *backendLabel = new QLabel(tr("Backend:"), this);
+    backendCombo = new QComboBox(this);
+    backendCombo->addItem(tr("OpenGL"), "gl_mxmod");
+    backendCombo->addItem(tr("Vulkan"), "vk_mxmodel");
+    backendCombo->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    backendCombo->setMinimumWidth(100);
+
     QLabel *fpsLabel = new QLabel(tr("FPS:"), this);
     fpsSpinBox = new QSpinBox(this);
     fpsSpinBox->setRange(30, 240);
@@ -183,9 +190,11 @@ void MainWindow::setupCentralWidget() {
     optionsLayout->addWidget(removeRecentBtn, 0, 2);
     optionsLayout->addWidget(resLabel, 0, 3);
     optionsLayout->addWidget(resolutionCombo, 0, 4);
-    optionsLayout->addWidget(fpsLabel, 0, 5);
-    optionsLayout->addWidget(fpsSpinBox, 0, 6);
-    optionsLayout->addWidget(compressCheckBox, 0, 7);
+    optionsLayout->addWidget(backendLabel, 0, 5);
+    optionsLayout->addWidget(backendCombo, 0, 6);
+    optionsLayout->addWidget(fpsLabel, 0, 7);
+    optionsLayout->addWidget(fpsSpinBox, 0, 8);
+    optionsLayout->addWidget(compressCheckBox, 0, 9);
     
     optionsLayout->setColumnStretch(1, 2);
     optionsLayout->setColumnStretch(4, 1);
@@ -468,6 +477,12 @@ void MainWindow::openModelViewer() {
         statusLabel->setText(tr("Error: %1").arg(errorMsg));
     });
     
+    QString backend = backendCombo->currentData().toString();
+    if (!executablePath.isEmpty() && executablePath != "gl_mxmod" && executablePath != "vk_mxmodel") {
+    } else {
+        executablePath = backend;
+    }
+
     QStringList arguments;
     arguments << "-m" << modelPath;
     arguments << "-t" << texturePath;
@@ -538,6 +553,7 @@ void MainWindow::updateUIState(bool processRunning) {
     textureLineEdit->setEnabled(!processRunning);
     textureDirLineEdit->setEnabled(!processRunning);
     resolutionCombo->setEnabled(!processRunning);
+    backendCombo->setEnabled(!processRunning);
     fpsSpinBox->setEnabled(!processRunning);
     compressCheckBox->setEnabled(!processRunning);
     recentFilesCombo->setEnabled(!processRunning);
@@ -552,6 +568,11 @@ void MainWindow::loadSettings() {
     textureDirLineEdit->setText(settings->value("lastTextureDir", "").toString());
     
     executablePath = settings->value("executablePath", "gl_mxmod").toString();
+    
+    int backendIndex = settings->value("backendIndex", 0).toInt();
+    if (backendIndex >= 0 && backendIndex < backendCombo->count()) {
+        backendCombo->setCurrentIndex(backendIndex);
+    }
     
     int resIndex = settings->value("resolutionIndex", 1).toInt();
     if (resIndex >= 0 && resIndex < resolutionCombo->count()) {
@@ -576,6 +597,7 @@ void MainWindow::saveSettings() {
     settings->setValue("lastTexture", textureLineEdit->text());
     settings->setValue("lastTextureDir", textureDirLineEdit->text());
     settings->setValue("executablePath", executablePath);
+    settings->setValue("backendIndex", backendCombo->currentIndex());
     settings->setValue("resolutionIndex", resolutionCombo->currentIndex());
     settings->setValue("fpsLimit", fpsSpinBox->value());
     settings->setValue("compress", compressCheckBox->isChecked());
