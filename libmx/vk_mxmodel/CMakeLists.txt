@@ -6,3 +6,6 @@ target_include_directories(vk_mxmodel PRIVATE
 )
 
 target_link_libraries(vk_mxmodel PUBLIC SDL2::SDL2main mxvk $<$<NOT:$<BOOL:${MOLTEN}>>:volk>)
+
+install(TARGETS vk_mxmodel
+        RUNTIME DESTINATION bin)

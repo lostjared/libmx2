@@ -13,6 +13,7 @@
 #include "exception.hpp"
 #include "util.hpp"
 #include "vk_model.hpp"
+#include "vk_text.hpp"
 
 #include <iostream>
 #include <stdexcept>
@@ -73,6 +74,7 @@ namespace mx {
         void setPath(const std::string &path);
         void setModelFile(const std::string &filename);
         void setTextureFile(const std::string &filename);
+        void setTexturePath(const std::string &path);
         void loop();
         void cleanup();
         void event(SDL_Event &e);
@@ -88,6 +90,7 @@ namespace mx {
 
         std::string modelFilename;
         std::string textureFilename;
+        std::string textureDirPath;
 
         MXModel model;
         bool rotationEnabled = true;
@@ -153,7 +156,14 @@ namespace mx {
         bool mouseDown = false;
         int lastMouseX = 0, lastMouseY = 0;
         bool autoRotate = true;
+        bool showHelp = true;
         uint32_t texWidth = 0, texHeight = 0;
+
+        std::unique_ptr<VKText> textRenderer;
+        VkPipeline textPipeline = VK_NULL_HANDLE;
+        VkPipelineLayout textPipelineLayout = VK_NULL_HANDLE;
+        VkDescriptorSetLayout textDescriptorSetLayout = VK_NULL_HANDLE;
+        VkDescriptorPool textDescriptorPool = VK_NULL_HANDLE;
 
         SDL_Window *window = nullptr;
 
@@ -201,6 +211,12 @@ namespace mx {
         VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
         VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
         VkFormat findDepthFormat();
+
+        void createTextDescriptorSetLayout();
+        void createTextPipeline();
+        void createTextDescriptorPool();
+        void printText(const std::string &text, int x, int y, const SDL_Color &col);
+        void clearTextQueue();
     };
 
 }

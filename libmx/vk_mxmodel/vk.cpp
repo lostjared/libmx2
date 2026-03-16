@@ -23,6 +23,7 @@ namespace mx {
     void ModelViewer::setPath(const std::string &path) { util.path = path; }
     void ModelViewer::setModelFile(const std::string &filename) { modelFilename = filename; }
     void ModelViewer::setTextureFile(const std::string &filename) { textureFilename = filename; }
+    void ModelViewer::setTexturePath(const std::string &path) { textureDirPath = path; }
 
     void ModelViewer::initVulkan() {
         createInstance();
@@ -46,6 +47,13 @@ namespace mx {
         createDescriptorSets();
         createCommandBuffers();
         createSyncObjects();
+
+        textRenderer.reset(new VKText(device, physicalDevice, graphicsQueue, commandPool,
+                                      util.getFilePath("font.ttf"), 18));
+        createTextDescriptorSetLayout();
+        textRenderer->setDescriptorSetLayout(textDescriptorSetLayout);
+        createTextPipeline();
+        createTextDescriptorPool();
     }
 
     
@@ -92,33 +100,86 @@ namespace mx {
         
         std::vector<std::string> imagePaths;
         bool isTexFile = (texArg.size() >= 4 && texArg.substr(texArg.size() - 4) == ".tex");
+        bool isMtlFile = (texArg.size() >= 4 && texArg.substr(texArg.size() - 4) == ".mtl");
 
-        if (isTexFile) {
+        if (isTexFile || isMtlFile) {
             
             std::ifstream tf(texArg);
-            if (!tf.is_open()) throw mx::Exception("Failed to open .tex file: " + texArg);
+            if (!tf.is_open()) throw mx::Exception("Failed to open texture file: " + texArg);
             
             std::string prefix;
-            auto slash = texArg.find_last_of("/\\");
-            if (slash != std::string::npos)
-                prefix = texArg.substr(0, slash);
-            else
-                prefix = util.path;
+            if (!textureDirPath.empty()) {
+                prefix = textureDirPath;
+            } else {
+                auto slash = texArg.find_last_of("/\\");
+                if (slash != std::string::npos)
+                    prefix = texArg.substr(0, slash);
+                else
+                    prefix = util.path;
+            }
 
+            // Read all meaningful lines
+            std::vector<std::string> lines;
             std::string line;
             while (std::getline(tf, line)) {
-                
                 size_t b = line.find_first_not_of(" \t\r\n");
                 if (b == std::string::npos) continue;
                 size_t e = line.find_last_not_of(" \t\r\n");
                 line = line.substr(b, e - b + 1);
                 if (line.empty() || line[0] == '#') continue;
-                imagePaths.push_back(prefix + "/" + line);
+                lines.push_back(line);
             }
             tf.close();
+
+            // Detect format
+            bool structured = false;
+            bool isMTLFormat = false;
+            for (const auto &ln : lines) {
+                std::istringstream chk(ln);
+                std::string kw;
+                chk >> kw;
+                if (kw == "submesh" || kw == "texture_dir" || kw == "material_lib" || kw == "model") {
+                    structured = true;
+                    break;
+                }
+                if (kw == "newmtl") {
+                    isMTLFormat = true;
+                    break;
+                }
+            }
+
+            if (isMTLFormat) {
+                std::cout << ">> MTL format detected, extracting map_Kd textures\n";
+                for (const auto &ln : lines) {
+                    std::istringstream s(ln);
+                    std::string kw;
+                    s >> kw;
+                    if (kw == "map_Kd") {
+                        std::string texFile;
+                        if (s >> texFile)
+                            imagePaths.push_back(prefix + "/" + texFile);
+                    }
+                }
+            } else if (structured) {
+                std::cout << ">> Structured .tex format detected\n";
+                for (const auto &ln : lines) {
+                    std::istringstream s(ln);
+                    std::string kw;
+                    s >> kw;
+                    if (kw == "texture") {
+                        std::string texFile;
+                        if (s >> texFile)
+                            imagePaths.push_back(prefix + "/" + texFile);
+                    }
+                }
+            } else {
+                for (const auto &ln : lines)
+                    imagePaths.push_back(prefix + "/" + ln);
+            }
+
             if (imagePaths.empty())
-                throw mx::Exception("No texture paths found in .tex file: " + texArg);
-            std::cout << ">> Loaded .tex file: " << texArg << " (" << imagePaths.size() << " textures)\n";
+                throw mx::Exception("No texture paths found in file: " + texArg);
+            std::cout << ">> Loaded texture file: " << texArg << " (" << imagePaths.size() << " textures)\n";
         } else {
             imagePaths.push_back(texArg);
         }
@@ -228,6 +289,9 @@ namespace mx {
                     break;
                 case SDLK_HOME:
                     rotationX = 0; rotationY = 0; cameraDistance = 5.0f;
+                    break;
+                case SDLK_h:
+                    showHelp = !showHelp;
                     break;
             }
         }
@@ -339,6 +403,29 @@ namespace mx {
             bindDescriptorForTexture(model.textureIndex());
             model.draw(commandBuffers[imageIndex]);
         }
+
+        if (showHelp && textRenderer && textPipeline != VK_NULL_HANDLE) {
+            SDL_Color white{255, 255, 255, 255};
+            SDL_Color yellow{255, 255, 0, 255};
+            int y = 10;
+            const int lineH = 22;
+            printText("Controls:", 10, y, yellow); y += lineH;
+            printText("Mouse Drag   - Rotate model", 10, y, white); y += lineH;
+            printText("Scroll Wheel - Zoom in/out", 10, y, white); y += lineH;
+            printText("Arrow Keys   - Rotate model", 10, y, white); y += lineH;
+            printText("+/-          - Zoom in/out", 10, y, white); y += lineH;
+            printText("W            - Toggle wireframe", 10, y, white); y += lineH;
+            printText("R            - Toggle auto-rotate", 10, y, white); y += lineH;
+            printText("Space        - Toggle rotation lock", 10, y, white); y += lineH;
+            printText("Home         - Reset view", 10, y, white); y += lineH;
+            printText("H            - Toggle this help", 10, y, white); y += lineH;
+            printText("Escape       - Quit", 10, y, white);
+
+            vkCmdBindPipeline(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, textPipeline);
+            textRenderer->renderText(commandBuffers[imageIndex], textPipelineLayout,
+                                     swapChainExtent.width, swapChainExtent.height);
+        }
+
         vkCmdEndRenderPass(commandBuffers[imageIndex]);
 
         if (vkEndCommandBuffer(commandBuffers[imageIndex]) != VK_SUCCESS)
@@ -372,6 +459,7 @@ namespace mx {
         if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) recreateSwapChain();
         else if (result != VK_SUCCESS) throw mx::Exception("Failed to present swap chain image!");
         vkQueueWaitIdle(presentQueue);
+        clearTextQueue();
     }
 
     
@@ -1141,6 +1229,8 @@ namespace mx {
         if (fillPipeline) { vkDestroyPipeline(device, fillPipeline, nullptr); fillPipeline = VK_NULL_HANDLE; }
         if (wirePipeline) { vkDestroyPipeline(device, wirePipeline, nullptr); wirePipeline = VK_NULL_HANDLE; }
         if (pipelineLayout) { vkDestroyPipelineLayout(device, pipelineLayout, nullptr); pipelineLayout = VK_NULL_HANDLE; }
+        if (textPipeline) { vkDestroyPipeline(device, textPipeline, nullptr); textPipeline = VK_NULL_HANDLE; }
+        if (textPipelineLayout) { vkDestroyPipelineLayout(device, textPipelineLayout, nullptr); textPipelineLayout = VK_NULL_HANDLE; }
         if (renderPass) { vkDestroyRenderPass(device, renderPass, nullptr); renderPass = VK_NULL_HANDLE; }
         for (auto iv : swapChainImageViews) if (iv) vkDestroyImageView(device, iv, nullptr);
         swapChainImageViews.clear();
@@ -1169,6 +1259,7 @@ namespace mx {
         createDepthResources();
         createRenderPass();
         createGraphicsPipelines();
+        createTextPipeline();
         createFramebuffers();
         createDescriptorPool();
         createUniformBuffers();
@@ -1179,6 +1270,10 @@ namespace mx {
     void ModelViewer::cleanup() {
         vkDeviceWaitIdle(device);
         cleanupSwapChain();
+
+        if (textRenderer) textRenderer.reset();
+        if (textDescriptorPool) { vkDestroyDescriptorPool(device, textDescriptorPool, nullptr); textDescriptorPool = VK_NULL_HANDLE; }
+        if (textDescriptorSetLayout) { vkDestroyDescriptorSetLayout(device, textDescriptorSetLayout, nullptr); textDescriptorSetLayout = VK_NULL_HANDLE; }
 
         vkDestroySampler(device, textureSampler, nullptr);
         
@@ -1205,6 +1300,176 @@ namespace mx {
         volkFinalize();
 #endif
         if (window) { SDL_DestroyWindow(window); SDL_Quit(); }
+    }
+
+    void ModelViewer::printText(const std::string &text, int x, int y, const SDL_Color &col) {
+        if (textRenderer)
+            textRenderer->printTextG_Solid(text, x, y, col);
+    }
+
+    void ModelViewer::clearTextQueue() {
+        if (textRenderer)
+            textRenderer->clearQueue();
+    }
+
+    void ModelViewer::createTextDescriptorSetLayout() {
+        VkDescriptorSetLayoutBinding samplerLayoutBinding{};
+        samplerLayoutBinding.binding = 0;
+        samplerLayoutBinding.descriptorCount = 1;
+        samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        samplerLayoutBinding.pImmutableSamplers = nullptr;
+        samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+        VkDescriptorSetLayoutCreateInfo layoutInfo{};
+        layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        layoutInfo.bindingCount = 1;
+        layoutInfo.pBindings = &samplerLayoutBinding;
+
+        VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &textDescriptorSetLayout));
+    }
+
+    void ModelViewer::createTextPipeline() {
+        try {
+            auto textVertCode = mx::readFile(util.getFilePath("text_vert.spv"));
+            auto textFragCode = mx::readFile(util.getFilePath("text_frag.spv"));
+            VkShaderModule vertModule = createShaderModule(textVertCode);
+            VkShaderModule fragModule = createShaderModule(textFragCode);
+
+            VkPipelineShaderStageCreateInfo vertStage{};
+            vertStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+            vertStage.stage = VK_SHADER_STAGE_VERTEX_BIT;
+            vertStage.module = vertModule;
+            vertStage.pName = "main";
+
+            VkPipelineShaderStageCreateInfo fragStage{};
+            fragStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+            fragStage.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+            fragStage.module = fragModule;
+            fragStage.pName = "main";
+
+            VkPipelineShaderStageCreateInfo stages[] = { vertStage, fragStage };
+
+            VkVertexInputBindingDescription bindingDesc{};
+            bindingDesc.binding = 0;
+            bindingDesc.stride = sizeof(float) * 4;
+            bindingDesc.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+            std::array<VkVertexInputAttributeDescription, 2> attrDescs{};
+            attrDescs[0].binding = 0; attrDescs[0].location = 0;
+            attrDescs[0].format = VK_FORMAT_R32G32_SFLOAT; attrDescs[0].offset = 0;
+            attrDescs[1].binding = 0; attrDescs[1].location = 1;
+            attrDescs[1].format = VK_FORMAT_R32G32_SFLOAT; attrDescs[1].offset = sizeof(float) * 2;
+
+            VkPipelineVertexInputStateCreateInfo vertexInput{};
+            vertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+            vertexInput.vertexBindingDescriptionCount = 1;
+            vertexInput.pVertexBindingDescriptions = &bindingDesc;
+            vertexInput.vertexAttributeDescriptionCount = static_cast<uint32_t>(attrDescs.size());
+            vertexInput.pVertexAttributeDescriptions = attrDescs.data();
+
+            VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+            inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+            inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+            inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+            VkViewport viewport{};
+            viewport.width = (float)swapChainExtent.width;
+            viewport.height = (float)swapChainExtent.height;
+            viewport.minDepth = 0.0f; viewport.maxDepth = 1.0f;
+
+            VkRect2D scissor{}; scissor.extent = swapChainExtent;
+
+            VkPipelineViewportStateCreateInfo viewportState{};
+            viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+            viewportState.viewportCount = 1; viewportState.pViewports = &viewport;
+            viewportState.scissorCount = 1; viewportState.pScissors = &scissor;
+
+            VkPipelineRasterizationStateCreateInfo rasterizer{};
+            rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+            rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+            rasterizer.lineWidth = 1.0f;
+            rasterizer.cullMode = VK_CULL_MODE_NONE;
+            rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+
+            VkPipelineMultisampleStateCreateInfo multisampling{};
+            multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+            multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+            VkPipelineDepthStencilStateCreateInfo depthStencil{};
+            depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+            depthStencil.depthTestEnable = VK_FALSE;
+            depthStencil.depthWriteEnable = VK_FALSE;
+
+            VkPipelineColorBlendAttachmentState blendAttachment{};
+            blendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+            blendAttachment.blendEnable = VK_TRUE;
+            blendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+            blendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+            blendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+            blendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+            blendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+            blendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+
+            VkPipelineColorBlendStateCreateInfo colorBlending{};
+            colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+            colorBlending.attachmentCount = 1;
+            colorBlending.pAttachments = &blendAttachment;
+
+            VkPushConstantRange pushRange{};
+            pushRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+            pushRange.offset = 0;
+            pushRange.size = sizeof(float) * 2;
+
+            VkPipelineLayoutCreateInfo layoutInfo{};
+            layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+            layoutInfo.setLayoutCount = 1;
+            layoutInfo.pSetLayouts = &textDescriptorSetLayout;
+            layoutInfo.pushConstantRangeCount = 1;
+            layoutInfo.pPushConstantRanges = &pushRange;
+
+            VK_CHECK_RESULT(vkCreatePipelineLayout(device, &layoutInfo, nullptr, &textPipelineLayout));
+
+            VkGraphicsPipelineCreateInfo pipelineInfo{};
+            pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+            pipelineInfo.stageCount = 2;
+            pipelineInfo.pStages = stages;
+            pipelineInfo.pVertexInputState = &vertexInput;
+            pipelineInfo.pInputAssemblyState = &inputAssembly;
+            pipelineInfo.pViewportState = &viewportState;
+            pipelineInfo.pRasterizationState = &rasterizer;
+            pipelineInfo.pMultisampleState = &multisampling;
+            pipelineInfo.pDepthStencilState = &depthStencil;
+            pipelineInfo.pColorBlendState = &colorBlending;
+            pipelineInfo.layout = textPipelineLayout;
+            pipelineInfo.renderPass = renderPass;
+            pipelineInfo.subpass = 0;
+            pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+            pipelineInfo.basePipelineIndex = -1;
+
+            VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &textPipeline));
+
+            vkDestroyShaderModule(device, fragModule, nullptr);
+            vkDestroyShaderModule(device, vertModule, nullptr);
+        } catch (const std::exception &e) {
+            std::cerr << "Warning: Text pipeline creation failed: " << e.what() << "\n";
+            std::cerr << "Text overlay will be disabled.\n";
+            textPipeline = VK_NULL_HANDLE;
+        }
+    }
+
+    void ModelViewer::createTextDescriptorPool() {
+        VkDescriptorPoolSize poolSize{};
+        poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        poolSize.descriptorCount = static_cast<uint32_t>(swapChainImages.size());
+
+        VkDescriptorPoolCreateInfo poolInfo{};
+        poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        poolInfo.poolSizeCount = 1;
+        poolInfo.pPoolSizes = &poolSize;
+        poolInfo.maxSets = static_cast<uint32_t>(swapChainImages.size());
+
+        VK_CHECK_RESULT(vkCreateDescriptorPool(device, &poolInfo, nullptr, &textDescriptorPool));
     }
 
 }
