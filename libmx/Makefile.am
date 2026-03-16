@@ -552,8 +552,8 @@ mx2_gl_texture_map_LDADD          = libmxgl.la libmx.la
 mx2_gl_glitch_ex_SOURCES          = gl_glitch_ex/model_glitch.cpp
 mx2_gl_glitch_ex_LDADD            = libmxgl.la libmx.la
 
-mx2_gl_about_SOURCES              = gl_about/about.cpp
-mx2_gl_about_LDADD                = libmxgl.la libmx.la
+#mx2_gl_about_SOURCES              = gl_about/about.cpp
+#mx2_gl_about_LDADD                = libmxgl.la libmx.la
 
 mx2_gl_animation_SOURCES          = gl_animation/animation.cpp gl_animation/binding.cpp
 mx2_gl_animation_LDADD            = libmxgl.la libmx.la
