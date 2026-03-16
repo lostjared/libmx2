@@ -7,6 +7,10 @@
 #endif
 
 int main(int argc, char **argv) {
+    std::cout.setf(std::ios::unitbuf);
+    std::cerr.setf(std::ios::unitbuf);
+    fflush(stdout);
+    fflush(stdin);
     try {
         namespace fs = std::filesystem;
 
