@@ -90,7 +90,7 @@ int main(int argc, char **argv) {
         if (!fs::is_directory(dataPath) || (!fs::exists(dataPath + "/vert.spv") && fs::is_directory(dataPath + "/data")))
             dataPath = dataPath + "/data";
 
-        mx::ModelViewer viewer("-[ MXModel Viewer ]-", tw, th, fullscreen);
+        mx::ModelViewer viewer("MXModel Viewer - [ Vulkan ]", tw, th, fullscreen);
         viewer.setPath(dataPath);
         if (!model_file.empty())
             viewer.setModelFile(model_file);

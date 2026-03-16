@@ -65,6 +65,9 @@ public:
     glm::vec3 modelCenter = glm::vec3(0.0f);
     float modelRadius = 1.0f;
     float baseCameraDistance = 50.0f;
+    float modelRenderScale = 1.0f;
+    glm::vec3 modelCenterOffset = glm::vec3(0.0f);
+    float cameraDistance = 5.0f;
     bool compress = true;
     float twistAngle = 1.0f;
     float twistSpeed = 6.0f;
@@ -76,6 +79,9 @@ public:
     bool twistX = false, twistY = false, twistZ = false;
     bool morphT = false;
     bool showControls = true;
+    bool mouseDown = false;
+    int lastMouseX = 0, lastMouseY = 0;
+    float mouseRotX = 0.0f, mouseRotY = 0.0f;
 #ifndef __EMSCRIPTEN__
     bool poly = false;
 #endif
@@ -122,8 +128,15 @@ public:
         glm::vec3 extent = modelMax - modelMin;
         modelRadius = glm::length(extent) * 0.5f;
         
+        modelCenterOffset = -modelCenter;
+        const float maxExtent = std::max(extent.x, std::max(extent.y, extent.z));
+        const float targetSize = 2.5f;
+        if (maxExtent > 1e-6f)
+            modelRenderScale = targetSize / maxExtent;
+        
         baseCameraDistance = modelRadius * 2.5f;
-        outsideCameraPos = glm::vec3(modelCenter.x, modelCenter.y, modelCenter.z + baseCameraDistance);
+        cameraDistance = 5.0f;
+        outsideCameraPos = glm::vec3(0.0f, 0.0f, cameraDistance);
         
         zoom = 45.0f;
         outsideFOV = zoom;
@@ -181,18 +194,18 @@ public:
             cameraPos = glm::vec3(0.0f, 0.0f, 0.0f);
             fovDegrees = 200.0f;  
         } else {
-            cameraPos = outsideCameraPos;
+            cameraPos = glm::vec3(0.0f, 0.0f, cameraDistance);
             fovDegrees = outsideFOV;
         }
-        glm::vec3 cameraTarget = insideCube ? cameraPos + lookDirection : modelCenter;
+        glm::vec3 cameraTarget = insideCube ? cameraPos + lookDirection : glm::vec3(0.0f);
         glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 
         glm::mat4 viewMatrix = glm::lookAt(cameraPos, cameraTarget, cameraUp);
         glm::mat4 projectionMatrix = glm::perspective(
             glm::radians(fovDegrees),
             static_cast<float>(win->w) / static_cast<float>(win->h),
-            insideCube ? 0.01f : 0.1f,  
-            100000.0f
+            insideCube ? 0.01f : 0.01f,  
+            10000.0f
         );
         if (insideCube) {
             glFrontFace(GL_CW);
@@ -243,11 +256,13 @@ public:
         }
         
         glm::mat4 modelMatrix = glm::mat4(1.0f);
-        modelMatrix = glm::translate(modelMatrix, modelCenter);
+        modelMatrix = glm::scale(modelMatrix, glm::vec3(modelRenderScale));
+        modelMatrix = glm::rotate(modelMatrix, glm::radians(mouseRotX), glm::vec3(1.0f, 0.0f, 0.0f));
+        modelMatrix = glm::rotate(modelMatrix, glm::radians(mouseRotY), glm::vec3(0.0f, 1.0f, 0.0f));
         modelMatrix = glm::rotate(modelMatrix, glm::radians(std::get<0>(rot_x)), glm::vec3(1.0f, 0.0f, 0.0f));
         modelMatrix = glm::rotate(modelMatrix, glm::radians(std::get<0>(rot_y)), glm::vec3(0.0f, 1.0f, 0.0f));
         modelMatrix = glm::rotate(modelMatrix, glm::radians(std::get<0>(rot_z)), glm::vec3(0.0f, 0.0f, 1.0f));
-        modelMatrix = glm::translate(modelMatrix, -modelCenter);
+        modelMatrix = glm::translate(modelMatrix, modelCenterOffset);
         glm::vec3 lightPos(std::get<0>(light), std::get<1>(light), std::get<2>(light));
         glm::vec4 lightPosView = viewMatrix * glm::vec4(lightPos, 1.0f);
         shaderProgram.setUniform("lightPos", glm::vec3(lightPosView));
@@ -271,13 +286,17 @@ public:
         obj_model.drawArrays();
 
         if (showControls) {
+            win->text.setColor({255, 255, 0, 255});
+            win->text.printText_Solid(font, 20.0f, 20.0f, "Controls (H: show/hide)");
             win->text.setColor({255, 255, 255, 255});
-            win->text.printText_Solid(font, 20.0f, 20.0f, "Controls (SPACE: show/hide)");
-            win->text.printText_Solid(font, 20.0f, 48.0f, "X/Y/Z: Toggle twist axis   T: Toggle bend");
-            win->text.printText_Solid(font, 20.0f, 76.0f, "-/+: Twist speed down/up   0: Reset speed   R: Reverse direction");
-            win->text.printText_Solid(font, 20.0f, 104.0f, "A/S: Zoom   Arrow keys: Toggle model rotation   Enter: Inside/Outside");
-            win->text.printText_Solid(font, 20.0f, 132.0f, "K/L/I/O: Move light   P: Wireframe toggle");
-            win->text.printText_Solid(font, 20.0f, 160.0f,
+            win->text.printText_Solid(font, 20.0f, 48.0f, "Mouse Drag   - Rotate model      Scroll Wheel - Zoom");
+            win->text.printText_Solid(font, 20.0f, 76.0f, "Arrow Keys   - Toggle auto-rotation axes");
+            win->text.printText_Solid(font, 20.0f, 104.0f, "A/S or +/-   - Zoom in/out        Home - Reset view");
+            win->text.printText_Solid(font, 20.0f, 132.0f, "W            - Toggle wireframe    R - Reverse twist");
+            win->text.printText_Solid(font, 20.0f, 160.0f, "X/Y/Z - Toggle twist axis   T - Toggle bend");
+            win->text.printText_Solid(font, 20.0f, 188.0f, "K/L/I/O - Move light   Enter - Inside/Outside");
+            win->text.printText_Solid(font, 20.0f, 216.0f, "Space - Toggle rotation lock   Escape - Quit");
+            win->text.printText_Solid(font, 20.0f, 244.0f,
                 "twistSpeed=" + std::to_string(twistSpeed) + " deg/sec  direction=" +
                 std::string(twistDirection > 0.0f ? "forward" : "reverse"));
         }
@@ -297,6 +316,33 @@ public:
 
     virtual void event(gl::GLWindow *win, SDL_Event &e) override {
         switch(e.type) {
+            case SDL_MOUSEBUTTONDOWN:
+                if (e.button.button == SDL_BUTTON_LEFT) {
+                    mouseDown = true;
+                    lastMouseX = e.button.x;
+                    lastMouseY = e.button.y;
+                }
+                break;
+            case SDL_MOUSEBUTTONUP:
+                if (e.button.button == SDL_BUTTON_LEFT) {
+                    mouseDown = false;
+                }
+                break;
+            case SDL_MOUSEMOTION:
+                if (mouseDown) {
+                    int dx = e.motion.x - lastMouseX;
+                    int dy = e.motion.y - lastMouseY;
+                    mouseRotY += dx * 0.5f;
+                    mouseRotX += dy * 0.5f;
+                    lastMouseX = e.motion.x;
+                    lastMouseY = e.motion.y;
+                }
+                break;
+            case SDL_MOUSEWHEEL:
+                cameraDistance -= e.wheel.y * 0.5f;
+                if (cameraDistance < 0.1f) cameraDistance = 0.1f;
+                if (cameraDistance > 100.0f) cameraDistance = 100.0f;
+                break;
             case SDL_KEYUP:
                 switch(e.key.keysym.sym) {
                     case SDLK_RETURN:
@@ -335,14 +381,12 @@ public:
                         toggle(rot_y);
                     break;
                     case SDLK_a: 
-                       outsideCameraPos.z -= modelRadius * 0.1f;
-                       if (outsideCameraPos.z < modelCenter.z + modelRadius * 0.5f) 
-                           outsideCameraPos.z = modelCenter.z + modelRadius * 0.5f;
+                       cameraDistance -= 0.5f;
+                       if (cameraDistance < 0.1f) cameraDistance = 0.1f;
                     break;
                     case SDLK_s: 
-                       outsideCameraPos.z += modelRadius * 0.1f;
-                       if (outsideCameraPos.z > modelCenter.z + modelRadius * 10.0f) 
-                           outsideCameraPos.z = modelCenter.z + modelRadius * 10.0f;
+                       cameraDistance += 0.5f;
+                       if (cameraDistance > 100.0f) cameraDistance = 100.0f;
                     break;
                     case SDLK_k:
                         std::get<0>(light) += stepSize; 
@@ -356,12 +400,12 @@ public:
                     case SDLK_o:
                         std::get<1>(light) -= stepSize; 
                         break;
-                    case SDLK_p: {
+                    case SDLK_p:
+                    case SDLK_w: {
 #ifndef __EMSCRIPTEN__
                         if(poly == false) {
                             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
                             poly = true;
-                            showControls = false;
                         } else {
                             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
                             poly = false;                            
@@ -370,6 +414,7 @@ public:
                     }
                     break;
                     case SDLK_SPACE:
+                    case SDLK_h:
 #ifndef __EMSCRIPTEN__
                         if(poly == false) {
 #endif
@@ -378,6 +423,17 @@ public:
 #ifndef __EMSCRIPTEN__
                         }
 #endif
+                    break;
+                    case SDLK_HOME:
+                        cameraDistance = 5.0f;
+                        mouseRotX = 0.0f;
+                        mouseRotY = 0.0f;
+                        rot_x = {1.0f, true};
+                        rot_y = {1.0f, true};
+                        rot_z = {0.0f, false};
+                    break;
+                    case SDLK_ESCAPE:
+                        win->quit();
                     break;
                     case SDLK_MINUS:
                     case SDLK_KP_MINUS:
@@ -407,13 +463,13 @@ public:
     }
 private:
     bool insideCube = false;
-    glm::vec3 outsideCameraPos = glm::vec3(0.0f, -2.0f, 50.0f);
+    glm::vec3 outsideCameraPos = glm::vec3(0.0f, 0.0f, 5.0f);
     float outsideFOV = 45.0f;
 };
 
 class MainWindow : public gl::GLWindow {
 public:
-    MainWindow(const std::string &path, const std::string &filename, const std::string &text, const std::string &tpath, int tw, int th, bool compress) : gl::GLWindow("Model Viewer", tw, th) {
+    MainWindow(const std::string &path, const std::string &filename, const std::string &text, const std::string &tpath, int tw, int th, bool compress) : gl::GLWindow("Model Viewer - [ OpenGL ]", tw, th) {
         setPath(path);
         setObject(new ModelViewer(filename, text, tpath, compress));
 		object->load(this);

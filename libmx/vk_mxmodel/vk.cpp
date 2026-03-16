@@ -261,7 +261,7 @@ namespace mx {
                     std::cout << ">> Auto-rotate: " << (autoRotate ? "ON" : "OFF") << "\n";
                     break;
                 case SDLK_SPACE: 
-                    rotationEnabled = !rotationEnabled;
+                    showHelp = !showHelp;
                     break;
                 case SDLK_UP:    
                     if(rotationEnabled)
@@ -287,6 +287,14 @@ namespace mx {
                     cameraDistance += 0.5f;
                     if (cameraDistance > 100.0f) cameraDistance = 100.0f;
                     break;
+                case SDLK_a:
+                    cameraDistance -= 0.5f;
+                    if (cameraDistance < 0.1f) cameraDistance = 0.1f;
+                    break;
+                case SDLK_s:
+                    cameraDistance += 0.5f;
+                    if (cameraDistance > 100.0f) cameraDistance = 100.0f;
+                    break;
                 case SDLK_HOME:
                     rotationX = 0; rotationY = 0; cameraDistance = 5.0f;
                     break;
@@ -308,8 +316,6 @@ namespace mx {
             int dy = e.motion.y - lastMouseY;
             rotationY += dx * 0.5f;
             rotationX += dy * 0.5f;
-            if (rotationX > 89.0f) rotationX = 89.0f;
-            if (rotationX < -89.0f) rotationX = -89.0f;
             lastMouseX = e.motion.x;
             lastMouseY = e.motion.y;
         }
@@ -409,16 +415,12 @@ namespace mx {
             SDL_Color yellow{255, 255, 0, 255};
             int y = 10;
             const int lineH = 22;
-            printText("Controls:", 10, y, yellow); y += lineH;
-            printText("Mouse Drag   - Rotate model", 10, y, white); y += lineH;
-            printText("Scroll Wheel - Zoom in/out", 10, y, white); y += lineH;
+            printText("Controls (H: show/hide)", 10, y, yellow); y += lineH;
+            printText("Mouse Drag   - Rotate model      Scroll Wheel - Zoom", 10, y, white); y += lineH;
             printText("Arrow Keys   - Rotate model", 10, y, white); y += lineH;
-            printText("+/-          - Zoom in/out", 10, y, white); y += lineH;
+            printText("A/S or +/-   - Zoom in/out        Home - Reset view", 10, y, white); y += lineH;
             printText("W            - Toggle wireframe", 10, y, white); y += lineH;
             printText("R            - Toggle auto-rotate", 10, y, white); y += lineH;
-            printText("Space        - Toggle rotation lock", 10, y, white); y += lineH;
-            printText("Home         - Reset view", 10, y, white); y += lineH;
-            printText("H            - Toggle this help", 10, y, white); y += lineH;
             printText("Escape       - Quit", 10, y, white);
 
             vkCmdBindPipeline(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, textPipeline);
