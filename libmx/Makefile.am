@@ -128,6 +128,7 @@ mx2include_HEADERS = \
 	libmx/object.hpp \
 	libmx/font.hpp \
 	libmx/cfg.hpp \
+	libmx/config.hpp \
 	libmx/tee_stream.hpp \
 	libmx/texture.hpp \
 	libmx/exception.hpp \
@@ -195,6 +196,7 @@ lib_LTLIBRARIES += libmxvk.la
 libmxvk_la_SOURCES = \
 	libmx/vk.cpp \
 	libmx/vk_model.cpp \
+	libmx/vk_abstract_model.cpp \
 	libmx/vk_text.cpp \
 	libmx/vk_sprite.cpp
 
@@ -212,6 +214,7 @@ libmxvk_la_LDFLAGS = -static
 mx2include_HEADERS += \
 	libmx/vk.hpp \
 	libmx/vk_model.hpp \
+	libmx/vk_abstract_model.hpp \
 	libmx/vk_text.hpp \
 	libmx/vk_sprite.hpp
 
@@ -283,7 +286,7 @@ EXTRA_PROGRAMS += \
 	mx2-test mx2-controller-test mx2-input-test mx2-image-test \
 	mx2-knights-tour mx2-pong mx2-asteroids mx2-blocks mx2-piece mx2-matrix \
 	mx2-breakout mx2-frogger mx2-mad mx2-space \
-	mx2-sound-test mx2-jpeg-test \
+	mx2-sound-test mx2-jpeg-test mx2-example \
 	mx2-gl-window mx2-gl-skeleton mx2-gl-example mx2-gl-cube mx2-gl-pong \
 	mx2-gl-animated-cube mx2-gl-breakout mx2-gl-pyramid mx2-gl-mxmod \
 	mx2-space3d mx2-gl-surface-test \
@@ -300,6 +303,7 @@ EXTRA_PROGRAMS += \
 	mx2-gl-object \
 	mx2-gl-glitch mx2-gl-glitch-cube mx2-gl-glitch-cube2 mx2-gl-glitch-cube3 \
 	mx2-gl-texture-map mx2-gl-glitch-ex \
+	mx2-gl-about mx2-gl-animation mx2-gl-tux \
 	mx2-gl-es3 mx2-gl-warp-model \
 	mx2-gl-cv-skeleton mx2-gl-walktest-cv \
 	mx2-vk-skeleton mx2-vk-example mx2-vk-tex-cube mx2-vk-tex-pyramid \
@@ -307,6 +311,7 @@ EXTRA_PROGRAMS += \
 	mx2-vk-stars mx2-vk-pong mx2-vk-raycast mx2-vk-matrix mx2-vk-matrix-ray \
 	mx2-vk-sprite mx2-vk-point-sprite mx2-vk-point-sprite3D \
 	mx2-vk-2D-MasterPiece mx2-vk-spacerox mx2-vk-mxmodel mx2-vk-stickball \
+	mx2-vk-abstract-model mx2-vk-cube mx2-vk-skybox mx2-vk-star3D mx2-vk-tux \
 	mx2-vk-matrix-cv mx2-vk-opencv mx2-vk-opencv-moon mx2-vk-opencv-shader \
 	mx2-cross mx2-moon mx2-vk-cross-stars mx2-vk-cross-stars-frag
 
@@ -353,6 +358,9 @@ mx2_mad_LDADD                 = libmx.la $(SDL2_LIBS) $(SDL2_TTF_LIBS)
 
 mx2_space_SOURCES             = space/space.cpp
 mx2_space_LDADD               = libmx.la $(SDL2_LIBS) $(SDL2_TTF_LIBS)
+
+mx2_example_SOURCES           = example/main.cpp
+mx2_example_LDADD             = libmx.la $(SDL2_LIBS) $(SDL2_TTF_LIBS)
 
 ## ── Mixer example ──────────────────────────────────────────────────────────
 
@@ -544,6 +552,15 @@ mx2_gl_texture_map_LDADD          = libmxgl.la libmx.la
 mx2_gl_glitch_ex_SOURCES          = gl_glitch_ex/model_glitch.cpp
 mx2_gl_glitch_ex_LDADD            = libmxgl.la libmx.la
 
+mx2_gl_about_SOURCES              = gl_about/about.cpp
+mx2_gl_about_LDADD                = libmxgl.la libmx.la
+
+mx2_gl_animation_SOURCES          = gl_animation/animation.cpp gl_animation/binding.cpp
+mx2_gl_animation_LDADD            = libmxgl.la libmx.la
+
+mx2_gl_tux_SOURCES                = gl_tux/tux.cpp
+mx2_gl_tux_LDADD                  = libmxgl.la libmx.la
+
 ## ── OpenGL ES3 examples ────────────────────────────────────────────────────
 
 mx2_gl_es3_SOURCES                = gl_es3/skeleton.cpp
@@ -628,6 +645,18 @@ mx2_vk_mxmodel_LDADD              = libmxvk.la libvolk.la
 mx2_vk_stickball_SOURCES          = vk_stickball/main.cpp
 mx2_vk_stickball_LDADD            = libmxvk.la libvolk.la
 
+mx2_vk_abstract_model_SOURCES     = vk_abstract_model/abstract.cpp
+mx2_vk_abstract_model_LDADD       = libmxvk.la libvolk.la
+
+mx2_vk_cube_SOURCES               = vk_cube/main.cpp
+mx2_vk_cube_LDADD                 = libmxvk.la libvolk.la
+
+mx2_vk_star3D_SOURCES             = vk_star3D/star.cpp vk_star3D/vk.cpp
+mx2_vk_star3D_LDADD               = libmxvk.la libvolk.la
+
+mx2_vk_tux_SOURCES                = vk_tux/tux.cpp
+mx2_vk_tux_LDADD                  = libmxvk.la libvolk.la
+
 ## ── Vulkan + OpenCV examples ───────────────────────────────────────────────
 
 mx2_vk_matrix_cv_SOURCES          = vk_matrix_cv/skeleton.cpp vk_matrix_cv/vk.cpp
@@ -641,6 +670,9 @@ mx2_vk_opencv_moon_LDADD          = libmxvk_cv.la libmxvk.la libvolk.la $(OPENCV
 
 mx2_vk_opencv_shader_SOURCES      = vk_opencv_shader/main.cpp
 mx2_vk_opencv_shader_LDADD        = libmxvk_cv.la libmxvk.la libvolk.la $(OPENCV_LIBS)
+
+mx2_vk_skybox_SOURCES             = vk_skybox/main.cpp vk_skybox/vk.cpp
+mx2_vk_skybox_LDADD               = libmxvk.la libvolk.la $(OPENCV_LIBS)
 
 ## ── Cross GL/VK examples ───────────────────────────────────────────────────
 
@@ -689,7 +721,7 @@ if ENABLE_EXAMPLES
 noinst_PROGRAMS += \
 	mx2-test mx2-controller-test mx2-input-test mx2-image-test \
 	mx2-knights-tour mx2-pong mx2-asteroids mx2-blocks mx2-piece mx2-matrix \
-	mx2-breakout mx2-frogger mx2-mad mx2-space
+	mx2-breakout mx2-frogger mx2-mad mx2-space mx2-example
 
 if ENABLE_MIXER
 noinst_PROGRAMS += mx2-sound-test
@@ -716,7 +748,8 @@ noinst_PROGRAMS += \
 	mx2-gl-asteroids mx2-gl-console mx2-gl-console-skeleton mx2-gl-console-full \
 	mx2-gl-object \
 	mx2-gl-glitch mx2-gl-glitch-cube mx2-gl-glitch-cube2 mx2-gl-glitch-cube3 \
-	mx2-gl-texture-map mx2-gl-glitch-ex
+	mx2-gl-texture-map mx2-gl-glitch-ex \
+	mx2-gl-about mx2-gl-animation mx2-gl-tux
 
 if ENABLE_ES3
 noinst_PROGRAMS += mx2-gl-es3 mx2-gl-warp-model
@@ -734,10 +767,11 @@ noinst_PROGRAMS += \
 	mx2-vk-data mx2-vk-image mx2-vk-frag mx2-vk-borg mx2-vk-wire mx2-vk-text \
 	mx2-vk-stars mx2-vk-pong mx2-vk-raycast mx2-vk-matrix mx2-vk-matrix-ray \
 	mx2-vk-sprite mx2-vk-point-sprite mx2-vk-point-sprite3D \
-	mx2-vk-2D-MasterPiece mx2-vk-spacerox mx2-vk-mxmodel mx2-vk-stickball
+	mx2-vk-2D-MasterPiece mx2-vk-spacerox mx2-vk-mxmodel mx2-vk-stickball \
+	mx2-vk-abstract-model mx2-vk-cube mx2-vk-star3D mx2-vk-tux
 
 if ENABLE_OPENCV
-noinst_PROGRAMS += mx2-vk-matrix-cv mx2-vk-opencv mx2-vk-opencv-moon mx2-vk-opencv-shader
+noinst_PROGRAMS += mx2-vk-matrix-cv mx2-vk-opencv mx2-vk-opencv-moon mx2-vk-opencv-shader mx2-vk-skybox
 endif
 
 endif ## ENABLE_VULKAN
