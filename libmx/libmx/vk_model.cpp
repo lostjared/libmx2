@@ -64,7 +64,6 @@ namespace mx {
         subMeshes_.clear();
         textureIndex_ = 0;
 
-        // Temporary per-group vertex accumulator
         std::vector<VKVertex> currentVerts;
         uint32_t currentTexIdx = 0;
 
@@ -353,7 +352,8 @@ namespace mx {
 
     void MXModel::upload(VkDevice device, VkPhysicalDevice physicalDevice,
                          VkCommandPool commandPool, VkQueue graphicsQueue) {
-        
+        std::cout << ">> MXModel::upload: uploading " << vertices_.size()
+                  << " vertices, " << indices_.size() << " indices to GPU...\n";
         cleanup(device);
 
         VkDeviceSize vertexBufferSize = sizeof(vertices_[0]) * vertices_.size();
@@ -408,10 +408,12 @@ namespace mx {
         vkFreeMemory(device, stagingVertexBufferMemory, nullptr);
         vkDestroyBuffer(device, stagingIndexBuffer, nullptr);
         vkFreeMemory(device, stagingIndexBufferMemory, nullptr);
+        std::cout << ">> MXModel::upload: GPU buffers created, staging buffers released [OK]\n";
     }
 
     void MXModel::cleanup(VkDevice device) {
         if (vertexBuffer_ != VK_NULL_HANDLE) {
+            std::cout << ">> MXModel::cleanup: destroying vertex and index buffers\n";
             vkDestroyBuffer(device, vertexBuffer_, nullptr);
             vkFreeMemory(device, vertexBufferMemory_, nullptr);
             vertexBuffer_       = VK_NULL_HANDLE;
@@ -426,8 +428,10 @@ namespace mx {
     }
 
     void MXModel::draw(VkCommandBuffer cmd) const {
-        if (vertexBuffer_ == VK_NULL_HANDLE || indexBuffer_ == VK_NULL_HANDLE)
+        if (vertexBuffer_ == VK_NULL_HANDLE || indexBuffer_ == VK_NULL_HANDLE) {
+            std::cout << ">> MXModel::draw: skipped (no buffers)\n";
             return;
+        }
 
         VkBuffer buffers[] = { vertexBuffer_ };
         VkDeviceSize offsets[] = { 0 };
@@ -437,9 +441,14 @@ namespace mx {
     }
 
     void MXModel::drawSubMesh(VkCommandBuffer cmd, size_t index) const {
-        if (vertexBuffer_ == VK_NULL_HANDLE || indexBuffer_ == VK_NULL_HANDLE)
+        if (vertexBuffer_ == VK_NULL_HANDLE || indexBuffer_ == VK_NULL_HANDLE) {
+            std::cout << ">> MXModel::drawSubMesh: skipped (no buffers)\n";
             return;
-        if (index >= subMeshes_.size()) return;
+        }
+        if (index >= subMeshes_.size()) {
+            std::cout << ">> MXModel::drawSubMesh: index " << index << " out of range (" << subMeshes_.size() << " sub-meshes)\n";
+            return;
+        }
 
         VkBuffer buffers[] = { vertexBuffer_ };
         VkDeviceSize offsets[] = { 0 };
@@ -462,6 +471,7 @@ namespace mx {
 
         if (vkCreateBuffer(device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
             throw mx::Exception("MXModel: Failed to create buffer!");
+        std::cout << ">> MXModel::createBuffer: allocated " << size << " bytes\n";
 
         VkMemoryRequirements memRequirements;
         vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
@@ -493,6 +503,7 @@ namespace mx {
     void MXModel::copyBuffer(VkDevice device, VkCommandPool commandPool,
                              VkQueue graphicsQueue,
                              VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
+        std::cout << ">> MXModel::copyBuffer: copying " << size << " bytes to device-local memory\n";
         VkCommandBufferAllocateInfo allocInfo{};
         allocInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
         allocInfo.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;

@@ -4,6 +4,7 @@
 namespace mx {
 
     void VKAbstractModel::load(VKWindow *win, const std::string &model_file, const std::string &texture_file, const std::string &path, float scale) {
+        std::cout << ">> VKAbstractModel::load: model=" << model_file << ", textures=" << texture_file << ", scale=" << scale << "\n";
         obj.load(model_file, scale);
         const auto &verts = obj.vertices();
         if (!verts.empty()) {
@@ -25,6 +26,7 @@ namespace mx {
         }
 
         obj.upload(win->getDevice(), win->getPhysicalDevice(), win->getCommandPool(), win->getGraphicsQueue());
+        std::cout << ">> VKAbstractModel::load: model uploaded, center offset=(" << modelCenterOffset.x << ", " << modelCenterOffset.y << ", " << modelCenterOffset.z << "), renderScale=" << modelRenderScale << "\n";
         loadModelTextures(win, texture_file, path);
         const size_t frameCount = win->swapChainImages.size();
         modelUniformBuffers.resize(frameCount);
@@ -41,6 +43,7 @@ namespace mx {
 
         createModelDescriptorPool(win);
         createModelDescriptorSets(win);
+        std::cout << ">> VKAbstractModel::load: complete [OK]\n";
     }
     
     void VKAbstractModel::setShaders(const std::string &vert, const std::string &frag) {
@@ -57,6 +60,7 @@ namespace mx {
     }
 
     void VKAbstractModel::loadModelTextures(VKWindow *win, const std::string &texture_file, const std::string &path) {
+        std::cout << ">> VKAbstractModel::loadModelTextures: loading from " << texture_file << "\n";
         std::string texPath = texture_file;
         std::ifstream tf(texPath);
         if (!tf.is_open())
@@ -116,10 +120,13 @@ namespace mx {
 
             tex.view = win->createImageView(tex.image, fmt, VK_IMAGE_ASPECT_COLOR_BIT);
             modelTextures.push_back(tex);
+            std::cout << ">> VKAbstractModel::loadModelTextures: [" << i << "] " << imagePaths[i] << " (" << tex.w << "x" << tex.h << ")\n";
         }
+        std::cout << ">> VKAbstractModel::loadModelTextures: " << modelTextures.size() << " texture(s) loaded [OK]\n";
     }
     
     void VKAbstractModel::resize(VKWindow *win) {
+        std::cout << ">> VKAbstractModel::resize: rebuilding UBOs and descriptors for new swapchain\n";
         if (modelDescriptorPool != VK_NULL_HANDLE) {
             vkDestroyDescriptorPool(win->getDevice(), modelDescriptorPool, nullptr);
             modelDescriptorPool = VK_NULL_HANDLE;
@@ -146,9 +153,11 @@ namespace mx {
         }
         createModelDescriptorPool(win);
         createModelDescriptorSets(win);
+        std::cout << ">> VKAbstractModel::resize: complete (" << win->swapChainImages.size() << " frames) [OK]\n";
     }
 
     void VKAbstractModel::createModelDescriptorPool(VKWindow *win) {
+        std::cout << ">> VKAbstractModel::createModelDescriptorPool: creating pool...\n";
         const uint32_t texCount = std::max<uint32_t>(1u, static_cast<uint32_t>(modelTextures.size()));
         const uint32_t setCount = static_cast<uint32_t>(win->swapChainImages.size()) * texCount;
 
@@ -163,8 +172,10 @@ namespace mx {
         ci.maxSets = setCount;
         if (vkCreateDescriptorPool(win->getDevice(), &ci, nullptr, &modelDescriptorPool) != VK_SUCCESS)
             throw mx::Exception("Failed to create model descriptor pool!");
+        std::cout << ">> VKAbstractModel::createModelDescriptorPool: maxSets=" << setCount << " [OK]\n";
     }
     void VKAbstractModel::createModelDescriptorSets(VKWindow *win) {
+        std::cout << ">> VKAbstractModel::createModelDescriptorSets: allocating sets...\n";
         const size_t texCount = std::max<size_t>(1, modelTextures.size());
         const size_t setCount = win->swapChainImages.size() * texCount;
 
@@ -211,9 +222,11 @@ namespace mx {
                                        writes.data(), 0, nullptr);
             }
         }
+        std::cout << ">> VKAbstractModel::createModelDescriptorSets: " << setCount << " set(s) allocated [OK]\n";
     }
 
     void VKAbstractModel::cleanup(VKWindow *win) {
+        std::cout << ">> VKAbstractModel::cleanup: releasing model resources...\n";
         vkDeviceWaitIdle(win->getDevice());
         obj.cleanup(win->getDevice());
         for (size_t i = 0; i < modelUniformBuffers.size(); ++i) {
@@ -233,6 +246,6 @@ namespace mx {
         modelTextures.clear();
         if (modelDescriptorPool != VK_NULL_HANDLE)
             vkDestroyDescriptorPool(win->getDevice(), modelDescriptorPool, nullptr);
-        
+        std::cout << ">> VKAbstractModel::cleanup: all resources released [OK]\n";
     }
 }
