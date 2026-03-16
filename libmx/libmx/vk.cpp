@@ -396,18 +396,40 @@ namespace mx {
         }
         std::vector<VkPhysicalDevice> devices(deviceCount);
         vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
+
+        int bestScore = -1;
         for (const auto& deviceCandidate : devices) {
-            if (isDeviceSuitable(deviceCandidate)) {
-                physicalDevice = deviceCandidate;            
-                break;
+            if (!isDeviceSuitable(deviceCandidate))
+                continue;
+
+            VkPhysicalDeviceProperties props;
+            vkGetPhysicalDeviceProperties(deviceCandidate, &props);
+
+            int score = 0;
+            switch (props.deviceType) {
+                case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:   score = 4; break;
+                case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU: score = 3; break;
+                case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:    score = 2; break;
+                case VK_PHYSICAL_DEVICE_TYPE_OTHER:          score = 1; break;
+                case VK_PHYSICAL_DEVICE_TYPE_CPU:            score = 0; break;
+                default:                                     score = 0; break;
+            }
+
+            std::cout << "Found Vulkan device: " << props.deviceName
+                      << " (type=" << props.deviceType << ", score=" << score << ")\n";
+
+            if (score > bestScore) {
+                bestScore = score;
+                physicalDevice = deviceCandidate;
             }
         }
+
         if (physicalDevice == VK_NULL_HANDLE) {
             throw mx::Exception("Failed to find a suitable GPU!");
         }
         VkPhysicalDeviceProperties deviceProperties;
         vkGetPhysicalDeviceProperties(physicalDevice, &deviceProperties);
-        std::cout << "Device Name: " << deviceProperties.deviceName << std::endl;
+        std::cout << "Selected device: " << deviceProperties.deviceName << std::endl;
     }
 
     void VKWindow::createLogicalDevice() {
