@@ -303,7 +303,7 @@ EXTRA_PROGRAMS += \
 	mx2-gl-object \
 	mx2-gl-glitch mx2-gl-glitch-cube mx2-gl-glitch-cube2 mx2-gl-glitch-cube3 \
 	mx2-gl-texture-map mx2-gl-glitch-ex \
-	mx2-gl-animation mx2-gl-tux \
+	mx2-gl-tux \
 	mx2-gl-es3 mx2-gl-warp-model \
 	mx2-gl-cv-skeleton mx2-gl-walktest-cv \
 	mx2-vk-skeleton mx2-vk-example mx2-vk-tex-cube mx2-vk-tex-pyramid \
@@ -311,7 +311,7 @@ EXTRA_PROGRAMS += \
 	mx2-vk-stars mx2-vk-pong mx2-vk-raycast mx2-vk-matrix mx2-vk-matrix-ray \
 	mx2-vk-sprite mx2-vk-point-sprite mx2-vk-point-sprite3D \
 	mx2-vk-2D-MasterPiece mx2-vk-spacerox mx2-vk-mxmodel mx2-vk-stickball \
-	mx2-vk-abstract-model mx2-vk-cube mx2-vk-skybox mx2 mx2-vk-tux \
+	mx2-vk-abstract-model mx2-vk-skybox mx2-vk-tux \
 	mx2-vk-matrix-cv mx2-vk-opencv mx2-vk-opencv-moon mx2-vk-opencv-shader \
 	mx2-cross mx2-moon mx2-vk-cross-stars mx2-vk-cross-stars-frag
 
@@ -552,12 +552,6 @@ mx2_gl_texture_map_LDADD          = libmxgl.la libmx.la
 mx2_gl_glitch_ex_SOURCES          = gl_glitch_ex/model_glitch.cpp
 mx2_gl_glitch_ex_LDADD            = libmxgl.la libmx.la
 
-#mx2_gl_about_SOURCES              = gl_about/about.cpp
-#mx2_gl_about_LDADD                = libmxgl.la libmx.la
-
-mx2_gl_animation_SOURCES          = gl_animation/animation.cpp gl_animation/binding.cpp
-mx2_gl_animation_LDADD            = libmxgl.la libmx.la
-
 mx2_gl_tux_SOURCES                = gl_tux/tux.cpp
 mx2_gl_tux_LDADD                  = libmxgl.la libmx.la
 
@@ -647,12 +641,6 @@ mx2_vk_stickball_LDADD            = libmxvk.la libvolk.la
 
 mx2_vk_abstract_model_SOURCES     = vk_abstract_model/abstract.cpp
 mx2_vk_abstract_model_LDADD       = libmxvk.la libvolk.la
-
-mx2_vk_cube_SOURCES               = vk_cube/main.cpp
-mx2_vk_cube_LDADD                 = libmxvk.la libvolk.la
-
-#mx2_vk_star3D_SOURCES             = vk_star3D/star.cpp vk_star3D/vk.cpp
-#mx2_vk_star3D_LDADD               = libmxvk.la libvolk.la
 
 mx2_vk_tux_SOURCES                = vk_tux/tux.cpp
 mx2_vk_tux_LDADD                  = libmxvk.la libvolk.la
@@ -749,7 +737,7 @@ noinst_PROGRAMS += \
 	mx2-gl-object \
 	mx2-gl-glitch mx2-gl-glitch-cube mx2-gl-glitch-cube2 mx2-gl-glitch-cube3 \
 	mx2-gl-texture-map mx2-gl-glitch-ex \
-	mx2-gl-animation mx2-gl-tux
+	mx2-gl-tux
 
 if ENABLE_ES3
 noinst_PROGRAMS += mx2-gl-es3 mx2-gl-warp-model
@@ -768,7 +756,7 @@ noinst_PROGRAMS += \
 	mx2-vk-stars mx2-vk-pong mx2-vk-raycast mx2-vk-matrix mx2-vk-matrix-ray \
 	mx2-vk-sprite mx2-vk-point-sprite mx2-vk-point-sprite3D \
 	mx2-vk-2D-MasterPiece mx2-vk-spacerox mx2-vk-mxmodel mx2-vk-stickball \
-	mx2-vk-abstract-model mx2-vk-cube mx2-vk-star3D mx2-vk-tux
+	mx2-vk-abstract-model mx2-vk-tux
 
 if ENABLE_OPENCV
 noinst_PROGRAMS += mx2-vk-matrix-cv mx2-vk-opencv mx2-vk-opencv-moon mx2-vk-opencv-shader mx2-vk-skybox
