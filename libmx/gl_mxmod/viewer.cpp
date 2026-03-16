@@ -49,9 +49,8 @@ public:
     mx::Model obj_model;
     std::string filename;
     std::string text, texture_path;
-    std::tuple<float, bool> rot_x;
-    std::tuple<float, bool> rot_y;
-    std::tuple<float, bool> rot_z;
+    bool autoRotate = true;
+    float frozenAutoAngle = 0.0f;
     std::tuple<float, float, float> light;    
 
     glm::vec3 lookDirection = glm::vec3(0.0f, 0.0f, -1.0f);
@@ -86,7 +85,7 @@ public:
     bool poly = false;
 #endif
 
-    ModelViewer(const std::string &filename, const std::string &text, std::string text_path, bool compress_) : rot_x{1.0f, true}, rot_y{1.0f, true}, rot_z{0.0f, false}, light(0.0, 10.0, 5.0) {
+    ModelViewer(const std::string &filename, const std::string &text, std::string text_path, bool compress_) : light(0.0, 10.0, 5.0) {
         this->filename = filename;
         this->text = text;
         this->texture_path = text_path;    
@@ -238,30 +237,14 @@ public:
         }
         obj_model.resetToOriginal();
 
-        if (std::get<1>(rot_x)) {
-            std::get<0>(rot_x) += 50.0f * deltaTime;
-            if (std::get<0>(rot_x) >= 360.0f) {
-                std::get<0>(rot_x) -= 360.0f;
-            }
-        }if (std::get<1>(rot_y)) {
-            std::get<0>(rot_y) += 50.0f * deltaTime;
-            if (std::get<0>(rot_y) >= 360.0f) {
-                std::get<0>(rot_y) -= 360.0f;
-            }
-        }if (std::get<1>(rot_z)) {
-            std::get<0>(rot_z) += 50.0f * deltaTime;
-            if (std::get<0>(rot_z) >= 360.0f) {
-                std::get<0>(rot_z) -= 360.0f;
-            }
-        }
+        if (autoRotate)
+            frozenAutoAngle += deltaTime * glm::radians(45.0f);
+        float autoAngle = frozenAutoAngle;
         
         glm::mat4 modelMatrix = glm::mat4(1.0f);
         modelMatrix = glm::scale(modelMatrix, glm::vec3(modelRenderScale));
         modelMatrix = glm::rotate(modelMatrix, glm::radians(mouseRotX), glm::vec3(1.0f, 0.0f, 0.0f));
-        modelMatrix = glm::rotate(modelMatrix, glm::radians(mouseRotY), glm::vec3(0.0f, 1.0f, 0.0f));
-        modelMatrix = glm::rotate(modelMatrix, glm::radians(std::get<0>(rot_x)), glm::vec3(1.0f, 0.0f, 0.0f));
-        modelMatrix = glm::rotate(modelMatrix, glm::radians(std::get<0>(rot_y)), glm::vec3(0.0f, 1.0f, 0.0f));
-        modelMatrix = glm::rotate(modelMatrix, glm::radians(std::get<0>(rot_z)), glm::vec3(0.0f, 0.0f, 1.0f));
+        modelMatrix = glm::rotate(modelMatrix, glm::radians(mouseRotY) + autoAngle, glm::vec3(0.0f, 1.0f, 0.0f));
         modelMatrix = glm::translate(modelMatrix, modelCenterOffset);
         glm::vec3 lightPos(std::get<0>(light), std::get<1>(light), std::get<2>(light));
         glm::vec4 lightPosView = viewMatrix * glm::vec4(lightPos, 1.0f);
@@ -285,14 +268,14 @@ public:
         obj_model.recalculateNormals();
         obj_model.drawArrays();
 
-        if (showControls) {
+        if (showControls && !poly) {
             win->text.setColor({255, 255, 0, 255});
             win->text.printText_Solid(font, 20.0f, 20.0f, "Controls (H: show/hide)");
             win->text.setColor({255, 255, 255, 255});
             win->text.printText_Solid(font, 20.0f, 48.0f, "Mouse Drag   - Rotate model      Scroll Wheel - Zoom");
-            win->text.printText_Solid(font, 20.0f, 76.0f, "Arrow Keys   - Toggle auto-rotation axes");
+            win->text.printText_Solid(font, 20.0f, 76.0f, "Arrow Keys   - Rotate model");
             win->text.printText_Solid(font, 20.0f, 104.0f, "A/S or +/-   - Zoom in/out        Home - Reset view");
-            win->text.printText_Solid(font, 20.0f, 132.0f, "W            - Toggle wireframe    R - Reverse twist");
+            win->text.printText_Solid(font, 20.0f, 132.0f, "W            - Toggle wireframe    R - Toggle auto-rotate");
             win->text.printText_Solid(font, 20.0f, 160.0f, "X/Y/Z - Toggle twist axis   T - Toggle bend");
             win->text.printText_Solid(font, 20.0f, 188.0f, "K/L/I/O - Move light   Enter - Inside/Outside");
             win->text.printText_Solid(font, 20.0f, 216.0f, "Space - Toggle rotation lock   Escape - Quit");
@@ -304,15 +287,7 @@ public:
         glBindVertexArray(0);
     }
 
-    void toggle(std::tuple<float, bool> &rot) {
-        if(std::get<1>(rot) == true) {
-            std::get<1>(rot) = false;
-            std::get<0>(rot) = 0.0f;
-        } else {
-            std::get<1>(rot) = true;
-            std::get<0>(rot) = 1.0f;
-        }
-    }
+
 
     virtual void event(gl::GLWindow *win, SDL_Event &e) override {
         switch(e.type) {
@@ -368,17 +343,17 @@ public:
            switch(e.type) {
             case SDL_KEYDOWN: {
                 switch(e.key.keysym.sym) {
-                    case SDLK_LEFT:
-                        toggle(rot_x);
-                    break;
-                    case SDLK_RIGHT:
-                        toggle(rot_x);
+                    case SDLK_UP:
+                        mouseRotX -= 5.0f;
                     break;
                     case SDLK_DOWN:
-                        toggle(rot_z);
+                        mouseRotX += 5.0f;
                     break;
-                    case SDLK_UP:
-                        toggle(rot_y);
+                    case SDLK_LEFT:
+                        mouseRotY -= 5.0f;
+                    break;
+                    case SDLK_RIGHT:
+                        mouseRotY += 5.0f;
                     break;
                     case SDLK_a: 
                        cameraDistance -= 0.5f;
@@ -425,12 +400,10 @@ public:
 #endif
                     break;
                     case SDLK_HOME:
-                        cameraDistance = 5.0f;
                         mouseRotX = 0.0f;
                         mouseRotY = 0.0f;
-                        rot_x = {1.0f, true};
-                        rot_y = {1.0f, true};
-                        rot_z = {0.0f, false};
+                        cameraDistance = 5.0f;
+                        frozenAutoAngle = 0.0f;
                     break;
                     case SDLK_ESCAPE:
                         win->quit();
@@ -453,8 +426,8 @@ public:
                         mx::system_out << "mx: twistSpeed reset = " << twistSpeed << " deg/sec\n";
                     break;
                     case SDLK_r:
-                        twistDirection *= -1.0f;
-                        mx::system_out << "mx: twistDirection = " << (twistDirection > 0.0f ? "forward" : "reverse") << "\n";
+                        autoRotate = !autoRotate;
+                        mx::system_out << ">> Auto-rotate: " << (autoRotate ? "ON" : "OFF") << "\n";
                     break;
                 }
             }
