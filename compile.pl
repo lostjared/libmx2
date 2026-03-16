@@ -19,10 +19,12 @@ my %libmx2_flags = (
 );
 
 my $should_install = 0;
+my $should_clean = 0;
 
 for my $arg (@ARGV) {
-
-   if($arg eq "install") {
+   if($arg eq "clean") {
+	$should_clean = 1;
+   } elsif($arg eq "install") {
         $should_install = 1;
     } elsif ($arg =~ /^([^=]+)=(.*)$/) {
         $libmx2_flags{$1} = $2;
@@ -46,6 +48,9 @@ sub build_libmx2 {
     make_path($build) unless -d $build;
     chdir($build) or die "Cannot cd to $build: $!\n";
 
+    if($should_clean) { 
+    	run_cmd("libmx2", "make clean");
+    }
     my @flags;
     while (my ($k, $v) = each %libmx2_flags) { push @flags, "$k=$v"; }
 
