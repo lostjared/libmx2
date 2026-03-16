@@ -651,8 +651,8 @@ mx2_vk_abstract_model_LDADD       = libmxvk.la libvolk.la
 mx2_vk_cube_SOURCES               = vk_cube/main.cpp
 mx2_vk_cube_LDADD                 = libmxvk.la libvolk.la
 
-mx2_vk_star3D_SOURCES             = vk_star3D/star.cpp vk_star3D/vk.cpp
-mx2_vk_star3D_LDADD               = libmxvk.la libvolk.la
+#mx2_vk_star3D_SOURCES             = vk_star3D/star.cpp vk_star3D/vk.cpp
+#mx2_vk_star3D_LDADD               = libmxvk.la libvolk.la
 
 mx2_vk_tux_SOURCES                = vk_tux/tux.cpp
 mx2_vk_tux_LDADD                  = libmxvk.la libvolk.la
