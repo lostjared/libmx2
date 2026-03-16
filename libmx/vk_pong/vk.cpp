@@ -1684,7 +1684,7 @@ namespace mx {
         }
         
         if (textRenderer != nullptr) {
-            textRenderer.release();
+            textRenderer.reset();
         }
         
         if (mappedParticleData != nullptr) {

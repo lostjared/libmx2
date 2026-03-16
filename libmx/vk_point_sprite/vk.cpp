@@ -1528,7 +1528,7 @@ namespace mx {
         vkDeviceWaitIdle(device);
         
         if (textRenderer != nullptr) {
-            textRenderer.release();
+            textRenderer.reset();
         }
         
         sprites.clear();

@@ -1640,7 +1640,7 @@ namespace mx {
         vkDeviceWaitIdle(device);
         
         if (textRenderer != nullptr) {
-            textRenderer.release();
+            textRenderer.reset();
         }
         
         if (textPipeline != VK_NULL_HANDLE) {
