@@ -25,7 +25,9 @@
  * |---------|-------------|
  * | **mx**  | Core module — SDL2 window management, input handling, font rendering (SDL2_ttf), PNG/JPEG loading, audio (SDL2_mixer), INI-style configuration, and general utilities. No graphics API dependency; always built. |
  * | **mxgl** | OpenGL module — GLAD/GLM initialisation, GLSL shader helpers, 3D model loading with CPU deformers, and an in-app console overlay. Built when `-DOPENGL=ON` (default). Links against **mx**. |
+ * | **mxgl_cv** | OpenCV capture bridge for the OpenGL backend. Built when `-DOPENGL=ON -DCV=ON`. |
  * | **mxvk** | Vulkan module — Vulkan initialisation (via volk / MoltenVK), pipeline and shader helpers, Vulkan model/sprite/text rendering. Built when `-DVULKAN=ON`. Links against **mx**. |
+ * | **mxvk_cv** | OpenCV capture bridge for the Vulkan backend. Built when `-DVULKAN=ON -DCV=ON`. |
  *
  * OpenGL and Vulkan never depend on each other — they share only the **mx** core.
  *
@@ -118,12 +120,21 @@
  * |-------|--------|-------------|
  * | mx::mxWindow | mx.hpp | Main SDL2 application window — subclass and override `draw()` / `event()`. |
  * | gl::GLWindow | gl.hpp | SDL2 + OpenGL window; adds shader program and sprite support. |
- * | mx::VKWindow | vk.hpp | Vulkan window with swap-chain, pipeline, and render-pass management. |
  * | gl::ShaderProgram | gl.hpp | GLSL shader compilation, linking, and uniform upload. |
  * | gl::GLSprite | gl.hpp | Textured quad rendered with a custom shader. |
  * | mx::Model | model.hpp | OpenGL 3D mesh with extensive CPU deformation API. |
+ * | console::GLConsole | console.hpp | Shader-rendered in-app console with command history. |
+ * | mx::VKWindow | vk.hpp | Vulkan window with swap-chain, pipeline, and render-pass management. |
  * | mx::VKSprite | vk_sprite.hpp | Vulkan 2D sprite renderer with instancing support. |
+ * | mx::VKText | vk_text.hpp | Vulkan text renderer using SDL_ttf glyph atlases. |
+ * | mx::MXModel | vk_model.hpp | Vulkan 3D mesh loader (OBJ / MXMOD) with GPU buffer management. |
+ * | mx::VKAbstractModel | vk_abstract_model.hpp | High-level Vulkan model wrapper with per-model shaders, textures, UBOs, and descriptors. |
  * | mx::ConfigFile | cfg.hpp | INI-style configuration file reader/writer. |
  * | Argz\<String\> | argz.hpp | Lightweight template command-line argument parser. |
- * | console::GLConsole | console.hpp | Shader-rendered in-app console with command history. |
+ * | mx::TeeStream | tee_stream.hpp | Dual-output stream that writes to both stdout/stderr and a log file. |
+ * | mx::mxJoystick | joystick.hpp | SDL2 joystick and game controller input wrapper. |
+ * | mx::Exception | exception.hpp | Library-wide exception type with descriptive text. |
+ * | mx::mxUtil | util.hpp | Asset path resolution and general utility helpers. |
+ * | mx::MXCapture (GL) | gl_cv.hpp | OpenCV capture bridge for the OpenGL backend. |
+ * | mx::MXCapture (VK) | vk_cv.hpp | OpenCV capture bridge for the Vulkan backend. |
  */

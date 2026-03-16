@@ -8,7 +8,7 @@
 #---------------------------------------------------------------------------
 
 PROJECT_NAME           = "libmx2"
-PROJECT_NUMBER         = "2.1.0"
+PROJECT_NUMBER         = "2.2.0"
 PROJECT_BRIEF          = "C++20 multimedia and game-engine library (SDL2 / OpenGL / Vulkan)"
 PROJECT_LOGO           =
 
