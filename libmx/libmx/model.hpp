@@ -39,6 +39,21 @@ namespace mx {
     enum class DeformAxis { X = 0, Y = 1, Z = 2 };
 
 /**
+ * @struct MXMaterial
+ * @brief Parsed Wavefront MTL material properties.
+ */
+    struct MXMaterial {
+        std::string name;                       ///< Material name (newmtl).
+        float ka[3] = {0.2f, 0.2f, 0.2f};      ///< Ambient colour.
+        float kd[3] = {0.8f, 0.8f, 0.8f};      ///< Diffuse colour.
+        float ks[3] = {0.0f, 0.0f, 0.0f};      ///< Specular colour.
+        float ns = 30.0f;                       ///< Specular exponent.
+        float d = 1.0f;                         ///< Opacity (dissolve).
+        int   illum = 2;                        ///< Illumination model.
+        std::string map_kd;                     ///< Diffuse texture filename.
+    };
+
+/**
  * @class Mesh
  * @brief A single OpenGL sub-mesh: geometry buffers, texture bindings, and deformers.
  *
@@ -62,6 +77,7 @@ namespace mx {
         bool hasOriginal;       ///< Whether an original snapshot exists.
         GLuint shape_type;      ///< GL primitive type (e.g. GL_TRIANGLES).
         GLuint texture;         ///< Primary diffuse texture ID.
+        std::string materialName; ///< Material name from OBJ usemtl directive.
 
         GLuint EBO, VAO, positionVBO, normalVBO, texCoordVBO, tangentVBO, bitangentVBO;
         
@@ -404,6 +420,18 @@ namespace mx {
          */
         void setTextures(gl::GLWindow *win, const std::string &filename, std::string prefix);
 
+        /**
+         * @brief Load textures using map_Kd paths from parsed MTL materials.
+         * @param win    Owner window.
+         * @param objDir Directory containing the OBJ (for resolving texture paths), or empty to use mtl dir.
+         */
+        void setTexturesFromMTL(gl::GLWindow *win, const std::string &objDir = "");
+
+        /** @return Read-only reference to parsed MTL materials. */
+        const std::vector<MXMaterial>& materials() const { return materials_; }
+        /** @return Path to the MTL library referenced by the OBJ, or empty. */
+        const std::string& mtlLibPath() const { return mtlLibPath_; }
+
         /** @brief Take a snapshot of all mesh geometries. */
         void saveOriginal();
         /** @brief Restore all meshes from the last saveOriginal() snapshot. */
@@ -468,8 +496,12 @@ namespace mx {
         void parseLine(const std::string &line, Mesh &currentMesh, int &type, size_t &count);
         /** @brief Load a Wavefront OBJ file into meshes. */
         bool openOBJ(const std::string &filename, bool compress);
+        /** @brief Parse a Wavefront .mtl file and populate materials_. */
+        void loadMTL(const std::string &path);
         gl::ShaderProgram *program = nullptr; ///< Active shader program.
         std::string tex_name;                 ///< Sampler uniform name.
+        std::vector<MXMaterial> materials_;   ///< Parsed MTL materials.
+        std::string mtlLibPath_;              ///< Path to .mtl file from OBJ mtllib.
     };
 }
 

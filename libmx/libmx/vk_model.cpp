@@ -66,6 +66,9 @@ namespace mx {
 
         std::vector<VKVertex> currentVerts;
         uint32_t currentTexIdx = 0;
+        std::string currentMtlName;
+        materials_.clear();
+        mtlLibPath_.clear();
 
         auto finalizeGroup = [&]() {
             if (currentVerts.empty()) return;
@@ -73,6 +76,7 @@ namespace mx {
             sm.firstIndex   = static_cast<uint32_t>(vertices_.size());
             sm.indexCount   = static_cast<uint32_t>(currentVerts.size());
             sm.textureIndex = currentTexIdx;
+            sm.materialName = currentMtlName;
             for (auto &v : currentVerts)
                 vertices_.push_back(v);
             subMeshes_.push_back(sm);
@@ -99,9 +103,18 @@ namespace mx {
                 float x, y, z;
                 if (s >> x >> y >> z)
                     normals.push_back({x, y, z});
+            } else if (tag == "mtllib") {
+                std::string mtlFile;
+                if (s >> mtlFile) {
+                    std::filesystem::path objDir = std::filesystem::path(path).parent_path();
+                    mtlLibPath_ = (objDir / mtlFile).string();
+                }
             } else if (tag == "g" || tag == "o" || tag == "usemtl") {
                 finalizeGroup();
                 currentTexIdx = static_cast<uint32_t>(subMeshes_.size());
+                if (tag == "usemtl") {
+                    s >> currentMtlName;
+                }
             } else if (tag == "f") {
                 std::vector<VKVertex> faceVerts;
                 std::string token;
@@ -152,6 +165,9 @@ namespace mx {
         }
 
         finalizeGroup();
+
+        if (!mtlLibPath_.empty())
+            loadMTL(mtlLibPath_);
 
         if (vertices_.empty())
             throw mx::Exception("MXModel::load: no vertices found in " + path);
@@ -533,6 +549,47 @@ namespace mx {
         vkQueueWaitIdle(graphicsQueue);
 
         vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+    }
+
+    void MXModel::loadMTL(const std::string &path) {
+        std::ifstream f(path);
+        if (!f.is_open()) {
+            std::cerr << ">> MXModel::loadMTL: warning - cannot open: " << path << "\n";
+            return;
+        }
+
+        MXMaterial *current = nullptr;
+        std::string line;
+        while (std::getline(f, line)) {
+            if (line.empty() || line[0] == '#') continue;
+            std::istringstream s(line);
+            std::string tag;
+            s >> tag;
+
+            if (tag == "newmtl") {
+                materials_.emplace_back();
+                current = &materials_.back();
+                s >> current->name;
+            } else if (!current) {
+                continue;
+            } else if (tag == "Ka") {
+                s >> current->ka[0] >> current->ka[1] >> current->ka[2];
+            } else if (tag == "Kd") {
+                s >> current->kd[0] >> current->kd[1] >> current->kd[2];
+            } else if (tag == "Ks") {
+                s >> current->ks[0] >> current->ks[1] >> current->ks[2];
+            } else if (tag == "Ns") {
+                s >> current->ns;
+            } else if (tag == "d") {
+                s >> current->d;
+            } else if (tag == "illum") {
+                s >> current->illum;
+            } else if (tag == "map_Kd") {
+                s >> current->map_kd;
+            }
+        }
+        std::cout << ">> MXModel::loadMTL: loaded " << materials_.size()
+                  << " material(s) from " << path << "\n";
     }
 
 }

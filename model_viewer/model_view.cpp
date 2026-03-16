@@ -129,7 +129,7 @@ void MainWindow::setupCentralWidget() {
     
     QHBoxLayout *textureLayout = new QHBoxLayout();
     textureLineEdit = new QLineEdit(this);
-    textureLineEdit->setPlaceholderText(tr("Select a .tex or .png file..."));
+    textureLineEdit->setPlaceholderText(tr("Select a .tex or .png or .mtl file..."));
     QPushButton *textureBrowseButton = new QPushButton(style()->standardIcon(QStyle::SP_DirIcon), tr("Browse..."), this);
     textureLayout->addWidget(textureLineEdit, 1);
     textureLayout->addWidget(textureBrowseButton);
@@ -308,7 +308,7 @@ void MainWindow::browseTextureFile() {
     QString lastDir = settings->value("lastTextureDir", QDir::homePath()).toString();
     QString fileName = QFileDialog::getOpenFileName(this,
         tr("Open Texture File"), lastDir,
-        tr("Texture Files (*.tex *.png *.jpg *.bmp);;All Files (*)"));
+        tr("Texture Files (*.tex *.png *.jpg *.bmp *.mtl);;All Files (*)"));
     
     if (!fileName.isEmpty()) {
         textureLineEdit->setText(fileName);

@@ -79,15 +79,71 @@ namespace mx {
 
         std::string prefix = path;
         std::vector<std::string> imagePaths;
-        std::string line;
-        while (std::getline(tf, line)) {
-            size_t b = line.find_first_not_of(" \t\r\n");
-            if (b == std::string::npos) continue;
-            size_t e = line.find_last_not_of(" \t\r\n");
-            line = line.substr(b, e - b + 1);
-            if (line.empty() || line[0] == '#') continue;
-            imagePaths.push_back(prefix + "/" + line);
+
+        // Read all meaningful lines to detect format
+        std::vector<std::string> lines;
+        {
+            std::string line;
+            while (std::getline(tf, line)) {
+                size_t b = line.find_first_not_of(" \t\r\n");
+                if (b == std::string::npos) continue;
+                size_t e = line.find_last_not_of(" \t\r\n");
+                line = line.substr(b, e - b + 1);
+                if (line.empty() || line[0] == '#') continue;
+                lines.push_back(line);
+            }
         }
+
+        // Detect structured format by looking for submesh keyword
+        bool structured = false;
+        bool isMTL = false;
+        for (const auto &ln : lines) {
+            std::istringstream chk(ln);
+            std::string kw;
+            chk >> kw;
+            if (kw == "submesh" || kw == "texture_dir" || kw == "material_lib" || kw == "model") {
+                structured = true;
+                break;
+            }
+            if (kw == "newmtl") {
+                isMTL = true;
+                break;
+            }
+        }
+
+        if (isMTL) {
+            std::cout << ">> VKAbstractModel::loadModelTextures: MTL format detected, extracting map_Kd textures\n";
+            for (const auto &ln : lines) {
+                std::istringstream s(ln);
+                std::string kw;
+                s >> kw;
+                if (kw == "map_Kd") {
+                    std::string texFile;
+                    if (s >> texFile)
+                        imagePaths.push_back(prefix + "/" + texFile);
+                }
+            }
+        } else if (structured) {
+            std::cout << ">> VKAbstractModel::loadModelTextures: structured .tex format detected\n";
+            for (const auto &ln : lines) {
+                std::istringstream s(ln);
+                std::string kw;
+                s >> kw;
+                if (kw == "texture") {
+                    std::string texFile;
+                    if (s >> texFile)
+                        imagePaths.push_back(prefix + "/" + texFile);
+                }
+                // texture_dir, material_lib, model, submesh, end_submesh,
+                // diffuse, specular_power, smooth_group, size, material, object
+                // are parsed but only 'texture' produces an image path
+            }
+        } else {
+            // Plain format: one filename per line
+            for (const auto &ln : lines)
+                imagePaths.push_back(prefix + "/" + ln);
+        }
+
         if (imagePaths.empty())
             throw mx::Exception("No textures in .tex file");
 
@@ -136,6 +192,86 @@ namespace mx {
         std::cout << ">> VKAbstractModel::loadModelTextures: " << modelTextures.size() << " texture(s) loaded [OK]\n";
     }
     
+    void VKAbstractModel::loadModelTexturesFromMTL(VKWindow *win, const std::string &path) {
+        const auto &mats = obj.materials();
+        if (mats.empty()) {
+            std::cerr << ">> VKAbstractModel::loadModelTexturesFromMTL: no materials loaded\n";
+            return;
+        }
+        std::cout << ">> VKAbstractModel::loadModelTexturesFromMTL: loading " << mats.size() << " texture(s) from MTL map_Kd\n";
+        std::string prefix = path;
+        // Resolve mtl directory from the mtl file path
+        std::string mtlDir;
+        if (!obj.mtlLibPath().empty()) {
+            auto pos = obj.mtlLibPath().find_last_of("/\\");
+            if (pos != std::string::npos)
+                mtlDir = obj.mtlLibPath().substr(0, pos);
+        }
+
+        VkFormat fmt = VK_FORMAT_R8G8B8A8_UNORM;
+        for (size_t i = 0; i < mats.size(); ++i) {
+            std::string imgPath;
+            if (!mats[i].map_kd.empty()) {
+                // Try prefix first, then mtl directory
+                imgPath = prefix + "/" + mats[i].map_kd;
+            }
+
+            SDL_Surface *img = nullptr;
+            if (!imgPath.empty())
+                img = png::LoadPNG(imgPath.c_str());
+
+            if (!img) {
+                // Create a solid-colour placeholder from Kd
+                img = SDL_CreateRGBSurfaceWithFormat(0, 1, 1, 32, SDL_PIXELFORMAT_RGBA32);
+                if (img) {
+                    uint8_t r = static_cast<uint8_t>(std::min(1.0f, mats[i].kd[0]) * 255.0f);
+                    uint8_t g = static_cast<uint8_t>(std::min(1.0f, mats[i].kd[1]) * 255.0f);
+                    uint8_t b = static_cast<uint8_t>(std::min(1.0f, mats[i].kd[2]) * 255.0f);
+                    uint32_t *px = (uint32_t*)img->pixels;
+                    *px = (0xFF << 24) | (b << 16) | (g << 8) | r;
+                } else {
+                    throw mx::Exception("Failed to create placeholder surface for material " + mats[i].name);
+                }
+            }
+
+            TexEntry tex;
+            tex.w = img->w;
+            tex.h = img->h;
+            VkDeviceSize imageSize = tex.w * tex.h * 4;
+
+            win->createImage(tex.w, tex.h, fmt, VK_IMAGE_TILING_OPTIMAL,
+                        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, tex.image, tex.memory);
+
+            win->transitionImageLayout(tex.image, fmt, VK_IMAGE_LAYOUT_UNDEFINED,
+                                  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+            VkBuffer staging; VkDeviceMemory stagingMem;
+            win->createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                         staging, stagingMem);
+            void *data;
+            vkMapMemory(win->getDevice(), stagingMem, 0, imageSize, 0, &data);
+            memcpy(data, img->pixels, (size_t)imageSize);
+            vkUnmapMemory(win->getDevice(), stagingMem);
+            win->copyBufferToImage(staging, tex.image, tex.w, tex.h);
+
+            win->transitionImageLayout(tex.image, fmt, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+            vkDestroyBuffer(win->getDevice(), staging, nullptr);
+            vkFreeMemory(win->getDevice(), stagingMem, nullptr);
+            SDL_FreeSurface(img);
+
+            tex.view = win->createImageView(tex.image, fmt, VK_IMAGE_ASPECT_COLOR_BIT);
+            modelTextures.push_back(tex);
+            std::cout << ">> VKAbstractModel::loadModelTexturesFromMTL: [" << i << "] "
+                      << mats[i].name << " -> " << (imgPath.empty() ? "(Kd placeholder)" : imgPath)
+                      << " (" << tex.w << "x" << tex.h << ")\n";
+        }
+        std::cout << ">> VKAbstractModel::loadModelTexturesFromMTL: " << modelTextures.size() << " texture(s) loaded [OK]\n";
+    }
+
     void VKAbstractModel::resize(VKWindow *win) {
         std::cout << ">> VKAbstractModel::resize: rebuilding UBOs and descriptors for new swapchain\n";
         if (modelDescriptorPool != VK_NULL_HANDLE) {

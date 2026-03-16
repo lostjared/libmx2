@@ -86,6 +86,7 @@ namespace mx {
         hasOriginal(m.hasOriginal),
         shape_type(m.shape_type),
         texture(m.texture),
+        materialName(std::move(m.materialName)),
         EBO(m.EBO),
         VAO(m.VAO),
         positionVBO(m.positionVBO),
@@ -123,6 +124,7 @@ namespace mx {
             hasOriginal = m.hasOriginal;
             shape_type = m.shape_type;
             texture = m.texture;
+            materialName = std::move(m.materialName);
             VAO = m.VAO;
             positionVBO = m.positionVBO;
             normalVBO = m.normalVBO;
@@ -947,6 +949,9 @@ namespace mx {
         currentMesh.setShapeType(GL_TRIANGLES);
         currentMesh.texture = 0;
         GLuint nextTextureIndex = 0;
+        std::string currentMtlName;
+        materials_.clear();
+        mtlLibPath_.clear();
 
         auto finalizeMesh = [&]() {
             if (currentMesh.vert.empty()) return;
@@ -1042,15 +1047,27 @@ namespace mx {
                         }
                     }
                 }
+            } else if (tag == "mtllib") {
+                std::string mtlFile;
+                if (s >> mtlFile) {
+                    std::filesystem::path objDir = std::filesystem::path(filename).parent_path();
+                    mtlLibPath_ = (objDir / mtlFile).string();
+                }
             } else if (tag == "g" || tag == "o" || tag == "usemtl") {
                 finalizeMesh();
                 nextTextureIndex = static_cast<GLuint>(meshes.size());
                 currentMesh.texture = nextTextureIndex;
+                if (tag == "usemtl") {
+                    s >> currentMtlName;
+                    currentMesh.materialName = currentMtlName;
+                }
             }
-            // mtllib, s lines are silently ignored
         }
 
         finalizeMesh();
+
+        if (!mtlLibPath_.empty())
+            loadMTL(mtlLibPath_);
 
         if (meshes.empty()) {
             std::cerr << "mx: Warning - No meshes loaded from OBJ " << filename << std::endl;
@@ -1115,40 +1132,185 @@ namespace mx {
         file.open(filename, std::ios::in);
         if (!file.is_open()) throw mx::Exception("Error could not open file: " + filename + " for texture");
 
+        // Read all meaningful lines
+        std::vector<std::string> lines;
         while (!file.eof()) {
             std::string line;
             std::getline(file, line);
-            if (file && !line.empty()) {
-                std::string final_path = prefix + "/" + line;
-                try {
-                    GLuint texid = gl::loadTexture(final_path);
-                    text.push_back(texid);
-                    mx::system_out << "mx: Loaded Texture: " << texid << " -> " << final_path << "\n";
-                } catch (const mx::Exception &e) {
-                    mx::system_err << "Warning: Failed to load texture from '" << final_path << "': " << e.text() << "\n";
-                    mx::system_err << "Using default white texture as fallback\n";
-                    
-                    GLuint placeholderTexture = 0;
-                    glGenTextures(1, &placeholderTexture);
-                    glBindTexture(GL_TEXTURE_2D, placeholderTexture);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                    unsigned char whitePixel[] = {255, 255, 255, 255};
-                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, whitePixel);
-                    glBindTexture(GL_TEXTURE_2D, 0);
-                    text.push_back(placeholderTexture);
-                    mx::system_out << "mx: Using placeholder texture: " << placeholderTexture << "\n";
-                }
+            if (file) {
+                size_t b = line.find_first_not_of(" \t\r\n");
+                if (b == std::string::npos) continue;
+                size_t e = line.find_last_not_of(" \t\r\n");
+                line = line.substr(b, e - b + 1);
+                if (!line.empty() && line[0] != '#')
+                    lines.push_back(line);
             }
         }
         file.close();
+
+        // Detect structured format
+        bool structured = false;
+        bool isMTL = false;
+        for (const auto &ln : lines) {
+            std::istringstream chk(ln);
+            std::string kw;
+            chk >> kw;
+            if (kw == "submesh" || kw == "texture_dir" || kw == "material_lib" || kw == "model") {
+                structured = true;
+                break;
+            }
+            if (kw == "newmtl") {
+                isMTL = true;
+                break;
+            }
+        }
+
+        std::vector<std::string> imagePaths;
+        if (isMTL) {
+            mx::system_out << "mx: MTL format detected, extracting map_Kd textures\n";
+            for (const auto &ln : lines) {
+                std::istringstream s(ln);
+                std::string kw;
+                s >> kw;
+                if (kw == "map_Kd") {
+                    std::string texFile;
+                    if (s >> texFile)
+                        imagePaths.push_back(prefix + "/" + texFile);
+                }
+            }
+        } else if (structured) {
+            mx::system_out << "mx: Structured .tex format detected\n";
+            for (const auto &ln : lines) {
+                std::istringstream s(ln);
+                std::string kw;
+                s >> kw;
+                if (kw == "texture") {
+                    std::string texFile;
+                    if (s >> texFile)
+                        imagePaths.push_back(prefix + "/" + texFile);
+                }
+            }
+        } else {
+            for (const auto &ln : lines)
+                imagePaths.push_back(prefix + "/" + ln);
+        }
+
+        for (const auto &final_path : imagePaths) {
+            try {
+                GLuint texid = gl::loadTexture(final_path);
+                text.push_back(texid);
+                mx::system_out << "mx: Loaded Texture: " << texid << " -> " << final_path << "\n";
+            } catch (const mx::Exception &e) {
+                mx::system_err << "Warning: Failed to load texture from '" << final_path << "': " << e.text() << "\n";
+                mx::system_err << "Using default white texture as fallback\n";
+                
+                GLuint placeholderTexture = 0;
+                glGenTextures(1, &placeholderTexture);
+                glBindTexture(GL_TEXTURE_2D, placeholderTexture);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                unsigned char whitePixel[] = {255, 255, 255, 255};
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, whitePixel);
+                glBindTexture(GL_TEXTURE_2D, 0);
+                text.push_back(placeholderTexture);
+                mx::system_out << "mx: Using placeholder texture: " << placeholderTexture << "\n";
+            }
+        }
         if (!text.empty()) {
             setTextures(text);
         } else {
             mx::system_err << "Warning: No valid textures loaded, model may not render correctly\n";
         }
+    }
+
+    void Model::loadMTL(const std::string &path) {
+        std::ifstream f(path);
+        if (!f.is_open()) {
+            std::cerr << "mx: Warning - cannot open MTL file: " << path << "\n";
+            return;
+        }
+
+        MXMaterial *current = nullptr;
+        std::string line;
+        while (std::getline(f, line)) {
+            if (line.empty() || line[0] == '#') continue;
+            std::istringstream s(line);
+            std::string tag;
+            s >> tag;
+
+            if (tag == "newmtl") {
+                materials_.emplace_back();
+                current = &materials_.back();
+                s >> current->name;
+            } else if (!current) {
+                continue;
+            } else if (tag == "Ka") {
+                s >> current->ka[0] >> current->ka[1] >> current->ka[2];
+            } else if (tag == "Kd") {
+                s >> current->kd[0] >> current->kd[1] >> current->kd[2];
+            } else if (tag == "Ks") {
+                s >> current->ks[0] >> current->ks[1] >> current->ks[2];
+            } else if (tag == "Ns") {
+                s >> current->ns;
+            } else if (tag == "d") {
+                s >> current->d;
+            } else if (tag == "illum") {
+                s >> current->illum;
+            } else if (tag == "map_Kd") {
+                s >> current->map_kd;
+            }
+        }
+        mx::system_out << "mx: loadMTL: loaded " << materials_.size()
+                       << " material(s) from " << path << "\n";
+    }
+
+    void Model::setTexturesFromMTL(gl::GLWindow *win, const std::string &objDir) {
+        if (!win || materials_.empty()) return;
+
+        std::string dir = objDir;
+        if (dir.empty() && !mtlLibPath_.empty()) {
+            auto pos = mtlLibPath_.find_last_of("/\\");
+            if (pos != std::string::npos)
+                dir = mtlLibPath_.substr(0, pos);
+        }
+
+        std::vector<GLuint> text;
+        for (size_t i = 0; i < materials_.size(); ++i) {
+            if (!materials_[i].map_kd.empty()) {
+                std::string path = dir + "/" + materials_[i].map_kd;
+                try {
+                    GLuint texid = gl::loadTexture(path);
+                    text.push_back(texid);
+                    mx::system_out << "mx: MTL texture [" << i << "] " << texid << " -> " << path << "\n";
+                    continue;
+                } catch (const mx::Exception &) {
+                    mx::system_err << "mx: Warning - cannot load MTL texture: " << path << "\n";
+                }
+            }
+            // Fallback: create solid-colour placeholder from Kd
+            GLuint placeholderTexture = 0;
+            glGenTextures(1, &placeholderTexture);
+            glBindTexture(GL_TEXTURE_2D, placeholderTexture);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            unsigned char px[4] = {
+                static_cast<unsigned char>(std::min(1.0f, materials_[i].kd[0]) * 255.0f),
+                static_cast<unsigned char>(std::min(1.0f, materials_[i].kd[1]) * 255.0f),
+                static_cast<unsigned char>(std::min(1.0f, materials_[i].kd[2]) * 255.0f),
+                255
+            };
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, px);
+            glBindTexture(GL_TEXTURE_2D, 0);
+            text.push_back(placeholderTexture);
+            mx::system_out << "mx: MTL placeholder [" << i << "] " << placeholderTexture
+                           << " Kd=(" << materials_[i].kd[0] << "," << materials_[i].kd[1] << "," << materials_[i].kd[2] << ")\n";
+        }
+        if (!text.empty())
+            setTextures(text);
     }
 
     void Model::saveOriginal() { for (auto &m : meshes) m.saveOriginal(); }

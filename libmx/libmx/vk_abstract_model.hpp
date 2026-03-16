@@ -138,6 +138,13 @@ namespace mx {
         void loadModelTextures(VKWindow *win, const std::string &tex, const std::string  &path);
 
         /**
+         * @brief Load textures using map_Kd paths from parsed MTL materials.
+         * @param win  Owning Vulkan window.
+         * @param path Directory prefix for image files.
+         */
+        void loadModelTexturesFromMTL(VKWindow *win, const std::string &path);
+
+        /**
          * @brief Create the Vulkan descriptor pool sized for this model's textures.
          * @param win Owning Vulkan window.
          */

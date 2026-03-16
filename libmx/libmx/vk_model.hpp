@@ -92,6 +92,22 @@ for (size_t i = 0; i < model.subMeshCount(); ++i) {
         uint32_t firstIndex  = 0;  ///< Offset into the index buffer.
         uint32_t indexCount  = 0;  ///< Number of indices in this sub-mesh.
         uint32_t textureIndex = 0; ///< Texture slot for this sub-mesh.
+        std::string materialName;  ///< Material name from OBJ usemtl directive.
+    };
+
+/**
+ * @struct MXMaterial
+ * @brief Parsed Wavefront MTL material properties.
+ */
+    struct MXMaterial {
+        std::string name;                       ///< Material name (newmtl).
+        float ka[3] = {0.2f, 0.2f, 0.2f};      ///< Ambient colour.
+        float kd[3] = {0.8f, 0.8f, 0.8f};      ///< Diffuse colour.
+        float ks[3] = {0.0f, 0.0f, 0.0f};      ///< Specular colour.
+        float ns = 30.0f;                       ///< Specular exponent.
+        float d = 1.0f;                         ///< Opacity (dissolve).
+        int   illum = 2;                        ///< Illumination model.
+        std::string map_kd;                     ///< Diffuse texture filename.
     };
 
 /**
@@ -180,11 +196,18 @@ for (size_t i = 0; i < model.subMeshCount(); ++i) {
          */
         void drawSubMesh(VkCommandBuffer cmd, size_t index) const;
 
+        /** @return Read-only reference to parsed MTL materials. */
+        const std::vector<MXMaterial>& materials() const { return materials_; }
+        /** @return Path to the MTL library referenced by the OBJ, or empty. */
+        const std::string& mtlLibPath() const { return mtlLibPath_; }
+
     private:
         std::vector<VKVertex>  vertices_;  ///< Parsed vertex data.
         std::vector<uint32_t>  indices_;   ///< Parsed index data.
         uint32_t textureIndex_ = 0;        ///< Sub-mesh texture index.
         std::vector<SubMesh>   subMeshes_; ///< Sub-mesh ranges (one per group).
+        std::vector<MXMaterial> materials_;  ///< Parsed MTL materials.
+        std::string mtlLibPath_;              ///< Path to .mtl file from OBJ mtllib.
 
         VkBuffer       vertexBuffer_       = VK_NULL_HANDLE;
         VkDeviceMemory vertexBufferMemory_ = VK_NULL_HANDLE;
@@ -211,6 +234,9 @@ for (size_t i = 0; i < model.subMeshCount(); ++i) {
 
         /** @brief Load an MXMOD format file. */
         void loadMXMOD(const std::string &path, float positionScale);
+
+        /** @brief Parse a Wavefront .mtl file and populate materials_. */
+        void loadMTL(const std::string &path);
     };
 }
 
