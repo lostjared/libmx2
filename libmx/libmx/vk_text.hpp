@@ -27,6 +27,7 @@
 #include <vector>
 #include <string>
 #include <cstring>
+#include <unordered_map>
 
 #ifndef VK_CHECK_RESULT
 #define VK_CHECK_RESULT(f) { \
@@ -49,6 +50,36 @@ namespace mx {
  * 2. Call renderText() once during the render pass to draw all queued strings.
  * 3. Optionally call clearQueue() to discard pending strings.
  */
+      /// Cache key combining text content and colour.
+      struct CacheKey {
+          std::string text;
+          uint8_t r, g, b, a;
+          bool operator==(const CacheKey &other) const {
+              return text == other.text && r == other.r && g == other.g && b == other.b && a == other.a;
+          }
+      };
+
+      /// Hash functor for CacheKey.
+      struct CacheKeyHash {
+          size_t operator()(const CacheKey &k) const {
+              size_t h = std::hash<std::string>{}(k.text);
+              h ^= std::hash<uint8_t>{}(k.r) + 0x9e3779b9 + (h << 6) + (h >> 2);
+              h ^= std::hash<uint8_t>{}(k.g) + 0x9e3779b9 + (h << 6) + (h >> 2);
+              h ^= std::hash<uint8_t>{}(k.b) + 0x9e3779b9 + (h << 6) + (h >> 2);
+              h ^= std::hash<uint8_t>{}(k.a) + 0x9e3779b9 + (h << 6) + (h >> 2);
+              return h;
+          }
+      };
+
+      /// GPU texture resources cached for a rendered text string.
+      struct CachedTexture {
+          VkImage image = VK_NULL_HANDLE;
+          VkDeviceMemory imageMemory = VK_NULL_HANDLE;
+          VkImageView imageView = VK_NULL_HANDLE;
+          int width = 0;
+          int height = 0;
+      };
+
       class VKText {
         public:
         /**
@@ -103,6 +134,9 @@ namespace mx {
          */
         void setFont(const std::string &fontPath, int fontSize);
 
+        /** @brief Destroy all cached text textures, freeing GPU memory. */
+        void clearCache();
+
         /**
          * @brief Measure the pixel dimensions of a string with the current font.
          * @param text   String to measure.
@@ -136,6 +170,7 @@ namespace mx {
             VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
             uint32_t indexCount = 0;
             VkDevice device = VK_NULL_HANDLE;
+            bool ownsTexture = true; ///< false when texture is owned by the cache.
 
             TextQuad() = default;
             TextQuad(const TextQuad&) = delete;
@@ -163,7 +198,9 @@ namespace mx {
                     descriptorSet = other.descriptorSet;
                     indexCount = other.indexCount;
                     device = other.device;
+                    ownsTexture = other.ownsTexture;
 
+                    other.ownsTexture = false;
                     other.vertexBuffer = VK_NULL_HANDLE;
                     other.vertexBufferMemory = VK_NULL_HANDLE;
                     other.indexBuffer = VK_NULL_HANDLE;
@@ -180,12 +217,14 @@ namespace mx {
             
             ~TextQuad() {
                 if (device != VK_NULL_HANDLE) {
-                    if (textImageView != VK_NULL_HANDLE) {
-                        vkDestroyImageView(device, textImageView, nullptr);
-                    }
-                    if (textImage != VK_NULL_HANDLE) {
-                        vkDestroyImage(device, textImage, nullptr);
-                        vkFreeMemory(device, textImageMemory, nullptr);
+                    if (ownsTexture) {
+                        if (textImageView != VK_NULL_HANDLE) {
+                            vkDestroyImageView(device, textImageView, nullptr);
+                        }
+                        if (textImage != VK_NULL_HANDLE) {
+                            vkDestroyImage(device, textImage, nullptr);
+                            vkFreeMemory(device, textImageMemory, nullptr);
+                        }
                     }
                     if (vertexBuffer != VK_NULL_HANDLE) {
                         vkDestroyBuffer(device, vertexBuffer, nullptr);
@@ -209,6 +248,7 @@ namespace mx {
         VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
         VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
         uint32_t maxPoolSets = 100;
+        std::unordered_map<CacheKey, CachedTexture, CacheKeyHash> textureCache;
         
         void initFont(const std::string &fontPath, int fontSize);
         void createDescriptorPool();

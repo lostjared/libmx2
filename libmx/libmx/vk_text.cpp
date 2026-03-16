@@ -20,6 +20,7 @@ namespace mx {
     VKText::~VKText() {
         vkDeviceWaitIdle(device);
         textQuads.clear();
+        clearCache();
         
         if (descriptorPool != VK_NULL_HANDLE) {
             vkDestroyDescriptorPool(device, descriptorPool, nullptr);
@@ -33,6 +34,19 @@ namespace mx {
             TTF_CloseFont(font);
         }
         TTF_Quit();
+    }
+
+    void VKText::clearCache() {
+        for (auto &[key, cached] : textureCache) {
+            if (cached.imageView != VK_NULL_HANDLE) {
+                vkDestroyImageView(device, cached.imageView, nullptr);
+            }
+            if (cached.image != VK_NULL_HANDLE) {
+                vkDestroyImage(device, cached.image, nullptr);
+                vkFreeMemory(device, cached.imageMemory, nullptr);
+            }
+        }
+        textureCache.clear();
     }
     
     void VKText::createDescriptorPool() {
@@ -136,6 +150,7 @@ namespace mx {
     void VKText::setFont(const std::string &fontPath, int fontSize) {
         vkDeviceWaitIdle(device);
         clearQueue();
+        clearCache();
         if (font) {
             TTF_CloseFont(font);
             font = nullptr;
@@ -175,52 +190,75 @@ namespace mx {
     void VKText::printTextG_Solid(const std::string &text, int x, int y, const SDL_Color &col) {
         if (text.empty() || !font) return;
         
-        SDL_Surface *textSurface = TTF_RenderText_Blended(font, text.c_str(), col);
-        if (!textSurface) return;
-        
-        SDL_Surface *rgbaSurface = convertToRGBA(textSurface);
-        SDL_FreeSurface(textSurface);
-        if (!rgbaSurface) return;
-        
         TextQuad quad;
         quad.device = device;
         quad.text = text;
         quad.x = x;
         quad.y = y;
-        quad.width = rgbaSurface->w;
-        quad.height = rgbaSurface->h;
         quad.color = col;
+        quad.ownsTexture = false; // cache owns all textures
         
-        createImage(rgbaSurface->w, rgbaSurface->h, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
-                   VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-                   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, quad.textImage, quad.textImageMemory);
+        CacheKey key{text, col.r, col.g, col.b, col.a};
+        auto it = textureCache.find(key);
         
-        VkBuffer stagingBuffer;
-        VkDeviceMemory stagingMemory;
-        VkDeviceSize imageSize = rgbaSurface->w * rgbaSurface->h * 4;
+        if (it != textureCache.end()) {
+            // Cache hit -- reuse the existing GPU texture
+            auto &cached = it->second;
+            quad.textImage = cached.image;
+            quad.textImageMemory = cached.imageMemory;
+            quad.textImageView = cached.imageView;
+            quad.width = cached.width;
+            quad.height = cached.height;
+        } else {
+            // Cache miss -- render with SDL_ttf and upload to GPU
+            SDL_Surface *textSurface = TTF_RenderText_Blended(font, text.c_str(), col);
+            if (!textSurface) return;
+            
+            SDL_Surface *rgbaSurface = convertToRGBA(textSurface);
+            SDL_FreeSurface(textSurface);
+            if (!rgbaSurface) return;
+            
+            quad.width = rgbaSurface->w;
+            quad.height = rgbaSurface->h;
+            
+            createImage(rgbaSurface->w, rgbaSurface->h, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
+                       VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, quad.textImage, quad.textImageMemory);
+            
+            VkBuffer stagingBuffer;
+            VkDeviceMemory stagingMemory;
+            VkDeviceSize imageSize = rgbaSurface->w * rgbaSurface->h * 4;
+            
+            createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                        stagingBuffer, stagingMemory);
+            
+            void *data;
+            VK_CHECK_RESULT(vkMapMemory(device, stagingMemory, 0, imageSize, 0, &data));
+            memcpy(data, rgbaSurface->pixels, imageSize);
+            vkUnmapMemory(device, stagingMemory);
+            
+            transitionImageLayout(quad.textImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+            copyBufferToImage(stagingBuffer, quad.textImage, rgbaSurface->w, rgbaSurface->h);
+            transitionImageLayout(quad.textImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+            
+            vkDestroyBuffer(device, stagingBuffer, nullptr);
+            vkFreeMemory(device, stagingMemory, nullptr);
+            
+            quad.textImageView = createImageView(quad.textImage, VK_FORMAT_R8G8B8A8_UNORM);
+            
+            SDL_FreeSurface(rgbaSurface);
+            
+            // Store in cache
+            textureCache[key] = {quad.textImage, quad.textImageMemory, quad.textImageView,
+                                 quad.width, quad.height};
+        }
         
-        createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                    stagingBuffer, stagingMemory);
-        
-        void *data;
-        VK_CHECK_RESULT(vkMapMemory(device, stagingMemory, 0, imageSize, 0, &data));
-        memcpy(data, rgbaSurface->pixels, imageSize);
-        vkUnmapMemory(device, stagingMemory);
-        
-        transitionImageLayout(quad.textImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-        copyBufferToImage(stagingBuffer, quad.textImage, rgbaSurface->w, rgbaSurface->h);
-        transitionImageLayout(quad.textImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-        
-        vkDestroyBuffer(device, stagingBuffer, nullptr);
-        vkFreeMemory(device, stagingMemory, nullptr);
-        
-        quad.textImageView = createImageView(quad.textImage, VK_FORMAT_R8G8B8A8_UNORM);
-        
+        // Build the screen-space quad (position-dependent, not cached)
         float x0 = (float)x;
         float y0 = (float)y;
-        float x1 = x0 + rgbaSurface->w;
-        float y1 = y0 + rgbaSurface->h;
+        float x1 = x0 + quad.width;
+        float y1 = y0 + quad.height;
         
         TextVertex v0 = {{x0, y0}, {0.0f, 0.0f}};
         TextVertex v1 = {{x1, y0}, {1.0f, 0.0f}};
@@ -231,6 +269,7 @@ namespace mx {
         quad.indices = {0, 1, 2, 0, 2, 3};
         quad.indexCount = 6;
         
+        void *data;
         VkDeviceSize vertexSize = quad.vertices.size() * sizeof(TextVertex);
         createBuffer(vertexSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -251,7 +290,6 @@ namespace mx {
         
         quad.descriptorSet = createDescriptorSet(quad.textImageView);
         
-        SDL_FreeSurface(rgbaSurface);
         textQuads.emplace_back(std::move(quad));
     }
     

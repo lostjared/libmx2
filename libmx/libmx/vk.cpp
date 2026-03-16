@@ -1637,6 +1637,8 @@ namespace mx {
             throw mx::Exception("Failed to present swap chain image!");
         }
 
+        vkQueueWaitIdle(graphicsQueue);
+
         clearTextQueue();
 
         for (auto &sprite : sprites) {
