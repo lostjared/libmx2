@@ -53,6 +53,8 @@
 
 namespace mx {
 
+    class VKAbstractModel;
+
 /**
  * @struct Vertex
  * @brief Per-vertex data sent to the Vulkan vertex buffer.
@@ -142,6 +144,8 @@ namespace mx {
         VKWindow(VKWindow&&) = delete;
         VKWindow& operator=(VKWindow&&) = delete;
 
+        friend class VKAbstractModel;
+
         /**
          * @brief Open the SDL2 window (called automatically by constructor).
          * @param title  Title string.
@@ -192,7 +196,7 @@ namespace mx {
          * the uniform buffer.
          */
         virtual void draw();
-
+    
         /** @brief Called when the window is resized (optional override). */
         virtual void onResize() {}
 
@@ -313,9 +317,12 @@ namespace mx {
          * @param enable @c true to draw in wireframe.
          */
         void setWireFrame(bool enable) { useWireFrame = enable; }
-
         /** @return @c true if wireframe mode is active. */
         bool getWireFrame() const { return useWireFrame; }
+        VkPhysicalDevice getPhysicalDevice() const { return physicalDevice; }
+        VkDevice getDevice() const { return device; }
+        VkQueue getGraphicsQueue() const { return graphicsQueue; }
+        VkCommandPool getCommandPool() const { return commandPool; }
     protected:
         bool active = true;
         bool inputControllersInitialized = false;
