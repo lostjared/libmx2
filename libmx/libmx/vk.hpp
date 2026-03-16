@@ -319,131 +319,263 @@ namespace mx {
         void setWireFrame(bool enable) { useWireFrame = enable; }
         /** @return @c true if wireframe mode is active. */
         bool getWireFrame() const { return useWireFrame; }
+        /** @return Vulkan physical device handle. */
         VkPhysicalDevice getPhysicalDevice() const { return physicalDevice; }
+        /** @return Vulkan logical device handle. */
         VkDevice getDevice() const { return device; }
+        /** @return Vulkan graphics queue handle. */
         VkQueue getGraphicsQueue() const { return graphicsQueue; }
+        /** @return Vulkan command pool handle. */
         VkCommandPool getCommandPool() const { return commandPool; }
     protected:
-        bool active = true;
-        bool inputControllersInitialized = false;
-        bool enableValidation = true;
-        std::string font = "font.ttf";
-        int font_size = 24;
-        VkInstance instance = VK_NULL_HANDLE;
-        VkSurfaceKHR surface = VK_NULL_HANDLE;
-        VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-        VkDevice device = VK_NULL_HANDLE;
-        VkQueue graphicsQueue = VK_NULL_HANDLE;
-        VkQueue presentQueue = VK_NULL_HANDLE;
-        VkDescriptorSetLayout descriptorSetLayout;
+        bool active = true;                       ///< @c true while the event loop should keep running.
+        bool inputControllersInitialized = false;  ///< Whether joystick/controller input is enabled.
+        bool enableValidation = true;              ///< Enable Vulkan validation layers.
+        std::string font = "font.ttf";             ///< Path to the current TTF font.
+        int font_size = 24;                        ///< Current font point size.
+        VkInstance instance = VK_NULL_HANDLE;      ///< Vulkan instance.
+        VkSurfaceKHR surface = VK_NULL_HANDLE;     ///< Window surface.
+        VkPhysicalDevice physicalDevice = VK_NULL_HANDLE; ///< Selected GPU.
+        VkDevice device = VK_NULL_HANDLE;          ///< Logical device.
+        VkQueue graphicsQueue = VK_NULL_HANDLE;    ///< Graphics submission queue.
+        VkQueue presentQueue = VK_NULL_HANDLE;     ///< Presentation queue.
+        VkDescriptorSetLayout descriptorSetLayout; ///< Main descriptor set layout.
 
-        VkSwapchainKHR swapChain = VK_NULL_HANDLE;
-        std::vector<VkImage> swapChainImages;
-        VkFormat swapChainImageFormat;
-        VkExtent2D swapChainExtent;
-        std::vector<VkImageView> swapChainImageViews;
-        std::vector<VkBuffer> uniformBuffers;
-        std::vector<VkDeviceMemory> uniformBuffersMemory;
-        std::vector<void*> uniformBuffersMapped;
+        VkSwapchainKHR swapChain = VK_NULL_HANDLE;           ///< Active swapchain.
+        std::vector<VkImage> swapChainImages;                  ///< Swapchain image handles.
+        VkFormat swapChainImageFormat;                         ///< Colour format of swapchain images.
+        VkExtent2D swapChainExtent;                            ///< Swapchain pixel dimensions.
+        std::vector<VkImageView> swapChainImageViews;          ///< Image views into swapchain images.
+        std::vector<VkBuffer> uniformBuffers;                  ///< Per-frame uniform buffers.
+        std::vector<VkDeviceMemory> uniformBuffersMemory;      ///< Memory for per-frame UBOs.
+        std::vector<void*> uniformBuffersMapped;               ///< Persistently mapped UBO pointers.
 
-        VkRenderPass renderPass = VK_NULL_HANDLE;
-        VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
-        VkPipeline graphicsPipeline = VK_NULL_HANDLE;
-        VkPipeline graphicsPipelineMatrix = VK_NULL_HANDLE;
-        VkPolygonMode currentPolygonMode = VK_POLYGON_MODE_FILL;
-        bool useWireFrame = false;
-        bool supportsWireFrame = false;
-        std::vector<VkFramebuffer> swapChainFramebuffers;
+        VkRenderPass renderPass = VK_NULL_HANDLE;             ///< Main render pass.
+        VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;      ///< Pipeline layout for the main pass.
+        VkPipeline graphicsPipeline = VK_NULL_HANDLE;          ///< Filled-polygon graphics pipeline.
+        VkPipeline graphicsPipelineMatrix = VK_NULL_HANDLE;    ///< 3-D matrix-enabled graphics pipeline.
+        VkPolygonMode currentPolygonMode = VK_POLYGON_MODE_FILL; ///< Current polygon fill mode.
+        bool useWireFrame = false;                             ///< Wireframe rendering toggle.
+        bool supportsWireFrame = false;                        ///< Whether the device supports wireframe.
+        std::vector<VkFramebuffer> swapChainFramebuffers;      ///< Framebuffers for each swapchain image.
 
-        VkCommandPool commandPool = VK_NULL_HANDLE;
-        std::vector<VkCommandBuffer> commandBuffers;
+        VkCommandPool commandPool = VK_NULL_HANDLE;            ///< Command pool for graphics commands.
+        std::vector<VkCommandBuffer> commandBuffers;            ///< Per-frame command buffers.
 
-        VkSemaphore imageAvailableSemaphore = VK_NULL_HANDLE;
-        VkSemaphore renderFinishedSemaphore = VK_NULL_HANDLE;
-        VkFence inFlightFence = VK_NULL_HANDLE;
+        VkSemaphore imageAvailableSemaphore = VK_NULL_HANDLE;   ///< Signals when a swapchain image is acquired.
+        VkSemaphore renderFinishedSemaphore = VK_NULL_HANDLE;   ///< Signals when rendering is complete.
+        VkFence inFlightFence = VK_NULL_HANDLE;                 ///< CPU–GPU frame synchronisation fence.
 
-        VkBuffer vertexBuffer = VK_NULL_HANDLE;
-        VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE;
-        VkBuffer indexBuffer = VK_NULL_HANDLE;
-        VkDeviceMemory indexBufferMemory = VK_NULL_HANDLE;
-        uint32_t indexCount = 0;
+        VkBuffer vertexBuffer = VK_NULL_HANDLE;                 ///< Full-screen quad vertex buffer.
+        VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE;     ///< Memory for the vertex buffer.
+        VkBuffer indexBuffer = VK_NULL_HANDLE;                  ///< Full-screen quad index buffer.
+        VkDeviceMemory indexBufferMemory = VK_NULL_HANDLE;      ///< Memory for the index buffer.
+        uint32_t indexCount = 0;                                ///< Number of indices in the quad.
 
-        VkImage textureImage = VK_NULL_HANDLE;
-        VkDeviceMemory textureImageMemory = VK_NULL_HANDLE;
-        VkImageView textureImageView = VK_NULL_HANDLE;
-        VkImageLayout textureImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        VkSampler textureSampler = VK_NULL_HANDLE;
+        VkImage textureImage = VK_NULL_HANDLE;                  ///< Primary texture image.
+        VkDeviceMemory textureImageMemory = VK_NULL_HANDLE;     ///< Memory for the primary texture.
+        VkImageView textureImageView = VK_NULL_HANDLE;          ///< View into the primary texture.
+        VkImageLayout textureImageLayout = VK_IMAGE_LAYOUT_UNDEFINED; ///< Current layout of the primary texture.
+        VkSampler textureSampler = VK_NULL_HANDLE;              ///< Sampler for the primary texture.
         
-        VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
-        std::vector<VkDescriptorSet> descriptorSets;
+        VkDescriptorPool descriptorPool = VK_NULL_HANDLE;       ///< Main descriptor pool.
+        std::vector<VkDescriptorSet> descriptorSets;            ///< Per-frame descriptor sets.
         
-        VkImage depthImage = VK_NULL_HANDLE;
-        VkDeviceMemory depthImageMemory = VK_NULL_HANDLE;
-        VkImageView depthImageView = VK_NULL_HANDLE;
-        VkFormat depthFormat = VK_FORMAT_D32_SFLOAT;
+        VkImage depthImage = VK_NULL_HANDLE;                    ///< Depth/stencil image.
+        VkDeviceMemory depthImageMemory = VK_NULL_HANDLE;       ///< Memory for the depth image.
+        VkImageView depthImageView = VK_NULL_HANDLE;            ///< View into the depth image.
+        VkFormat depthFormat = VK_FORMAT_D32_SFLOAT;            ///< Format used for the depth buffer.
         
-        float cameraDistance = 3.0f;
+        float cameraDistance = 3.0f;                            ///< Default camera distance from origin.
         
-        std::unique_ptr<VKText> textRenderer;
-        VkPipeline textPipeline = VK_NULL_HANDLE;
-        VkPipelineLayout textPipelineLayout = VK_NULL_HANDLE;
-        VkDescriptorPool textDescriptorPool = VK_NULL_HANDLE;
-        VkDescriptorSetLayout textDescriptorSetLayout = VK_NULL_HANDLE;
+        std::unique_ptr<VKText> textRenderer;                   ///< Text rendering subsystem.
+        VkPipeline textPipeline = VK_NULL_HANDLE;               ///< Pipeline for text rendering.
+        VkPipelineLayout textPipelineLayout = VK_NULL_HANDLE;   ///< Pipeline layout for text rendering.
+        VkDescriptorPool textDescriptorPool = VK_NULL_HANDLE;   ///< Descriptor pool for text.
+        VkDescriptorSetLayout textDescriptorSetLayout = VK_NULL_HANDLE; ///< Descriptor layout for text.
         
-        std::vector<std::unique_ptr<VKSprite>> sprites;
-        VkPipeline spritePipeline = VK_NULL_HANDLE;
-        VkPipelineLayout spritePipelineLayout = VK_NULL_HANDLE;
-        VkDescriptorPool spriteDescriptorPool = VK_NULL_HANDLE;
-        VkDescriptorSetLayout spriteDescriptorSetLayout = VK_NULL_HANDLE;
-        VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
-        uint32_t width, height;
+        std::vector<std::unique_ptr<VKSprite>> sprites;         ///< Owned sprite instances.
+        VkPipeline spritePipeline = VK_NULL_HANDLE;             ///< Pipeline for sprite rendering.
+        VkPipelineLayout spritePipelineLayout = VK_NULL_HANDLE; ///< Pipeline layout for sprites.
+        VkDescriptorPool spriteDescriptorPool = VK_NULL_HANDLE; ///< Descriptor pool for sprites.
+        VkDescriptorSetLayout spriteDescriptorSetLayout = VK_NULL_HANDLE; ///< Descriptor layout for sprites.
+        VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE; ///< Vulkan debug messenger (validation layers).
+        uint32_t width, height;                                 ///< Internal width/height tracking.
+        /** @brief Create the main descriptor set layout (UBO + sampler). */
         void createDescriptorSetLayout();
+        /** @brief Create depth buffer image, memory, and view. */
         void createDepthResources();
+        /**
+         * @brief Find a supported VkFormat from the candidate list.
+         * @param candidates Ordered list of preferred formats.
+         * @param tiling     Required tiling mode.
+         * @param features   Required format feature flags.
+         * @return First candidate that satisfies the requirements.
+         */
         VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
+        /** @brief Select a depth buffer format supported by the physical device. */
         VkFormat findDepthFormat();
-        SDL_Window *window = nullptr;
-        SDL_Surface *surface_img = nullptr;
+        SDL_Window *window = nullptr;       ///< SDL window handle.
+        SDL_Surface *surface_img = nullptr; ///< Cached SDL surface for texture uploads.
+        /** @brief Create the Vulkan instance and enable extensions/layers. */
         void createInstance();
+        /** @brief Create the Vulkan surface from the SDL window. */
         void createSurface();
+        /** @brief Enumerate GPUs and select the most suitable physical device. */
         void pickPhysicalDevice();
+        /** @brief Create the logical device and retrieve queue handles. */
         void createLogicalDevice();
+        /** @brief Allocate per-frame uniform buffers and map them persistently. */
         void createUniformBuffers();
+        /** @brief Create (or recreate) the swapchain and associated images (overridable). */
         virtual void createSwapChain();
+        /** @brief Create image views for every swapchain image. */
         void createImageViews();
+        /** @brief Create the main render pass with colour and depth attachments. */
         void createRenderPass();
+        /** @brief Create framebuffers for each swapchain image view. */
         void createFramebuffers();
+        /** @brief Create the graphics command pool. */
         void createCommandPool();
+        /** @brief Allocate per-frame command buffers from the command pool. */
         void createCommandBuffers();
+        /** @brief Create semaphores and fences for frame synchronisation. */
         void createSyncObjects();
+        /** @brief Destroy swapchain-dependent resources before recreation (overridable). */
         virtual void cleanupSwapChain();
+        /**
+         * @brief Find queue families supporting graphics and presentation.
+         * @param device Physical device to query.
+         * @return Populated QueueFamilyIndices.
+         */
         QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
+        /**
+         * @brief Choose the best surface format from available options.
+         * @param availableFormats Candidate formats.
+         * @return Selected surface format.
+         */
         VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
+        /**
+         * @brief Choose the best present mode (prefers mailbox, falls back to FIFO).
+         * @param availablePresentModes Candidate modes.
+         * @return Selected presentation mode.
+         */
         VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
+        /**
+         * @brief Determine the swapchain image extent from surface capabilities.
+         * @param capabilities Current surface capabilities.
+         * @return Chosen extent in pixels.
+         */
         VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
+        /**
+         * @brief Check whether a physical device meets all application requirements.
+         * @param device Candidate physical device.
+         * @return @c true if the device is suitable.
+         */
         bool isDeviceSuitable(VkPhysicalDevice device);
+        /**
+         * @brief Query swapchain support details for a physical device.
+         * @param device Physical device to query.
+         * @return Populated SwapChainSupportDetails.
+         */
         SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
+        /**
+         * @brief Allocate a Vulkan buffer with the given usage and memory properties.
+         * @param size       Buffer size in bytes.
+         * @param usage      Vulkan buffer usage flags.
+         * @param properties Required memory property flags.
+         * @param buffer     Output buffer handle.
+         * @param bufferMemory Output device memory handle.
+         */
         void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
+        /**
+         * @brief Find a device memory type matching the filter and property flags.
+         * @param typeFilter Bit mask of acceptable memory types.
+         * @param properties Required memory property flags.
+         * @return Memory type index.
+         */
         uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
+        /**
+         * @brief Copy data between two Vulkan buffers via a one-shot command.
+         * @param srcBuffer Source buffer.
+         * @param dstBuffer Destination buffer.
+         * @param size      Number of bytes to copy.
+         */
         void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+        /**
+         * @brief Create a Vulkan texture image from an SDL surface.
+         * @param surfacex Source surface (RGBA).
+         */
         void createTextureImage(SDL_Surface* surfacex);
+        /**
+         * @brief Create a Vulkan image with the specified parameters.
+         * @param width      Image width in pixels.
+         * @param height     Image height in pixels.
+         * @param format     Pixel format.
+         * @param tiling     Tiling arrangement.
+         * @param usage      Image usage flags.
+         * @param properties Memory property flags.
+         * @param image      Output image handle.
+         * @param imageMemory Output device memory handle.
+         */
         void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
+        /**
+         * @brief Transition an image between two layouts using a pipeline barrier.
+         * @param image     Target image.
+         * @param format    Image format (used for aspect flag selection).
+         * @param oldLayout Current layout.
+         * @param newLayout Desired layout.
+         */
         void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
+        /**
+         * @brief Copy a staging buffer into a Vulkan image.
+         * @param buffer Source buffer.
+         * @param image  Destination image.
+         * @param width  Image width.
+         * @param height Image height.
+         */
         void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+        /** @brief Begin a one-shot command buffer for transfer operations. */
         VkCommandBuffer beginSingleTimeCommands();
+        /** @brief End and submit a one-shot command buffer, then wait for completion. */
         void endSingleTimeCommands(VkCommandBuffer commandBuffer);
+        /** @brief Create the image view for the primary texture. */
         void createTextureImageView();
+        /**
+         * @brief Create an image view with specified format and aspect flags.
+         * @param image       Source image.
+         * @param format      View format.
+         * @param aspectFlags Aspect mask (colour, depth, etc.).
+         * @return Created VkImageView.
+         */
         VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
+        /** @brief Create the texture sampler with default filter/addressing modes. */
         void createTextureSampler();
+        /** @brief Create the main descriptor pool. */
         void createDescriptorPool();
+        /** @brief Allocate main descriptor sets from the pool. */
         void createDescriptorSets();
+        /** @brief Write updated bindings into existing descriptor sets. */
         void updateDescriptorSets();
+        /** @brief Tear down and rebuild the swapchain and all dependent resources. */
         void recreateSwapChain();
+        /**
+         * @brief Allocate a blank texture image of the given dimensions.
+         * @param w Width in pixels.
+         * @param h Height in pixels.
+         */
         void setupTextureImage(uint32_t w, uint32_t h);
+        /** @brief Create the descriptor set layout for text rendering. */
         void createTextDescriptorSetLayout();
+        /** @brief Create the pipeline for text rendering. */
         void createTextPipeline();
+        /** @brief Create the descriptor pool for text rendering. */
         void createTextDescriptorPool();
+        /** @brief Create the descriptor set layout for sprite rendering. */
         void createSpriteDescriptorSetLayout();
+        /** @brief Create the pipeline for sprite rendering. */
         void createSpritePipeline();
+        /** @brief Create the descriptor pool for sprite rendering. */
         void createSpriteDescriptorPool();
     };
 

@@ -23,9 +23,10 @@ public:
                               util.path + "/data/sprite_vert.spv",
                               util.path + "/data/fractal_texture_large.spv");
                               
-        model1.load(this, util.path + "/data/tux.obj", util.path + "/data/tux.tex", util.path + "/data/", 1.0f);
-        model2.load(this, util.path + "/data/tux.obj", util.path + "/data/tux.tex", util.path + "/data/", 1.0f);
-        model3.load(this, util.path + "/data/tux.obj", util.path + "/data/tux.tex", util.path + "/data/", 1.0f);
+        for(int i = 0; i < 3; ++i) {
+            model[i].load(this, util.path + "/data/tux.obj", util.path + "/data/tux.tex", util.path + "/data/", 1.0f);
+            model[i].setShaders(this, util.path + "/data/vert.spv", util.path + "/data/frag.spv");
+        }
     }
 
     void proc() override {
@@ -93,9 +94,8 @@ public:
         }
 
 
-        VkPipeline activePipeline = (useWireFrame && graphicsPipelineMatrix != VK_NULL_HANDLE)
+        VkPipeline defaultPipeline = (useWireFrame && graphicsPipelineMatrix != VK_NULL_HANDLE)
                                     ? graphicsPipelineMatrix : graphicsPipeline;
-        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, activePipeline);
 
         float time = SDL_GetTicks() / 1000.0f;
         float dt = time - lastTime;
@@ -129,10 +129,9 @@ public:
         const float spacing = 2.3f;
         const float offsets[3] = { -spacing, 0.0f, spacing };
 
-        mx::VKAbstractModel *models[3] = { &model1, &model2, &model3 };
 
         for (int m = 0; m < 3; ++m) {
-            mx::VKAbstractModel &mdl = *models[m];
+            mx::VKAbstractModel &mdl = model[m];
 
             glm::mat4 modelMat = glm::mat4(1.0f);
             modelMat = glm::translate(modelMat, glm::vec3(offsets[m], 0.0f, 0.0f));
@@ -159,6 +158,16 @@ public:
             ubo.params = glm::vec4(time, (float)swapChainExtent.width, (float)swapChainExtent.height, 0.0f);
             ubo.color = glm::vec4(1.0f);
             mdl.updateUBO(this, imageIndex, ubo);
+
+            
+            VkPipeline activePipeline;
+            if (mdl.hasCustomShaders()) {
+                activePipeline = (useWireFrame && mdl.getModelPipelineWireframe() != VK_NULL_HANDLE)
+                                 ? mdl.getModelPipelineWireframe() : mdl.getModelPipeline();
+            } else {
+                activePipeline = defaultPipeline;
+            }
+            vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, activePipeline);
 
             const size_t texCount = std::max<size_t>(1, mdl.modelTextures.size());
             if (mdl.obj.subMeshCount() > 0) {
@@ -270,23 +279,19 @@ public:
     }
 
     void onResize() override {
-        model1.resize(this);
-        model2.resize(this);
-        model3.resize(this);
+        for(int i = 0; i < 3; ++i)
+            model[i].resize(this);
     }
 
     void cleanup() override {
-        model1.cleanup(this);
-        model2.cleanup(this);
-        model3.cleanup(this);
+        for(int i = 0; i < 3; ++i) 
+            model[i].cleanup(this);
         mx::VKWindow::cleanup();
     }
 
 private:
     mx::VKSprite *sprite = nullptr;
-    mx::VKAbstractModel model1;
-    mx::VKAbstractModel model2;
-    mx::VKAbstractModel model3;
+    mx::VKAbstractModel model[3];
     float rotationX = 0.0f, rotationY = 0.0f;
     float camDist = 5.0f;
     float autoAngle = 0.0f;

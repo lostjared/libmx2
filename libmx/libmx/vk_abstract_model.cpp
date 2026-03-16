@@ -46,8 +46,19 @@ namespace mx {
         std::cout << ">> VKAbstractModel::load: complete [OK]\n";
     }
     
-    void VKAbstractModel::setShaders(const std::string &vert, const std::string &frag) {
-
+    void VKAbstractModel::setShaders(VKWindow *win, const std::string &vert, const std::string &frag) {
+        vertShaderPath_ = vert;
+        fragShaderPath_ = frag;
+        if (modelPipeline != VK_NULL_HANDLE) {
+            vkDestroyPipeline(win->getDevice(), modelPipeline, nullptr);
+            modelPipeline = VK_NULL_HANDLE;
+        }
+        if (modelPipelineWireframe != VK_NULL_HANDLE) {
+            vkDestroyPipeline(win->getDevice(), modelPipelineWireframe, nullptr);
+            modelPipelineWireframe = VK_NULL_HANDLE;
+        }
+        createModelPipeline(win);
+        std::cout << ">> VKAbstractModel::setShaders: vert=" << vert << ", frag=" << frag << " [OK]\n";
     }
     
     void VKAbstractModel::render(int cmd) {
@@ -132,7 +143,6 @@ namespace mx {
             modelDescriptorPool = VK_NULL_HANDLE;
         }
         modelDescriptorSets.clear();
-        // Reallocate per-model UBOs for the new swap chain size
         for (size_t i = 0; i < modelUniformBuffers.size(); ++i) {
             if (modelUniformBuffersMapped[i])
                 vkUnmapMemory(win->getDevice(), modelUniformBufferMemory[i]);
@@ -153,6 +163,8 @@ namespace mx {
         }
         createModelDescriptorPool(win);
         createModelDescriptorSets(win);
+        if (!vertShaderPath_.empty())
+            createModelPipeline(win);
         std::cout << ">> VKAbstractModel::resize: complete (" << win->swapChainImages.size() << " frames) [OK]\n";
     }
 
@@ -228,6 +240,14 @@ namespace mx {
     void VKAbstractModel::cleanup(VKWindow *win) {
         std::cout << ">> VKAbstractModel::cleanup: releasing model resources...\n";
         vkDeviceWaitIdle(win->getDevice());
+        if (modelPipeline != VK_NULL_HANDLE) {
+            vkDestroyPipeline(win->getDevice(), modelPipeline, nullptr);
+            modelPipeline = VK_NULL_HANDLE;
+        }
+        if (modelPipelineWireframe != VK_NULL_HANDLE) {
+            vkDestroyPipeline(win->getDevice(), modelPipelineWireframe, nullptr);
+            modelPipelineWireframe = VK_NULL_HANDLE;
+        }
         obj.cleanup(win->getDevice());
         for (size_t i = 0; i < modelUniformBuffers.size(); ++i) {
             if (modelUniformBuffersMapped[i])
@@ -247,5 +267,138 @@ namespace mx {
         if (modelDescriptorPool != VK_NULL_HANDLE)
             vkDestroyDescriptorPool(win->getDevice(), modelDescriptorPool, nullptr);
         std::cout << ">> VKAbstractModel::cleanup: all resources released [OK]\n";
+    }
+
+    void VKAbstractModel::createModelPipeline(VKWindow *win) {
+        if (vertShaderPath_.empty() || fragShaderPath_.empty())
+            return;
+
+        if (modelPipeline != VK_NULL_HANDLE) {
+            vkDestroyPipeline(win->getDevice(), modelPipeline, nullptr);
+            modelPipeline = VK_NULL_HANDLE;
+        }
+        if (modelPipelineWireframe != VK_NULL_HANDLE) {
+            vkDestroyPipeline(win->getDevice(), modelPipelineWireframe, nullptr);
+            modelPipelineWireframe = VK_NULL_HANDLE;
+        }
+
+        std::cout << ">> VKAbstractModel::createModelPipeline: creating pipeline...\n";
+
+        auto vertCode = mx::readFile(vertShaderPath_);
+        auto fragCode = mx::readFile(fragShaderPath_);
+
+        VkShaderModule vertModule = win->createShaderModule(vertCode);
+        VkShaderModule fragModule = win->createShaderModule(fragCode);
+
+        VkPipelineShaderStageCreateInfo vertStage{};
+        vertStage.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        vertStage.stage  = VK_SHADER_STAGE_VERTEX_BIT;
+        vertStage.module = vertModule;
+        vertStage.pName  = "main";
+
+        VkPipelineShaderStageCreateInfo fragStage{};
+        fragStage.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        fragStage.stage  = VK_SHADER_STAGE_FRAGMENT_BIT;
+        fragStage.module = fragModule;
+        fragStage.pName  = "main";
+
+        VkPipelineShaderStageCreateInfo stages[] = { vertStage, fragStage };
+
+        VkVertexInputBindingDescription binding{};
+        binding.binding   = 0;
+        binding.stride    = sizeof(Vertex);
+        binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+        std::array<VkVertexInputAttributeDescription, 3> attrs{};
+        attrs[0].binding  = 0; attrs[0].location = 0;
+        attrs[0].format   = VK_FORMAT_R32G32B32_SFLOAT;
+        attrs[0].offset   = offsetof(Vertex, pos);
+        attrs[1].binding  = 0; attrs[1].location = 1;
+        attrs[1].format   = VK_FORMAT_R32G32_SFLOAT;
+        attrs[1].offset   = offsetof(Vertex, texCoord);
+        attrs[2].binding  = 0; attrs[2].location = 2;
+        attrs[2].format   = VK_FORMAT_R32G32B32_SFLOAT;
+        attrs[2].offset   = offsetof(Vertex, normal);
+
+        VkPipelineVertexInputStateCreateInfo vertexInput{};
+        vertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        vertexInput.vertexBindingDescriptionCount   = 1;
+        vertexInput.pVertexBindingDescriptions       = &binding;
+        vertexInput.vertexAttributeDescriptionCount  = static_cast<uint32_t>(attrs.size());
+        vertexInput.pVertexAttributeDescriptions     = attrs.data();
+
+        VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+        inputAssembly.sType    = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+        inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+        VkPipelineViewportStateCreateInfo viewportState{};
+        viewportState.sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+        viewportState.viewportCount = 1;
+        viewportState.scissorCount  = 1;
+
+        std::array<VkDynamicState, 2> dynStates = {
+            VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR
+        };
+        VkPipelineDynamicStateCreateInfo dynState{};
+        dynState.sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        dynState.dynamicStateCount = static_cast<uint32_t>(dynStates.size());
+        dynState.pDynamicStates    = dynStates.data();
+
+        VkPipelineRasterizationStateCreateInfo rasterizer{};
+        rasterizer.sType       = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+        rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+        rasterizer.lineWidth   = 1.0f;
+        rasterizer.cullMode    = VK_CULL_MODE_NONE;
+        rasterizer.frontFace   = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+
+        VkPipelineMultisampleStateCreateInfo multisampling{};
+        multisampling.sType                = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+        multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+        VkPipelineDepthStencilStateCreateInfo depthStencil{};
+        depthStencil.sType            = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+        depthStencil.depthTestEnable   = VK_TRUE;
+        depthStencil.depthWriteEnable  = VK_TRUE;
+        depthStencil.depthCompareOp    = VK_COMPARE_OP_LESS;
+
+        VkPipelineColorBlendAttachmentState colorBlendAttachment{};
+        colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                                              VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        colorBlendAttachment.blendEnable = VK_FALSE;
+
+        VkPipelineColorBlendStateCreateInfo colorBlending{};
+        colorBlending.sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+        colorBlending.attachmentCount = 1;
+        colorBlending.pAttachments    = &colorBlendAttachment;
+
+        VkGraphicsPipelineCreateInfo ci{};
+        ci.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        ci.stageCount          = 2;
+        ci.pStages             = stages;
+        ci.pVertexInputState   = &vertexInput;
+        ci.pInputAssemblyState = &inputAssembly;
+        ci.pViewportState      = &viewportState;
+        ci.pRasterizationState = &rasterizer;
+        ci.pMultisampleState   = &multisampling;
+        ci.pDepthStencilState  = &depthStencil;
+        ci.pColorBlendState    = &colorBlending;
+        ci.pDynamicState       = &dynState;
+        ci.layout              = win->pipelineLayout;
+        ci.renderPass          = win->renderPass;
+        ci.subpass             = 0;
+
+        if (vkCreateGraphicsPipelines(win->getDevice(), VK_NULL_HANDLE, 1, &ci, nullptr, &modelPipeline) != VK_SUCCESS)
+            throw mx::Exception("VKAbstractModel: Failed to create model pipeline!");
+
+        rasterizer.polygonMode = VK_POLYGON_MODE_LINE;
+        if (vkCreateGraphicsPipelines(win->getDevice(), VK_NULL_HANDLE, 1, &ci, nullptr, &modelPipelineWireframe) != VK_SUCCESS) {
+            modelPipelineWireframe = VK_NULL_HANDLE;
+        }
+
+        vkDestroyShaderModule(win->getDevice(), fragModule, nullptr);
+        vkDestroyShaderModule(win->getDevice(), vertModule, nullptr);
+
+        std::cout << ">> VKAbstractModel::createModelPipeline: pipeline created [OK]\n";
     }
 }
