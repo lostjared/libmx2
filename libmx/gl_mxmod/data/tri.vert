@@ -19,5 +19,5 @@ void main() {
     fragNormal = mat3(transpose(inverse(view * model))) * normal;
     //fragNormal = mat3(view * model) * normal;
     fragTexCoord = texCoord;                                 
-    gl_Position = projection * view * vec4(fragPos, 1.0);    
+    gl_Position = projection * viewPos4;    
 }

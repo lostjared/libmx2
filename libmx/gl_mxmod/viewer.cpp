@@ -500,7 +500,7 @@ int main(int argc, char **argv) {
     fflush(stdout);
     fflush(stdin);
 #ifdef __EMSCRIPTEN__
-    MainWindow main_window("/", "globe.mxmod", "metal.tex", 1440, 1080);
+    MainWindow main_window("/", "globe.mxmod", "metal.tex", 1280, 720);
     main_w =&main_window;
     emscripten_set_main_loop(eventProc, 0, 1);
 #else
@@ -521,7 +521,7 @@ int main(int argc, char **argv) {
     Argument<std::string> arg;
     std::string path;
     int value = 0;
-    int tw = 1440, th = 1080;
+    int tw = 1280, th = 720;
     std::string model_file;
     std::string text_file, texture_path;
     bool compress = true;
