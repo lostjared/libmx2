@@ -506,6 +506,7 @@ public:
 #endif
 
         glDisable(GL_DEPTH_TEST);
+	bg_shader.useProgram();
         bg_shader.setUniform("textTexture", 0);
         background.draw();
         glEnable(GL_DEPTH_TEST);

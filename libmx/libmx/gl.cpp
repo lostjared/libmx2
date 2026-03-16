@@ -564,7 +564,7 @@ namespace gl {
         GLuint vfProgram = glCreateProgram();
         glAttachShader(vfProgram, vShader);
         glAttachShader(vfProgram, fShader);
-#ifndef __EMSCRIPTEN__
+#if !defined(__EMSCRIPTEN__) && !defined(__APPLE__)
         if (glProgramParameteri != nullptr) {
             glProgramParameteri(vfProgram, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE);
         }
