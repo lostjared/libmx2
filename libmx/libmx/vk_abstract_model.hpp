@@ -114,11 +114,26 @@ namespace mx {
         VkPipeline getModelPipelineWireframe() const { return modelPipelineWireframe; }
 
         /**
+         * @brief Create a lightweight instance sharing geometry & textures from a source model.
+         *
+         * Only creates its own UBOs and descriptor sets. The source model must
+         * outlive this instance and be cleaned up after all instances.
+         *
+         * @param win    Owning Vulkan window.
+         * @param source Fully-loaded model to share geometry/textures from.
+         */
+        void loadInstance(VKWindow *win, VKAbstractModel &source);
+
+        /**
          * @brief Check whether this model has custom shaders set.
          * @return @c true if setShaders() was called.
          */
         bool hasCustomShaders() const { return !vertShaderPath_.empty(); }
+
+        /** @brief Check whether this is a lightweight instance (shared geometry). */
+        bool isInstance() const { return isInstance_; }
     private:
+        bool isInstance_ = false; ///< True if geometry/textures are shared from another model.
         VkDescriptorPool modelDescriptorPool = VK_NULL_HANDLE; ///< Descriptor pool for this model.
         VkPipeline modelPipeline = VK_NULL_HANDLE;              ///< Per-model graphics pipeline (fill).
         VkPipeline modelPipelineWireframe = VK_NULL_HANDLE;     ///< Per-model wireframe pipeline.
@@ -128,6 +143,9 @@ namespace mx {
         std::vector<VkDeviceMemory> modelUniformBufferMemory;   ///< Memory for per-frame UBOs.
         std::vector<void*>          modelUniformBuffersMapped;  ///< Persistently mapped UBO pointers.
         friend class VKWindow;
+
+        /** @brief Clean up only UBO and descriptor resources (used by instances). */
+        void cleanupInstanceResources(VKWindow *win);
 
         /**
          * @brief Load texture images listed in a .tex file and upload to GPU.

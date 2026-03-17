@@ -45,7 +45,53 @@ namespace mx {
         createModelDescriptorSets(win);
         std::cout << ">> VKAbstractModel::load: complete [OK]\n";
     }
-    
+
+    void VKAbstractModel::loadInstance(VKWindow *win, VKAbstractModel &source) {
+        std::cout << ">> VKAbstractModel::loadInstance: creating lightweight instance\n";
+        isInstance_ = true;
+        modelCenterOffset = source.modelCenterOffset;
+        modelRenderScale = source.modelRenderScale;
+        // Share texture entries (source owns the GPU resources)
+        modelTextures = source.modelTextures;
+
+        const size_t frameCount = win->swapChainImages.size();
+        modelUniformBuffers.resize(frameCount);
+        modelUniformBufferMemory.resize(frameCount);
+        modelUniformBuffersMapped.resize(frameCount, nullptr);
+        for (size_t i = 0; i < frameCount; ++i) {
+            win->createBuffer(sizeof(mx::UniformBufferObject),
+                              VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                              VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                              modelUniformBuffers[i], modelUniformBufferMemory[i]);
+            vkMapMemory(win->getDevice(), modelUniformBufferMemory[i], 0,
+                        sizeof(mx::UniformBufferObject), 0, &modelUniformBuffersMapped[i]);
+        }
+        createModelDescriptorPool(win);
+        createModelDescriptorSets(win);
+        std::cout << ">> VKAbstractModel::loadInstance: complete [OK]\n";
+    }
+
+    void VKAbstractModel::cleanupInstanceResources(VKWindow *win) {
+        for (size_t i = 0; i < modelUniformBuffers.size(); ++i) {
+            if (modelUniformBuffersMapped[i])
+                vkUnmapMemory(win->getDevice(), modelUniformBufferMemory[i]);
+            if (modelUniformBuffers[i] != VK_NULL_HANDLE)
+                vkDestroyBuffer(win->getDevice(), modelUniformBuffers[i], nullptr);
+            if (modelUniformBufferMemory[i] != VK_NULL_HANDLE)
+                vkFreeMemory(win->getDevice(), modelUniformBufferMemory[i], nullptr);
+        }
+        modelUniformBuffers.clear();
+        modelUniformBufferMemory.clear();
+        modelUniformBuffersMapped.clear();
+        if (modelDescriptorPool != VK_NULL_HANDLE) {
+            vkDestroyDescriptorPool(win->getDevice(), modelDescriptorPool, nullptr);
+            modelDescriptorPool = VK_NULL_HANDLE;
+        }
+        modelDescriptorSets.clear();
+        // Don't destroy textures or mesh — source model owns them
+        modelTextures.clear();
+    }
+
     void VKAbstractModel::setShaders(VKWindow *win, const std::string &vert, const std::string &frag) {
         vertShaderPath_ = vert;
         fragShaderPath_ = frag;
@@ -374,8 +420,22 @@ namespace mx {
     }
 
     void VKAbstractModel::cleanup(VKWindow *win) {
-        std::cout << ">> VKAbstractModel::cleanup: releasing model resources...\n";
+        std::cout << ">> VKAbstractModel::cleanup: releasing model resources..."
+                  << (isInstance_ ? " (instance)" : "") << "\n";
         vkDeviceWaitIdle(win->getDevice());
+        if (isInstance_) {
+            cleanupInstanceResources(win);
+            if (modelPipeline != VK_NULL_HANDLE) {
+                vkDestroyPipeline(win->getDevice(), modelPipeline, nullptr);
+                modelPipeline = VK_NULL_HANDLE;
+            }
+            if (modelPipelineWireframe != VK_NULL_HANDLE) {
+                vkDestroyPipeline(win->getDevice(), modelPipelineWireframe, nullptr);
+                modelPipelineWireframe = VK_NULL_HANDLE;
+            }
+            std::cout << ">> VKAbstractModel::cleanup: instance resources released [OK]\n";
+            return;
+        }
         if (modelPipeline != VK_NULL_HANDLE) {
             vkDestroyPipeline(win->getDevice(), modelPipeline, nullptr);
             modelPipeline = VK_NULL_HANDLE;

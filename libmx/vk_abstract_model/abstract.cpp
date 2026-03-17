@@ -22,11 +22,11 @@ public:
         sprite = createSprite(util.path + "/data/ant-bg.png",
                               util.path + "/data/sprite_vert.spv",
                               util.path + "/data/fractal_texture_large.spv");
-                              
-        for(int i = 0; i < 3; ++i) {
-            model[i].load(this, util.path + "/data/tux.obj", util.path + "/data/tux.tex", util.path + "/data/", 1.0f);
-            model[i].setShaders(this, util.path + "/data/vert.spv", util.path + "/data/frag.spv");
-        }
+
+        model[0].load(this, util.path + "/data/tux.obj", util.path + "/data/tux.tex", util.path + "/data/", 1.0f);
+        model[0].setShaders(this, util.path + "/data/vert.spv", util.path + "/data/frag.spv");
+        for(int i = 1; i < 3; ++i)
+            model[i].loadInstance(this, model[0]);
     }
 
     void proc() override {
@@ -97,6 +97,13 @@ public:
         VkPipeline defaultPipeline = (useWireFrame && graphicsPipelineMatrix != VK_NULL_HANDLE)
                                     ? graphicsPipelineMatrix : graphicsPipeline;
 
+
+        VkPipeline sharedPipeline = VK_NULL_HANDLE;
+        if (model[0].hasCustomShaders()) {
+            sharedPipeline = (useWireFrame && model[0].getModelPipelineWireframe() != VK_NULL_HANDLE)
+                             ? model[0].getModelPipelineWireframe() : model[0].getModelPipeline();
+        }
+
         float time = SDL_GetTicks() / 1000.0f;
         float dt = time - lastTime;
         lastTime = time;
@@ -160,34 +167,30 @@ public:
             mdl.updateUBO(this, imageIndex, ubo);
 
             
-            VkPipeline activePipeline;
-            if (mdl.hasCustomShaders()) {
-                activePipeline = (useWireFrame && mdl.getModelPipelineWireframe() != VK_NULL_HANDLE)
-                                 ? mdl.getModelPipelineWireframe() : mdl.getModelPipeline();
-            } else {
-                activePipeline = defaultPipeline;
-            }
+            VkPipeline activePipeline = (sharedPipeline != VK_NULL_HANDLE)
+                                         ? sharedPipeline : defaultPipeline;
             vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, activePipeline);
 
+            mx::VKAbstractModel &geom = model[0];
             const size_t texCount = std::max<size_t>(1, mdl.modelTextures.size());
-            if (mdl.obj.subMeshCount() > 0) {
-                for (size_t i = 0; i < mdl.obj.subMeshCount(); ++i) {
-                    size_t texIdx = std::min<size_t>(mdl.obj.subMesh(i).textureIndex, texCount - 1);
+            if (geom.obj.subMeshCount() > 0) {
+                for (size_t i = 0; i < geom.obj.subMeshCount(); ++i) {
+                    size_t texIdx = std::min<size_t>(geom.obj.subMesh(i).textureIndex, texCount - 1);
                     size_t setIdx = static_cast<size_t>(imageIndex) * texCount + texIdx;
                     if (setIdx < mdl.modelDescriptorSets.size()) {
                         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                                 pipelineLayout, 0, 1, &mdl.modelDescriptorSets[setIdx], 0, nullptr);
                     }
-                    mdl.obj.drawSubMesh(cmd, i);
+                    geom.obj.drawSubMesh(cmd, i);
                 }
             } else {
-                size_t texIdx = std::min<size_t>(mdl.obj.textureIndex(), texCount - 1);
+                size_t texIdx = std::min<size_t>(geom.obj.textureIndex(), texCount - 1);
                 size_t setIdx = static_cast<size_t>(imageIndex) * texCount + texIdx;
                 if (setIdx < mdl.modelDescriptorSets.size()) {
                     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                             pipelineLayout, 0, 1, &mdl.modelDescriptorSets[setIdx], 0, nullptr);
                 }
-                mdl.obj.draw(cmd);
+                geom.obj.draw(cmd);
             }
         }
 
@@ -284,7 +287,8 @@ public:
     }
 
     void cleanup() override {
-        for(int i = 0; i < 3; ++i) 
+        // Clean up instances first, then the source model that owns geometry/textures
+        for(int i = 2; i >= 0; --i)
             model[i].cleanup(this);
         mx::VKWindow::cleanup();
     }
