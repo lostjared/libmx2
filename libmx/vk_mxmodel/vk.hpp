@@ -29,6 +29,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/ext/matrix_clip_space.hpp>
 
 #define VK_CHECK_RESULT(f) { \
     VkResult res = (f); \

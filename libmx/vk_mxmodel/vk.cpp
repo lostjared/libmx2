@@ -118,7 +118,6 @@ namespace mx {
                     prefix = util.path;
             }
 
-            // Read all meaningful lines
             std::vector<std::string> lines;
             std::string line;
             while (std::getline(tf, line)) {
@@ -130,8 +129,6 @@ namespace mx {
                 lines.push_back(line);
             }
             tf.close();
-
-            // Detect format
             bool structured = false;
             bool isMTLFormat = false;
             for (const auto &ln : lines) {
@@ -194,6 +191,24 @@ namespace mx {
                 img = SDL_CreateRGBSurfaceWithFormat(0, 1, 1, 32, SDL_PIXELFORMAT_RGBA32);
                 if (img) { uint32_t *px = (uint32_t*)img->pixels; *px = 0xFFFFFFFF; }
                 else throw mx::Exception("Failed to create placeholder surface");
+            }
+
+            SDL_Surface *converted = SDL_ConvertSurfaceFormat(img, SDL_PIXELFORMAT_RGBA32, 0);
+            SDL_FreeSurface(img);
+            img = converted;
+            if (img && img->h > 1) {
+                SDL_LockSurface(img);
+                Uint8 *pixels = (Uint8*)img->pixels;
+                int pitch = img->pitch;
+                std::vector<Uint8> tempRow(pitch);
+                for (int y = 0; y < img->h / 2; ++y) {
+                    Uint8 *row1 = pixels + y * pitch;
+                    Uint8 *row2 = pixels + (img->h - y - 1) * pitch;
+                    memcpy(tempRow.data(), row1, pitch);
+                    memcpy(row1, row2, pitch);
+                    memcpy(row2, tempRow.data(), pitch);
+                }
+                SDL_UnlockSurface(img);
             }
 
             VkTexture tex{};
@@ -384,7 +399,7 @@ namespace mx {
         ubo.model = modelMat;
         ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, cameraDistance), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         float aspect = (float)swapChainExtent.width / (float)swapChainExtent.height;
-        ubo.proj = glm::perspective(glm::radians(45.0f), aspect, 0.01f, 1000.0f);
+        ubo.proj = glm::perspectiveRH_ZO(glm::radians(45.0f), aspect, 0.01f, 1000.0f);
         ubo.proj[1][1] *= -1;
 
         if (uniformBuffersMapped.size() > imageIndex && uniformBuffersMapped[imageIndex])
@@ -622,8 +637,13 @@ namespace mx {
     }
 
     VkSurfaceFormatKHR ModelViewer::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats) {
+        // Prefer UNORM to match OpenGL's raw GL_RGBA8 (no automatic gamma correction)
         for (auto &f : formats)
-            if (f.format == VK_FORMAT_R8G8B8A8_UNORM && f.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) return f;
+            if ((f.format == VK_FORMAT_R8G8B8A8_UNORM || f.format == VK_FORMAT_B8G8R8A8_UNORM) &&
+                f.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) return f;
+        // Fallback: any UNORM format
+        for (auto &f : formats)
+            if (f.format == VK_FORMAT_R8G8B8A8_UNORM || f.format == VK_FORMAT_B8G8R8A8_UNORM) return f;
         return formats[0];
     }
 
@@ -1007,9 +1027,9 @@ namespace mx {
         ci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
         ci.magFilter = VK_FILTER_LINEAR;
         ci.minFilter = VK_FILTER_LINEAR;
-        ci.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        ci.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        ci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        ci.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        ci.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        ci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
         ci.anisotropyEnable = VK_TRUE;
         ci.maxAnisotropy = 16.0f;
         ci.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;

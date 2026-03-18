@@ -1,9 +1,9 @@
 #version 450
 
-layout(location = 0) in vec3 fragColor;    
-layout(location = 1) in vec2 fragTexCoord; 
+layout(location = 0) in vec3 fragPos;
+layout(location = 1) in vec2 fragTexCoord;
 layout(location = 2) in vec3 fragNormal;
-layout(location = 3) in vec3 fragWorldPos;
+
 layout(location = 0) out vec4 outColor;
 layout(binding = 0) uniform sampler2D texSampler;
 layout(binding = 1) uniform UniformBufferObject {
@@ -15,29 +15,27 @@ layout(binding = 1) uniform UniformBufferObject {
 } ubo;
 
 void main() {
-    vec3 normal = normalize(fragNormal);
-    vec4 texColor = texture(texSampler, fragTexCoord);
-
-    vec3 albedo = texColor.rgb * fragColor;
-
-    vec3 lightDir = normalize(vec3(0.35, 1.0, 0.55));
+    // Light position in view space (matches GL: world pos (0, 10, 5) transformed by view matrix)
+    vec3 lightPosView = (ubo.view * vec4(0.0, 10.0, 5.0, 1.0)).xyz;
     vec3 lightColor = vec3(1.0);
 
-    float ambientStrength = 0.20;
+    float ambientStrength = 0.3;
     vec3 ambient = ambientStrength * lightColor;
 
-    float nDotL = max(dot(normal, lightDir), 0.0);
-    vec3 diffuse = nDotL * lightColor;
+    vec3 norm = normalize(fragNormal);
+    vec3 lightDir = normalize(lightPosView - fragPos);
+    vec3 viewDir = normalize(-fragPos); // In view space, camera is at origin
 
-    vec3 cameraPos = inverse(ubo.view)[3].xyz;
-    vec3 viewDir = normalize(cameraPos - fragWorldPos);
-    vec3 halfDir = normalize(lightDir + viewDir);
-    float specPow = 48.0;
-    float spec = pow(max(dot(normal, halfDir), 0.0), specPow);
-    float specStrength = 0.25;
-    vec3 specular = specStrength * spec * lightColor;
+    float diff = max(dot(norm, lightDir), 0.0);
+    vec3 diffuse = diff * lightColor;
 
-    vec3 litColor = (ambient + diffuse) * albedo + specular;
-    vec3 result = litColor;
-    outColor = vec4(result, texColor.a);
+    float specularStrength = 0.2;
+    vec3 reflectDir = reflect(-lightDir, norm);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
+    vec3 specular = specularStrength * spec * lightColor;
+
+    vec3 textureColor = texture(texSampler, fragTexCoord).rgb;
+    vec3 result = (ambient + diffuse + specular) * textureColor;
+
+    outColor = vec4(result, 1.0);
 }
