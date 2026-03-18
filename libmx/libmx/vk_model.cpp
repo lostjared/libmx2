@@ -20,24 +20,26 @@ namespace mx {
         if (vertices_.empty()) return;
         std::vector<VKVertex> unique;
         std::unordered_map<VKVertex, uint32_t, VKVertexHash> map;
-        std::vector<uint32_t> newIdx;
-        newIdx.reserve(vertices_.size());
-
-        for (auto &v : vertices_) {
-            auto it = map.find(v);
+        std::vector<uint32_t> remap(vertices_.size());
+        for (size_t i = 0; i < vertices_.size(); ++i) {
+            auto it = map.find(vertices_[i]);
             if (it != map.end()) {
-                newIdx.push_back(it->second);
+                remap[i] = it->second;
             } else {
                 uint32_t idx = static_cast<uint32_t>(unique.size());
-                unique.push_back(v);
-                map[v] = idx;
-                newIdx.push_back(idx);
+                unique.push_back(vertices_[i]);
+                map[vertices_[i]] = idx;
+                remap[i] = idx;
             }
+        }
+
+        for (auto &idx : indices_) {
+            if (idx < static_cast<uint32_t>(remap.size()))
+                idx = remap[idx];
         }
 
         size_t before = vertices_.size();
         vertices_ = std::move(unique);
-        indices_ = std::move(newIdx);
         std::cout << ">> MXModel::compressIndices: " << before << " verts -> "
                   << vertices_.size() << " unique, " << indices_.size() << " indices\n";
     }
@@ -172,7 +174,6 @@ namespace mx {
         if (vertices_.empty())
             throw mx::Exception("MXModel::load: no vertices found in " + path);
 
-        // If no groups were found, create a single sub-mesh covering everything
         if (subMeshes_.empty()) {
             SubMesh sm;
             sm.firstIndex = 0;
@@ -181,7 +182,6 @@ namespace mx {
             subMeshes_.push_back(sm);
         }
 
-        // Generate flat normals for faces that had no normals
         bool hasNormals = !normals.empty();
         if (!hasNormals) {
             for (size_t i = 0; i + 2 < vertices_.size(); i += 3) {
@@ -245,10 +245,15 @@ namespace mx {
             s = s.substr(b, e - b + 1);
         };
 
-        std::vector<Vec3> pos;
-        std::vector<Vec2> uv;
-        std::vector<Vec3> nrm;
-        std::vector<uint32_t> fileIndices;
+        struct TriBlock {
+            uint32_t textureIndex = 0;
+            std::vector<Vec3> pos;
+            std::vector<Vec2> uv;
+            std::vector<Vec3> nrm;
+            std::vector<uint32_t> fileIndices;
+        };
+        std::vector<TriBlock> triBlocks;
+        TriBlock *cur = nullptr;
 
         int type = -1;
         size_t count = 0;
@@ -277,24 +282,24 @@ namespace mx {
             char c = line[line.find_first_not_of(" \t")];
             bool isData = (c >= '0' && c <= '9') || c == '-' || c == '+' || c == '.';
 
-            if (isData) {
+            if (isData && cur) {
                 float x = 0, y = 0, z = 0;
                 switch (type) {
                     case 0: 
                         if (s >> x >> y >> z)
-                            pos.push_back({x * positionScale, y * positionScale, z * positionScale});
+                            cur->pos.push_back({x * positionScale, y * positionScale, z * positionScale});
                         break;
                     case 1: 
                         if (s >> x >> y)
-                            uv.push_back({x, y});
+                            cur->uv.push_back({x, y});
                         break;
                     case 2: 
                         if (s >> x >> y >> z)
-                            nrm.push_back({x, y, z});
+                            cur->nrm.push_back({x, y, z});
                         break;
                     case 5: { 
                         uint32_t idx;
-                        while (s >> idx) fileIndices.push_back(idx);
+                        while (s >> idx) cur->fileIndices.push_back(idx);
                     } break;
                     default:
                         break;
@@ -309,6 +314,9 @@ namespace mx {
             if (tag == "tri") {
                 uint32_t st = 0, ti = 0;
                 s >> st >> ti;
+                triBlocks.emplace_back();
+                cur = &triBlocks.back();
+                cur->textureIndex = ti;
                 textureIndex_ = ti;
                 type = -1;
                 continue;
@@ -319,49 +327,59 @@ namespace mx {
             if (tag == "indices") { s >> count; type = 5; continue; }
         }
 
-        if (pos.empty())
+        
+        if (triBlocks.empty())
             throw mx::Exception("MXModel::load: no vertices found in " + path);
 
         
-        int vcount = static_cast<int>(pos.size());
         vertices_.clear();
-        vertices_.reserve(vcount);
-
-        for (int i = 0; i < vcount; ++i) {
-            VKVertex v{};
-            v.pos[0] = pos[i].x;
-            v.pos[1] = pos[i].y;
-            v.pos[2] = pos[i].z;
-            if (i < (int)uv.size()) {
-                v.texCoord[0] = uv[i].x;
-                v.texCoord[1] = uv[i].y;
-            }
-            if (i < (int)nrm.size()) {
-                v.normal[0] = nrm[i].x;
-                v.normal[1] = nrm[i].y;
-                v.normal[2] = nrm[i].z;
-            }
-            vertices_.push_back(v);
-        }
-
-        if (!fileIndices.empty()) {
-            indices_ = std::move(fileIndices);
-            std::cout << ">> MXModel: " << vcount << " verts, " << indices_.size() << " indices from file\n";
-        } else {
-            indices_.clear();
-            indices_.reserve(vcount);
-            for (uint32_t i = 0; i < static_cast<uint32_t>(vcount); ++i)
-                indices_.push_back(i);
-            compressIndices();
-        }
-
-        // MXMOD files produce a single sub-mesh
+        indices_.clear();
         subMeshes_.clear();
-        SubMesh sm;
-        sm.firstIndex   = 0;
-        sm.indexCount   = static_cast<uint32_t>(indices_.size());
-        sm.textureIndex = textureIndex_;
-        subMeshes_.push_back(sm);
+
+        for (auto &blk : triBlocks) {
+            if (blk.pos.empty()) continue;
+
+            uint32_t vertexBase = static_cast<uint32_t>(vertices_.size());
+            int vcount = static_cast<int>(blk.pos.size());
+
+            for (int i = 0; i < vcount; ++i) {
+                VKVertex v{};
+                v.pos[0] = blk.pos[i].x;
+                v.pos[1] = blk.pos[i].y;
+                v.pos[2] = blk.pos[i].z;
+                if (i < (int)blk.uv.size()) {
+                    v.texCoord[0] = blk.uv[i].x;
+                    v.texCoord[1] = blk.uv[i].y;
+                }
+                if (i < (int)blk.nrm.size()) {
+                    v.normal[0] = blk.nrm[i].x;
+                    v.normal[1] = blk.nrm[i].y;
+                    v.normal[2] = blk.nrm[i].z;
+                }
+                vertices_.push_back(v);
+            }
+
+            uint32_t firstIndex = static_cast<uint32_t>(indices_.size());
+            if (!blk.fileIndices.empty()) {
+                for (auto idx : blk.fileIndices)
+                    indices_.push_back(vertexBase + idx);
+            } else {
+                for (uint32_t i = 0; i < static_cast<uint32_t>(vcount); ++i)
+                    indices_.push_back(vertexBase + i);
+            }
+            uint32_t indexCount = static_cast<uint32_t>(indices_.size()) - firstIndex;
+
+            SubMesh sm;
+            sm.firstIndex   = firstIndex;
+            sm.indexCount   = indexCount;
+            sm.textureIndex = blk.textureIndex;
+            subMeshes_.push_back(sm);
+        }
+
+        if (vertices_.empty())
+            throw mx::Exception("MXModel::load: no vertices found in " + path);
+
+        compressIndices();
 
         std::cout << ">> MXModel::load: " << std::filesystem::path(path).filename().string() << " - [OK]\n";
     }
