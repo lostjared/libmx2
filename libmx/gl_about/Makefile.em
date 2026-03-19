@@ -1,5 +1,5 @@
 CXX = em++
-CXXFLAGS = -std=c++20 -s USE_SDL=2 -s USE_SDL_TTF=2 -s USE_LIBJPEG=1 -s USE_SDL_IMAGE=2 -s SDL2_IMAGE_FORMATS='["png","jpg"]'
+CXXFLAGS = -DWITH_JPEG -std=c++20 -s USE_SDL=2 -s USE_SDL_TTF=2 -s USE_LIBJPEG=1 -s USE_SDL_IMAGE=2 -s SDL2_IMAGE_FORMATS='["png","jpg"]'
 LIBS_PATH = /home/jared/emscripten-libs
 ZLIB_INCLUDE = -s USE_ZLIB=1
 PNG_INCLUDE = -s USE_LIBPNG=1

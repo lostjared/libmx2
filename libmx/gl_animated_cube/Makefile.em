@@ -1,11 +1,11 @@
 CXX = em++
-CXXFLAGS = -std=c++20 -O2 -DFOR_WASM -s USE_SDL=2 -s USE_SDL_TTF=2 
+CXXFLAGS = -DWITH_JPEG -std=c++20 -O2 -DFOR_WASM -s USE_SDL=2 -s USE_SDL_TTF=2 
 LIBS_PATH = /home/jared/emscripten-libs
 ZLIB_INCLUDE = -I$(LIBS_PATH)/zlib/include
 PNG_INCLUDE = -I$(LIBS_PATH)/libpng/include
 MX_INCLUDE = -I$(LIBS_PATH)/mx2/include -I/usr/include/glm 
 ZLIB_LIB = $(LIBS_PATH)/zlib/lib/libz.a
-PNG_LIB = $(LIBS_PATH)/libpng/lib/libpng.a
+PNG_LIB = -s USE_LIBPNG=1 -s USE_LIBJPEG=1  # $(LIBS_PATH)/libpng/lib/libpng.a
 LIBMX_LIB = $(LIBS_PATH)/mx2/lib/libmx.a 
 PRELOAD = --preload-file data
 SOURCES = example.cpp
