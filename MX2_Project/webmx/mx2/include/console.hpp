@@ -369,7 +369,7 @@ namespace console {
         void processMultilineInput(const std::string& cmd);
         bool checkBraceBalance(const std::string& text);  
         void calculateLines();
-        std::unique_ptr<std::thread> worker_thread;
+        std::unique_ptr<std::jthread> worker_thread;
         CommandQueue command_queue;
         std::atomic<bool> worker_active{true};
         void worker_thread_func();
