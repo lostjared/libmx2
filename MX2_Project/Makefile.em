@@ -1,12 +1,12 @@
 CXX = em++
 GLM_PATH=-I/usr/include/glm -I/usr/local/include/glm -I/opt/homebrew/include/glm  # add path to GLM headers
-CXXFLAGS = -std=c++20 -s USE_SDL=2 -s USE_SDL_TTF=2 $(GLM_PATH)
+CXXFLAGS = -DWITH_JPEG -std=c++20 -s USE_SDL=2 -s USE_SDL_TTF=2 $(GLM_PATH)
 LIBS_PATH = ./webmx
 ZLIB_INCLUDE = -s USE_ZLIB=1
 PNG_INCLUDE = -s USE_LIBPNG=1
 MX_INCLUDE = -I$(LIBS_PATH)/mx2/include -I/usr/include/glm
 ZLIB_LIB = -s USE_ZLIB=1
-PNG_LIB = -s USE_LIBPNG=1
+PNG_LIB = -s USE_LIBPNG=1 -s USE_LIBJPEG=1
 LIBMX_LIB = $(LIBS_PATH)/mx2/lib/libmx.a 
 PRELOAD = --preload-file data
 SOURCES = main.cpp
