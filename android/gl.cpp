@@ -342,7 +342,7 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         SDL_Surface *surface = png::LoadPNG(filename.c_str());
         if (!surface) {
-            throw mx::Exception("Error loading PNG file.");
+            throw mx::Exception(std::format("Error loading PNG file: {}", filename));
         }
         SDL_Surface *converted = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_RGBA32, 0);
         SDL_FreeSurface(surface);
@@ -369,7 +369,7 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         SDL_Surface *surface = png::LoadPNG(filename.c_str());
         if (!surface) {
-            throw mx::Exception("Error loading PNG file.");
+            throw mx::Exception(std::format("Error loading PNG file: {}", filename));
         }
         SDL_Surface *converted = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_RGBA32, 0);
         SDL_FreeSurface(surface);

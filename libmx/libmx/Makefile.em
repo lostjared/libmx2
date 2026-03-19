@@ -3,9 +3,12 @@ CXXFLAGS = -std=c++20 -O2 -DFOR_WASM -DWITH_MIXER -DWITH_GL -s USE_SDL=2 -s USE_
 LIBS_PATH = $(HOME)/emscripten-libs
 ZLIB_INCLUDE = -s USE_ZLIB=1 #-I$(LIBS_PATH)/zlib/include
 PNG_INCLUDE = -s USE_LIBPNG=1 #-I$(LIBS_PATH)/libpng/include
+JPEG_INCLUDE = -s USE_JPEG=1
 ZLIB_LIB = -s USE_ZLIB=1 #$(LIBS_PATH)/zlib/lib/libz.a
 PNG_LIB = -s USE_LIBPNG=1 #$(LIBS_PATH)/libpng/lib/libpng.a
-SOURCES = cfg.cpp exception.cpp font.cpp loadpng.cpp mx.cpp texture.cpp util.cpp joystick.cpp gl.cpp input.cpp sound.cpp model.cpp tee_stream.cpp console.cpp
+JPEG_LIB = -s USE_LIBJPEG=1 -DWITH_JPEG
+
+SOURCES = cfg.cpp exception.cpp font.cpp loadpng.cpp mx.cpp texture.cpp util.cpp joystick.cpp gl.cpp input.cpp sound.cpp model.cpp tee_stream.cpp console.cpp jpeg.cpp
 OBJECTS = $(SOURCES:.cpp=.o)
 OUTPUT = libmx.a
 
@@ -14,7 +17,7 @@ OUTPUT = libmx.a
 all: $(OUTPUT)
 
 %.o: %.cpp
-	$(CXX) $(CXXFLAGS) $(ZLIB_INCLUDE) $(PNG_INCLUDE) -I/usr/include/glm -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(JPEG_LIB) $(ZLIB_INCLUDE) $(PNG_INCLUDE) -I/usr/include/glm -c $< -o $@
 
 $(OUTPUT): $(OBJECTS)
 	emar cru $(OUTPUT) $(OBJECTS)

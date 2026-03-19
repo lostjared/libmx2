@@ -12,7 +12,7 @@
 #include"model.hpp"
 #include<random>
 #include"console.hpp"
-
+#include"jpeg.hpp"
 
 #ifdef DEBUG_MODE
 #define CHECK_GL_ERROR() \
@@ -405,7 +405,7 @@ public:
         }   
 
         intro.initSize(win->w, win->h);
-        intro.loadTexture(&shader, win->util.getFilePath("data/intro.png"), 0.0f, 0.0f, win->w, win->h);
+        intro.loadTexture(&shader, win->util.getFilePath("data/intro.jpg"), 0.0f, 0.0f, win->w, win->h);
 
         for (int i = 0; i < SDL_NumJoysticks(); i++) {
             if (SDL_IsGameController(i)) {
@@ -576,7 +576,7 @@ public:
         glBufferData(GL_ARRAY_BUFFER, NUM_PARTICLES * 4 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
         glEnableVertexAttribArray(2);
         glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, 0, (void*)0);
-        texture = gl::loadTexture(win->util.getFilePath("data/star.png"));
+        texture = gl::loadTexture(win->util.getFilePath("data/star.jpg"));
         cameraRotation = 356.0f;
         cameraZoom = 0.09f;
         lastUpdateTime = SDL_GetTicks();
@@ -1525,7 +1525,7 @@ const char* fullProjVert =
             throw mx::Exception("Failed to load projectile shader program");
         }
 
-        texture = gl::loadTexture(win->util.getFilePath("data/fire.png"));
+        texture = gl::loadTexture(win->util.getFilePath("data/fire.jpg"));
 
         glGenVertexArrays(1, &projectileVAO);
         glGenBuffers(3, projectileVBO);
@@ -1754,7 +1754,7 @@ public:
             throw mx::Exception("Failed to load exhaust shader program");
         }
         
-        exhaustTexture = gl::loadTexture(win->util.getFilePath("data/ember.png"));
+        exhaustTexture = gl::loadTexture(win->util.getFilePath("data/ember.jpg"));
         if (exhaustTexture == 0) {
             throw mx::Exception("Failed to load exhaust texture");
         }
@@ -1988,12 +1988,26 @@ public:
          return radius;
     }
 
+    void updateText(mx::Font &font, gl::GLWindow *win, const std::string &text) {
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        win->text.setColor({255,255,255,255});
+        win->text.printText_Solid(font, 25, 25, text);
+        win->swap();
+#ifdef __EMSCRIPTEN__
+        emscripten_sleep(0);
+#endif
+    }
+
     void load(gl::GLWindow *win) {
         if(!shader) {
+            mx::Font font;
+            font.loadFont(win->util.getFilePath("data/font.ttf"), 25);
             models[0] = std::make_unique<mx::Model>();
-            if(!models[0]->openModel(win->util.getFilePath("data/asteroid.mxmod.z"))) {
+            if(!models[0]->openModel(win->util.getFilePath("data/asteroid.mxmod"))) {
                     throw mx::Exception("Failed to load planet model");
             }
+            updateText(font, win, "Loading: 25% ...");
             int rnd_color = generateRandomInt(0, 1);
             if(rnd_color == 0) {
                 models[0]->setTextures(win, win->util.getFilePath("data/rock.tex"), win->util.getFilePath("data"));
@@ -2001,9 +2015,10 @@ public:
                 models[0]->setTextures(win, win->util.getFilePath("data/rock2.tex"), win->util.getFilePath("data"));
             }
             models[1] = std::make_unique<mx::Model>();
-            if(!models[1]->openModel(win->util.getFilePath("data/asteroid2.mxmod.z"))) {
+            if(!models[1]->openModel(win->util.getFilePath("data/asteroid2.mxmod"))) {
                     throw mx::Exception("Failed to load planet model");
             }
+            updateText(font, win, "Loading: 50% ..");
             rnd_color = generateRandomInt(0, 1);
             if(rnd_color == 0) {
                 models[1]->setTextures(win, win->util.getFilePath("data/rock.tex"), win->util.getFilePath("data"));
@@ -2011,10 +2026,11 @@ public:
                 models[1]->setTextures(win, win->util.getFilePath("data/rock2.tex"), win->util.getFilePath("data"));
             }
             models[2] = std::make_unique<mx::Model>();
-            if(!models[2]->openModel(win->util.getFilePath("data/asteroid3.mxmod.z"))) {
+            if(!models[2]->openModel(win->util.getFilePath("data/asteroid3.mxmod"))) {
                     throw mx::Exception("Failed to load planet model");
             }
             rnd_color = generateRandomInt(0, 1);
+            updateText(font, win, "Loading: 75% .");
             if(rnd_color == 0) {
                 models[2]->setTextures(win, win->util.getFilePath("data/rock.tex"), win->util.getFilePath("data"));
             } else {
@@ -2208,21 +2224,39 @@ public:
         if (texture)
             glDeleteTextures(1, &texture);
     }
+    void showProgress(gl::GLWindow *win, const std::string &msg) {
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        win->text.setColor({255, 255, 255, 255});
+        win->text.printText_Solid(progress_font, 25.0f, 25.0f, msg);
+        win->swap();
+#ifdef __EMSCRIPTEN__
+        emscripten_sleep(0);
+#endif
+    }
+
     void load(gl::GLWindow *win) override {
         font.loadFont(win->util.getFilePath("data/font.ttf"), 18);
+        progress_font.loadFont(win->util.getFilePath("data/font.ttf"), 25);
+        showProgress(win, "Loading: Initializing ...");
         win->console.println("Asteroids MX2");
         win->console.println("written by LostSideDead Software\nhttps://lostsidedead.biz");
         con = &win->console;
+        showProgress(win, "Loading: Particle emitter ...");
         emiter.load(win);
-        emiter.setTextureID(gl::loadTexture(win->util.getFilePath("data/star.png")));        
+        emiter.setTextureID(gl::loadTexture(win->util.getFilePath("data/star.jpg")));        
+        showProgress(win, "Loading: Star field ...");
         field.load(win);
+        showProgress(win, "Loading: Ship model ...");
         ship.load(win);  
+        showProgress(win, "Loading: Asteroids ...");
         planets.resize(MAX_PLANETS);
         for (auto& planet : planets) {
             planet.load(win);
             planet.isActive = false;
             planet.isDestroyed = true;
         }
+        showProgress(win, "Loading: Finalizing ...");
         randomizePlanetPositions();
         field.repositionStarsAroundCamera(ship.cameraPosition);
         win->console.setCallback(win, [&](gl::GLWindow *window, const std::vector<std::string> &args) -> bool {
@@ -2260,6 +2294,7 @@ public:
                 break;
             }
         }
+        showProgress(win, "Loading 100% - Complete...");
     }
     
     void randomizePlanetPositions() {
@@ -2708,7 +2743,7 @@ public:
     }
 
 private:
-    mx::Font font;
+    mx::Font font, progress_font;
     Uint32 lastUpdateTime = SDL_GetTicks();
     Uint32 lastFireTime = 0;           
     const Uint32 FIRE_COOLDOWN = 200;  
@@ -2726,7 +2761,7 @@ public:
             SDL_ShowCursor(SDL_DISABLE);
             setFullScreen(true);
         }
-        SDL_Surface *ico = png::LoadPNG(util.getFilePath("data/asteroids_icon.png").c_str());
+        SDL_Surface *ico = jpeg::LoadJPEG(util.getFilePath("data/asteroids_icon.jpg").c_str());
         if(ico) {         
             setWindowIcon(ico);
             SDL_FreeSurface(ico);

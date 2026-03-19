@@ -91,7 +91,7 @@ namespace mx {
         int image_t = imageType(filename);
         switch(image_t) { 
             case 1:
-#if WITH_JPEG
+#ifdef WITH_JPEG
                 return jpeg::SaveJPEG(window->renderer, texture, filename.c_str());
 #else
 

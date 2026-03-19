@@ -10,6 +10,14 @@
 
 #ifdef WITH_GL
 #include"gl.hpp"
+#include<algorithm>
+#include<cctype>
+#include<format>
+#include<ranges>
+#include"loadpng.hpp"
+#ifdef WITH_JPEG
+#include"jpeg.hpp"
+#endif
 #ifdef __EMSCRIPTEN__
 #include<emscripten/emscripten.h>
 #include<emscripten/html5.h>
@@ -17,6 +25,27 @@
 #endif
 
 namespace gl {
+
+    static SDL_Surface *loadImageSurface(const std::string &filename) {
+        std::string lower = filename;
+        std::ranges::transform(lower, lower.begin(), [](unsigned char c) {
+            return static_cast<char>(std::tolower(c));
+        });
+        if (lower.ends_with(".png")) {
+            return png::LoadPNG(filename.c_str());
+        }
+#ifdef WITH_JPEG
+        if (lower.ends_with(".jpg") || lower.ends_with(".jpeg")) {
+            return jpeg::LoadJPEG(filename.c_str());
+        }
+#else
+        if (lower.ends_with(".jpg") || lower.ends_with(".jpeg")) {
+            throw mx::Exception("JPEG support is not enabled. Rebuild with -DJPEG=ON");
+        }
+#endif
+
+        throw mx::Exception(std::format("Unsupported image format for texture: {}", filename));
+    }
    
     GLWindow::~GLWindow() {
         mx::system_out << "libmx2: GLWindow shutting down\n";
@@ -695,9 +724,9 @@ namespace gl {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); 
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         
-        SDL_Surface *surface = png::LoadPNG(filename.c_str());
+        SDL_Surface *surface = loadImageSurface(filename);
         if (!surface) {
-            throw mx::Exception("Error loading PNG file.");
+            throw mx::Exception(std::format("Error loading image file: {}", filename));
         }
         SDL_Surface *converted = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_RGBA32, 0);
         SDL_FreeSurface(surface);
@@ -723,9 +752,9 @@ namespace gl {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); 
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         
-        SDL_Surface *surface = png::LoadPNG(filename.c_str());
+        SDL_Surface *surface = loadImageSurface(filename);
         if (!surface) {
-            throw mx::Exception("Error loading PNG file.");
+            throw mx::Exception(std::format("Error loading image file: {}", filename));
         }
         SDL_Surface *converted = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_RGBA32, 0);
         SDL_FreeSurface(surface);
