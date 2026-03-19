@@ -36,16 +36,7 @@ namespace mx {
         float normal[3];
         float texCoord[2];
 
-        bool operator==(const Vertex& other) const {
-            return position[0] == other.position[0] &&
-                position[1] == other.position[1] &&
-                position[2] == other.position[2] &&
-                normal[0]   == other.normal[0] &&
-                normal[1]   == other.normal[1] &&
-                normal[2]   == other.normal[2] &&
-                texCoord[0] == other.texCoord[0] &&
-                texCoord[1] == other.texCoord[1];
-        }
+        bool operator==(const Vertex& other) const = default;
     };
 
     struct VertexHash {
@@ -200,9 +191,8 @@ namespace mx {
                 vertex.texCoord[0] = vertex.texCoord[1] = 0.0f;
             }
 
-            auto it = vertexToIndex.find(vertex);
-            if (it != vertexToIndex.end()) {
-                newIndices.push_back(it->second);
+            if (vertexToIndex.contains(vertex)) {
+                newIndices.push_back(vertexToIndex[vertex]);
             } else {
                 GLuint newIndex = (GLuint)uniqueVertices.size();
                 uniqueVertices.push_back(vertex);
@@ -608,16 +598,12 @@ namespace mx {
         return *this;
     }
 
-    static bool ends_with(const std::string &s, const std::string &suf) {
-        return s.size() >= suf.size() && s.compare(s.size() - suf.size(), suf.size(), suf) == 0;
-    }
-
     bool Model::openModel(const std::string &filename, bool compress) {
         std::cout << "mx: Open model: " << filename << std::endl;
 
         meshes.clear();
 
-        if (ends_with(filename, ".obj")) {
+        if (filename.ends_with(".obj")) {
             return openOBJ(filename, compress);
         }
 
@@ -631,7 +617,7 @@ namespace mx {
                 return false;
             }
 
-            if (ends_with(filename, ".mxmod.z")) {
+            if (filename.ends_with(".mxmod.z")) {
                 text = decompressString(buffer.data(), static_cast<uLong>(buffer.size()));
             } else {
                 text.assign(buffer.begin(), buffer.end());

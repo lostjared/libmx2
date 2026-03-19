@@ -5,16 +5,15 @@
 #include"cfg.hpp"
 #include<algorithm>
 #include"mx.hpp"
-#include<sstream>
+#include<format>
+#include<ranges>
 
 
 namespace mx {
     void ConfigFile::loadFile(const std::string &f) {
         std::ifstream in(f);
         if (!in.is_open()) {
-            std::ostringstream stream;
-            stream << "mx: Could not open configuration file: " <<  f << "\n";
-            throw mx::Exception(stream.str());
+            throw mx::Exception(std::format("mx: Could not open configuration file: {}\n", f));
         }
 
         std::string line, currentSection;
@@ -53,7 +52,7 @@ namespace mx {
         for (const auto &section : values) {
             sectionNames.push_back(section.first);
         }
-        std::sort(sectionNames.begin(), sectionNames.end());
+        std::ranges::sort(sectionNames);
 
         for (const auto &section : sectionNames) {
             out << "[" << section << "]\n";
@@ -62,7 +61,7 @@ namespace mx {
             for (const auto &pair : values[section]) {
                 keys.push_back(pair.first);
             }
-            std::sort(keys.begin(), keys.end());
+            std::ranges::sort(keys);
 
             for (const auto &key : keys) {
                 out << key << "=" << values[section][key].value << "\n";
@@ -75,10 +74,8 @@ namespace mx {
     }
 
     Item ConfigFile::itemAtKey(const std::string &section, const std::string &key) {
-        if(values[section].find(key) == values[section].end()) {
-            std::ostringstream stream;
-            stream << "mx: Could not find Key: " << key << " in config file.\n";;
-            throw mx::Exception(stream.str());
+        if(!values[section].contains(key)) {
+            throw mx::Exception(std::format("mx: Could not find Key: {} in config file.\n", key));
         }
         return values[section][key];
     }

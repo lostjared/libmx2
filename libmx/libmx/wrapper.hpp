@@ -11,7 +11,7 @@
 #include<iostream>
 #include<optional>
 #include "tee_stream.hpp"
-#include<sstream>
+#include<format>
 #include"exception.hpp"
 
 namespace mx {
@@ -119,9 +119,7 @@ namespace mx {
             if(type.has_value() && type.value() != nullptr)
                 return type.value();
 
-            std::ostringstream stream; 
-            stream << "panic: " << msg;
-            throw Exception(stream.str());
+            throw Exception(std::format("panic: {}", msg));
         }
 
         /**
@@ -133,9 +131,7 @@ namespace mx {
             if(type.has_value() && type.value() != nullptr)
                 return type.value();
 
-            std::ostringstream stream;
-            stream << "mx: panic, Wrapper Error: type is null...";
-            throw Exception(stream.str());
+            throw Exception("mx: panic, Wrapper Error: type is null...");
             return T();
         }
 

@@ -4,13 +4,13 @@
  */
 #include"util.hpp"
 #include"loadpng.hpp"
-#include<sstream>
 #include"exception.hpp"
 #include<zlib.h>
 #include<memory>
 #include<fstream>
 #include<iostream>
 #include<random>
+#include<format>
 
 namespace mx {
 
@@ -37,7 +37,7 @@ namespace mx {
                              reinterpret_cast<const Bytef*>(text.data()), sourceLen);
         if (ret != Z_OK) {
             len = 0;
-            throw mx::Exception("Compression failed with error code: " + std::to_string(ret));
+            throw mx::Exception(std::format("Compression failed with error code: {}", ret));
         }
         len = destLen;
         return compressedData;
@@ -64,7 +64,7 @@ namespace mx {
             ret = inflate(&strm, Z_NO_FLUSH);
             if (ret != Z_OK && ret != Z_STREAM_END) {
                 inflateEnd(&strm);
-                throw mx::Exception("inflate failed with error code: " + std::to_string(ret));
+                throw mx::Exception(std::format("inflate failed with error code: {}", ret));
             }
             size_t have = chunkSize - strm.avail_out;
             outStr.append(outBuffer, have);
@@ -108,9 +108,7 @@ namespace mx {
     }
 
     std::string mxUtil::getFilePath(const std::string &filename) {
-        std::ostringstream stream;
-        stream << path << "/" << filename;
-        return stream.str();
+        return std::format("{}/{}", path, filename);
     }
 
     void mxUtil::printText(SDL_Renderer *renderer,TTF_Font *font,int x, int y, const std::string &text, SDL_Color col) {

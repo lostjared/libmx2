@@ -12,19 +12,14 @@ namespace mx {
     struct Vec2 { float x, y; };
     struct Vec3 { float x, y, z; };
 
-    static bool ends_with(const std::string &s, const std::string &suf) {
-        return s.size() >= suf.size() && s.compare(s.size() - suf.size(), suf.size(), suf) == 0;
-    }
-
     void MXModel::compressIndices() {
         if (vertices_.empty()) return;
         std::vector<VKVertex> unique;
         std::unordered_map<VKVertex, uint32_t, VKVertexHash> map;
         std::vector<uint32_t> remap(vertices_.size());
         for (size_t i = 0; i < vertices_.size(); ++i) {
-            auto it = map.find(vertices_[i]);
-            if (it != map.end()) {
-                remap[i] = it->second;
+            if (map.contains(vertices_[i])) {
+                remap[i] = map[vertices_[i]];
             } else {
                 uint32_t idx = static_cast<uint32_t>(unique.size());
                 unique.push_back(vertices_[i]);
@@ -45,7 +40,7 @@ namespace mx {
     }
 
     void MXModel::load(const std::string &path, float positionScale) {
-        if (ends_with(path, ".obj")) {
+        if (path.ends_with(".obj")) {
             loadOBJ(path, positionScale);
             return;
         }
@@ -216,7 +211,7 @@ namespace mx {
 
     void MXModel::loadMXMOD(const std::string &path, float positionScale) {
         std::string text;
-        if (ends_with(path, ".mxmod.z")) {
+        if (path.ends_with(".mxmod.z")) {
             auto buffer = mx::readFile(path);
             if (buffer.empty())
                 throw mx::Exception("MXModel::load: failed to read file: " + path);

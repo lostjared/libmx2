@@ -4,6 +4,7 @@
  */
 #include"vk.hpp"
 #include"loadpng.hpp"
+#include<format>
 
 namespace mx {
 
@@ -1271,7 +1272,7 @@ namespace mx {
             VkResult result = vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data());
 
             if (result != VK_SUCCESS) {
-                throw mx::Exception("Failed to allocate descriptor sets! Result: " + std::to_string(result));
+                throw mx::Exception(std::format("Failed to allocate descriptor sets! Result: {}", static_cast<int>(result)));
             }
             std::cout << ">> [DescriptorSets] Successfully allocated descriptor sets\n";
             for (size_t i = 0; i < swapChainImages.size(); i++) {

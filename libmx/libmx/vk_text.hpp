@@ -28,12 +28,13 @@
 #include <string>
 #include <cstring>
 #include <unordered_map>
+#include <format>
 
 #ifndef VK_CHECK_RESULT
 #define VK_CHECK_RESULT(f) { \
     VkResult res = (f); \
     if (res != VK_SUCCESS) { \
-        throw mx::Exception("Fatal : VkResult is \"" + std::to_string(res) + "\" in " + __FILE__ + " at line " + std::to_string(__LINE__)); \
+        throw mx::Exception(std::format("Fatal : VkResult is \"{}\" in {} at line {}", static_cast<int>(res), __FILE__, __LINE__)); \
     } \
 }
 #endif
@@ -54,9 +55,7 @@ namespace mx {
       struct CacheKey {
           std::string text;
           uint8_t r, g, b, a;
-          bool operator==(const CacheKey &other) const {
-              return text == other.text && r == other.r && g == other.g && b == other.b && a == other.a;
-          }
+          bool operator==(const CacheKey &other) const = default;
       };
 
       /// Hash functor for CacheKey.

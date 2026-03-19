@@ -3,6 +3,7 @@
  * @brief Implementation of console::Console, console::GLConsole, and console::ConsoleChars.
  */
 #include"console.hpp"
+#include<format>
 #ifdef WITH_GL
 #include"gl.hpp"
 #endif
@@ -118,7 +119,7 @@ namespace console {
         worker_active = true;
         
 #if THREAD_ENABLED
-        worker_thread = std::make_unique<std::thread>(&Console::worker_thread_func, this);
+        worker_thread = std::make_unique<std::jthread>(&Console::worker_thread_func, this);
 #endif
     }
 
@@ -127,9 +128,8 @@ namespace console {
         command_queue.shutdown();
         
 #if THREAD_ENABLED
-        if (worker_thread && worker_thread->joinable()) {
-            worker_thread->join();
-        }
+        // std::jthread auto-joins on destruction
+        worker_thread.reset();
 #endif
         
         if(surface) {
@@ -516,7 +516,7 @@ namespace console {
 
     void Console::checkScroll() {
         THREAD_GUARD(console_mutex);
-        if (!surface || c_chars.characters.empty() || c_chars.characters.find('A') == c_chars.characters.end()) {
+        if (!surface || c_chars.characters.empty() || !c_chars.characters.contains('A')) {
             return;
         }
         if (needsReflow) {
@@ -1339,7 +1339,7 @@ namespace console {
         if (cmd.empty()) {
             return true;
         } else if(cmd.size() == 1 && (cmd[0] == "about" || cmd[0] == "version")) {
-           print("MX2 version " + std::to_string(PROJECT_VERSION_MAJOR) + "." + std::to_string(PROJECT_VERSION_MINOR) + "\n");
+           print(std::format("MX2 version {}.{}\n", PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR));
            print("writen by Jared Bruni\n");
            print("https://lostsidedead.biz\n");
         } 
@@ -1360,9 +1360,8 @@ namespace console {
                 color.b = std::stoi(cmd[4]);
                 color.a = 255;
                 setTextAttrib(size, color);
-                print("Text attributes set to size " + std::to_string(size) + 
-                        " and color (" + std::to_string(color.r) + ", " + 
-                        std::to_string(color.g) + ", " + std::to_string(color.b) + ")\n");
+                print(std::format("Text attributes set to size {} and color ({}, {}, {})\n",
+                        size, color.r, color.g, color.b));
                 return true;
         } else {
                 print("Unknown command: " + cmd[0] + "\n");

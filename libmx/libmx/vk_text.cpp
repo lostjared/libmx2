@@ -102,7 +102,7 @@ namespace mx {
             allocInfo.descriptorPool = descriptorPool;
             VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &allocInfo, &descriptorSet));
         } else if (res != VK_SUCCESS) {
-            throw mx::Exception("Fatal : VkResult is \"" + std::to_string(res) + "\" in " + std::string(__FILE__) + " at line " + std::to_string(__LINE__));
+            throw mx::Exception(std::format("Fatal : VkResult is \"{}\" in {} at line {}", static_cast<int>(res), __FILE__, __LINE__));
         }
         
         VkDescriptorImageInfo imageInfo{};

@@ -8,7 +8,8 @@
 #ifdef WITH_JPEG
 #include"jpeg.hpp"
 #endif
-#include<sstream>
+#include<format>
+#include<algorithm>
 
 namespace mx {
     
@@ -34,9 +35,7 @@ namespace mx {
     void Texture::createTexture(mxWindow *window, int width, int height) {
         SDL_Texture *tex = SDL_CreateTexture(window->renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, width, height);
         if(!tex) {
-            std::ostringstream stream;
-            stream << "Error creating texture: " << SDL_GetError() << "\n";
-            throw Exception(stream.str());
+            throw Exception(std::format("Error creating texture: {}\n", SDL_GetError()));
         }
         texture = tex;
     }
@@ -59,23 +58,17 @@ namespace mx {
             #ifdef WITH_JPEG
             surface = jpeg::LoadJPEG(filename.c_str());
             #else
-            std::ostringstream stream;
-            stream << "mx: JPEG for file not suported: " << filename << "\n";
-            throw Exception(stream.str());
+            throw Exception(std::format("mx: JPEG for file not suported: {}\n", filename));
             #endif
         } else if(type == 2) {
             surface = png::LoadPNG(filename.c_str());
         } else if(type == 3) {
             surface = SDL_LoadBMP(filename.c_str());
         } else {
-            std::ostringstream stream;
-            stream << "mx: Image format not suported for: " << filename << "\n";
-            throw Exception(stream.str());
+            throw Exception(std::format("mx: Image format not suported for: {}\n", filename));
         }
         if(!surface) {
-            std::ostringstream stream;
-            stream << "mx: Error could not open file: " << filename << "\n";
-            throw Exception(stream.str());
+            throw Exception(std::format("mx: Error could not open file: {}\n", filename));
         }
         if(color)
             SDL_SetColorKey(surface, SDL_TRUE, SDL_MapRGB(surface->format, key.r, key.g, key.b));
@@ -86,9 +79,7 @@ namespace mx {
         height_ = h;
         SDL_Texture *tex = SDL_CreateTextureFromSurface(window->renderer, surface);
         if(!tex) {
-            std::ostringstream stream;
-            stream << "mx: Error creating texture from surface..\n";
-            throw Exception(stream.str());
+            throw Exception(std::format("mx: Error creating texture from surface..\n"));
         }
         if(surface)
             SDL_FreeSurface(surface);
@@ -123,13 +114,13 @@ namespace mx {
 
     int Texture::imageType(const std::string &filename) {
         std::string lwr;
-        for(size_t i =  0; i < filename.length(); ++i) 
-            lwr += tolower(filename[i]);
-        if(lwr.find(".jpg") != std::string::npos)
+        lwr.reserve(filename.length());
+        std::ranges::transform(filename, std::back_inserter(lwr), ::tolower);
+        if(lwr.ends_with(".jpg") || lwr.ends_with(".jpeg"))
             return 1;
-        if(lwr.find(".png") != std::string::npos)
+        if(lwr.ends_with(".png"))
             return 2;
-        if(lwr.find(".bmp") != std::string::npos)
+        if(lwr.ends_with(".bmp"))
             return 3;
         return 0;
     }

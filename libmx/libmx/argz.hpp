@@ -27,6 +27,7 @@
 #include <algorithm>
 #include <iomanip>
 #include <iostream>
+#include <ranges>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
@@ -85,6 +86,7 @@ struct Argument {
 		return *this;
 	}
 	auto operator<=>(const Argument<String> &a) const { return (arg_letter <=> a.arg_letter); }
+	bool operator==(const Argument<String> &a) const { return arg_letter == a.arg_letter; }
 };
 
 /**
@@ -450,8 +452,8 @@ public:
 			else if(i.second.arg_type == ArgType::ARG_DOUBLE || i.second.arg_type == ArgType::ARG_DOUBLE_VALUE)
 				v2.push_back(i.second);
 		}
-		std::sort(v.begin(), v.end());
-		std::sort(v2.begin(), v2.end());
+		std::ranges::sort(v);
+		std::ranges::sort(v2);
 		std::vector<Argument<String>> farg;
 		farg.reserve(v.size() + v2.size());
 		std::copy(v.begin(), v.end(), std::back_inserter(farg));

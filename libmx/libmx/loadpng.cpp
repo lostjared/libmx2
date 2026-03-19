@@ -10,6 +10,7 @@
 #include<cctype>
 #include<string>
 #include<iostream>
+#include<algorithm>
 #include"tee_stream.hpp"
 
 #if defined(_MSC_VER)
@@ -22,12 +23,9 @@ namespace png {
     SDL_Surface* LoadPNG(const char* file) {
         auto chkString = [](const std::string &filename) -> bool {
             std::string lwr;
-            for(size_t i =  0; i < filename.length(); ++i) 
-                lwr += tolower(filename[i]);
-            if(lwr.find(".png") == std::string::npos)
-                return false;
-
-            return true;
+            lwr.reserve(filename.length());
+            std::ranges::transform(filename, std::back_inserter(lwr), ::tolower);
+            return lwr.ends_with(".png");
         };
 
         if(chkString(file) == false)
