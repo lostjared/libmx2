@@ -13,6 +13,7 @@
 #include<random>
 #include"console.hpp"
 #include"jpeg.hpp"
+#include<ranges>
 
 #ifdef DEBUG_MODE
 #define CHECK_GL_ERROR() \
@@ -31,7 +32,6 @@ using mx::generateRandomFloat;
 using mx::generateRandomInt;
 
 console::GLConsole *con = nullptr;
-
 
 #if defined(__EMSCRIPTEN__) || defined(__ANDOIRD__)
 
@@ -2000,41 +2000,51 @@ public:
     }
 
     void load(gl::GLWindow *win) {
+        std::vector<int> v{0, 1, generateRandomInt(0, 1)};
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::ranges::shuffle(v, gen);
         if(!shader) {
             mx::Font font;
             font.loadFont(win->util.getFilePath("data/font.ttf"), 25);
             models[0] = std::make_unique<mx::Model>();
             if(!models[0]->openModel(win->util.getFilePath("data/asteroid.mxmod"))) {
-                    throw mx::Exception("Failed to load planet model");
+                    throw mx::Exception("Failed to load asteroid model: asteroid.mxmod");
             }
             updateText(font, win, "Loading: 25% ...");
-            int rnd_color = generateRandomInt(0, 1);
+            int rnd_color = v[0];
             if(rnd_color == 0) {
                 models[0]->setTextures(win, win->util.getFilePath("data/rock.tex"), win->util.getFilePath("data"));
+                mx::system_out << "asteroid [asteroid.mxmod]: Texture 1 set\n";
             } else {
                 models[0]->setTextures(win, win->util.getFilePath("data/rock2.tex"), win->util.getFilePath("data"));
+                mx::system_out << "asteroid [asteroid.mxmod]: Texture 2 set\n";
             }
             models[1] = std::make_unique<mx::Model>();
             if(!models[1]->openModel(win->util.getFilePath("data/asteroid2.mxmod"))) {
-                    throw mx::Exception("Failed to load planet model");
+                    throw mx::Exception("Failed to load asteroid model: asteroid2.mxmod");
             }
             updateText(font, win, "Loading: 50% ..");
-            rnd_color = generateRandomInt(0, 1);
+            rnd_color = v[1];
             if(rnd_color == 0) {
                 models[1]->setTextures(win, win->util.getFilePath("data/rock.tex"), win->util.getFilePath("data"));
+                mx::system_out << "asteroid [asteroid2.mxmod]: Texture 1 set\n";
             } else {
                 models[1]->setTextures(win, win->util.getFilePath("data/rock2.tex"), win->util.getFilePath("data"));
+                mx::system_out << "asteroid [asteroid2.mxmod]: Texture 2 set\n";
             }
             models[2] = std::make_unique<mx::Model>();
             if(!models[2]->openModel(win->util.getFilePath("data/asteroid3.mxmod"))) {
-                    throw mx::Exception("Failed to load planet model");
+                    throw mx::Exception("Failed to load asteroid model: asteroid3.mxmod");
             }
-            rnd_color = generateRandomInt(0, 1);
+            rnd_color = v[2];
             updateText(font, win, "Loading: 75% .");
             if(rnd_color == 0) {
                 models[2]->setTextures(win, win->util.getFilePath("data/rock.tex"), win->util.getFilePath("data"));
+                mx::system_out << "asteroid3 [asteroid3.mxmod]: Texture 1 set\n";
             } else {
                 models[2]->setTextures(win, win->util.getFilePath("data/rock2.tex"), win->util.getFilePath("data"));
+                mx::system_out << "asteroid3 [asteroid3.mxmod]: Texture 2 set\n";
             }
             
             shader = std::make_unique<gl::ShaderProgram>();
@@ -2182,7 +2192,7 @@ public:
             child.radius = radius * 0.4f;
             child.rotationSpeed = rotationSpeed * generateRandomFloat(0.8f, 1.5f);
             child.rotationAngle = generateRandomFloat(0.0f, 360.0f);
-            child.asteroid_type = generateRandomInt(0, 2);
+            child.asteroid_type = asteroid_type;
             child.generation = generation + 1;
             glm::vec3 directionFromParent = glm::normalize(child.position - position);
             child.velocity = directionFromParent * generateRandomFloat(2.0f, 5.0f);
