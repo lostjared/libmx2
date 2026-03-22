@@ -42,7 +42,7 @@ namespace mx {
         createCommandPool();
         createVertexBuffer();
         
-        SDL_Surface* wallTexture = png::LoadPNG(util.getFilePath("data/bg.png").c_str());
+        SDL_Surface* wallTexture = png::LoadPNG(util.getFilePath("data/losttexture.png").c_str());
         if (wallTexture) {
             createTextureImage(wallTexture);
             SDL_FreeSurface(wallTexture);
@@ -53,7 +53,7 @@ namespace mx {
         createTextureImageView();
         createTextureSampler();
         
-        SDL_Surface* floorTexture = png::LoadPNG(util.getFilePath("data/ground.png").c_str());
+        SDL_Surface* floorTexture = png::LoadPNG(util.getFilePath("data/lostcrystaltexture.png").c_str());
         if (floorTexture) {
             createFloorTextureImage(floorTexture);
             SDL_FreeSurface(floorTexture);
