@@ -3,25 +3,25 @@
  * @brief Implementation of gl::ShaderProgram, gl::GLText, gl::GLSprite, gl::GLWindow, and gl::GLObject.
  */
 #ifdef __EMSCRIPTEN__
-#include"config.hpp"
+#include "config.hpp"
 #else
-#include"config.h"
+#include "config.h"
 #endif
 
 #ifdef WITH_GL
-#include"gl.hpp"
-#include<algorithm>
-#include<cctype>
-#include<format>
-#include<ranges>
-#include"loadpng.hpp"
+#include "gl.hpp"
+#include "loadpng.hpp"
+#include <algorithm>
+#include <cctype>
+#include <format>
+#include <ranges>
 #ifdef WITH_JPEG
-#include"jpeg.hpp"
+#include "jpeg.hpp"
 #endif
 #ifdef __EMSCRIPTEN__
-#include<emscripten/emscripten.h>
-#include<emscripten/html5.h>
-#include<GLES3/gl3.h>
+#include <GLES3/gl3.h>
+#include <emscripten/emscripten.h>
+#include <emscripten/html5.h>
 #endif
 
 namespace gl {
@@ -46,12 +46,12 @@ namespace gl {
 
         throw mx::Exception(std::format("Unsupported image format for texture: {}", filename));
     }
-   
+
     GLWindow::~GLWindow() {
         mx::system_out << "libmx2: GLWindow shutting down\n";
-        if(object) {
+        if (object) {
             mx::system_out << "libmx2: releasing GL object\n";
-            object.reset();  
+            object.reset();
         }
         mx::system_out << "libmx2: releasing console resources\n";
         console.release();
@@ -60,7 +60,7 @@ namespace gl {
             SDL_GL_DeleteContext(glContext);
             glContext = nullptr;
         }
-        if(window) {
+        if (window) {
             mx::system_out << "libmx2: destroying SDL window\n";
             SDL_DestroyWindow(window);
             window = nullptr;
@@ -73,16 +73,17 @@ namespace gl {
     }
 
     void GLWindow::updateViewport() {
-        #ifdef __ANDROID__
+#ifdef __ANDROID__
         SDL_GL_GetDrawableSize(window, &this->w, &this->h);
-        #else
+#else
         SDL_GetWindowSize(window, &this->w, &this->h);
-        #endif
+#endif
         glViewport(0, 0, this->w, this->h);
-        if(object) object->resize(this, this->w, this->h);
+        if (object)
+            object->resize(this, this->w, this->h);
         text.init(this->w, this->h);
-        if(console_active) {
-            console.resize(this,this->w, this->h);
+        if (console_active) {
+            console.resize(this, this->w, this->h);
         }
     }
 
@@ -91,11 +92,11 @@ namespace gl {
     }
 
 #ifdef __EMSCRIPTEN__
-     void GLWindow::restoreContext() {
+    void GLWindow::restoreContext() {
         if (webglContext > 0) {
             emscripten_webgl_make_context_current(webglContext);
             glViewport(0, 0, w, h);
-            if (object) 
+            if (object)
                 object->resize(this, w, h);
         }
     }
@@ -107,13 +108,13 @@ namespace gl {
 
     void GLWindow::initGL(int width, int height) {
         mx::redirect();
-        if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER | SDL_INIT_AUDIO) < 0) {
+        if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER | SDL_INIT_AUDIO) < 0) {
             mx::system_err << "Error initalizing SDL: " << SDL_GetError() << "\n";
             mx::system_err.flush();
             exit(EXIT_FAILURE);
         }
 #ifndef __EMSCRIPTEN__
-        if(gl_mode == GLMode::DESKTOP) {
+        if (gl_mode == GLMode::DESKTOP) {
             SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
             SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
             SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
@@ -133,7 +134,7 @@ namespace gl {
         SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
         SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 #endif
-        window = SDL_CreateWindow("", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 
+        window = SDL_CreateWindow("", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
                                   width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN);
         if (!window) {
             throw std::runtime_error("Failed to create SDL window: " + std::string(SDL_GetError()));
@@ -161,34 +162,34 @@ namespace gl {
         text.init(w, h);
         console.resize(this, w, h);
         glViewport(0, 0, w, h);
-        SDL_GL_SetSwapInterval(0); 
+        SDL_GL_SetSwapInterval(0);
     }
 
     void GLWindow::initGL(const std::string &title, int width, int height, bool resize_) {
         mx::redirect();
         mx::system_out << "libmx2: GLWindow::initGL starting...\n";
         mx::system_out.flush();
-        
-        if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER | SDL_INIT_AUDIO) < 0) {
+
+        if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER | SDL_INIT_AUDIO) < 0) {
             mx::system_err << "Error initalizing SDL: " << SDL_GetError() << "\n";
             mx::system_err.flush();
             exit(EXIT_FAILURE);
         }
         mx::system_out << "libmx2: SDL initialized\n";
         mx::system_out.flush();
-        
+
 #ifndef __EMSCRIPTEN__
 
-        if(gl_mode == GLMode::DESKTOP) {
+        if (gl_mode == GLMode::DESKTOP) {
             SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-	        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
-	        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+            SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+            SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
             SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
             SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
         } else {
             SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-	        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-	        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+            SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+            SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
             SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
             SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
         }
@@ -201,92 +202,92 @@ namespace gl {
 #endif
         mx::system_out << "libmx2: Creating SDL window...\n";
         mx::system_out.flush();
-        
-        if(resize_) {
-            window = SDL_CreateWindow(title.c_str(),SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,width,height,SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+
+        if (resize_) {
+            window = SDL_CreateWindow(title.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
         } else {
-            window = SDL_CreateWindow(title.c_str(),SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,width,height,SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+            window = SDL_CreateWindow(title.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
         }
-        
+
         mx::system_out << "libmx2: SDL window created: " << (window ? "success" : "failed") << "\n";
         mx::system_out.flush();
-        
+
         if (!window) {
             throw std::runtime_error("Failed to create SDL window: " + std::string(SDL_GetError()));
         }
 #ifdef __EMSCRIPTEN__
-    EmscriptenWebGLContextAttributes attrs;
-    emscripten_webgl_init_context_attributes(&attrs);
-    attrs.majorVersion = 2; 
-    attrs.minorVersion = 0;
-    attrs.alpha = true;
-    attrs.depth = true;
-    attrs.stencil = true;
-    attrs.antialias = true;
-    attrs.premultipliedAlpha = true;
-    attrs.preserveDrawingBuffer = true;  
-    attrs.powerPreference = EM_WEBGL_POWER_PREFERENCE_HIGH_PERFORMANCE;
-    attrs.failIfMajorPerformanceCaveat = false;
-    attrs.enableExtensionsByDefault = true;
-    EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context("#canvas", &attrs);
-    if (context <= 0) {
-        std::cerr << "Failed to create WebGL 2.0 context" << std::endl;
-        exit(EXIT_FAILURE);
-    }
-    emscripten_webgl_make_context_current(context);
-    webglContext = context;
+        EmscriptenWebGLContextAttributes attrs;
+        emscripten_webgl_init_context_attributes(&attrs);
+        attrs.majorVersion = 2;
+        attrs.minorVersion = 0;
+        attrs.alpha = true;
+        attrs.depth = true;
+        attrs.stencil = true;
+        attrs.antialias = true;
+        attrs.premultipliedAlpha = true;
+        attrs.preserveDrawingBuffer = true;
+        attrs.powerPreference = EM_WEBGL_POWER_PREFERENCE_HIGH_PERFORMANCE;
+        attrs.failIfMajorPerformanceCaveat = false;
+        attrs.enableExtensionsByDefault = true;
+        EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context("#canvas", &attrs);
+        if (context <= 0) {
+            std::cerr << "Failed to create WebGL 2.0 context" << std::endl;
+            exit(EXIT_FAILURE);
+        }
+        emscripten_webgl_make_context_current(context);
+        webglContext = context;
 #else
-    mx::system_out << "libmx2: Creating GL context...\n";
-    mx::system_out.flush();
-    
-    glContext = SDL_GL_CreateContext(window);
-    if (!glContext) {
-        throw std::runtime_error("Failed to create OpenGL context: " + std::string(SDL_GetError()));
-    }
-    
-    mx::system_out << "libmx2: GL context created, loading GLAD...\n";
-    mx::system_out.flush();
+        mx::system_out << "libmx2: Creating GL context...\n";
+        mx::system_out.flush();
 
-    if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress)) {
-        SDL_GL_DeleteContext(glContext);
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        exit(EXIT_FAILURE);
-    }
-    
-    mx::system_out << "libmx2: GLAD loaded successfully\n";
-    mx::system_out.flush();
-    
-    mx::system_out << "OpenGL Version: [" << glGetString(GL_VERSION) << "]\n";
+        glContext = SDL_GL_CreateContext(window);
+        if (!glContext) {
+            throw std::runtime_error("Failed to create OpenGL context: " + std::string(SDL_GetError()));
+        }
+
+        mx::system_out << "libmx2: GL context created, loading GLAD...\n";
+        mx::system_out.flush();
+
+        if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress)) {
+            SDL_GL_DeleteContext(glContext);
+            SDL_DestroyWindow(window);
+            SDL_Quit();
+            exit(EXIT_FAILURE);
+        }
+
+        mx::system_out << "libmx2: GLAD loaded successfully\n";
+        mx::system_out.flush();
+
+        mx::system_out << "OpenGL Version: [" << glGetString(GL_VERSION) << "]\n";
 #endif
         w = width;
         h = height;
-        
+
         mx::system_out << "libmx2: Initializing TTF...\n";
         mx::system_out.flush();
-        
+
         if (TTF_Init() < 0) {
             mx::system_err << "Failed to initialize SDL_ttf: " << TTF_GetError() << std::endl;
             mx::system_err.flush();
             exit(EXIT_FAILURE);
         }
-        
+
         mx::system_out << "libmx2: TTF initialized, setting up text...\n";
         mx::system_out.flush();
-        
-        text.init(w,  h);
-        
+
+        text.init(w, h);
+
         mx::system_out << "libmx2: text.init done, resizing console...\n";
         mx::system_out.flush();
-        
+
         console.resize(this, w, h);
-        
+
         mx::system_out << "libmx2: console.resize done, setting viewport...\n";
         mx::system_out.flush();
-        
+
         glViewport(0, 0, w, h);
         if (SDL_GL_SetSwapInterval(1) != 0) {
-                SDL_Log("Failed to enable vSync: %s", SDL_GetError());
+            SDL_Log("Failed to enable vSync: %s", SDL_GetError());
         }
     }
 
@@ -309,7 +310,7 @@ namespace gl {
         SDL_SetWindowTitle(window, title.c_str());
     }
     void GLWindow::setFullScreen(bool full) {
-        if(full) {
+        if (full) {
             SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
         } else {
             SDL_SetWindowFullscreen(window, 0);
@@ -331,19 +332,18 @@ namespace gl {
     }
 
     void GLWindow::setObject(gl::GLObject *o) {
-        object.reset(o); 
+        object.reset(o);
         console.setWindow(this);
         console.clear_callbacks();
     }
 
-    void GLWindow::showConsole(bool show) { 
-        console_visible = show; 
-        
+    void GLWindow::showConsole(bool show) {
+        console_visible = show;
     }
 
     void GLWindow::swap() {
         drawConsole();
-         if (window) {
+        if (window) {
             SDL_GL_SwapWindow(window);
         }
     }
@@ -360,7 +360,7 @@ namespace gl {
 
     void GLWindow::loop() {
         active = true;
-        while(active) {
+        while (active) {
             proc();
         }
     }
@@ -369,7 +369,7 @@ namespace gl {
 
     void GLWindow::proc() {
         Uint32 hostWindowId = window ? SDL_GetWindowID(window) : 0;
-        while(SDL_PollEvent(&e)) {
+        while (SDL_PollEvent(&e)) {
             bool eventForHostWindow = true;
             if (hostWindowId != 0) {
                 if (e.type == SDL_WINDOWEVENT) {
@@ -387,11 +387,11 @@ namespace gl {
                 }
             }
 
-            if(e.type == SDL_USEREVENT) {
+            if (e.type == SDL_USEREVENT) {
                 console.refresh();
-            } else if(console_active && eventForHostWindow && e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_F3) {
-                if(console_active) {
-                    if(!console_visible) {
+            } else if (console_active && eventForHostWindow && e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_F3) {
+                if (console_active) {
+                    if (!console_visible) {
                         console_visible = true;
                         console.show();
                     } else {
@@ -399,29 +399,28 @@ namespace gl {
                         console.hide();
                     }
                 }
-            } else if(e.type == SDL_QUIT || (eventForHostWindow && e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE)) {
+            } else if (e.type == SDL_QUIT || (eventForHostWindow && e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE)) {
                 active = false;
                 return;
             } else if (eventForHostWindow && e.type == SDL_WINDOWEVENT) {
                 if (e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
                     updateViewport();
                 }
-            } 
-            else {
+            } else {
                 if (eventForHostWindow) {
-                    if(console_visible && console_active) {
+                    if (console_visible && console_active) {
                         console.event(this, e);
                     } else {
                         event(e);
                     }
-                    if(object)
+                    if (object)
                         object->event(this, e);
                 }
             }
         }
         draw();
-        if(console_active) {
-            if(!console.isFading() && !console.isVisible() && hide_console == true) {
+        if (console_active) {
+            if (!console.isFading() && !console.isVisible() && hide_console == true) {
                 console_visible = false;
                 hide_console = false;
             }
@@ -429,7 +428,7 @@ namespace gl {
     }
 
     void GLWindow::drawConsole() {
-        if(console_visible) {
+        if (console_visible) {
             glDisable(GL_DEPTH_TEST);
             glEnable(GL_BLEND);
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -441,11 +440,11 @@ namespace gl {
     }
 
     ShaderProgram::SharedState::~SharedState() {
-        
+
         if (!SDL_GL_GetCurrentContext()) {
             return;
         }
-        
+
         if (vertex_shader && glIsShader(vertex_shader)) {
             glDeleteShader(vertex_shader);
         }
@@ -457,11 +456,11 @@ namespace gl {
         }
     }
 
-    ShaderProgram::ShaderProgram() 
+    ShaderProgram::ShaderProgram()
         : state(std::make_shared<SharedState>()) {
     }
 
-    ShaderProgram::ShaderProgram(GLuint id) 
+    ShaderProgram::ShaderProgram(GLuint id)
         : state(std::make_shared<SharedState>()) {
         state->shader_id = id;
     }
@@ -469,9 +468,12 @@ namespace gl {
     void ShaderProgram::release() {
         int releasedShaderCount = 0;
         if (state) {
-            if (state->vertex_shader != 0) ++releasedShaderCount;
-            if (state->fragment_shader != 0) ++releasedShaderCount;
-            if (state->shader_id != 0) ++releasedShaderCount;
+            if (state->vertex_shader != 0)
+                ++releasedShaderCount;
+            if (state->fragment_shader != 0)
+                ++releasedShaderCount;
+            if (state->shader_id != 0)
+                ++releasedShaderCount;
         }
         if (releasedShaderCount > 0) {
             mx::system_out << "libmx2: released shaders: " << releasedShaderCount << "\n";
@@ -518,11 +520,11 @@ namespace gl {
         int ch = 0;
         char *log;
         glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &len);
-        if(len > 0) {
-            log = new char [len+1];
+        if (len > 0) {
+            log = new char[len + 1];
             glGetShaderInfoLog(shader, len, &ch, log);
             mx::system_err << "Shader: " << log << "\n";
-            delete [] log;
+            delete[] log;
         }
         return 0;
     }
@@ -532,19 +534,19 @@ namespace gl {
         int ch = 0;
         char *log;
         glGetProgramiv(p, GL_INFO_LOG_LENGTH, &len);
-        if(len > 0) {
-            log = new char [len+1];
+        if (len > 0) {
+            log = new char[len + 1];
             glGetProgramInfoLog(p, len, &ch, log);
             mx::system_err << "Program: " << log << "\n";
             mx::system_err.flush();
-            delete [] log;
+            delete[] log;
         }
     }
 
     bool ShaderProgram::checkError() {
         bool e = false;
         int glErr = glGetError();
-        while(glErr != GL_NO_ERROR) {
+        while (glErr != GL_NO_ERROR) {
             std::cerr << "OpenGL Error: " << glErr << "\n";
             e = true;
             glErr = glGetError();
@@ -553,35 +555,36 @@ namespace gl {
     }
 
     GLuint ShaderProgram::createProgram(const char *vshaderSource, const char *fshaderSource) {
-        if (!state) return 0;
-        
+        if (!state)
+            return 0;
+
         GLint vertCompiled;
         GLint fragCompiled;
         GLint linked;
         GLuint vShader = glCreateShader(GL_VERTEX_SHADER);
         GLuint fShader = glCreateShader(GL_FRAGMENT_SHADER);
-        
+
         glShaderSource(vShader, 1, &vshaderSource, NULL);
         glShaderSource(fShader, 1, &fshaderSource, NULL);
-        
+
         glCompileShader(vShader);
         checkError();
         glGetShaderiv(vShader, GL_COMPILE_STATUS, &vertCompiled);
-        
-        if(vertCompiled != GL_TRUE) {
+
+        if (vertCompiled != GL_TRUE) {
             mx::system_err << "Error on Vertex compile:\n";
             printShaderLog(vShader);
             glDeleteShader(vShader);
             glDeleteShader(fShader);
             return 0;
         }
-        
+
         glCompileShader(fShader);
         checkError();
-        
+
         glGetShaderiv(fShader, GL_COMPILE_STATUS, &fragCompiled);
-        
-        if(fragCompiled != GL_TRUE) {
+
+        if (fragCompiled != GL_TRUE) {
             mx::system_err << "Error on Fragment compile\n";
             mx::system_err.flush();
             printShaderLog(fShader);
@@ -589,7 +592,7 @@ namespace gl {
             glDeleteShader(fShader);
             return 0;
         }
-        
+
         GLuint vfProgram = glCreateProgram();
         glAttachShader(vfProgram, vShader);
         glAttachShader(vfProgram, fShader);
@@ -601,8 +604,8 @@ namespace gl {
         glLinkProgram(vfProgram);
         checkError();
         glGetProgramiv(vfProgram, GL_LINK_STATUS, &linked);
-        
-        if(linked != GL_TRUE) {
+
+        if (linked != GL_TRUE) {
             mx::system_err << "Linking failed...\n";
             mx::system_err.flush();
             printProgramLog(vfProgram);
@@ -611,24 +614,23 @@ namespace gl {
             glDeleteProgram(vfProgram);
             return 0;
         }
-        
-        
+
         state->vertex_shader = vShader;
         state->fragment_shader = fShader;
-        
+
         return vfProgram;
     }
 
     GLuint ShaderProgram::createProgramFromFile(const std::string &vert, const std::string &frag) {
-        std::fstream v,f;
+        std::fstream v, f;
         v.open(vert, std::ios::in);
-        if(!v.is_open()) {
+        if (!v.is_open()) {
             mx::system_err << "Error could not open file: " << vert << "\n";
             mx::system_err.flush();
             exit(EXIT_FAILURE);
         }
         f.open(frag, std::ios::in);
-        if(!f.is_open()) {
+        if (!f.is_open()) {
             mx::system_err << "Error could not open file: " << frag << "\n";
             mx::system_err.flush();
             exit(EXIT_FAILURE);
@@ -640,7 +642,8 @@ namespace gl {
     }
 
     bool ShaderProgram::loadProgram(const std::string &v, const std::string &f) {
-        if (!state) return false;
+        if (!state)
+            return false;
         release();
         mx::system_out << "libmx2: ShaderProgram::loadProgram reloading from files\n";
         state->shader_id = createProgramFromFile(v, f);
@@ -648,7 +651,8 @@ namespace gl {
     }
 
     bool ShaderProgram::loadProgramFromText(const std::string &v, const std::string &f) {
-        if (!state) return false;
+        if (!state)
+            return false;
         release();
         mx::system_out << "libmx2: ShaderProgram::loadProgramFromText reloading from source text\n";
         state->shader_id = createProgram(v.c_str(), f.c_str());
@@ -656,7 +660,8 @@ namespace gl {
     }
 
     void ShaderProgram::setUniform(const std::string &name, int value) {
-        if (!state || !state->shader_id) return;
+        if (!state || !state->shader_id)
+            return;
         GLint location = glGetUniformLocation(state->shader_id, name.c_str());
         if (location == -1 && !state->silent_) {
             mx::system_err << "Uniform '" << name << "' not found or not used in shader.\n";
@@ -666,7 +671,8 @@ namespace gl {
     }
 
     void ShaderProgram::setUniform(const std::string &name, float value) {
-        if (!state || !state->shader_id) return;
+        if (!state || !state->shader_id)
+            return;
         GLint location = glGetUniformLocation(state->shader_id, name.c_str());
         if (location == -1 && !state->silent_) {
             mx::system_err << "Uniform '" << name << "' not found or not used in shader.\n";
@@ -676,7 +682,8 @@ namespace gl {
     }
 
     void ShaderProgram::setUniform(const std::string &name, const glm::vec2 &value) {
-        if (!state || !state->shader_id) return;
+        if (!state || !state->shader_id)
+            return;
         GLint location = glGetUniformLocation(state->shader_id, name.c_str());
         if (location == -1 && !state->silent_) {
             mx::system_err << "Uniform '" << name << "' not found or not used in shader.\n";
@@ -686,7 +693,8 @@ namespace gl {
     }
 
     void ShaderProgram::setUniform(const std::string &name, const glm::vec3 &value) {
-        if (!state || !state->shader_id) return;
+        if (!state || !state->shader_id)
+            return;
         GLint location = glGetUniformLocation(state->shader_id, name.c_str());
         if (location == -1 && !state->silent_) {
             mx::system_err << "Uniform '" << name << "' not found or not used in shader.\n";
@@ -696,7 +704,8 @@ namespace gl {
     }
 
     void ShaderProgram::setUniform(const std::string &name, const glm::vec4 &value) {
-        if (!state || !state->shader_id) return;
+        if (!state || !state->shader_id)
+            return;
         GLint location = glGetUniformLocation(state->shader_id, name.c_str());
         if (location == -1 && !state->silent_) {
             mx::system_err << "Uniform '" << name << "' not found or not used in shader.\n";
@@ -706,7 +715,8 @@ namespace gl {
     }
 
     void ShaderProgram::setUniform(const std::string &name, const glm::mat4 &value) {
-        if (!state || !state->shader_id) return;
+        if (!state || !state->shader_id)
+            return;
         GLint location = glGetUniformLocation(state->shader_id, name.c_str());
         if (location == -1 && !state->silent_) {
             mx::system_err << "Uniform '" << name << "' not found or not used in shader.\n";
@@ -721,9 +731,9 @@ namespace gl {
         glBindTexture(GL_TEXTURE_2D, texture);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); 
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        
+
         SDL_Surface *surface = loadImageSurface(filename);
         if (!surface) {
             throw mx::Exception(std::format("Error loading image file: {}", filename));
@@ -749,9 +759,9 @@ namespace gl {
         glBindTexture(GL_TEXTURE_2D, texture);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); 
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        
+
         SDL_Surface *surface = loadImageSurface(filename);
         if (!surface) {
             throw mx::Exception(std::format("Error loading image file: {}", filename));
@@ -778,15 +788,15 @@ namespace gl {
         glBindTexture(GL_TEXTURE_2D, texture);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); 
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         SDL_Surface *converted = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_RGBA32, 0);
-        if(!converted) {
+        if (!converted) {
             glDeleteTextures(1, &texture);
             throw mx::Exception("Failed to convert surface.");
         }
 
-        if(flip) {
+        if (flip) {
             SDL_Surface *flipped = mx::Texture::flipSurface(converted);
             if (!flipped) {
                 glDeleteTextures(1, &texture);
@@ -796,7 +806,7 @@ namespace gl {
             }
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, flipped->w, flipped->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, flipped->pixels);
         } else {
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, converted->w, converted->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, converted->pixels);    
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, converted->w, converted->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, converted->pixels);
         }
         glGenerateMipmap(GL_TEXTURE_2D);
         glBindTexture(GL_TEXTURE_2D, 0);
@@ -813,14 +823,14 @@ namespace gl {
         glBindTexture(GL_TEXTURE_2D, texture);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); 
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, buffer);    
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
         glGenerateMipmap(GL_TEXTURE_2D);
         glBindTexture(GL_TEXTURE_2D, 0);
         return texture;
     }
-    
+
     void updateTexture(GLuint texture, SDL_Surface *surface, bool flip) {
         if (!surface || !surface->pixels) {
             throw mx::Exception("Invalid surface provided to updateTexture");
@@ -839,7 +849,7 @@ namespace gl {
 
     SDL_Surface *createSurface(int w, int h) {
         SDL_Surface *surf = SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_RGBA32);
-        if(!surf) {
+        if (!surf) {
             throw mx::Exception("Error creating surface gl::createSurface");
         }
         return surf;
@@ -867,7 +877,7 @@ namespace gl {
             FragColor = texture(textTexture, TexCoord);
         }
     )";
-     const char *ftSource = R"(#version 300 es
+    const char *ftSource = R"(#version 300 es
         precision highp float; 
         in vec2 TexCoord;
         out vec4 FragColor;
@@ -908,14 +918,14 @@ namespace gl {
     )";
 #endif
     GLText::GLText() {
-        
     }
 
     void GLText::init(int width, int height) {
         w = width;
         h = height;
-        if(textShader.loaded() == true) return;
-        if(!textShader.loadProgramFromText(vSource, ftSource)) {
+        if (textShader.loaded() == true)
+            return;
+        if (!textShader.loadProgramFromText(vSource, ftSource)) {
             throw mx::Exception("Could not load Text Shader ");
         }
     }
@@ -930,7 +940,7 @@ namespace gl {
             return 0;
         }
         SDL_Surface *surface = nullptr;
-        if(solid)
+        if (solid)
             surface = TTF_RenderText_Solid(font, text.c_str(), color);
         else
             surface = TTF_RenderText_Blended(font, text.c_str(), color);
@@ -951,7 +961,7 @@ namespace gl {
             }
             SDL_FreeSurface(surface);
             surface = converted;
-        } 
+        }
         GLuint texture;
         glGenTextures(1, &texture);
         glBindTexture(GL_TEXTURE_2D, texture);
@@ -963,28 +973,26 @@ namespace gl {
         SDL_FreeSurface(surface);
         return texture;
     }
-    
-    
+
     void GLText::renderText(GLuint texture, float x, float y, int textWidth, int textHeight, int screenWidth, int screenHeight) {
-        float ndcX = (x / screenWidth) * 2.0f - 1.0f;       
-        float ndcY = 1.0f - (y / screenHeight) * 2.0f;      
-        float w = (float)textWidth / screenWidth * 2.0f;    
-        float h = (float)textHeight / screenHeight * 2.0f;  
+        float ndcX = (x / screenWidth) * 2.0f - 1.0f;
+        float ndcY = 1.0f - (y / screenHeight) * 2.0f;
+        float w = (float)textWidth / screenWidth * 2.0f;
+        float h = (float)textHeight / screenHeight * 2.0f;
         GLfloat vertices[] = {
-            ndcX,       ndcY,       0.0f, 0.0f, 1.0f,  
-            ndcX + w,   ndcY,       0.0f, 1.0f, 1.0f,  
-            ndcX,       ndcY - h,   0.0f, 0.0f, 0.0f,  
-            ndcX + w,   ndcY - h,   0.0f, 1.0f, 0.0f   
-        };
+            ndcX, ndcY, 0.0f, 0.0f, 1.0f,
+            ndcX + w, ndcY, 0.0f, 1.0f, 1.0f,
+            ndcX, ndcY - h, 0.0f, 0.0f, 0.0f,
+            ndcX + w, ndcY - h, 0.0f, 1.0f, 0.0f};
         GLuint VBO, VAO;
         glGenVertexArrays(1, &VAO);
         glGenBuffers(1, &VBO);
         glBindVertexArray(VAO);
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
         glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)0);
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)(3 * sizeof(float)));
         glEnableVertexAttribArray(1);
         textShader.useProgram();
         textShader.setUniform("textTexture", 0);
@@ -997,28 +1005,30 @@ namespace gl {
     }
 
     void GLText::printText_Solid(const mx::Font &f, float x, float y, const std::string &text) {
-        if(text.empty()) return;
+        if (text.empty())
+            return;
         glDisable(GL_DEPTH_TEST);
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         textShader.useProgram();
         int textWidth = 0, textHeight = 0;
         GLuint textTexture = createText(text, f.wrapper().unwrap(), color, textWidth, textHeight);
-        renderText(textTexture, x, y, textWidth, textHeight, w,h);
+        renderText(textTexture, x, y, textWidth, textHeight, w, h);
         glDeleteTextures(1, &textTexture);
         glDisable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
     }
 
     void GLText::printText_Blended(const mx::Font &f, float x, float y, const std::string &text) {
-        if(text.empty()) return;
+        if (text.empty())
+            return;
         glDisable(GL_DEPTH_TEST);
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         textShader.useProgram();
         int textWidth = 0, textHeight = 0;
-        GLuint textTexture= createText(text, f.wrapper().unwrap(), color, textWidth, textHeight, false);
-        renderText(textTexture, x, y, textWidth, textHeight, w,h);
+        GLuint textTexture = createText(text, f.wrapper().unwrap(), color, textWidth, textHeight, false);
+        renderText(textTexture, x, y, textWidth, textHeight, w, h);
         glDeleteTextures(1, &textTexture);
         glDisable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
@@ -1034,7 +1044,7 @@ namespace gl {
     void GLSprite::setName(const std::string &name) {
         textureName = name;
     }
-    
+
     void GLSprite::release() {
         if (!SDL_GL_GetCurrentContext()) {
             VAO = 0;
@@ -1052,7 +1062,6 @@ namespace gl {
             VBO = 0;
         }
     }
-
 
     GLSprite::~GLSprite() {
         if (texture != 0 && SDL_GL_GetCurrentContext()) {
@@ -1073,25 +1082,24 @@ namespace gl {
         this->texture = text;
         this->width = textWidth;
         this->height = textHeight;
-        float ndcX = (x / screenWidth) * 2.0f - 1.0f;       
-        float ndcY = 1.0f - (y / screenHeight) * 2.0f;      
-        float w = (float)textWidth / screenWidth * 2.0f;    
-        float h = (float)textHeight / screenHeight * 2.0f;  
+        float ndcX = (x / screenWidth) * 2.0f - 1.0f;
+        float ndcY = 1.0f - (y / screenHeight) * 2.0f;
+        float w = (float)textWidth / screenWidth * 2.0f;
+        float h = (float)textHeight / screenHeight * 2.0f;
         vertices = {
-            ndcX,       ndcY,       0.0f, 0.0f, 1.0f,  
-            ndcX + w,   ndcY,       0.0f, 1.0f, 1.0f,  
-            ndcX,       ndcY - h,   0.0f, 0.0f, 0.0f,  
-            ndcX + w,   ndcY - h,   0.0f, 1.0f, 0.0f   
-        };
+            ndcX, ndcY, 0.0f, 0.0f, 1.0f,
+            ndcX + w, ndcY, 0.0f, 1.0f, 1.0f,
+            ndcX, ndcY - h, 0.0f, 0.0f, 0.0f,
+            ndcX + w, ndcY - h, 0.0f, 1.0f, 0.0f};
         if (VAO == 0) {
             glGenVertexArrays(1, &VAO);
             glGenBuffers(1, &VBO);
             glBindVertexArray(VAO);
             glBindBuffer(GL_ARRAY_BUFFER, VBO);
             glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_DYNAMIC_DRAW);
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)0);
             glEnableVertexAttribArray(0);
-            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)(3 * sizeof(float)));
             glEnableVertexAttribArray(1);
         } else {
             glBindBuffer(GL_ARRAY_BUFFER, VBO);
@@ -1105,33 +1113,32 @@ namespace gl {
 
     void GLSprite::loadTextureImpl(const std::string &tex, float x, float y, int textWidth, int textHeight) {
         if (texture != 0) {
-           glDeleteTextures(1, &texture);
-}
-        texture = gl::loadTexture(tex); 
+            glDeleteTextures(1, &texture);
+        }
+        texture = gl::loadTexture(tex);
         if (!texture) {
             throw mx::Exception("Failed to load texture: " + tex);
         }
         this->width = textWidth;
         this->height = textHeight;
-        float ndcX = (x / screenWidth) * 2.0f - 1.0f;       
-        float ndcY = 1.0f - (y / screenHeight) * 2.0f;      
-        float w = (float)textWidth / screenWidth * 2.0f;    
-        float h = (float)textHeight / screenHeight * 2.0f;  
+        float ndcX = (x / screenWidth) * 2.0f - 1.0f;
+        float ndcY = 1.0f - (y / screenHeight) * 2.0f;
+        float w = (float)textWidth / screenWidth * 2.0f;
+        float h = (float)textHeight / screenHeight * 2.0f;
         vertices = {
-            ndcX,       ndcY,       0.0f, 0.0f, 1.0f,  
-            ndcX + w,   ndcY,       0.0f, 1.0f, 1.0f,  
-            ndcX,       ndcY - h,   0.0f, 0.0f, 0.0f,  
-            ndcX + w,   ndcY - h,   0.0f, 1.0f, 0.0f   
-        };
+            ndcX, ndcY, 0.0f, 0.0f, 1.0f,
+            ndcX + w, ndcY, 0.0f, 1.0f, 1.0f,
+            ndcX, ndcY - h, 0.0f, 0.0f, 0.0f,
+            ndcX + w, ndcY - h, 0.0f, 1.0f, 0.0f};
         release();
         glGenVertexArrays(1, &VAO);
         glGenBuffers(1, &VBO);
         glBindVertexArray(VAO);
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
         glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)0);
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)(3 * sizeof(float)));
         glEnableVertexAttribArray(1);
         glUseProgram(active_shader_id);
         glUniform1i(glGetUniformLocation(active_shader_id, textureName.c_str()), 0);
@@ -1141,9 +1148,9 @@ namespace gl {
 
     void GLSprite::loadTextureImpl(const std::string &tex, float x, float y) {
         if (texture != 0) {
-           glDeleteTextures(1, &texture);
-}
-        texture = gl::loadTexture(tex, width, height); 
+            glDeleteTextures(1, &texture);
+        }
+        texture = gl::loadTexture(tex, width, height);
         int textWidth = width;
         int textHeight = height;
         this->width = textWidth;
@@ -1152,32 +1159,30 @@ namespace gl {
         if (!texture) {
             throw mx::Exception("Failed to load texture: " + tex);
         }
-        float ndcX = (x / screenWidth) * 2.0f - 1.0f;       
-        float ndcY = 1.0f - (y / screenHeight) * 2.0f;      
-        float w = (float)textWidth / screenWidth * 2.0f;    
-        float h = (float)textHeight / screenHeight * 2.0f;  
+        float ndcX = (x / screenWidth) * 2.0f - 1.0f;
+        float ndcY = 1.0f - (y / screenHeight) * 2.0f;
+        float w = (float)textWidth / screenWidth * 2.0f;
+        float h = (float)textHeight / screenHeight * 2.0f;
         vertices = {
-            ndcX,       ndcY,       0.0f, 0.0f, 1.0f,  
-            ndcX + w,   ndcY,       0.0f, 1.0f, 1.0f,  
-            ndcX,       ndcY - h,   0.0f, 0.0f, 0.0f,  
-            ndcX + w,   ndcY - h,   0.0f, 1.0f, 0.0f   
-        };
+            ndcX, ndcY, 0.0f, 0.0f, 1.0f,
+            ndcX + w, ndcY, 0.0f, 1.0f, 1.0f,
+            ndcX, ndcY - h, 0.0f, 0.0f, 0.0f,
+            ndcX + w, ndcY - h, 0.0f, 1.0f, 0.0f};
         release();
         glGenVertexArrays(1, &VAO);
         glGenBuffers(1, &VBO);
         glBindVertexArray(VAO);
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
         glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)0);
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)(3 * sizeof(float)));
         glEnableVertexAttribArray(1);
         glUseProgram(active_shader_id);
         glUniform1i(glGetUniformLocation(active_shader_id, textureName.c_str()), 0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindVertexArray(0);
     }
-
 
     void GLSprite::updateTexture(SDL_Surface *surf) {
         if (!surf || !surf->pixels) {
@@ -1203,7 +1208,8 @@ namespace gl {
     }
 
     void GLSprite::updateTexture(void *buffer, int width, int height) {
-        if(this->texture == 0) return;
+        if (this->texture == 0)
+            return;
         glBindTexture(GL_TEXTURE_2D, this->texture);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -1220,7 +1226,8 @@ namespace gl {
     }
 
     void GLSprite::draw() {
-        if (active_shader_id == 0 || VAO == 0 || texture == 0) return;
+        if (active_shader_id == 0 || VAO == 0 || texture == 0)
+            return;
         glDisable(GL_DEPTH_TEST);
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -1243,11 +1250,10 @@ namespace gl {
         float width = (float)w / screenWidth * 2.0f;
         float height = (float)h / screenHeight * 2.0f;
         vertices = {
-            ndcX,       ndcY,       0.0f, 0.0f, 1.0f,  
-            ndcX + width, ndcY,     0.0f, 1.0f, 1.0f,  
-            ndcX,       ndcY - height, 0.0f, 0.0f, 0.0f,  
-            ndcX + width, ndcY - height, 0.0f, 1.0f, 0.0f   
-        };  
+            ndcX, ndcY, 0.0f, 0.0f, 1.0f,
+            ndcX + width, ndcY, 0.0f, 1.0f, 1.0f,
+            ndcX, ndcY - height, 0.0f, 0.0f, 0.0f,
+            ndcX + width, ndcY - height, 0.0f, 1.0f, 0.0f};
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
         glBufferSubData(GL_ARRAY_BUFFER, 0, vertices.size() * sizeof(float), vertices.data());
         glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -1257,8 +1263,8 @@ namespace gl {
         glUseProgram(active_shader_id);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture_id);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); 
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); 
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glBindVertexArray(VAO);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
         glBindVertexArray(0);
@@ -1268,13 +1274,16 @@ namespace gl {
     }
 
     void GLSprite::draw(int x, int y) {
-        if (this->texture == 0) return;
+        if (this->texture == 0)
+            return;
         draw(this->texture, (float)x, (float)y, this->width, this->height);
     }
 
     void GLSprite::draw(int x, int y, int w, int h) {
-        if (this->texture == 0 || VAO == 0 || VBO == 0) return;
-        if (screenWidth <= 0 || screenHeight <= 0) return;
+        if (this->texture == 0 || VAO == 0 || VBO == 0)
+            return;
+        if (screenWidth <= 0 || screenHeight <= 0)
+            return;
         this->width = w;
         this->height = h;
         float fx = static_cast<float>(x);
@@ -1286,11 +1295,10 @@ namespace gl {
         float ndcW = (fw / screenWidth) * 2.0f;
         float ndcH = (fh / screenHeight) * 2.0f;
         vertices = {
-            ndcX,         ndcY,          0.0f, 0.0f, 1.0f,
-            ndcX + ndcW,  ndcY,          0.0f, 1.0f, 1.0f,
-            ndcX,         ndcY - ndcH,   0.0f, 0.0f, 0.0f,
-            ndcX + ndcW,  ndcY - ndcH,   0.0f, 1.0f, 0.0f
-        };
+            ndcX, ndcY, 0.0f, 0.0f, 1.0f,
+            ndcX + ndcW, ndcY, 0.0f, 1.0f, 1.0f,
+            ndcX, ndcY - ndcH, 0.0f, 0.0f, 0.0f,
+            ndcX + ndcW, ndcY - ndcH, 0.0f, 1.0f, 0.0f};
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
         glBufferSubData(GL_ARRAY_BUFFER, 0, vertices.size() * sizeof(float), vertices.data());
         glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -1307,6 +1315,6 @@ namespace gl {
         glDisable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
     }
-        
-}
+
+} // namespace gl
 #endif

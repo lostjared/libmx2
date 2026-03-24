@@ -9,69 +9,70 @@
  */
 #ifndef _VK_MX_H__
 #define _VK_MX_H__
-#include"config.h"
+#include "config.h"
 #ifndef WITH_MOLTEN
 #include "volk.h"
 #include <SDL_vulkan.h>
 #else
 #include <SDL_vulkan.h>
-#include<vulkan/vulkan.h>
+#include <vulkan/vulkan.h>
 #endif
-#include"exception.hpp"
+#include "exception.hpp"
 #include "util.hpp"
 
-#include "vk_text.hpp"
 #include "vk_sprite.hpp"
-#include <iostream>
-#include <stdexcept>
-#include <cstdlib>
-#include <vector>
-#include <optional>
-#include <set>
-#include <fstream>
+#include "vk_text.hpp"
+#include <SDL_ttf.h>
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdlib>
+#include <format>
+#include <fstream>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <iostream>
 #include <map>
-#include <utility>
-#include <SDL_ttf.h>
 #include <memory>
-#include <format>
+#include <optional>
+#include <set>
+#include <stdexcept>
+#include <utility>
+#include <vector>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
 
 #ifndef VK_CHECK_RESULT
-#define VK_CHECK_RESULT(f) { \
-    VkResult res = (f); \
-    if (res != VK_SUCCESS) { \
-        throw mx::Exception(std::format("Fatal : VkResult is \"{}\" in {} at line {}", static_cast<int>(res), __FILE__, __LINE__)); \
-    } \
-}
+#define VK_CHECK_RESULT(f)                                                                                                              \
+    {                                                                                                                                   \
+        VkResult res = (f);                                                                                                             \
+        if (res != VK_SUCCESS) {                                                                                                        \
+            throw mx::Exception(std::format("Fatal : VkResult is \"{}\" in {} at line {}", static_cast<int>(res), __FILE__, __LINE__)); \
+        }                                                                                                                               \
+    }
 #endif
 
 namespace mx {
 
     class VKAbstractModel;
 
-/**
- * @struct Vertex
- * @brief Per-vertex data sent to the Vulkan vertex buffer.
- */
+    /**
+     * @struct Vertex
+     * @brief Per-vertex data sent to the Vulkan vertex buffer.
+     */
     struct Vertex {
-        float pos[3];       ///< 3-D position (x, y, z).
-        float texCoord[2];  ///< UV texture coordinates.
-        float normal[3];    ///< Surface normal vector.
+        float pos[3];      ///< 3-D position (x, y, z).
+        float texCoord[2]; ///< UV texture coordinates.
+        float normal[3];   ///< Surface normal vector.
     };
 
-/**
- * @struct QueueFamilyIndices
- * @brief Tracks Vulkan queue family assignments needed to create a device.
- */
+    /**
+     * @struct QueueFamilyIndices
+     * @brief Tracks Vulkan queue family assignments needed to create a device.
+     */
     struct QueueFamilyIndices {
         std::optional<uint32_t> graphicsFamily; ///< Index of the graphics queue family.
         std::optional<uint32_t> presentFamily;  ///< Index of the presentation queue family.
@@ -85,49 +86,49 @@ namespace mx {
         }
     };
 
-/**
- * @struct SwapChainSupportDetails
- * @brief Swapchain capabilities and format/mode candidates for a physical device.
- */
+    /**
+     * @struct SwapChainSupportDetails
+     * @brief Swapchain capabilities and format/mode candidates for a physical device.
+     */
     struct SwapChainSupportDetails {
-        VkSurfaceCapabilitiesKHR capabilities;          ///< Surface capability limits.
-        std::vector<VkSurfaceFormatKHR> formats;        ///< Supported colour formats.
-        std::vector<VkPresentModeKHR> presentModes;     ///< Supported presentation modes.
+        VkSurfaceCapabilitiesKHR capabilities;      ///< Surface capability limits.
+        std::vector<VkSurfaceFormatKHR> formats;    ///< Supported colour formats.
+        std::vector<VkPresentModeKHR> presentModes; ///< Supported presentation modes.
     };
 
-/**
- * @struct UniformBufferObject
- * @brief Standard UBO layout uploaded to shaders each frame.
- *
- * Provides model/view/projection matrices plus application-defined
- * parameters and a colour tint.
- */
+    /**
+     * @struct UniformBufferObject
+     * @brief Standard UBO layout uploaded to shaders each frame.
+     *
+     * Provides model/view/projection matrices plus application-defined
+     * parameters and a colour tint.
+     */
     struct UniformBufferObject {
-        alignas(16) glm::mat4 model;        ///< Model transform matrix.
-        alignas(16) glm::mat4 view;         ///< View (camera) matrix.
-        alignas(16) glm::mat4 proj;         ///< Projection matrix.
-        alignas(16) glm::vec4 params;       ///< Application-defined shader parameters.
-        alignas(16) glm::vec4 color;        ///< Global colour tint.
+        alignas(16) glm::mat4 model;  ///< Model transform matrix.
+        alignas(16) glm::mat4 view;   ///< View (camera) matrix.
+        alignas(16) glm::mat4 proj;   ///< Projection matrix.
+        alignas(16) glm::vec4 params; ///< Application-defined shader parameters.
+        alignas(16) glm::vec4 color;  ///< Global colour tint.
     };
 
-/**
- * @class VKWindow
- * @brief Primary Vulkan rendering window and device management class.
- *
- * Encapsulates the full Vulkan initialisation sequence: instance, surface,
- * physical and logical device selection, swap chain creation, render pass,
- * descriptor sets, command buffers, and synchronisation.  Derived classes
- * implement event() and optionally override draw(), initVulkan(), and
- * cleanup() to add application-specific rendering.
- *
- * Built-in support for:
- * - 2-D text rendering via VKText
- * - Sprite rendering via VKSprite
- * - Texture upload (SDL_Surface or raw pixels)
- * - Wireframe toggle
- */
+    /**
+     * @class VKWindow
+     * @brief Primary Vulkan rendering window and device management class.
+     *
+     * Encapsulates the full Vulkan initialisation sequence: instance, surface,
+     * physical and logical device selection, swap chain creation, render pass,
+     * descriptor sets, command buffers, and synchronisation.  Derived classes
+     * implement event() and optionally override draw(), initVulkan(), and
+     * cleanup() to add application-specific rendering.
+     *
+     * Built-in support for:
+     * - 2-D text rendering via VKText
+     * - Sprite rendering via VKSprite
+     * - Texture upload (SDL_Surface or raw pixels)
+     * - Wireframe toggle
+     */
     class VKWindow {
-    public:
+      public:
         VKWindow() = default;
 
         /**
@@ -141,11 +142,11 @@ namespace mx {
         VKWindow(const std::string &title, int width, int height, bool full = false, bool valid = true);
 
         /** @brief Virtual destructor — subclasses should call cleanup(). */
-        virtual ~VKWindow() { }
-        VKWindow(const VKWindow&) = delete;
-        VKWindow& operator=(const VKWindow&) = delete;
-        VKWindow(VKWindow&&) = delete;
-        VKWindow& operator=(VKWindow&&) = delete;
+        virtual ~VKWindow() {}
+        VKWindow(const VKWindow &) = delete;
+        VKWindow &operator=(const VKWindow &) = delete;
+        VKWindow(VKWindow &&) = delete;
+        VKWindow &operator=(VKWindow &&) = delete;
 
         friend class VKAbstractModel;
 
@@ -199,7 +200,7 @@ namespace mx {
          * the uniform buffer.
          */
         virtual void draw();
-    
+
         /** @brief Called when the window is resized (optional override). */
         virtual void onResize() {}
 
@@ -217,10 +218,10 @@ namespace mx {
          * @param code Byte vector of SPIR-V code.
          * @return VkShaderModule handle.
          */
-        VkShaderModule createShaderModule(const std::vector<char>& code);
+        VkShaderModule createShaderModule(const std::vector<char> &code);
 
-        int w = 0; ///< Current window width.
-        int h = 0; ///< Current window height.
+        int w = 0;   ///< Current window width.
+        int h = 0;   ///< Current window height.
         mxUtil util; ///< Asset path and utility helpers.
 
         /** @brief Post a quit event to stop the loop. */
@@ -236,14 +237,14 @@ namespace mx {
          * @brief Replace the primary texture from an SDL_Surface.
          * @param newSurface Source surface (not consumed).
          */
-        void updateTexture(SDL_Surface* newSurface);
+        void updateTexture(SDL_Surface *newSurface);
 
         /**
          * @brief Replace the primary texture from a raw pixel buffer.
          * @param pixels    Pointer to RGBA data.
          * @param imageSize Size of the data in bytes.
          */
-        void updateTexture(void* pixels, VkDeviceSize imageSize);
+        void updateTexture(void *pixels, VkDeviceSize imageSize);
 
         /**
          * @brief Queue a text string for rendering at a screen position.
@@ -264,7 +265,7 @@ namespace mx {
          * @param height Output: pixel height.
          * @return @c true if measurement succeeded.
          */
-        bool getTextDimensions(const std::string &text, int& width, int& height);
+        bool getTextDimensions(const std::string &text, int &width, int &height);
 
         /**
          * @brief Create a sprite from a PNG file.
@@ -273,7 +274,7 @@ namespace mx {
          * @param fragmentShaderPath   Fragment shader file path (empty = default).
          * @return Pointer to the created VKSprite (owned by this window).
          */
-        VKSprite* createSprite(const std::string &pngPath, const std::string &vertexShader, const std::string &fragmentShaderPath = "");
+        VKSprite *createSprite(const std::string &pngPath, const std::string &vertexShader, const std::string &fragmentShaderPath = "");
 
         /**
          * @brief Create a sprite from an SDL_Surface.
@@ -282,7 +283,7 @@ namespace mx {
          * @param fragmentShaderPath Fragment shader file path.
          * @return Pointer to the created VKSprite.
          */
-        VKSprite* createSprite(SDL_Surface* surface, const std::string &vertexShader, const std::string &fragmentShaderPath = "");
+        VKSprite *createSprite(SDL_Surface *surface, const std::string &vertexShader, const std::string &fragmentShaderPath = "");
 
         /**
          * @brief Create a blank sprite of the given dimensions.
@@ -292,7 +293,7 @@ namespace mx {
          * @param fragmentShaderPath Fragment shader file path.
          * @return Pointer to the created VKSprite.
          */
-        VKSprite* createSprite(int width, int height, const std::string &vertexShader = "", const std::string &fragmentShaderPath = "");
+        VKSprite *createSprite(int width, int height, const std::string &vertexShader = "", const std::string &fragmentShaderPath = "");
 
         /** @return Current window width. */
         int getWidth() const { return w; }
@@ -330,80 +331,81 @@ namespace mx {
         VkQueue getGraphicsQueue() const { return graphicsQueue; }
         /** @return Vulkan command pool handle. */
         VkCommandPool getCommandPool() const { return commandPool; }
-    protected:
-        bool active = true;                       ///< @c true while the event loop should keep running.
-        bool inputControllersInitialized = false;  ///< Whether joystick/controller input is enabled.
-        bool enableValidation = true;              ///< Enable Vulkan validation layers.
-        std::string font = "font.ttf";             ///< Path to the current TTF font.
-        int font_size = 24;                        ///< Current font point size.
-        VkInstance instance = VK_NULL_HANDLE;      ///< Vulkan instance.
-        VkSurfaceKHR surface = VK_NULL_HANDLE;     ///< Window surface.
+
+      protected:
+        bool active = true;                               ///< @c true while the event loop should keep running.
+        bool inputControllersInitialized = false;         ///< Whether joystick/controller input is enabled.
+        bool enableValidation = true;                     ///< Enable Vulkan validation layers.
+        std::string font = "font.ttf";                    ///< Path to the current TTF font.
+        int font_size = 24;                               ///< Current font point size.
+        VkInstance instance = VK_NULL_HANDLE;             ///< Vulkan instance.
+        VkSurfaceKHR surface = VK_NULL_HANDLE;            ///< Window surface.
         VkPhysicalDevice physicalDevice = VK_NULL_HANDLE; ///< Selected GPU.
-        VkDevice device = VK_NULL_HANDLE;          ///< Logical device.
-        VkQueue graphicsQueue = VK_NULL_HANDLE;    ///< Graphics submission queue.
-        VkQueue presentQueue = VK_NULL_HANDLE;     ///< Presentation queue.
-        VkDescriptorSetLayout descriptorSetLayout; ///< Main descriptor set layout.
+        VkDevice device = VK_NULL_HANDLE;                 ///< Logical device.
+        VkQueue graphicsQueue = VK_NULL_HANDLE;           ///< Graphics submission queue.
+        VkQueue presentQueue = VK_NULL_HANDLE;            ///< Presentation queue.
+        VkDescriptorSetLayout descriptorSetLayout;        ///< Main descriptor set layout.
 
-        VkSwapchainKHR swapChain = VK_NULL_HANDLE;           ///< Active swapchain.
-        std::vector<VkImage> swapChainImages;                  ///< Swapchain image handles.
-        VkFormat swapChainImageFormat;                         ///< Colour format of swapchain images.
-        VkExtent2D swapChainExtent;                            ///< Swapchain pixel dimensions.
-        std::vector<VkImageView> swapChainImageViews;          ///< Image views into swapchain images.
-        std::vector<VkBuffer> uniformBuffers;                  ///< Per-frame uniform buffers.
-        std::vector<VkDeviceMemory> uniformBuffersMemory;      ///< Memory for per-frame UBOs.
-        std::vector<void*> uniformBuffersMapped;               ///< Persistently mapped UBO pointers.
+        VkSwapchainKHR swapChain = VK_NULL_HANDLE;        ///< Active swapchain.
+        std::vector<VkImage> swapChainImages;             ///< Swapchain image handles.
+        VkFormat swapChainImageFormat;                    ///< Colour format of swapchain images.
+        VkExtent2D swapChainExtent;                       ///< Swapchain pixel dimensions.
+        std::vector<VkImageView> swapChainImageViews;     ///< Image views into swapchain images.
+        std::vector<VkBuffer> uniformBuffers;             ///< Per-frame uniform buffers.
+        std::vector<VkDeviceMemory> uniformBuffersMemory; ///< Memory for per-frame UBOs.
+        std::vector<void *> uniformBuffersMapped;         ///< Persistently mapped UBO pointers.
 
-        VkRenderPass renderPass = VK_NULL_HANDLE;             ///< Main render pass.
-        VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;      ///< Pipeline layout for the main pass.
-        VkPipeline graphicsPipeline = VK_NULL_HANDLE;          ///< Filled-polygon graphics pipeline.
-        VkPipeline graphicsPipelineMatrix = VK_NULL_HANDLE;    ///< 3-D matrix-enabled graphics pipeline.
+        VkRenderPass renderPass = VK_NULL_HANDLE;                ///< Main render pass.
+        VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;        ///< Pipeline layout for the main pass.
+        VkPipeline graphicsPipeline = VK_NULL_HANDLE;            ///< Filled-polygon graphics pipeline.
+        VkPipeline graphicsPipelineMatrix = VK_NULL_HANDLE;      ///< 3-D matrix-enabled graphics pipeline.
         VkPolygonMode currentPolygonMode = VK_POLYGON_MODE_FILL; ///< Current polygon fill mode.
-        bool useWireFrame = false;                             ///< Wireframe rendering toggle.
-        bool supportsWireFrame = false;                        ///< Whether the device supports wireframe.
-        std::vector<VkFramebuffer> swapChainFramebuffers;      ///< Framebuffers for each swapchain image.
+        bool useWireFrame = false;                               ///< Wireframe rendering toggle.
+        bool supportsWireFrame = false;                          ///< Whether the device supports wireframe.
+        std::vector<VkFramebuffer> swapChainFramebuffers;        ///< Framebuffers for each swapchain image.
 
-        VkCommandPool commandPool = VK_NULL_HANDLE;            ///< Command pool for graphics commands.
-        std::vector<VkCommandBuffer> commandBuffers;            ///< Per-frame command buffers.
+        VkCommandPool commandPool = VK_NULL_HANDLE;  ///< Command pool for graphics commands.
+        std::vector<VkCommandBuffer> commandBuffers; ///< Per-frame command buffers.
 
-        VkSemaphore imageAvailableSemaphore = VK_NULL_HANDLE;   ///< Signals when a swapchain image is acquired.
-        VkSemaphore renderFinishedSemaphore = VK_NULL_HANDLE;   ///< Signals when rendering is complete.
-        VkFence inFlightFence = VK_NULL_HANDLE;                 ///< CPU–GPU frame synchronisation fence.
+        VkSemaphore imageAvailableSemaphore = VK_NULL_HANDLE; ///< Signals when a swapchain image is acquired.
+        VkSemaphore renderFinishedSemaphore = VK_NULL_HANDLE; ///< Signals when rendering is complete.
+        VkFence inFlightFence = VK_NULL_HANDLE;               ///< CPU–GPU frame synchronisation fence.
 
-        VkBuffer vertexBuffer = VK_NULL_HANDLE;                 ///< Full-screen quad vertex buffer.
-        VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE;     ///< Memory for the vertex buffer.
-        VkBuffer indexBuffer = VK_NULL_HANDLE;                  ///< Full-screen quad index buffer.
-        VkDeviceMemory indexBufferMemory = VK_NULL_HANDLE;      ///< Memory for the index buffer.
-        uint32_t indexCount = 0;                                ///< Number of indices in the quad.
+        VkBuffer vertexBuffer = VK_NULL_HANDLE;             ///< Full-screen quad vertex buffer.
+        VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE; ///< Memory for the vertex buffer.
+        VkBuffer indexBuffer = VK_NULL_HANDLE;              ///< Full-screen quad index buffer.
+        VkDeviceMemory indexBufferMemory = VK_NULL_HANDLE;  ///< Memory for the index buffer.
+        uint32_t indexCount = 0;                            ///< Number of indices in the quad.
 
-        VkImage textureImage = VK_NULL_HANDLE;                  ///< Primary texture image.
-        VkDeviceMemory textureImageMemory = VK_NULL_HANDLE;     ///< Memory for the primary texture.
-        VkImageView textureImageView = VK_NULL_HANDLE;          ///< View into the primary texture.
+        VkImage textureImage = VK_NULL_HANDLE;                        ///< Primary texture image.
+        VkDeviceMemory textureImageMemory = VK_NULL_HANDLE;           ///< Memory for the primary texture.
+        VkImageView textureImageView = VK_NULL_HANDLE;                ///< View into the primary texture.
         VkImageLayout textureImageLayout = VK_IMAGE_LAYOUT_UNDEFINED; ///< Current layout of the primary texture.
-        VkSampler textureSampler = VK_NULL_HANDLE;              ///< Sampler for the primary texture.
-        
-        VkDescriptorPool descriptorPool = VK_NULL_HANDLE;       ///< Main descriptor pool.
-        std::vector<VkDescriptorSet> descriptorSets;            ///< Per-frame descriptor sets.
-        
-        VkImage depthImage = VK_NULL_HANDLE;                    ///< Depth/stencil image.
-        VkDeviceMemory depthImageMemory = VK_NULL_HANDLE;       ///< Memory for the depth image.
-        VkImageView depthImageView = VK_NULL_HANDLE;            ///< View into the depth image.
-        VkFormat depthFormat = VK_FORMAT_D32_SFLOAT;            ///< Format used for the depth buffer.
-        
-        float cameraDistance = 3.0f;                            ///< Default camera distance from origin.
-        
-        std::unique_ptr<VKText> textRenderer;                   ///< Text rendering subsystem.
-        VkPipeline textPipeline = VK_NULL_HANDLE;               ///< Pipeline for text rendering.
-        VkPipelineLayout textPipelineLayout = VK_NULL_HANDLE;   ///< Pipeline layout for text rendering.
-        VkDescriptorPool textDescriptorPool = VK_NULL_HANDLE;   ///< Descriptor pool for text.
+        VkSampler textureSampler = VK_NULL_HANDLE;                    ///< Sampler for the primary texture.
+
+        VkDescriptorPool descriptorPool = VK_NULL_HANDLE; ///< Main descriptor pool.
+        std::vector<VkDescriptorSet> descriptorSets;      ///< Per-frame descriptor sets.
+
+        VkImage depthImage = VK_NULL_HANDLE;              ///< Depth/stencil image.
+        VkDeviceMemory depthImageMemory = VK_NULL_HANDLE; ///< Memory for the depth image.
+        VkImageView depthImageView = VK_NULL_HANDLE;      ///< View into the depth image.
+        VkFormat depthFormat = VK_FORMAT_D32_SFLOAT;      ///< Format used for the depth buffer.
+
+        float cameraDistance = 3.0f; ///< Default camera distance from origin.
+
+        std::unique_ptr<VKText> textRenderer;                           ///< Text rendering subsystem.
+        VkPipeline textPipeline = VK_NULL_HANDLE;                       ///< Pipeline for text rendering.
+        VkPipelineLayout textPipelineLayout = VK_NULL_HANDLE;           ///< Pipeline layout for text rendering.
+        VkDescriptorPool textDescriptorPool = VK_NULL_HANDLE;           ///< Descriptor pool for text.
         VkDescriptorSetLayout textDescriptorSetLayout = VK_NULL_HANDLE; ///< Descriptor layout for text.
-        
-        std::vector<std::unique_ptr<VKSprite>> sprites;         ///< Owned sprite instances.
-        VkPipeline spritePipeline = VK_NULL_HANDLE;             ///< Pipeline for sprite rendering.
-        VkPipelineLayout spritePipelineLayout = VK_NULL_HANDLE; ///< Pipeline layout for sprites.
-        VkDescriptorPool spriteDescriptorPool = VK_NULL_HANDLE; ///< Descriptor pool for sprites.
+
+        std::vector<std::unique_ptr<VKSprite>> sprites;                   ///< Owned sprite instances.
+        VkPipeline spritePipeline = VK_NULL_HANDLE;                       ///< Pipeline for sprite rendering.
+        VkPipelineLayout spritePipelineLayout = VK_NULL_HANDLE;           ///< Pipeline layout for sprites.
+        VkDescriptorPool spriteDescriptorPool = VK_NULL_HANDLE;           ///< Descriptor pool for sprites.
         VkDescriptorSetLayout spriteDescriptorSetLayout = VK_NULL_HANDLE; ///< Descriptor layout for sprites.
-        VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE; ///< Vulkan debug messenger (validation layers).
-        uint32_t width, height;                                 ///< Internal width/height tracking.
+        VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;         ///< Vulkan debug messenger (validation layers).
+        uint32_t width, height;                                           ///< Internal width/height tracking.
         /** @brief Create the main descriptor set layout (UBO + sampler). */
         void createDescriptorSetLayout();
         /** @brief Create depth buffer image, memory, and view. */
@@ -415,7 +417,7 @@ namespace mx {
          * @param features   Required format feature flags.
          * @return First candidate that satisfies the requirements.
          */
-        VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
+        VkFormat findSupportedFormat(const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
         /** @brief Select a depth buffer format supported by the physical device. */
         VkFormat findDepthFormat();
         SDL_Window *window = nullptr;       ///< SDL window handle.
@@ -457,19 +459,19 @@ namespace mx {
          * @param availableFormats Candidate formats.
          * @return Selected surface format.
          */
-        VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
+        VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats);
         /**
          * @brief Choose the best present mode (prefers mailbox, falls back to FIFO).
          * @param availablePresentModes Candidate modes.
          * @return Selected presentation mode.
          */
-        VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
+        VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes);
         /**
          * @brief Determine the swapchain image extent from surface capabilities.
          * @param capabilities Current surface capabilities.
          * @return Chosen extent in pixels.
          */
-        VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
+        VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities);
         /**
          * @brief Check whether a physical device meets all application requirements.
          * @param device Candidate physical device.
@@ -490,7 +492,7 @@ namespace mx {
          * @param buffer     Output buffer handle.
          * @param bufferMemory Output device memory handle.
          */
-        void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
+        void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer &buffer, VkDeviceMemory &bufferMemory);
         /**
          * @brief Find a device memory type matching the filter and property flags.
          * @param typeFilter Bit mask of acceptable memory types.
@@ -509,7 +511,7 @@ namespace mx {
          * @brief Create a Vulkan texture image from an SDL surface.
          * @param surfacex Source surface (RGBA).
          */
-        void createTextureImage(SDL_Surface* surfacex);
+        void createTextureImage(SDL_Surface *surfacex);
         /**
          * @brief Create a Vulkan image with the specified parameters.
          * @param width      Image width in pixels.
@@ -521,7 +523,7 @@ namespace mx {
          * @param image      Output image handle.
          * @param imageMemory Output device memory handle.
          */
-        void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
+        void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage &image, VkDeviceMemory &imageMemory);
         /**
          * @brief Transition an image between two layouts using a pipeline barrier.
          * @param image     Target image.
@@ -582,6 +584,6 @@ namespace mx {
         void createSpriteDescriptorPool();
     };
 
-}
+} // namespace mx
 
 #endif

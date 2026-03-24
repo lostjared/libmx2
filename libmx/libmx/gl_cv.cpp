@@ -2,9 +2,9 @@
  * @file gl_cv.cpp
  * @brief Implementation of mx::MXCapture (OpenGL + OpenCV variant).
  */
-#include"config.h"
-#include"gl_cv.hpp"
-#include<filesystem>
+#include "gl_cv.hpp"
+#include "config.h"
+#include <filesystem>
 
 namespace mx {
 
@@ -13,22 +13,22 @@ namespace mx {
     }
 
     bool MXCapture::open(int id, int mode) {
-        if(mode == 0)
+        if (mode == 0)
             mode = cv::CAP_V4L2;
-        if(cap.open(id, mode)) {
-            cap.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M','J','P','G'));
+        if (cap.open(id, mode)) {
+            cap.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'));
             return true;
         }
         return false;
     }
-    
+
     void MXCapture::close() {
         cap.release();
     }
 
     bool MXCapture::createImage(gl::GLWindow *window, size_t width, size_t height, const std::string &vert, const std::string &frag) {
-        shader.reset (new gl::ShaderProgram());
-        if(!shader->loadProgram(vert, frag)) {
+        shader.reset(new gl::ShaderProgram());
+        if (!shader->loadProgram(vert, frag)) {
             throw mx::Exception(">> MXCapture: Could not load shader.\n");
         }
         this->window = window;
@@ -37,13 +37,13 @@ namespace mx {
         cv::Mat mat = cv::Mat::zeros(width, height, CV_8UC4);
         GLuint texture = gl::createTexture(mat.ptr(), width, height);
         sprite.initWithTexture(shader.get(), texture, 0.0f, 0.0f,
-            static_cast<int>(width), static_cast<int>(height));
+                               static_cast<int>(width), static_cast<int>(height));
         return true;
     }
 
     bool MXCapture::reload(const std::string &vert, const std::string &frag) {
         shader.reset(new gl::ShaderProgram());
-        if(!shader->loadProgram(vert, frag)) {
+        if (!shader->loadProgram(vert, frag)) {
             throw mx::Exception(">> MXCapture: could not load shader: " + vert + "/" + frag);
         }
         return false;
@@ -54,13 +54,13 @@ namespace mx {
     }
 
     bool MXCapture::read() {
-        if(!cap.read(frame)) {
+        if (!cap.read(frame)) {
             return false;
         }
         cv::Mat rgba;
         cv::cvtColor(frame, rgba, cv::COLOR_BGR2RGBA);
         cv::flip(rgba, rgba, 0);
-        sprite.updateTexture(rgba.ptr(),rgba.cols, rgba.rows);
+        sprite.updateTexture(rgba.ptr(), rgba.cols, rgba.rows);
         return true;
     }
 
@@ -77,13 +77,13 @@ namespace mx {
         }
         sprite.draw(x, y);
     }
-        
+
     void MXCapture::set(unsigned int option, double value) {
         cap.set(option, value);
     }
-        
+
     double MXCapture::get(unsigned int option) {
         return cap.get(option);
     }
 
-}
+} // namespace mx

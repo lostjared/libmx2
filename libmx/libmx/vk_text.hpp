@@ -10,77 +10,78 @@
 #ifndef __MXTEXT__
 #define __MXTEXT__
 
-#include"config.h"
+#include "config.h"
 
 #ifdef WITH_MOLTEN
-#include<vulkan/vulkan.h>
+#include <vulkan/vulkan.h>
 #else
-#include"volk.h"
+#include "volk.h"
 #endif
 
-#include"exception.hpp"
-#include <SDL_vulkan.h>
+#include "exception.hpp"
 #include <SDL_ttf.h>
+#include <SDL_vulkan.h>
+#include <cstdlib>
+#include <cstring>
+#include <format>
 #include <iostream>
 #include <stdexcept>
-#include <cstdlib>
-#include <vector>
 #include <string>
-#include <cstring>
 #include <unordered_map>
-#include <format>
+#include <vector>
 
 #ifndef VK_CHECK_RESULT
-#define VK_CHECK_RESULT(f) { \
-    VkResult res = (f); \
-    if (res != VK_SUCCESS) { \
-        throw mx::Exception(std::format("Fatal : VkResult is \"{}\" in {} at line {}", static_cast<int>(res), __FILE__, __LINE__)); \
-    } \
-}
+#define VK_CHECK_RESULT(f)                                                                                                              \
+    {                                                                                                                                   \
+        VkResult res = (f);                                                                                                             \
+        if (res != VK_SUCCESS) {                                                                                                        \
+            throw mx::Exception(std::format("Fatal : VkResult is \"{}\" in {} at line {}", static_cast<int>(res), __FILE__, __LINE__)); \
+        }                                                                                                                               \
+    }
 #endif
 
 namespace mx {
 
-/**
- * @class VKText
- * @brief Renders SDL_ttf text into Vulkan image textures.
- *
- * Loads a TrueType font via SDL_ttf, creates a descriptor pool for per-glyph
- * textures, and provides a print-then-render workflow:
- * 1. Call printTextG_Solid() for each string to display.
- * 2. Call renderText() once during the render pass to draw all queued strings.
- * 3. Optionally call clearQueue() to discard pending strings.
- */
-      /// Cache key combining text content and colour.
-      struct CacheKey {
-          std::string text;
-          uint8_t r, g, b, a;
-          bool operator==(const CacheKey &other) const = default;
-      };
+    /**
+     * @class VKText
+     * @brief Renders SDL_ttf text into Vulkan image textures.
+     *
+     * Loads a TrueType font via SDL_ttf, creates a descriptor pool for per-glyph
+     * textures, and provides a print-then-render workflow:
+     * 1. Call printTextG_Solid() for each string to display.
+     * 2. Call renderText() once during the render pass to draw all queued strings.
+     * 3. Optionally call clearQueue() to discard pending strings.
+     */
+    /// Cache key combining text content and colour.
+    struct CacheKey {
+        std::string text;
+        uint8_t r, g, b, a;
+        bool operator==(const CacheKey &other) const = default;
+    };
 
-      /// Hash functor for CacheKey.
-      struct CacheKeyHash {
-          size_t operator()(const CacheKey &k) const {
-              size_t h = std::hash<std::string>{}(k.text);
-              h ^= std::hash<uint8_t>{}(k.r) + 0x9e3779b9 + (h << 6) + (h >> 2);
-              h ^= std::hash<uint8_t>{}(k.g) + 0x9e3779b9 + (h << 6) + (h >> 2);
-              h ^= std::hash<uint8_t>{}(k.b) + 0x9e3779b9 + (h << 6) + (h >> 2);
-              h ^= std::hash<uint8_t>{}(k.a) + 0x9e3779b9 + (h << 6) + (h >> 2);
-              return h;
-          }
-      };
+    /// Hash functor for CacheKey.
+    struct CacheKeyHash {
+        size_t operator()(const CacheKey &k) const {
+            size_t h = std::hash<std::string>{}(k.text);
+            h ^= std::hash<uint8_t>{}(k.r) + 0x9e3779b9 + (h << 6) + (h >> 2);
+            h ^= std::hash<uint8_t>{}(k.g) + 0x9e3779b9 + (h << 6) + (h >> 2);
+            h ^= std::hash<uint8_t>{}(k.b) + 0x9e3779b9 + (h << 6) + (h >> 2);
+            h ^= std::hash<uint8_t>{}(k.a) + 0x9e3779b9 + (h << 6) + (h >> 2);
+            return h;
+        }
+    };
 
-      /// GPU texture resources cached for a rendered text string.
-      struct CachedTexture {
-          VkImage image = VK_NULL_HANDLE;
-          VkDeviceMemory imageMemory = VK_NULL_HANDLE;
-          VkImageView imageView = VK_NULL_HANDLE;
-          int width = 0;
-          int height = 0;
-      };
+    /// GPU texture resources cached for a rendered text string.
+    struct CachedTexture {
+        VkImage image = VK_NULL_HANDLE;
+        VkDeviceMemory imageMemory = VK_NULL_HANDLE;
+        VkImageView imageView = VK_NULL_HANDLE;
+        int width = 0;
+        int height = 0;
+    };
 
-      class VKText {
-        public:
+    class VKText {
+      public:
         /**
          * @brief Construct VKText and load the font.
          * @param device         Logical device.
@@ -90,16 +91,16 @@ namespace mx {
          * @param fontPath       Path to the TTF font file.
          * @param fontSize       Point size.
          */
-        VKText(VkDevice device, VkPhysicalDevice physicalDevice, VkQueue graphicsQueue, 
+        VKText(VkDevice device, VkPhysicalDevice physicalDevice, VkQueue graphicsQueue,
                VkCommandPool commandPool, const std::string &fontPath, int fontSize = 24);
 
         /** @brief Destructor -- destroys all Vulkan and SDL_ttf resources. */
         ~VKText();
 
-        VKText(const VKText&) = delete;
-        VKText& operator=(const VKText&) = delete;
-        VKText(VKText&&) = delete;
-        VKText& operator=(VKText&&) = delete;
+        VKText(const VKText &) = delete;
+        VKText &operator=(const VKText &) = delete;
+        VKText(VKText &&) = delete;
+        VKText &operator=(VKText &&) = delete;
 
         /**
          * @brief Queue a text string for solid (opaque) rendering.
@@ -117,8 +118,8 @@ namespace mx {
          * @param screenWidth  Viewport width.
          * @param screenHeight Viewport height.
          */
-        void renderText(VkCommandBuffer cmdBuffer, VkPipelineLayout pipelineLayout, 
-                       uint32_t screenWidth, uint32_t screenHeight);
+        void renderText(VkCommandBuffer cmdBuffer, VkPipelineLayout pipelineLayout,
+                        uint32_t screenWidth, uint32_t screenHeight);
 
         /** @brief Discard all pending text quads without rendering them. */
         void clearQueue();
@@ -143,15 +144,15 @@ namespace mx {
          * @param height Output: pixel height.
          * @return @c true if measurement succeeded.
          */
-        bool getTextDimensions(const std::string &text, int& width, int& height);
+        bool getTextDimensions(const std::string &text, int &width, int &height);
 
         VkSampler fontSampler = VK_NULL_HANDLE; ///< Sampler used for all text textures.
-        private:
+      private:
         struct TextVertex {
             float pos[2];
             float texCoord[2];
         };
-        
+
         struct TextQuad {
             std::string text;
             int x, y;
@@ -172,12 +173,12 @@ namespace mx {
             bool ownsTexture = true; ///< false when texture is owned by the cache.
 
             TextQuad() = default;
-            TextQuad(const TextQuad&) = delete;
-            TextQuad& operator=(const TextQuad&) = delete;
-            TextQuad(TextQuad&& other) noexcept {
+            TextQuad(const TextQuad &) = delete;
+            TextQuad &operator=(const TextQuad &) = delete;
+            TextQuad(TextQuad &&other) noexcept {
                 *this = std::move(other);
             }
-            TextQuad& operator=(TextQuad&& other) noexcept {
+            TextQuad &operator=(TextQuad &&other) noexcept {
                 if (this != &other) {
                     text = std::move(other.text);
                     x = other.x;
@@ -213,7 +214,7 @@ namespace mx {
                 }
                 return *this;
             }
-            
+
             ~TextQuad() {
                 if (device != VK_NULL_HANDLE) {
                     if (ownsTexture) {
@@ -236,39 +237,38 @@ namespace mx {
                 }
             }
         };
-        
+
         VkDevice device = VK_NULL_HANDLE;
         VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
         VkQueue graphicsQueue = VK_NULL_HANDLE;
         VkCommandPool commandPool = VK_NULL_HANDLE;
-        
+
         TTF_Font *font = nullptr;
         std::vector<TextQuad> textQuads;
         VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
         VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
         uint32_t maxPoolSets = 100;
         std::unordered_map<CacheKey, CachedTexture, CacheKeyHash> textureCache;
-        
+
         void initFont(const std::string &fontPath, int fontSize);
         void createDescriptorPool();
         void createDescriptorPool(uint32_t maxSets);
         void growDescriptorPool();
         VkDescriptorSet createDescriptorSet(VkImageView imageView);
-        void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, 
-                         VkMemoryPropertyFlags properties, VkBuffer& buffer, 
-                         VkDeviceMemory& bufferMemory);
+        void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
+                          VkMemoryPropertyFlags properties, VkBuffer &buffer,
+                          VkDeviceMemory &bufferMemory);
         uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
         void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
         VkCommandBuffer beginSingleTimeCommands();
         void endSingleTimeCommands(VkCommandBuffer commandBuffer);
         void transitionImageLayout(VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout);
-        void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, 
-                        VkImageUsageFlags usage, VkMemoryPropertyFlags properties, 
-                        VkImage& image, VkDeviceMemory& imageMemory);
+        void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling,
+                         VkImageUsageFlags usage, VkMemoryPropertyFlags properties,
+                         VkImage &image, VkDeviceMemory &imageMemory);
         VkImageView createImageView(VkImage image, VkFormat format);
-        SDL_Surface* convertToRGBA(SDL_Surface* surface);
+        SDL_Surface *convertToRGBA(SDL_Surface *surface);
     };
-}
-
+} // namespace mx
 
 #endif

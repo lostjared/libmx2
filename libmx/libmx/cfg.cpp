@@ -2,12 +2,11 @@
  * @file cfg.cpp
  * @brief Implementation of INI-style config file reader/writer (mx::ConfigFile).
  */
-#include"cfg.hpp"
-#include<algorithm>
-#include"mx.hpp"
-#include<format>
-#include<ranges>
-
+#include "cfg.hpp"
+#include "mx.hpp"
+#include <algorithm>
+#include <format>
+#include <ranges>
 
 namespace mx {
     void ConfigFile::loadFile(const std::string &f) {
@@ -74,12 +73,12 @@ namespace mx {
     }
 
     Item ConfigFile::itemAtKey(const std::string &section, const std::string &key) {
-        if(!values[section].contains(key)) {
+        if (!values[section].contains(key)) {
             throw mx::Exception(std::format("mx: Could not find Key: {} in config file.\n", key));
         }
         return values[section][key];
     }
-        
+
     void ConfigFile::setItem(const std::string &section, const std::string &key, const std::string value) {
         values[section][key] = {key, value};
     }
@@ -87,14 +86,14 @@ namespace mx {
     std::vector<std::string> ConfigFile::splitByComma(const std::string &str) {
         std::vector<std::string> result;
         size_t start = 0, end = 0;
-        
+
         while ((end = str.find(',', start)) != std::string::npos) {
             result.push_back(str.substr(start, end - start));
             start = end + 1;
         }
-        
+
         result.push_back(str.substr(start));
-        
+
         return result;
     }
 
@@ -106,11 +105,4 @@ namespace mx {
         saveFile(filename);
     }
 
-}
-
-
-
-
-
-
-
+} // namespace mx

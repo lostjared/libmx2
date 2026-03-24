@@ -12,49 +12,50 @@
 #ifndef __MXSPRITE__
 #define __MXSPRITE__
 
-#include"config.h"
+#include "config.h"
 
 #ifdef WITH_MOLTEN
-#include<vulkan/vulkan.h>
+#include <vulkan/vulkan.h>
 #else
-#include"volk.h"
+#include "volk.h"
 #endif
 
-#include"exception.hpp"
+#include "exception.hpp"
 #include <SDL_vulkan.h>
+#include <array>
+#include <cstdlib>
+#include <cstring>
+#include <format>
+#include <fstream>
+#include <glm/glm.hpp>
 #include <iostream>
 #include <stdexcept>
-#include <cstdlib>
-#include <vector>
 #include <string>
-#include <fstream>
-#include <array>
-#include <cstring>
-#include <glm/glm.hpp>
-#include <format>
+#include <vector>
 
 #ifndef VK_CHECK_RESULT
-#define VK_CHECK_RESULT(f) { \
-    VkResult res = (f); \
-    if (res != VK_SUCCESS) { \
-        throw mx::Exception(std::format("Fatal : VkResult is \"{}\" in {} at line {}", static_cast<int>(res), __FILE__, __LINE__)); \
-    } \
-}
+#define VK_CHECK_RESULT(f)                                                                                                              \
+    {                                                                                                                                   \
+        VkResult res = (f);                                                                                                             \
+        if (res != VK_SUCCESS) {                                                                                                        \
+            throw mx::Exception(std::format("Fatal : VkResult is \"{}\" in {} at line {}", static_cast<int>(res), __FILE__, __LINE__)); \
+        }                                                                                                                               \
+    }
 #endif
 
 namespace mx {
 
-/**
- * @class VKSprite
- * @brief Vulkan 2-D sprite with texture, custom shader, and instancing support.
- *
- * Allocates and manages all Vulkan resources required to render one sprite
- * type: image, sampler, descriptor set, vertex/index buffers, and an
- * optional custom pipeline.  Multiple draw commands are batched into a
- * queue and submitted together in renderSprites().
- */
+    /**
+     * @class VKSprite
+     * @brief Vulkan 2-D sprite with texture, custom shader, and instancing support.
+     *
+     * Allocates and manages all Vulkan resources required to render one sprite
+     * type: image, sampler, descriptor set, vertex/index buffers, and an
+     * optional custom pipeline.  Multiple draw commands are batched into a
+     * queue and submitted together in renderSprites().
+     */
     class VKSprite {
-    public:
+      public:
         /**
          * @brief Construct and record Vulkan context handles.
          * @param device         Logical device.
@@ -68,10 +69,10 @@ namespace mx {
         /** @brief Destructor — frees all Vulkan resources. */
         ~VKSprite();
 
-        VKSprite(const VKSprite&) = delete;
-        VKSprite& operator=(const VKSprite&) = delete;
-        VKSprite(VKSprite&&) = delete;
-        VKSprite& operator=(VKSprite&&) = delete;
+        VKSprite(const VKSprite &) = delete;
+        VKSprite &operator=(const VKSprite &) = delete;
+        VKSprite(VKSprite &&) = delete;
+        VKSprite &operator=(VKSprite &&) = delete;
 
         /**
          * @brief Load sprite texture from a PNG file.
@@ -85,7 +86,7 @@ namespace mx {
          * @param surface            Source surface (not consumed).
          * @param fragmentShaderPath Optional custom fragment shader.
          */
-        void loadSprite(SDL_Surface* surface, const std::string &fragmentShaderPath = "");
+        void loadSprite(SDL_Surface *surface, const std::string &fragmentShaderPath = "");
 
         /**
          * @brief Create a blank (un-initialised) sprite texture.
@@ -132,7 +133,7 @@ namespace mx {
          * @brief Replace the sprite texture from an SDL_Surface.
          * @param surface New surface (not consumed).
          */
-        void updateTexture(SDL_Surface* surface);
+        void updateTexture(SDL_Surface *surface);
 
         /**
          * @brief Replace the sprite texture from a raw pixel buffer.
@@ -141,7 +142,7 @@ namespace mx {
          * @param height Buffer height.
          * @param pitch  Row stride in bytes (0 = auto).
          */
-        void updateTexture(const void* pixels, int width, int height, int pitch = 0);
+        void updateTexture(const void *pixels, int width, int height, int pitch = 0);
 
         /**
          * @brief Set up to four custom shader float parameters.
@@ -166,7 +167,7 @@ namespace mx {
          * @param screenHeight Current viewport height.
          */
         void renderSprites(VkCommandBuffer cmdBuffer, VkPipelineLayout pipelineLayout,
-                          uint32_t screenWidth, uint32_t screenHeight);
+                           uint32_t screenWidth, uint32_t screenHeight);
 
         /** @brief Discard all pending draw commands without rendering. */
         void clearQueue();
@@ -233,18 +234,18 @@ namespace mx {
         void setUniform2(float x, float y, float z, float w);
         /** @brief Upload user uniform 3 to the extended UBO. @param x,y,z,w Components. */
         void setUniform3(float x, float y, float z, float w);
-        
-    private:
+
+      private:
         struct SpriteVertex {
             float pos[2];
             float texCoord[2];
         };
-        
+
         struct SpriteDrawCmd {
             float x, y, w, h;
-            glm::vec4 params;  
+            glm::vec4 params;
         };
-        
+
         VkDevice device = VK_NULL_HANDLE;
         VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
         VkQueue graphicsQueue = VK_NULL_HANDLE;
@@ -259,31 +260,31 @@ namespace mx {
         bool hasCustomShader = false;
         glm::vec4 shaderParams = glm::vec4(0.0f);
         bool effectsEnabled = true;
-        std::vector<SpriteDrawCmd> drawQueue;  
-        
+        std::vector<SpriteDrawCmd> drawQueue;
+
         VkPipeline customPipeline = VK_NULL_HANDLE;
         VkPipelineLayout customPipelineLayout = VK_NULL_HANDLE;
         VkRenderPass renderPass = VK_NULL_HANDLE;
         std::string vertexShaderPath;
         void createCustomPipeline();
-        
+
         VkBuffer quadVertexBuffer = VK_NULL_HANDLE;
         VkDeviceMemory quadVertexBufferMemory = VK_NULL_HANDLE;
         VkBuffer quadIndexBuffer = VK_NULL_HANDLE;
         VkDeviceMemory quadIndexBufferMemory = VK_NULL_HANDLE;
         bool quadBufferCreated = false;
         void createQuadBuffer();
-        
+
         VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
         VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
         VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
         void createDescriptorPool();
         VkDescriptorSet createDescriptorSet(VkImageView imageView);
         void destroySpriteResources();
-        
+
         VkBuffer persistentStagingBuffer = VK_NULL_HANDLE;
         VkDeviceMemory persistentStagingMemory = VK_NULL_HANDLE;
-        void* persistentStagingMapped = nullptr;
+        void *persistentStagingMapped = nullptr;
         VkDeviceSize persistentStagingSize = 0;
         VkFence uploadFence = VK_NULL_HANDLE;
         VkCommandBuffer uploadCmdBuffer = VK_NULL_HANDLE;
@@ -291,27 +292,27 @@ namespace mx {
         void createStagingResources(VkDeviceSize size);
         void destroyStagingResources();
         void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
-                         VkMemoryPropertyFlags properties, VkBuffer& buffer,
-                         VkDeviceMemory& bufferMemory);
+                          VkMemoryPropertyFlags properties, VkBuffer &buffer,
+                          VkDeviceMemory &bufferMemory);
         uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
         void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
         VkCommandBuffer beginSingleTimeCommands();
         void endSingleTimeCommands(VkCommandBuffer commandBuffer);
         void transitionImageLayout(VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout);
         void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling,
-                        VkImageUsageFlags usage, VkMemoryPropertyFlags properties,
-                        VkImage& image, VkDeviceMemory& imageMemory);
+                         VkImageUsageFlags usage, VkMemoryPropertyFlags properties,
+                         VkImage &image, VkDeviceMemory &imageMemory);
         VkImageView createImageView(VkImage image, VkFormat format);
         void createSampler();
-        SDL_Surface* convertToRGBA(SDL_Surface* surface);
-        void createSpriteTexture(SDL_Surface* surface);
-        void updateSpriteTexture(const void* pixels, uint32_t width, uint32_t height);
-        VkShaderModule createShaderModule(const std::vector<char>& code);
-        std::vector<char> readShaderFile(const std::string& filename);
-    
+        SDL_Surface *convertToRGBA(SDL_Surface *surface);
+        void createSpriteTexture(SDL_Surface *surface);
+        void updateSpriteTexture(const void *pixels, uint32_t width, uint32_t height);
+        VkShaderModule createShaderModule(const std::vector<char> &code);
+        std::vector<char> readShaderFile(const std::string &filename);
+
         struct SpriteExtendedUBO {
-            glm::vec4 mouse;   
-            glm::vec4 u0;      
+            glm::vec4 mouse;
+            glm::vec4 u0;
             glm::vec4 u1;
             glm::vec4 u2;
             glm::vec4 u3;
@@ -320,7 +321,7 @@ namespace mx {
         SpriteExtendedUBO extendedUBOData{};
         VkBuffer extendedUBOBuffer = VK_NULL_HANDLE;
         VkDeviceMemory extendedUBOMemory = VK_NULL_HANDLE;
-        void* extendedUBOMapped = nullptr;
+        void *extendedUBOMapped = nullptr;
         VkDescriptorSetLayout extendedDescriptorSetLayout = VK_NULL_HANDLE;
         VkDescriptorPool extendedDescriptorPool = VK_NULL_HANDLE;
         VkDescriptorSet extendedDescriptorSet = VK_NULL_HANDLE;
@@ -337,7 +338,7 @@ namespace mx {
         };
         VkBuffer instanceBuffer = VK_NULL_HANDLE;
         VkDeviceMemory instanceBufferMemory = VK_NULL_HANDLE;
-        void* instanceBufferMapped = nullptr;
+        void *instanceBufferMapped = nullptr;
         uint32_t instanceBufferCapacity = 0;
         bool instancingEnabled = false;
         VkPipeline instancedPipeline = VK_NULL_HANDLE;
@@ -349,6 +350,6 @@ namespace mx {
         void destroyInstanceResources();
     };
 
-}
+} // namespace mx
 
 #endif

@@ -2,21 +2,21 @@
  * @file joystick.cpp
  * @brief Implementation of mx::Joystick and mx::Controller SDL joystick wrappers.
  */
-#include"joystick.hpp"
-#include<optional>
-#include"tee_stream.hpp"
+#include "joystick.hpp"
+#include "tee_stream.hpp"
+#include <optional>
 
 namespace mx {
 
     Joystick::Joystick() : stick{nullptr}, index{-1} {}
-     
+
     Joystick::~Joystick() {
         close();
     }
-    
+
     bool Joystick::open(int index) {
         stick = SDL_JoystickOpen(index);
-        if(!stick) {
+        if (!stick) {
             this->index = -1;
             stick = nullptr;
             return false;
@@ -25,31 +25,31 @@ namespace mx {
         SDL_JoystickEventState(SDL_ENABLE);
         return true;
     }
-    
+
     std::string Joystick::name() const {
-        if(stick) {
+        if (stick) {
             return SDL_JoystickName(stick);
         }
         return "Joystick Not Opened.\n";
     }
-    
+
     void Joystick::close() {
-        if(stick)
+        if (stick)
             SDL_JoystickClose(stick);
-        
+
         stick = nullptr;
         index = -1;
     }
-    
+
     std::optional<SDL_Joystick *> Joystick::handle() {
-        if(stick)
-            return stick; 
+        if (stick)
+            return stick;
 
         return std::nullopt;
     }
 
-    SDL_Joystick *Joystick::unwrap() const {    
-        if(stick) {
+    SDL_Joystick *Joystick::unwrap() const {
+        if (stick) {
             return stick;
         }
         throw mx::Exception("Invalid Joystick");
@@ -61,52 +61,52 @@ namespace mx {
     }
 
     bool Joystick::getButton(int button) {
-        if(stick != nullptr && SDL_JoystickGetButton(stick, button))
+        if (stick != nullptr && SDL_JoystickGetButton(stick, button))
             return true;
 
         return false;
     }
 
     Uint8 Joystick::getHat(int hat) {
-        if(stick) {
+        if (stick) {
             return SDL_JoystickGetHat(stick, hat);
         }
         return 0;
     }
 
     Sint16 Joystick::getAxis(int axis) {
-        if(stick) {
+        if (stick) {
             return SDL_JoystickGetAxis(stick, axis);
         }
         return 0;
     }
 
     int Joystick::numButtons() {
-        if(stick)
+        if (stick)
             return SDL_JoystickNumButtons(stick);
         return 0;
     }
 
     int Joystick::numHats() {
-        if(stick)
+        if (stick)
             return SDL_JoystickNumHats(stick);
         return 0;
     }
     int Joystick::numAxes() {
-        if(stick) 
+        if (stick)
             return SDL_JoystickNumAxes(stick);
         return 0;
     }
 
     Controller::Controller() : stick{nullptr}, index{-1} {}
-     
+
     Controller::~Controller() {
         close();
     }
-    
+
     bool Controller::open(int index) {
         stick = SDL_GameControllerOpen(index);
-        if(!stick) {
+        if (!stick) {
             this->index = -1;
             stick = nullptr;
             return false;
@@ -115,31 +115,31 @@ namespace mx {
         SDL_GameControllerEventState(SDL_ENABLE);
         return true;
     }
-    
+
     std::string Controller::name() const {
-        if(stick) {
+        if (stick) {
             return SDL_GameControllerName(stick);
         }
         return "Controller Not Opened.\n";
     }
-    
+
     void Controller::close() {
-        if(stick)
+        if (stick)
             SDL_GameControllerClose(stick);
-        
+
         stick = nullptr;
         index = -1;
     }
-    
+
     std::optional<SDL_GameController *> Controller::handle() {
-        if(stick)
-            return stick; 
+        if (stick)
+            return stick;
 
         return std::nullopt;
     }
 
-    SDL_GameController *Controller::unwrap() const {    
-        if(stick) {
+    SDL_GameController *Controller::unwrap() const {
+        if (stick) {
             return stick;
         }
         throw Exception("unwrap: Invalid Controller");
@@ -151,7 +151,7 @@ namespace mx {
     }
 
     bool Controller::getButton(SDL_GameControllerButton button) {
-        if(stick != nullptr && SDL_GameControllerGetButton(stick, button))
+        if (stick != nullptr && SDL_GameControllerGetButton(stick, button))
             return true;
 
         return false;
@@ -167,14 +167,14 @@ namespace mx {
     }
 
     Sint16 Controller::getAxis(SDL_GameControllerAxis axis) {
-        if(stick) {
+        if (stick) {
             return SDL_GameControllerGetAxis(stick, axis);
         }
         return 0;
     }
 
     bool Controller::connectEvent(SDL_Event &e) {
-       if (e.type == SDL_CONTROLLERDEVICEADDED) {
+        if (e.type == SDL_CONTROLLERDEVICEADDED) {
             mx::system_out << "Controller attached for Player " << e.cdevice.which << "\n";
             if (open(e.cdevice.which)) {
                 mx::system_out << "Connected Controller " << name() << "\n";
@@ -190,4 +190,4 @@ namespace mx {
         }
         return false;
     }
-}
+} // namespace mx

@@ -10,22 +10,22 @@
 
 #ifdef WITH_GL
 #include "model.hpp"
-#include <sstream>
-#include <fstream>
-#include <vector>
-#include <unordered_map>
-#include <functional>
-#include <cstddef>
-#include <cmath>
-#include <cstdio>
-#include <random>
 #include <algorithm>
-#include <iostream>
+#include <cmath>
+#include <cstddef>
+#include <cstdio>
 #include <filesystem>
+#include <fstream>
+#include <functional>
+#include <iostream>
+#include <random>
+#include <sstream>
+#include <unordered_map>
+#include <vector>
 
 #ifdef __EMSCRIPTEN__
-#include <emscripten/emscripten.h>
 #include "glm.hpp"
+#include <emscripten/emscripten.h>
 #else
 #include <glm/glm.hpp>
 #endif
@@ -196,23 +196,20 @@ namespace mx {
                 vertex.normal[0] = norm[i * 3 + 0];
                 vertex.normal[1] = norm[i * 3 + 1];
                 vertex.normal[2] = norm[i * 3 + 2];
-            }
-            else {
+            } else {
                 vertex.normal[0] = vertex.normal[1] = vertex.normal[2] = 0.0f;
             }
 
             if (!tex.empty()) {
                 vertex.texCoord[0] = tex[i * 2 + 0];
                 vertex.texCoord[1] = tex[i * 2 + 1];
-            }
-            else {
+            } else {
                 vertex.texCoord[0] = vertex.texCoord[1] = 0.0f;
             }
 
             if (vertexToIndex.contains(vertex)) {
                 newIndices.push_back(vertexToIndex[vertex]);
-            }
-            else {
+            } else {
                 GLuint newIndex = (GLuint)uniqueVertices.size();
                 uniqueVertices.push_back(vertex);
                 vertexToIndex[vertex] = newIndex;
@@ -387,8 +384,7 @@ namespace mx {
                 norm[i2 + 1] += n.y;
                 norm[i2 + 2] += n.z;
             }
-        }
-        else {
+        } else {
             for (size_t i = 0; i + 8 < vert.size(); i += 9) {
                 glm::vec3 v0(vert[i], vert[i + 1], vert[i + 2]);
                 glm::vec3 v1(vert[i + 3], vert[i + 4], vert[i + 5]);
@@ -411,8 +407,6 @@ namespace mx {
             }
         }
     }
-
-
 
     void Mesh::generateTangentBitangent() {
         if (vert.empty() || tex.empty())
@@ -476,8 +470,7 @@ namespace mx {
             for (size_t i = 0; i + 2 < indices.size(); i += 3) {
                 addTri(indices[i], indices[i + 1], indices[i + 2]);
             }
-        }
-        else {
+        } else {
             GLuint vcount = (GLuint)(vert.size() / 3);
             for (GLuint i = 0; i + 2 < vcount; i += 3) {
                 addTri(i, i + 1, i + 2);
@@ -536,16 +529,14 @@ namespace mx {
                     vert[i] = x * std::cos(theta) - dist * std::sin(theta);
                     vert[i + 1] = center + x * std::sin(theta) + dist * std::cos(theta);
                 }
-            }
-            else if (axis == DeformAxis::X) {
+            } else if (axis == DeformAxis::X) {
                 float dist = x - center;
                 if (range == 0.0f || std::abs(dist) < range) {
                     float theta = dist * angle;
                     vert[i + 1] = y * std::cos(theta) - dist * std::sin(theta);
                     vert[i] = center + y * std::sin(theta) + dist * std::cos(theta);
                 }
-            }
-            else if (axis == DeformAxis::Z) {
+            } else if (axis == DeformAxis::Z) {
                 float dist = z - center;
                 if (range == 0.0f || std::abs(dist) < range) {
                     float theta = dist * angle;
@@ -564,15 +555,13 @@ namespace mx {
                 float x = vert[i], z = vert[i + 2];
                 vert[i] = x * c - z * s;
                 vert[i + 2] = x * s + z * c;
-            }
-            else if (axis == DeformAxis::X) {
+            } else if (axis == DeformAxis::X) {
                 float theta = (vert[i] - center) * angle;
                 float s = std::sin(theta), c = std::cos(theta);
                 float y = vert[i + 1], z = vert[i + 2];
                 vert[i + 1] = y * c - z * s;
                 vert[i + 2] = y * s + z * c;
-            }
-            else if (axis == DeformAxis::Z) {
+            } else if (axis == DeformAxis::Z) {
                 float theta = (vert[i + 2] - center) * angle;
                 float s = std::sin(theta), c = std::cos(theta);
                 float x = vert[i], y = vert[i + 1];
@@ -691,22 +680,18 @@ namespace mx {
 
             if (filename.ends_with(".mxmod.z")) {
                 text = decompressString(buffer.data(), static_cast<uLong>(buffer.size()));
-            }
-            else {
+            } else {
                 text.assign(buffer.begin(), buffer.end());
             }
 
             return openModelString(filename, text, compress);
-        }
-        catch (const mx::Exception &e) {
+        } catch (const mx::Exception &e) {
             std::cerr << "mx: Exception in openModel(" << filename << "): " << e.text() << std::endl;
             return false;
-        }
-        catch (const std::exception &e) {
+        } catch (const std::exception &e) {
             std::cerr << "mx: std::exception in openModel(" << filename << "): " << e.what() << std::endl;
             return false;
-        }
-        catch (...) {
+        } catch (...) {
             std::cerr << "mx: Unknown exception in openModel(" << filename << ")" << std::endl;
             return false;
         }
@@ -779,8 +764,7 @@ namespace mx {
                 mx::system_out << "mx: compressing vertices\n";
                 currentMesh.compressIndices();
                 didCompress = true;
-            }
-            else {
+            } else {
                 if (compress && !currentMesh.indices.empty())
                     mx::system_out << "mx: compress requested but indices already exist, skipping\n";
                 if (!compress)
@@ -889,8 +873,7 @@ namespace mx {
                         currentMesh.vert.push_back(x);
                         currentMesh.vert.push_back(y);
                         currentMesh.vert.push_back(z);
-                    }
-                    else {
+                    } else {
                         currentMesh.vert[currentMesh.vertIndex++] = x;
                         currentMesh.vert[currentMesh.vertIndex++] = y;
                         currentMesh.vert[currentMesh.vertIndex++] = z;
@@ -903,8 +886,7 @@ namespace mx {
                     if (currentMesh.texIndex + 2 > currentMesh.tex.size()) {
                         currentMesh.tex.push_back(x);
                         currentMesh.tex.push_back(y);
-                    }
-                    else {
+                    } else {
                         currentMesh.tex[currentMesh.texIndex++] = x;
                         currentMesh.tex[currentMesh.texIndex++] = y;
                     }
@@ -917,8 +899,7 @@ namespace mx {
                         currentMesh.norm.push_back(x);
                         currentMesh.norm.push_back(y);
                         currentMesh.norm.push_back(z);
-                    }
-                    else {
+                    } else {
                         currentMesh.norm[currentMesh.normIndex++] = x;
                         currentMesh.norm[currentMesh.normIndex++] = y;
                         currentMesh.norm[currentMesh.normIndex++] = z;
@@ -946,8 +927,7 @@ namespace mx {
                 GLuint idx = 0;
                 while (stream >> idx)
                     currentMesh.indices.push_back(idx);
-            }
-            break;
+            } break;
 
             default:
                 break;
@@ -1030,13 +1010,24 @@ namespace mx {
         std::vector<V2> texcoords;
         std::vector<V3> normals;
 
+        meshes.clear();
+
         Mesh currentMesh;
         currentMesh.setShapeType(GL_TRIANGLES);
         currentMesh.texture = 0;
         currentMesh.materialName.clear();
+
         std::string currentMtlName;
         materials_.clear();
         mtlLibPath_.clear();
+
+        auto startNewMesh = [&](const std::string &name) {
+            currentMesh = Mesh();
+            currentMesh.setShapeType(GL_TRIANGLES);
+            currentMesh.texture = static_cast<GLuint>(meshes.size());
+            currentMesh.materialName = currentMtlName;
+            currentMesh.name = name;
+        };
 
         auto finalizeMesh = [&]() {
             if (currentMesh.vert.empty())
@@ -1065,9 +1056,11 @@ namespace mx {
 
             currentMesh = Mesh();
             currentMesh.setShapeType(GL_TRIANGLES);
+            currentMesh.texture = static_cast<GLuint>(meshes.size());
             currentMesh.materialName = currentMtlName;
-            currentMesh.texture = 0;
         };
+
+        startNewMesh("default");
 
         std::string line;
         while (std::getline(f, line)) {
@@ -1082,51 +1075,52 @@ namespace mx {
                 float x, y, z;
                 if (s >> x >> y >> z)
                     positions.push_back({x, y, z});
-            }
-            else if (tag == "vt") {
+            } else if (tag == "vt") {
                 float u, v;
                 if (s >> u >> v)
                     texcoords.push_back({u, v});
-            }
-            else if (tag == "vn") {
+            } else if (tag == "vn") {
                 float x, y, z;
                 if (s >> x >> y >> z)
                     normals.push_back({x, y, z});
-            }
-            else if (tag == "f") {
+            } else if (tag == "f") {
                 struct FaceVert {
                     int vi, ti, ni;
                 };
+
                 std::vector<FaceVert> faceVerts;
                 std::string token;
+
                 while (s >> token) {
                     int vi = 0, ti = 0, ni = 0;
-                    if (sscanf(token.c_str(), "%d/%d/%d", &vi, &ti, &ni) == 3)
-                    {}
-                    else if (sscanf(token.c_str(), "%d//%d", &vi, &ni) == 2) {
+
+                    if (sscanf(token.c_str(), "%d/%d/%d", &vi, &ti, &ni) == 3) {
+                    } else if (sscanf(token.c_str(), "%d//%d", &vi, &ni) == 2) {
                         ti = 0;
-                    }
-                    else if (sscanf(token.c_str(), "%d/%d", &vi, &ti) == 2) {
+                    } else if (sscanf(token.c_str(), "%d/%d", &vi, &ti) == 2) {
                         ni = 0;
-                    }
-                    else {
+                    } else {
                         sscanf(token.c_str(), "%d", &vi);
                         ti = 0;
                         ni = 0;
                     }
+
                     faceVerts.push_back({vi, ti, ni});
                 }
-                // Fan-triangulate and expand into flat arrays
+
                 for (size_t i = 2; i < faceVerts.size(); ++i) {
                     int triIdx[3] = {0, static_cast<int>(i - 1), static_cast<int>(i)};
+
                     for (int j = 0; j < 3; ++j) {
                         auto &fv = faceVerts[triIdx[j]];
+
                         int pidx = fv.vi > 0 ? fv.vi - 1 : static_cast<int>(positions.size()) + fv.vi;
                         if (pidx >= 0 && pidx < static_cast<int>(positions.size())) {
                             currentMesh.vert.push_back(positions[pidx].x);
                             currentMesh.vert.push_back(positions[pidx].y);
                             currentMesh.vert.push_back(positions[pidx].z);
                         }
+
                         if (fv.ti != 0) {
                             int tidx = fv.ti > 0 ? fv.ti - 1 : static_cast<int>(texcoords.size()) + fv.ti;
                             if (tidx >= 0 && tidx < static_cast<int>(texcoords.size())) {
@@ -1134,6 +1128,7 @@ namespace mx {
                                 currentMesh.tex.push_back(texcoords[tidx].y);
                             }
                         }
+
                         if (fv.ni != 0) {
                             int nidx = fv.ni > 0 ? fv.ni - 1 : static_cast<int>(normals.size()) + fv.ni;
                             if (nidx >= 0 && nidx < static_cast<int>(normals.size())) {
@@ -1144,28 +1139,27 @@ namespace mx {
                         }
                     }
                 }
-            }
-            else if (tag == "mtllib") {
+            } else if (tag == "mtllib") {
                 std::string mtlFile;
                 if (s >> mtlFile) {
                     std::filesystem::path objDir = std::filesystem::path(filename).parent_path();
                     mtlLibPath_ = (objDir / mtlFile).string();
                 }
-            }
-            else if (tag == "g" || tag == "o") {
+            } else if (tag == "g" || tag == "o") {
+                std::string meshName;
+                s >> meshName;
+                if (meshName.empty())
+                    meshName = "unnamed";
+
                 finalizeMesh();
-                // Keep currentMtlName to preserve material state across group/object boundaries.
-            }
-            else if (tag == "usemtl") {
+                startNewMesh(meshName);
+            } else if (tag == "usemtl") {
                 std::string newMtlName;
                 s >> newMtlName;
-                if (newMtlName.empty())
-                    continue;
-                if (newMtlName != currentMtlName) {
-                    finalizeMesh();
+                if (!newMtlName.empty()) {
                     currentMtlName = newMtlName;
+                    currentMesh.materialName = currentMtlName;
                 }
-                currentMesh.materialName = currentMtlName;
             }
         }
 
@@ -1179,7 +1173,9 @@ namespace mx {
             return false;
         }
 
-        size_t totalVerts = 0, totalIdx = 0;
+        size_t totalVerts = 0;
+        size_t totalIdx = 0;
+
         for (const auto &m : meshes) {
             totalVerts += m.vert.size() / 3;
             totalIdx += m.indices.size();
@@ -1194,7 +1190,6 @@ namespace mx {
 
         return true;
     }
-
     void Model::setShaderProgram(gl::ShaderProgram *shader_program, const std::string texture_name) {
         program = shader_program;
         tex_name = texture_name;
@@ -1304,8 +1299,7 @@ namespace mx {
                         imagePaths.push_back(prefix + "/" + texFile);
                 }
             }
-        }
-        else if (structured) {
+        } else if (structured) {
             mx::system_out << "mx: Structured .tex format detected\n";
             for (const auto &ln : lines) {
                 std::istringstream s(ln);
@@ -1317,8 +1311,7 @@ namespace mx {
                         imagePaths.push_back(prefix + "/" + texFile);
                 }
             }
-        }
-        else {
+        } else {
             for (const auto &ln : lines)
                 imagePaths.push_back(prefix + "/" + ln);
         }
@@ -1328,8 +1321,7 @@ namespace mx {
                 GLuint texid = gl::loadTexture(final_path);
                 text.push_back(texid);
                 mx::system_out << "mx: Loaded Texture: " << texid << " -> " << final_path << "\n";
-            }
-            catch (const mx::Exception &e) {
+            } catch (const mx::Exception &e) {
                 mx::system_err << "Warning: Failed to load texture from '" << final_path << "': " << e.text() << "\n";
                 mx::system_err << "Using default white texture as fallback\n";
 
@@ -1349,8 +1341,7 @@ namespace mx {
         }
         if (!text.empty()) {
             setTextures(text);
-        }
-        else {
+        } else {
             mx::system_err << "Warning: No valid textures loaded, model may not render correctly\n";
         }
     }
@@ -1375,29 +1366,21 @@ namespace mx {
                 materials_.emplace_back();
                 current = &materials_.back();
                 s >> current->name;
-            }
-            else if (!current) {
+            } else if (!current) {
                 continue;
-            }
-            else if (tag == "Ka") {
+            } else if (tag == "Ka") {
                 s >> current->ka[0] >> current->ka[1] >> current->ka[2];
-            }
-            else if (tag == "Kd") {
+            } else if (tag == "Kd") {
                 s >> current->kd[0] >> current->kd[1] >> current->kd[2];
-            }
-            else if (tag == "Ks") {
+            } else if (tag == "Ks") {
                 s >> current->ks[0] >> current->ks[1] >> current->ks[2];
-            }
-            else if (tag == "Ns") {
+            } else if (tag == "Ns") {
                 s >> current->ns;
-            }
-            else if (tag == "d") {
+            } else if (tag == "d") {
                 s >> current->d;
-            }
-            else if (tag == "illum") {
+            } else if (tag == "illum") {
                 s >> current->illum;
-            }
-            else if (tag == "map_Kd") {
+            } else if (tag == "map_Kd") {
                 s >> current->map_kd;
             }
         }
@@ -1426,8 +1409,7 @@ namespace mx {
                 try {
                     texid = gl::loadTexture(path);
                     mx::system_out << "mx: MTL texture [" << i << "] " << texid << " -> " << path << "\n";
-                }
-                catch (const mx::Exception &) {
+                } catch (const mx::Exception &) {
                     mx::system_err << "mx: Warning - cannot load MTL texture: " << path << "\n";
                 }
             }
@@ -1559,5 +1541,5 @@ namespace mx {
             m.generateTangentBitangent();
     }
 
-}
+} // namespace mx
 #endif

@@ -14,54 +14,53 @@
 #ifndef __CONSOLE__H__MX2
 #define __CONSOLE__H__MX2
 
-#include<iostream>
-#include<string>
-#include<sstream>
-#include<unordered_map>
-#include<memory>
-#include<vector>
-#include<functional>
-#include<mutex>
-#include<queue>
-#include<atomic>
-#include<condition_variable>
-#include<thread>
-#include"mx.hpp"
+#include "mx.hpp"
+#include <atomic>
+#include <condition_variable>
+#include <functional>
+#include <iostream>
+#include <memory>
+#include <mutex>
+#include <queue>
+#include <sstream>
+#include <string>
+#include <thread>
+#include <unordered_map>
+#include <vector>
 
 namespace gl {
     class GLWindow;
     class GLSprite;
     class ShaderProgram;
-}
+} // namespace gl
 
 #ifndef GL_UNSIGNED_INT
 typedef unsigned int GLuint;
 #endif
 
 #if defined(__EMSCRIPTEN__)
-    class EmscriptenMutex {
-    public:
-        void lock() {}
-        void unlock() {}
-    };
-    
-    class EmscriptenGuard {
-    public:
-        EmscriptenGuard(EmscriptenMutex&) {}
-    };
-    
-    #define THREAD_MUTEX EmscriptenMutex
-    #define THREAD_GUARD(mutex) EmscriptenGuard guard(mutex)
-    #define THREAD_ENABLED 0
+class EmscriptenMutex {
+  public:
+    void lock() {}
+    void unlock() {}
+};
+
+class EmscriptenGuard {
+  public:
+    EmscriptenGuard(EmscriptenMutex &) {}
+};
+
+#define THREAD_MUTEX EmscriptenMutex
+#define THREAD_GUARD(mutex) EmscriptenGuard guard(mutex)
+#define THREAD_ENABLED 0
 #else
-    #define THREAD_MUTEX std::recursive_mutex
-    #define THREAD_GUARD(mutex) std::lock_guard<std::recursive_mutex> guard(mutex)
-    #define THREAD_ENABLED 1
+#define THREAD_MUTEX std::recursive_mutex
+#define THREAD_GUARD(mutex) std::lock_guard<std::recursive_mutex> guard(mutex)
+#define THREAD_ENABLED 1
 #endif
 
-
 namespace console {
-    
+
     /**
      * @class CommandQueue
      * @brief Thread-safe FIFO queue for dispatching console commands to a worker thread.
@@ -70,27 +69,27 @@ namespace console {
      * background thread that invokes the associated callback.
      */
     class CommandQueue {
-    public:
+      public:
         /** @brief A single command entry with its text and completion callback. */
         struct Command {
-            std::string text;                                                          ///< Raw command string.
-            std::function<void(const std::string&, std::ostream&)> callback; ///< Handler invoked on the worker thread.
+            std::string text;                                                  ///< Raw command string.
+            std::function<void(const std::string &, std::ostream &)> callback; ///< Handler invoked on the worker thread.
         };
 
         /** @brief Push a command onto the queue (thread-safe). */
-        void push(const Command& cmd);
+        void push(const Command &cmd);
 
         /**
          * @brief Pop the next command (blocking on native, non-blocking on Emscripten).
          * @param cmd Output: the dequeued command.
          * @return @c true if a command was retrieved; @c false if the queue was shut down.
          */
-        bool pop(Command& cmd);
+        bool pop(Command &cmd);
 
         /** @brief Signal the worker to drain and stop. */
         void shutdown();
-        
-    private:
+
+      private:
         std::queue<Command> queue;
 #if THREAD_ENABLED
         std::mutex queue_mutex;
@@ -109,14 +108,14 @@ namespace console {
      * Recreate by calling load() after font changes.
      */
     class ConsoleChars {
-    public:
+      public:
         ConsoleChars();
         ~ConsoleChars();
 
-        ConsoleChars(const ConsoleChars&) = delete;
-        ConsoleChars& operator=(const ConsoleChars&) = delete;
-        ConsoleChars(ConsoleChars&&) = delete;
-        ConsoleChars& operator=(ConsoleChars&&) = delete;
+        ConsoleChars(const ConsoleChars &) = delete;
+        ConsoleChars &operator=(const ConsoleChars &) = delete;
+        ConsoleChars(ConsoleChars &&) = delete;
+        ConsoleChars &operator=(ConsoleChars &&) = delete;
 
         /**
          * @brief Load/reload the glyph cache from a font file.
@@ -130,14 +129,14 @@ namespace console {
         void clear();
 
         std::unordered_map<char, SDL_Surface *> characters; ///< Glyph surfaces keyed by char.
-    protected:
+      protected:
         std::unique_ptr<mx::Font> font;
     };
 
-    enum FadeState { 
-        FADE_NONE, 
-        FADE_IN, 
-        FADE_OUT 
+    enum FadeState {
+        FADE_NONE,
+        FADE_IN,
+        FADE_OUT
     };
 
     class GLConsole;
@@ -152,14 +151,14 @@ namespace console {
      * to a GL texture each frame.
      */
     class Console {
-    public:
+      public:
         Console();
         ~Console();
 
-        Console(const Console&) = delete;
-        Console& operator=(const Console&) = delete;
-        Console(Console&&) = delete;
-        Console& operator=(Console&&) = delete;
+        Console(const Console &) = delete;
+        Console &operator=(const Console &) = delete;
+        Console(Console &&) = delete;
+        Console &operator=(Console &&) = delete;
 
         friend class GLConsole;
         mx::mxUtil *util; ///< Pointer to asset-path utilities (not owned).
@@ -210,7 +209,7 @@ namespace console {
         std::string getText() const;
 
         /** @brief Replace the input-line text. */
-        void setText(const std::string& text);
+        void setText(const std::string &text);
 
         /** @return Current caret position within the input line. */
         size_t getCursorPos() const;
@@ -238,29 +237,29 @@ namespace console {
         void setCallback(gl::GLWindow *window,
                          std::function<bool(gl::GLWindow *win, const std::vector<std::string> &)> callback);
 
-        void moveCursorLeft();   ///< Move caret one character to the left.
-        void moveCursorRight();  ///< Move caret one character to the right.
-        void moveCursorHome();   ///< Move caret to start of input line.
-        void moveCursorEnd();    ///< Move caret to end of input line.
-        void moveHistoryUp();    ///< Recall the previous command from history.
-        void moveHistoryDown();  ///< Move forward through command history.
+        void moveCursorLeft();          ///< Move caret one character to the left.
+        void moveCursorRight();         ///< Move caret one character to the right.
+        void moveCursorHome();          ///< Move caret to start of input line.
+        void moveCursorEnd();           ///< Move caret to end of input line.
+        void moveHistoryUp();           ///< Recall the previous command from history.
+        void moveHistoryDown();         ///< Move forward through command history.
         void updateInputScrollOffset(); ///< Recalculate horizontal scroll for long input lines.
 
         int getHeight() const { return console_rect.h; } ///< @return Pixel height of the console area.
-        int getWidth()  const { return console_rect.w; } ///< @return Pixel width of the console area.
+        int getWidth() const { return console_rect.w; }  ///< @return Pixel width of the console area.
 
-        std::string promptText = "$ "; ///< Prompt string displayed before the input line.
-        Uint32 cursorBlinkTime = 0;    ///< SDL_GetTicks() value of the last cursor blink toggle.
-        bool cursorVisible = true;     ///< Whether the cursor is currently shown.
-        gl::GLWindow *window = nullptr;///< Owning GL window (weak reference).
+        std::string promptText = "$ ";  ///< Prompt string displayed before the input line.
+        Uint32 cursorBlinkTime = 0;     ///< SDL_GetTicks() value of the last cursor blink toggle.
+        bool cursorVisible = true;      ///< Whether the cursor is currently shown.
+        gl::GLWindow *window = nullptr; ///< Owning GL window (weak reference).
 
-        void startFadeIn();  ///< Begin a fade-in animation.
-        void startFadeOut(); ///< Begin a fade-out animation.
-        bool isFading()   const { return fadeState != FADE_NONE; } ///< @return @c true while animating.
-        bool isVisible()  const { return alpha > 0; }               ///< @return @c true if at least partially visible.
-        void show();  ///< Make the console fully visible immediately.
-        void hide();  ///< Make the console invisible immediately.
-        void reload(); ///< Reload the glyph cache with the current font settings.
+        void startFadeIn();                                      ///< Begin a fade-in animation.
+        void startFadeOut();                                     ///< Begin a fade-out animation.
+        bool isFading() const { return fadeState != FADE_NONE; } ///< @return @c true while animating.
+        bool isVisible() const { return alpha > 0; }             ///< @return @c true if at least partially visible.
+        void show();                                             ///< Make the console fully visible immediately.
+        void hide();                                             ///< Make the console invisible immediately.
+        void reload();                                           ///< Reload the glyph cache with the current font settings.
 
         /** @return @c true if the glyph cache has been populated. */
         bool loaded() const {
@@ -289,9 +288,9 @@ namespace console {
          */
         void setInputCallback(std::function<int(gl::GLWindow *win, const std::string &)> callback);
 
-        std::string inputBuffer; ///< Current content of the input line (mirrors internal state).
-        bool needsRedraw = true; ///< Set to trigger an SDL_Surface redraw.
-        bool needsReflow = true; ///< Set to trigger line-wrapping recalculation.
+        std::string inputBuffer;         ///< Current content of the input line (mirrors internal state).
+        bool needsRedraw = true;         ///< Set to trigger an SDL_Surface redraw.
+        bool needsReflow = true;         ///< Set to trigger line-wrapping recalculation.
         FadeState fadeState = FADE_NONE; ///< Current fade animation state.
 
         /** @brief Process pending messages from the thread-safe print queue (call each frame). */
@@ -302,9 +301,9 @@ namespace console {
         void processCommandQueue();
 #endif
 
-        void scrollUp();    ///< Scroll output up by one line.
-        void scrollDown();  ///< Scroll output down by one line.
-        void resetScroll(); ///< Reset scroll to the bottom.
+        void scrollUp();       ///< Scroll output up by one line.
+        void scrollDown();     ///< Scroll output down by one line.
+        void resetScroll();    ///< Reset scroll to the bottom.
         void scrollPageUp();   ///< Scroll up by one page.
         void scrollPageDown(); ///< Scroll down by one page.
 
@@ -324,7 +323,7 @@ namespace console {
         void beginScrollDrag(int mouseY);  ///< Start a scrollbar thumb drag.
         void updateScrollDrag(int mouseY); ///< Continue a scrollbar thumb drag.
         void endScrollDrag();              ///< Release the scrollbar thumb.
-    protected:
+      protected:
         mutable THREAD_MUTEX console_mutex;
         std::queue<std::string> message_queue;
         ConsoleChars c_chars;
@@ -339,35 +338,35 @@ namespace console {
         size_t cursorPos = 0;
         size_t stopPosition = 0;
         size_t inputCursorPos = 0;
-        int cursorX = 0;        
-        int cursorY = 0;        
-        bool showInput = true;  
+        int cursorX = 0;
+        int cursorY = 0;
+        bool showInput = true;
         void checkScroll();
         void updateCursorPosition();
         void checkForLineWrap();
-        std::function<bool(gl::GLWindow *win, const std::vector<std::string> &)> callback = nullptr;     
+        std::function<bool(gl::GLWindow *win, const std::vector<std::string> &)> callback = nullptr;
         std::function<int(gl::GLWindow *window, const std::string &)> callbackEnter = nullptr;
         bool callbackSet = false;
-        std::vector<std::string> commandHistory;    
-        int historyIndex = -1;                      
-        std::string tempBuffer;   
-        unsigned char alpha = 188;                  
+        std::vector<std::string> commandHistory;
+        int historyIndex = -1;
+        std::string tempBuffer;
+        unsigned char alpha = 188;
         Uint32 fadeStartTime = 0;
         unsigned int fadeDuration = 500;
-        int inputScrollOffset = 0; 
+        int inputScrollOffset = 0;
         struct TextLine {
-            std::string text;       
-            size_t startPos;        
-            size_t length;          
+            std::string text;
+            size_t startPos;
+            size_t length;
         };
-        std::vector<TextLine> lines;  
+        std::vector<TextLine> lines;
         bool inMultilineMode;
         int braceCount;
         std::string multilineBuffer;
         std::string originalPrompt;
-        std::string continuationPrompt; 
-        void processMultilineInput(const std::string& cmd);
-        bool checkBraceBalance(const std::string& text);  
+        std::string continuationPrompt;
+        void processMultilineInput(const std::string &cmd);
+        bool checkBraceBalance(const std::string &text);
         void calculateLines();
         std::unique_ptr<std::jthread> worker_thread;
         CommandQueue command_queue;
@@ -375,13 +374,13 @@ namespace console {
         void worker_thread_func();
         bool enterCallbackSet = false;
         void clearText();
-        
-        int visibleLineCount = 0;            
-        int scrollOffset = 0;                
+
+        int visibleLineCount = 0;
+        int scrollOffset = 0;
         bool scrollDragging = false;
         int scrollDragStartY = 0;
         int scrollDragStartOffset = 0;
-        SDL_Rect scrollbarRect = {0, 0, 0, 0}; 
+        SDL_Rect scrollbarRect = {0, 0, 0, 0};
     };
 
     /**
@@ -394,14 +393,14 @@ namespace console {
      * terminal into any GLWindow-based application.
      */
     class GLConsole {
-    public:
+      public:
         GLConsole();
         ~GLConsole();
 
-        GLConsole(const GLConsole&) = delete;
-        GLConsole& operator=(const GLConsole&) = delete;
-        GLConsole(GLConsole&&) = delete;
-        GLConsole& operator=(GLConsole&&) = delete;
+        GLConsole(const GLConsole &) = delete;
+        GLConsole &operator=(const GLConsole &) = delete;
+        GLConsole(GLConsole &&) = delete;
+        GLConsole &operator=(GLConsole &&) = delete;
 
         /** @brief Destroy the GL texture and sprite resources. */
         void release();
@@ -481,7 +480,7 @@ namespace console {
         /** @brief Change font size/colour (propagates to inner Console). */
         void setTextAttrib(const int size, const SDL_Color &col);
 
-        int getWidth()  const; ///< @return Console pixel width.
+        int getWidth() const;  ///< @return Console pixel width.
         int getHeight() const; ///< @return Console pixel height.
 
         /** @brief Update the inner Console's window pointer. */
@@ -512,9 +511,10 @@ namespace console {
          * @param format printf format string.
          * @param args   Format arguments.
          */
-        template<typename... Args>
+        template <typename... Args>
         void printf(const char *format, Args... args) {
-            if (format == nullptr) return;
+            if (format == nullptr)
+                return;
             int size = std::snprintf(nullptr, 0, format, args...);
             if (size < 0) {
                 print("[printf formatting error]\n");
@@ -522,7 +522,7 @@ namespace console {
             }
             std::vector<char> buffer(static_cast<size_t>(size) + 1);
             std::snprintf(buffer.data(), buffer.size(), format, args...);
-            print(std::string(buffer.data())); 
+            print(std::string(buffer.data()));
         }
 
         /** @return Stream reference to the inner output buffer. */
@@ -535,7 +535,7 @@ namespace console {
         void process_message_queue();
 
         bool isVisible() const { return console.isVisible(); } ///< @return @c true if the console is at least partially visible.
-        bool isFading()  const { return console.isFading();  }  ///< @return @c true while a fade animation is running.
+        bool isFading() const { return console.isFading(); }   ///< @return @c true while a fade animation is running.
 
         /** @brief Set an absolute height override for the stretch mode. */
         void setStretchHeight(int value);
@@ -546,10 +546,12 @@ namespace console {
         /** @brief Drain the command queue and process pending messages (call each frame). */
         void refresh() {
 #if defined(__EMSCRIPTEN__)
-        console.processCommandQueue();
+            console.processCommandQueue();
 #endif
-        console.process_message_queue(); }
-    protected:
+            console.process_message_queue();
+        }
+
+      protected:
         mutable std::mutex gl_mutex;
         Console console;
         bool stretch_value = true;
@@ -563,9 +565,10 @@ namespace console {
         std::string font;
         int font_size = 16;
         SDL_Color color = {255, 255, 255, 255};
-    private:
+
+      private:
         std::istringstream inputStream;
     };
-}
+} // namespace console
 
 #endif

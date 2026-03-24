@@ -8,11 +8,11 @@
 #ifndef __WRAPPER_H__
 #define __WRAPPER_H__
 
-#include<iostream>
-#include<optional>
+#include "exception.hpp"
 #include "tee_stream.hpp"
-#include<format>
-#include"exception.hpp"
+#include <format>
+#include <iostream>
+#include <optional>
 
 namespace mx {
 
@@ -32,9 +32,9 @@ namespace mx {
      *
      * @tparam T A raw pointer type (must satisfy WrapType concept).
      */
-    template<WrapType T>
+    template <WrapType T>
     class Wrapper {
-    public:
+      public:
         /** @brief Default constructor — initialises to nullopt (no value). */
         Wrapper() : type{std::nullopt} {}
 
@@ -95,7 +95,7 @@ namespace mx {
          * @return @c true if a non-null pointer is stored.
          */
         bool has_value() const {
-            if(type.has_value()) 
+            if (type.has_value())
                 return true;
 
             return false;
@@ -116,7 +116,7 @@ namespace mx {
          * @throws mx::Exception if the value is null or absent.
          */
         T expect(const std::string &msg) {
-            if(type.has_value() && type.value() != nullptr)
+            if (type.has_value() && type.value() != nullptr)
                 return type.value();
 
             throw Exception(std::format("panic: {}", msg));
@@ -128,7 +128,7 @@ namespace mx {
          * @throws mx::Exception if the value is null or absent.
          */
         T unwrap() {
-            if(type.has_value() && type.value() != nullptr)
+            if (type.has_value() && type.value() != nullptr)
                 return type.value();
 
             throw Exception("mx: panic, Wrapper Error: type is null...");
@@ -141,14 +141,14 @@ namespace mx {
          * @return The stored pointer, or @p value if null/absent.
          */
         T unwrap_or(T value) {
-            if(type.has_value() && type.value() != nullptr)
+            if (type.has_value() && type.value() != nullptr)
                 return type.value();
             return value;
         }
 
-    private:
+      private:
         std::optional<T> type; ///< Internal optional storage.
     };
-}
+} // namespace mx
 
 #endif

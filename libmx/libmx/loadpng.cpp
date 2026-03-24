@@ -2,25 +2,25 @@
  * @file loadpng.cpp
  * @brief Implementation of png::LoadPNG, png::SavePNG, and png::SavePNG_RGBA utilities.
  */
-#include"loadpng.hpp"
-#include<png.h>
-#include"SDL.h"
-#include<cstdio>
-#include<cstdlib>
-#include<cctype>
-#include<string>
-#include<iostream>
-#include<algorithm>
-#include"tee_stream.hpp"
+#include "loadpng.hpp"
+#include "SDL.h"
+#include "tee_stream.hpp"
+#include <algorithm>
+#include <cctype>
+#include <cstdio>
+#include <cstdlib>
+#include <iostream>
+#include <png.h>
+#include <string>
 
 #if defined(_MSC_VER)
-    #if _MSC_VER >= 1930
-    #define SAFE_FUNC
-    #endif
+#if _MSC_VER >= 1930
+#define SAFE_FUNC
+#endif
 #endif
 
 namespace png {
-    SDL_Surface* LoadPNG(const char* file) {
+    SDL_Surface *LoadPNG(const char *file) {
         auto chkString = [](const std::string &filename) -> bool {
             std::string lwr;
             lwr.reserve(filename.length());
@@ -28,23 +28,23 @@ namespace png {
             return lwr.ends_with(".png");
         };
 
-        if(chkString(file) == false)
+        if (chkString(file) == false)
             return NULL;
 
-        #ifdef SAFE_FUNC
-        FILE* fp = NULL;
+#ifdef SAFE_FUNC
+        FILE *fp = NULL;
         errno_t err = fopen_s(&fp, file, "rb");
         if (!(err == 0 && file != NULL)) {
             mx::system_err << "Failed to open png file: " << file << "\n";
             return nullptr;
         }
-        #else
-        FILE* fp = fopen(file, "rb");
+#else
+        FILE *fp = fopen(file, "rb");
         if (!fp) {
             mx::system_err << "Failed to open file: " << file << "\n";
             return nullptr;
         }
-        #endif
+#endif
         png_structp png = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
         if (!png) {
             fclose(fp);
@@ -97,37 +97,37 @@ namespace png {
         int pitch = png_get_rowbytes(png, info);
         Uint32 rmask, gmask, bmask, amask;
 
-    #if SDL_BYTEORDER == SDL_BIG_ENDIAN
+#if SDL_BYTEORDER == SDL_BIG_ENDIAN
         rmask = 0xFF000000;
         gmask = 0x00FF0000;
         bmask = 0x0000FF00;
         amask = 0x000000FF;
-    #else
+#else
         rmask = 0x000000FF;
         gmask = 0x0000FF00;
         bmask = 0x00FF0000;
         amask = 0xFF000000;
-    #endif
+#endif
 
-        SDL_Surface* surface = SDL_CreateRGBSurface(0, width, height, 32, rmask, gmask, bmask, amask);
+        SDL_Surface *surface = SDL_CreateRGBSurface(0, width, height, 32, rmask, gmask, bmask, amask);
         if (!surface) {
             png_destroy_read_struct(&png, &info, nullptr);
             fclose(fp);
             return nullptr;
         }
 
-        png_bytep* row_pointers = (png_bytep*) malloc(sizeof(png_bytep) * height);
-        if(row_pointers == NULL) {
+        png_bytep *row_pointers = (png_bytep *)malloc(sizeof(png_bytep) * height);
+        if (row_pointers == NULL) {
             fprintf(stderr, "Error memory allocation error.\n");
             if (surface)
                 SDL_FreeSurface(surface);
-            if (png && info) 
+            if (png && info)
                 png_destroy_read_struct(&png, &info, nullptr);
-            if (fp) 
+            if (fp)
                 fclose(fp);
             return NULL;
         }
-        Uint8* pixels = (Uint8*) surface->pixels;
+        Uint8 *pixels = (Uint8 *)surface->pixels;
 
         for (int y = 0; y < height; ++y) {
             row_pointers[y] = pixels + y * pitch;
@@ -142,11 +142,10 @@ namespace png {
         return surface;
     }
 
-
-    bool SavePNG(SDL_Texture* texture, SDL_Renderer* renderer, const char* filename) {
+    bool SavePNG(SDL_Texture *texture, SDL_Renderer *renderer, const char *filename) {
         int width, height;
         SDL_QueryTexture(texture, nullptr, nullptr, &width, &height);
-        SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormat(0, width, height, 32, SDL_PIXELFORMAT_RGBA32);
+        SDL_Surface *surface = SDL_CreateRGBSurfaceWithFormat(0, width, height, 32, SDL_PIXELFORMAT_RGBA32);
         if (!surface) {
             mx::system_err << "mx: Failed to create SDL_Surface: " << SDL_GetError() << "\n";
             return false;
@@ -160,8 +159,8 @@ namespace png {
             SDL_FreeSurface(surface);
             return false;
         }
-        SDL_SetRenderTarget(renderer, nullptr); 
-        FILE* fp = fopen(filename, "wb");
+        SDL_SetRenderTarget(renderer, nullptr);
+        FILE *fp = fopen(filename, "wb");
         if (!fp) {
             mx::system_err << "mx: Failed to open file for writing: " << filename << "\n";
             SDL_FreeSurface(surface);
@@ -195,11 +194,11 @@ namespace png {
 
         png_init_io(png, fp);
         png_set_IHDR(png, info, surface->w, surface->h, 8, PNG_COLOR_TYPE_RGBA,
-                    PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+                     PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
         png_write_info(png, info);
 
-        uint8_t* pixels = static_cast<uint8_t*>(surface->pixels);
-        png_bytep* row_pointers = new png_bytep[surface->h];
+        uint8_t *pixels = static_cast<uint8_t *>(surface->pixels);
+        png_bytep *row_pointers = new png_bytep[surface->h];
         for (int y = 0; y < surface->h; ++y) {
             row_pointers[y] = pixels + y * surface->pitch;
         }
@@ -217,7 +216,7 @@ namespace png {
 
     bool SavePNG_RGBA(const char *filename, void *buffer, int w, int h) {
         int pitch = w * 4;
-        FILE* fp = fopen(filename, "wb");
+        FILE *fp = fopen(filename, "wb");
         if (!fp) {
             mx::system_err << "mx: Failed to open file for writing: " << filename << "\n";
             return false;
@@ -243,11 +242,11 @@ namespace png {
         }
         png_init_io(png, fp);
         png_set_IHDR(png, info, w, h, 8, PNG_COLOR_TYPE_RGBA,
-                    PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+                     PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
         png_write_info(png, info);
 
-        uint8_t* pixels = static_cast<uint8_t*>(buffer);
-        png_bytep* row_pointers = new png_bytep[h];
+        uint8_t *pixels = static_cast<uint8_t *>(buffer);
+        png_bytep *row_pointers = new png_bytep[h];
         for (int y = 0; y < h; ++y) {
             row_pointers[y] = pixels + y * pitch;
         }
@@ -260,4 +259,4 @@ namespace png {
         fclose(fp);
         return true;
     }
-}
+} // namespace png

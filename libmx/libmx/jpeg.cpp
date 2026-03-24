@@ -3,16 +3,16 @@
  * @brief Implementation of jpeg::LoadJPEG and jpeg::SaveJPEG utilities.
  */
 #ifdef __EMSCRIPTEN__
-#include"config.hpp"
+#include "config.hpp"
 #else
-#include"config.h"
+#include "config.h"
 #endif
 
 #ifdef WITH_JPEG
-#include <stdio.h>
+#include "SDL.h"
 #include <jpeglib.h>
 #include <setjmp.h>
-#include "SDL.h"
+#include <stdio.h>
 
 namespace jpeg {
 
@@ -31,7 +31,8 @@ namespace jpeg {
 
     SDL_Surface *LoadJPEG(const char *filename) {
         FILE *file = fopen(filename, "rb");
-        if (!file) return NULL;
+        if (!file)
+            return NULL;
 
         struct jpeg_decompress_struct cinfo;
         struct my_error_mgr jerr;
@@ -87,9 +88,8 @@ namespace jpeg {
 
         SDL_Texture *old = SDL_GetRenderTarget(renderer);
         SDL_SetRenderTarget(renderer, texture);
-      
 
-        SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormat(0, width, height, 24, SDL_PIXELFORMAT_RGB24);
+        SDL_Surface *surface = SDL_CreateRGBSurfaceWithFormat(0, width, height, 24, SDL_PIXELFORMAT_RGB24);
         if (!surface) {
             return false;
         }
@@ -104,7 +104,7 @@ namespace jpeg {
         cinfo.err = jpeg_std_error(&jerr);
         jpeg_create_compress(&cinfo);
 
-        FILE* outfile = fopen(filename, "wb");
+        FILE *outfile = fopen(filename, "wb");
         if (!outfile) {
             SDL_FreeSurface(surface);
             return false;
@@ -124,7 +124,7 @@ namespace jpeg {
 
         JSAMPROW row_pointer;
         while (cinfo.next_scanline < cinfo.image_height) {
-            row_pointer = (JSAMPROW)((Uint8*)surface->pixels + cinfo.next_scanline * surface->pitch);
+            row_pointer = (JSAMPROW)((Uint8 *)surface->pixels + cinfo.next_scanline * surface->pitch);
             jpeg_write_scanlines(&cinfo, &row_pointer, 1);
         }
         jpeg_finish_compress(&cinfo);
@@ -134,5 +134,5 @@ namespace jpeg {
         SDL_SetRenderTarget(renderer, old);
         return true;
     }
-}
+} // namespace jpeg
 #endif

@@ -15,22 +15,22 @@
 #define GL_H__
 
 #ifdef __EMSCRIPTEN__
-#include"config.hpp"
+#include "config.hpp"
 #else
-#include"config.h"
+#include "config.h"
 #endif
 
 #ifdef WITH_GL
 #include "mx.hpp"
-#include<string>
-#include<memory>
+#include <memory>
+#include <string>
 
 #ifdef __EMSCRIPTEN__
-#include <emscripten/emscripten.h>
-#include <GLES3/gl3.h>
-#include<emscripten/html5.h>
 #include "glm.hpp"
 #include "gtc/type_ptr.hpp"
+#include <GLES3/gl3.h>
+#include <emscripten/emscripten.h>
+#include <emscripten/html5.h>
 #else
 #include <glad/glad.h>
 #include <glm/glm.hpp>
@@ -38,35 +38,36 @@
 #include <glm/gtc/type_ptr.hpp>
 #endif
 
-#include"console.hpp"
+#include "console.hpp"
 
 namespace gl {
 
     extern const char *vSource; ///< Default vertex shader source.
     extern const char *fSource; ///< Default fragment shader source.
 
-/**
- * @class ShaderProgram
- * @brief GLSL shader program wrapper (shared-ownership).
- *
- * Compiles a vertex and fragment shader, links them into a GL program, and
- * exposes uniform-upload helpers.  Uses shared_ptr internally so multiple
- * copies refer to the same underlying GL object; the program is deleted when
- * the last copy is destroyed.
- */
+    /**
+     * @class ShaderProgram
+     * @brief GLSL shader program wrapper (shared-ownership).
+     *
+     * Compiles a vertex and fragment shader, links them into a GL program, and
+     * exposes uniform-upload helpers.  Uses shared_ptr internally so multiple
+     * copies refer to the same underlying GL object; the program is deleted when
+     * the last copy is destroyed.
+     */
     class ShaderProgram {
-    private:
+      private:
         struct SharedState {
             GLuint vertex_shader = 0;
             GLuint fragment_shader = 0;
             GLuint shader_id = 0;
             std::string name_;
             bool silent_ = false;
-            
-            ~SharedState();  
+
+            ~SharedState();
         };
         std::shared_ptr<SharedState> state;
-    public:
+
+      public:
         /** @brief Default constructor — allocates shared state, no program compiled yet. */
         ShaderProgram();
 
@@ -75,11 +76,11 @@ namespace gl {
          * @param id Pre-compiled GL program identifier.
          */
         ShaderProgram(GLuint id);
-        ~ShaderProgram() = default;  
-        ShaderProgram(const ShaderProgram&) = default;
-        ShaderProgram& operator=(const ShaderProgram&) = default;    
-        ShaderProgram(ShaderProgram&&) noexcept = default;
-        ShaderProgram& operator=(ShaderProgram&&) noexcept = default;
+        ~ShaderProgram() = default;
+        ShaderProgram(const ShaderProgram &) = default;
+        ShaderProgram &operator=(const ShaderProgram &) = default;
+        ShaderProgram(ShaderProgram &&) noexcept = default;
+        ShaderProgram &operator=(ShaderProgram &&) noexcept = default;
 
         /** @brief Release the underlying GL program (decrements shared count). */
         void release();
@@ -162,24 +163,25 @@ namespace gl {
          * @param value glm::mat4 value.
          */
         void setUniform(const std::string &name, const glm::mat4 &value);
-    private:
+
+      private:
         GLuint createProgram(const char *vshaderSource, const char *fshaderSource);
         GLuint createProgramFromFile(const std::string &vert, const std::string &frag);
         int printShaderLog(GLuint shader);
         void printProgramLog(int p);
         bool checkError();
     };
-    
-/**
- * @class GLText
- * @brief Render SDL_ttf text into an OpenGL texture and display it on screen.
- *
- * Manages a simple text shader and provides helpers that rasterise a string
- * to an SDL_Surface, upload it as an OpenGL texture, and draw a screen-space
- * quad at the specified position.
- */
+
+    /**
+     * @class GLText
+     * @brief Render SDL_ttf text into an OpenGL texture and display it on screen.
+     *
+     * Manages a simple text shader and provides helpers that rasterise a string
+     * to an SDL_Surface, upload it as an OpenGL texture, and draw a screen-space
+     * quad at the specified position.
+     */
     class GLText {
-    public:
+      public:
         /** @brief Default constructor. */
         GLText();
 
@@ -237,32 +239,33 @@ namespace gl {
          * @param col SDL_Color.
          */
         void setColor(SDL_Color col);
-    private:
-        ShaderProgram textShader; ///< Internal text quad shader.
-        SDL_Color color = {255,255,255,255}; ///< Current text colour.
-        int w = 0, h = 0; ///< Viewport dimensions.
+
+      private:
+        ShaderProgram textShader;               ///< Internal text quad shader.
+        SDL_Color color = {255, 255, 255, 255}; ///< Current text colour.
+        int w = 0, h = 0;                       ///< Viewport dimensions.
     };
 
-/**
- * @class GLSprite
- * @brief A textured screen-space quad drawn with an OpenGL shader.
- *
- * Manages a VAO/VBO pair that holds the quad geometry and a GL texture.
- * Supports loading from file, drawing at arbitrary positions/sizes, and
- * updating the texture from an SDL_Surface or raw pixel buffer at runtime.
- * Copy and move are disabled; create on the heap or as a member.
- */
+    /**
+     * @class GLSprite
+     * @brief A textured screen-space quad drawn with an OpenGL shader.
+     *
+     * Manages a VAO/VBO pair that holds the quad geometry and a GL texture.
+     * Supports loading from file, drawing at arbitrary positions/sizes, and
+     * updating the texture from an SDL_Surface or raw pixel buffer at runtime.
+     * Copy and move are disabled; create on the heap or as a member.
+     */
     class GLSprite {
-    public:
+      public:
         /** @brief Default constructor. */
         GLSprite();
         /** @brief Destructor — releases GL buffers and texture. */
         ~GLSprite();
 
-        GLSprite(const GLSprite&) = delete;
-        GLSprite& operator=(const GLSprite&) = delete;
-        GLSprite(GLSprite&&) = delete;
-        GLSprite& operator=(GLSprite&&) = delete;
+        GLSprite(const GLSprite &) = delete;
+        GLSprite &operator=(const GLSprite &) = delete;
+        GLSprite(GLSprite &&) = delete;
+        GLSprite &operator=(GLSprite &&) = delete;
 
         /** @brief Free all GL resources associated with this sprite. */
         void release();
@@ -285,7 +288,7 @@ namespace gl {
          * @tparam ShaderT Any type exposing id() -> GLuint.
          * @param program  Pointer to the shader (nullptr clears the binding).
          */
-        template<typename ShaderT>
+        template <typename ShaderT>
         void setShader(ShaderT *program) {
             active_shader_id = program ? program->id() : 0;
         }
@@ -300,7 +303,7 @@ namespace gl {
          * @param textWidth   Texture width.
          * @param textHeight  Texture height.
          */
-        template<typename ShaderT>
+        template <typename ShaderT>
         void initWithTexture(ShaderT *program, GLuint texture, float x, float y, int textWidth, int textHeight) {
             active_shader_id = program ? program->id() : 0;
             initWithTextureImpl(texture, x, y, textWidth, textHeight);
@@ -316,7 +319,7 @@ namespace gl {
          * @param textWidth   Display width.
          * @param textHeight  Display height.
          */
-        template<typename ShaderT>
+        template <typename ShaderT>
         void loadTexture(ShaderT *shader, const std::string &tex, float x, float y, int textWidth, int textHeight) {
             active_shader_id = shader ? shader->id() : 0;
             loadTextureImpl(tex, x, y, textWidth, textHeight);
@@ -330,7 +333,7 @@ namespace gl {
          * @param x        Display X.
          * @param y        Display Y.
          */
-        template<typename ShaderT>
+        template <typename ShaderT>
         void loadTexture(ShaderT *shader, const std::string &tex, float x, float y) {
             active_shader_id = shader ? shader->id() : 0;
             loadTextureImpl(tex, x, y);
@@ -381,7 +384,7 @@ namespace gl {
 
         int width = 0;  ///< Texture pixel width.
         int height = 0; ///< Texture pixel height.
-    private:
+      private:
         void initWithTextureImpl(GLuint texture, float x, float y, int textWidth, int textHeight);
         void loadTextureImpl(const std::string &tex, float x, float y, int textWidth, int textHeight);
         void loadTextureImpl(const std::string &tex, float x, float y);
@@ -395,25 +398,27 @@ namespace gl {
     };
 
     /** @brief OpenGL mode: desktop GL or OpenGL ES. */
-    enum class GLMode  { DESKTOP, ES };
+    enum class GLMode { DESKTOP,
+                        ES };
 
     class GLObject;
 
-/**
- * @class GLWindow
- * @brief SDL2 + OpenGL/ES window with event loop and console support.
- *
- * Creates an SDL2 window with an OpenGL (or GLES) context.  Derived classes
- * implement event() and draw().  An optional GLObject can be attached to
- * delegate rendering.  A built-in GLConsole can be activated for in-app
- * debugging.
- */
+    /**
+     * @class GLWindow
+     * @brief SDL2 + OpenGL/ES window with event loop and console support.
+     *
+     * Creates an SDL2 window with an OpenGL (or GLES) context.  Derived classes
+     * implement event() and draw().  An optional GLObject can be attached to
+     * delegate rendering.  A built-in GLConsole can be activated for in-app
+     * debugging.
+     */
     class GLWindow {
-        private:
+      private:
         GLMode gl_mode;
-    public:
+
+      public:
 #ifdef __EMSCRIPTEN__
-        EMSCRIPTEN_WEBGL_CONTEXT_HANDLE webglContext = 0;    
+        EMSCRIPTEN_WEBGL_CONTEXT_HANDLE webglContext = 0;
         void restoreContext();
 #endif
         /**
@@ -424,7 +429,7 @@ namespace gl {
          * @param resize_ Allow window resizing if @c true.
          * @param mode   GL mode (DESKTOP or ES).
          */
-        GLWindow(const std::string &text, int width, int height, bool resize_ = true, GLMode mode = GLMode::DESKTOP) : gl_mode(mode), glContext{nullptr}, window{nullptr} { 
+        GLWindow(const std::string &text, int width, int height, bool resize_ = true, GLMode mode = GLMode::DESKTOP) : gl_mode(mode), glContext{nullptr}, window{nullptr} {
             initGL(text, width, height, resize_);
         }
 
@@ -439,10 +444,10 @@ namespace gl {
         /** @brief Destructor — destroys the GL context and SDL window. */
         virtual ~GLWindow();
 
-        GLWindow(const GLWindow&) = delete;
-        GLWindow& operator=(const GLWindow&) = delete;
-        GLWindow(GLWindow&&) = delete;
-        GLWindow& operator=(GLWindow&&) = delete;
+        GLWindow(const GLWindow &) = delete;
+        GLWindow &operator=(const GLWindow &) = delete;
+        GLWindow(GLWindow &&) = delete;
+        GLWindow &operator=(GLWindow &&) = delete;
 
         /**
          * @brief Initialise the GL context and SDL window.
@@ -571,10 +576,11 @@ namespace gl {
 #ifdef WITH_MIXER
         mx::Mixer mixer;
 #endif
-        GLText text;  
+        GLText text;
         bool console_visible = false;
         bool console_active = false;
-    private:
+
+      private:
         SDL_GLContext glContext;
         SDL_Window *window = nullptr;
         bool active = false;
@@ -582,16 +588,16 @@ namespace gl {
         bool hide_console = false;
     };
 
-/**
- * @class GLObject
- * @brief Abstract interface for scene objects managed by a GLWindow.
- *
- * Derived classes implement load(), draw(), event(), and optionally resize()
- * to participate in the GLWindow render/event loop.  Attach an instance via
- * GLWindow::setObject().
- */
+    /**
+     * @class GLObject
+     * @brief Abstract interface for scene objects managed by a GLWindow.
+     *
+     * Derived classes implement load(), draw(), event(), and optionally resize()
+     * to participate in the GLWindow render/event loop.  Attach an instance via
+     * GLWindow::setObject().
+     */
     class GLObject {
-    public:
+      public:
         GLObject() = default;
         virtual ~GLObject() = default;
 
@@ -671,6 +677,6 @@ namespace gl {
      * @return Newly allocated surface (caller owns it).
      */
     SDL_Surface *createSurface(int w, int h);
-}
+} // namespace gl
 #endif
 #endif

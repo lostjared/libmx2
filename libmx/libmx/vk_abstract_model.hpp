@@ -9,34 +9,34 @@
 #ifndef __ABSTRACT__
 #define __ABSTRACT__
 
-#include"vk.hpp"
-#include"vk_model.hpp"
+#include "vk.hpp"
+#include "vk_model.hpp"
 
 namespace mx {
 
-/**
- * @class VKAbstractModel
- * @brief Convenience wrapper that owns an MXModel plus its Vulkan textures,
- *        UBOs, and descriptor sets.
- *
- * Typical usage:
- * @code
- *   VKAbstractModel mdl;
- *   mdl.load(win, "mesh.obj", "textures.tex", "assets", 1.0f);
- *   // each frame:
- *   mdl.updateUBO(win, imageIndex, ubo);
- *   // on resize:
- *   mdl.resize(win);
- *   // on shutdown:
- *   mdl.cleanup(win);
- * @endcode
- */
+    /**
+     * @class VKAbstractModel
+     * @brief Convenience wrapper that owns an MXModel plus its Vulkan textures,
+     *        UBOs, and descriptor sets.
+     *
+     * Typical usage:
+     * @code
+     *   VKAbstractModel mdl;
+     *   mdl.load(win, "mesh.obj", "textures.tex", "assets", 1.0f);
+     *   // each frame:
+     *   mdl.updateUBO(win, imageIndex, ubo);
+     *   // on resize:
+     *   mdl.resize(win);
+     *   // on shutdown:
+     *   mdl.cleanup(win);
+     * @endcode
+     */
     class VKAbstractModel {
-    public:
+      public:
         /** @brief Default constructor. */
         VKAbstractModel() = default;
         VKAbstractModel(const VKAbstractModel &) = delete;
-        VKAbstractModel(VKAbstractModel&&) = delete;
+        VKAbstractModel(VKAbstractModel &&) = delete;
         VKAbstractModel &operator=(const VKAbstractModel &) = delete;
         VKAbstractModel &operator=(VKAbstractModel &&) = delete;
 
@@ -89,17 +89,17 @@ namespace mx {
          * @brief Vulkan image, memory, and view for one loaded texture.
          */
         struct TexEntry {
-            VkImage        image  = VK_NULL_HANDLE; ///< Vulkan image handle.
+            VkImage image = VK_NULL_HANDLE;         ///< Vulkan image handle.
             VkDeviceMemory memory = VK_NULL_HANDLE; ///< Device memory backing the image.
-            VkImageView    view   = VK_NULL_HANDLE; ///< Image view for shader sampling.
-            uint32_t       w = 0, h = 0;            ///< Texture dimensions in pixels.
+            VkImageView view = VK_NULL_HANDLE;      ///< Image view for shader sampling.
+            uint32_t w = 0, h = 0;                  ///< Texture dimensions in pixels.
         };
 
-        mx::MXModel obj;                                   ///< Underlying mesh data and GPU buffers.
-        std::vector<TexEntry> modelTextures;                ///< Per-sub-mesh texture entries.
-        std::vector<VkDescriptorSet> modelDescriptorSets;   ///< Descriptor sets (frames x textures).
-        glm::vec3 modelCenterOffset;                        ///< Translation to centre the bounding box at origin.
-        float modelRenderScale;                             ///< Scale factor normalising model extent.
+        mx::MXModel obj;                                  ///< Underlying mesh data and GPU buffers.
+        std::vector<TexEntry> modelTextures;              ///< Per-sub-mesh texture entries.
+        std::vector<VkDescriptorSet> modelDescriptorSets; ///< Descriptor sets (frames x textures).
+        glm::vec3 modelCenterOffset;                      ///< Translation to centre the bounding box at origin.
+        float modelRenderScale;                           ///< Scale factor normalising model extent.
 
         /**
          * @brief Get the per-model pipeline, or VK_NULL_HANDLE if using the window default.
@@ -132,16 +132,17 @@ namespace mx {
 
         /** @brief Check whether this is a lightweight instance (shared geometry). */
         bool isInstance() const { return isInstance_; }
-    private:
-        bool isInstance_ = false; ///< True if geometry/textures are shared from another model.
+
+      private:
+        bool isInstance_ = false;                              ///< True if geometry/textures are shared from another model.
         VkDescriptorPool modelDescriptorPool = VK_NULL_HANDLE; ///< Descriptor pool for this model.
-        VkPipeline modelPipeline = VK_NULL_HANDLE;              ///< Per-model graphics pipeline (fill).
-        VkPipeline modelPipelineWireframe = VK_NULL_HANDLE;     ///< Per-model wireframe pipeline.
-        std::string vertShaderPath_;                             ///< Vertex shader SPIR-V path.
-        std::string fragShaderPath_;                             ///< Fragment shader SPIR-V path.
-        std::vector<VkBuffer>       modelUniformBuffers;        ///< Per-frame uniform buffers.
-        std::vector<VkDeviceMemory> modelUniformBufferMemory;   ///< Memory for per-frame UBOs.
-        std::vector<void*>          modelUniformBuffersMapped;  ///< Persistently mapped UBO pointers.
+        VkPipeline modelPipeline = VK_NULL_HANDLE;             ///< Per-model graphics pipeline (fill).
+        VkPipeline modelPipelineWireframe = VK_NULL_HANDLE;    ///< Per-model wireframe pipeline.
+        std::string vertShaderPath_;                           ///< Vertex shader SPIR-V path.
+        std::string fragShaderPath_;                           ///< Fragment shader SPIR-V path.
+        std::vector<VkBuffer> modelUniformBuffers;             ///< Per-frame uniform buffers.
+        std::vector<VkDeviceMemory> modelUniformBufferMemory;  ///< Memory for per-frame UBOs.
+        std::vector<void *> modelUniformBuffersMapped;         ///< Persistently mapped UBO pointers.
         friend class VKWindow;
 
         /** @brief Clean up only UBO and descriptor resources (used by instances). */
@@ -153,7 +154,7 @@ namespace mx {
          * @param tex  Path to the .tex manifest file.
          * @param path Directory prefix for image files.
          */
-        void loadModelTextures(VKWindow *win, const std::string &tex, const std::string  &path);
+        void loadModelTextures(VKWindow *win, const std::string &tex, const std::string &path);
 
         /**
          * @brief Load textures using map_Kd paths from parsed MTL materials.
@@ -180,7 +181,6 @@ namespace mx {
          */
         void createModelPipeline(VKWindow *win);
     };
-}
-
+} // namespace mx
 
 #endif

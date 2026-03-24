@@ -9,43 +9,42 @@
 #ifndef __UTIL_HPP__
 #define __UTIL_HPP__
 
-#include<vector>
-#include<string>
-#include<iostream>
 #include "SDL.h"
 #include "SDL_ttf.h"
-#include"tee_stream.hpp"
-#include<optional>
-#include<memory>
-#include<zlib.h>
-#include<vector>
+#include "tee_stream.hpp"
+#include <iostream>
+#include <memory>
+#include <optional>
+#include <string>
+#include <vector>
+#include <zlib.h>
 
 namespace mx {
 
-/**
- * @class mxUtil
- * @brief Utility bag for SDL-based applications.
- *
- * Holds the asset path and provides convenience wrappers for loading textures,
- * fonts, printing text, and managing SDL joystick handles.  Non-copyable and
- * non-movable by design — embed one instance per window.
- */
+    /**
+     * @class mxUtil
+     * @brief Utility bag for SDL-based applications.
+     *
+     * Holds the asset path and provides convenience wrappers for loading textures,
+     * fonts, printing text, and managing SDL joystick handles.  Non-copyable and
+     * non-movable by design — embed one instance per window.
+     */
     class mxUtil {
-    public:
+      public:
         /** @brief Destructor — closes all open joystick handles. */
         ~mxUtil() { closeJoystick(); }
 
         mxUtil() = default;
-        mxUtil(const mxUtil&) = delete;
-        mxUtil& operator=(const mxUtil&) = delete;
-        mxUtil(mxUtil&&) = delete;
-        mxUtil& operator=(mxUtil&&) = delete;
+        mxUtil(const mxUtil &) = delete;
+        mxUtil &operator=(const mxUtil &) = delete;
+        mxUtil(mxUtil &&) = delete;
+        mxUtil &operator=(mxUtil &&) = delete;
 
-    #ifdef FOR_WASM
+#ifdef FOR_WASM
         std::string path = "/assets"; ///< Root asset directory (Emscripten).
-    #else
-        std::string path = "assets";  ///< Root asset directory (native).
-    #endif
+#else
+        std::string path = "assets"; ///< Root asset directory (native).
+#endif
 
         /**
          * @brief Prepend the asset path to a filename.
@@ -154,6 +153,6 @@ namespace mx {
      * @return Random integer in [min, max].
      */
     int generateRandomInt(int min, int max);
-}
+} // namespace mx
 
 #endif

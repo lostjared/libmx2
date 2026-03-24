@@ -5,25 +5,25 @@
 #ifndef ___FONT__H__
 #define ___FONT__H__
 
-#include"SDL.h"
-#include"SDL_ttf.h"
-#include<string>
-#include"tee_stream.hpp"
-#include<optional>
-#include"wrapper.hpp"
+#include "SDL.h"
+#include "SDL_ttf.h"
+#include "tee_stream.hpp"
+#include "wrapper.hpp"
+#include <optional>
+#include <string>
 
 namespace mx {
 
-/**
- * @class Font
- * @brief RAII wrapper around a TTF_Font handle.
- *
- * Loads a TrueType font from disk and manages its lifetime.  The
- * underlying TTF_Font pointer is accessible via handle(), unwrap(),
- * or wrapper() for safe optional-style access.
- */
+    /**
+     * @class Font
+     * @brief RAII wrapper around a TTF_Font handle.
+     *
+     * Loads a TrueType font from disk and manages its lifetime.  The
+     * underlying TTF_Font pointer is accessible via handle(), unwrap(),
+     * or wrapper() for safe optional-style access.
+     */
     class Font {
-    public:
+      public:
         /** @brief Default constructor — font is not loaded. */
         Font() = default;
 
@@ -53,7 +53,7 @@ namespace mx {
         ~Font();
         Font &operator=(const Font &f) = delete;
         /** @brief Move-assign — transfers ownership of the TTF handle. */
-        Font &operator=(Font && f);
+        Font &operator=(Font &&f);
 
         /**
          * @brief Attempt to load a font, returning false on failure.
@@ -74,9 +74,9 @@ namespace mx {
          * @brief Return the underlying TTF_Font as an optional.
          * @return std::optional containing the handle if loaded, else std::nullopt.
          */
-        std::optional<TTF_Font *> handle() const { 
-            if(the_font)
-                return the_font; 
+        std::optional<TTF_Font *> handle() const {
+            if (the_font)
+                return the_font;
             return std::nullopt;
         }
 
@@ -86,7 +86,7 @@ namespace mx {
          * @throws mx::Exception if the font is not loaded.
          */
         TTF_Font *unwrap() const {
-            if(the_font) {
+            if (the_font) {
                 return the_font;
             }
             throw Exception("unwrap: Invalid Font");
@@ -98,24 +98,24 @@ namespace mx {
          * @return Wrapper<TTF_Font*> that holds the font pointer or nullopt.
          */
         Wrapper<TTF_Font *> wrapper() const {
-            if(the_font)
+            if (the_font)
                 return the_font;
             return std::nullopt;
         }
 
-    private:
+      private:
         TTF_Font *the_font = nullptr; ///< Underlying SDL_ttf font handle.
     };
 
-/**
- * @class Text
- * @brief Helper for rendering text strings with SDL_Renderer.
- *
- * Renders text glyphs onto the active SDL_Renderer using either solid
- * (fast) or blended (anti-aliased) rendering modes.
- */
+    /**
+     * @class Text
+     * @brief Helper for rendering text strings with SDL_Renderer.
+     *
+     * Renders text glyphs onto the active SDL_Renderer using either solid
+     * (fast) or blended (anti-aliased) rendering modes.
+     */
     class Text {
-    public:
+      public:
         /** @brief Default constructor. */
         Text() = default;
 
@@ -148,11 +148,12 @@ namespace mx {
          * @param text String to render.
          */
         void printText_Blended(const Font &f, int x, int y, const std::string &text);
-    private:
+
+      private:
         SDL_Renderer *renderer = nullptr; ///< Active renderer.
         SDL_Color color_value;            ///< Current text colour.
     };
 
-}
+} // namespace mx
 
 #endif

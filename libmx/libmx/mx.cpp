@@ -2,44 +2,44 @@
  * @file mx.cpp
  * @brief Implementation of mx::mxWindow main SDL2/OpenGL window class.
  */
-#include"mx.hpp"
+#include "mx.hpp"
 #ifdef FOR_WASM
-#include<emscripten/emscripten.h>
+#include <emscripten/emscripten.h>
 #endif
 namespace mx {
-   
+
     mxWindow::mxWindow(const std::string &name, int w, int h, bool full) {
         redirect();
-        if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER | SDL_INIT_AUDIO) != 0) {
+        if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER | SDL_INIT_AUDIO) != 0) {
             mx::system_err << "mx: Error initalizing SDL: " << SDL_GetError() << "\n";
             mx::system_err.flush();
             exit(EXIT_FAILURE);
         }
-        if(TTF_Init() < 0) {
+        if (TTF_Init() < 0) {
             mx::system_err << "mx: Error could not initalize SDL_ttf...\n";
             mx::system_err.flush();
             exit(EXIT_FAILURE);
         }
         create_window(name, w, h, full);
         text.setRenderer(renderer);
-        text.setColor({255,255,255,255});
+        text.setColor({255, 255, 255, 255});
     }
 
     void mxWindow::setObject(obj::Object *o) {
         object.reset(o);
     }
-    
+
     mxWindow::~mxWindow() {
         mx::system_out << "libmx2: mxWindow shutting down\n";
-        if(object) {
+        if (object) {
             mx::system_out << "libmx2: releasing bound object\n";
             object.reset();
         }
-        if(renderer) {
+        if (renderer) {
             mx::system_out << "libmx2: destroying SDL renderer\n";
             SDL_DestroyRenderer(renderer);
         }
-        if(window) {
+        if (window) {
             mx::system_out << "libmx2: destroying SDL window\n";
             SDL_DestroyWindow(window);
         }
@@ -51,7 +51,7 @@ namespace mx {
     }
     SDL_Texture *mxWindow::createTexture(int w, int h) {
         SDL_Texture *tex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, w, h);
-        if(!tex) {
+        if (!tex) {
             mx::system_err << "mx: Error creating texture: " << SDL_GetError() << "\n";
             mx::system_err.flush();
             exit(EXIT_FAILURE);
@@ -80,7 +80,7 @@ namespace mx {
     }
 
     void mxWindow::setFullScreen(bool full) {
-        if(full) {
+        if (full) {
             SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
         } else {
             SDL_SetWindowFullscreen(window, 0);
@@ -92,27 +92,27 @@ namespace mx {
     }
 
     void mxWindow::loop() {
-        if(!object) {
+        if (!object) {
             throw Exception("Requires you set an Object");
         }
         active = true;
-        while(active) {
+        while (active) {
             proc();
         }
     }
 
     void mxWindow::proc() {
 
-        if(!object) {
+        if (!object) {
             throw Exception("Requires an active Object");
         }
 
-        while(SDL_PollEvent(&e)) {
-            if(e.type == SDL_QUIT || (e.type == SDL_KEYDOWN && 
-e.key.keysym.sym == SDLK_ESCAPE)) {
+        while (SDL_PollEvent(&e)) {
+            if (e.type == SDL_QUIT || (e.type == SDL_KEYDOWN &&
+                                       e.key.keysym.sym == SDLK_ESCAPE)) {
                 active = false;
-		return;
-	    }
+                return;
+            }
 
             event(e);
             object->event(this, e);
@@ -134,4 +134,4 @@ e.key.keysym.sym == SDLK_ESCAPE)) {
         SDL_SetWindowTitle(window, title.c_str());
     }
 
-}
+} // namespace mx

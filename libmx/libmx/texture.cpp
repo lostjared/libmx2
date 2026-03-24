@@ -2,23 +2,20 @@
  * @file texture.cpp
  * @brief Implementation of mx::Texture SDL_Texture RAII wrapper.
  */
-#include"mx.hpp"
-#include"texture.hpp"
-#include"loadpng.hpp"
+#include "texture.hpp"
+#include "loadpng.hpp"
+#include "mx.hpp"
 #ifdef WITH_JPEG
-#include"jpeg.hpp"
+#include "jpeg.hpp"
 #endif
-#include<format>
-#include<algorithm>
+#include <algorithm>
+#include <format>
 
 namespace mx {
-    
-   
- 
+
     Texture::Texture(Texture &&tex) : texture{tex.texture}, width_{tex.width_}, height_{tex.height_} {
         tex.texture = nullptr;
     }
- 
 
     Texture &Texture::operator=(Texture &&tex) {
         if (this != &tex) {
@@ -34,7 +31,7 @@ namespace mx {
 
     void Texture::createTexture(mxWindow *window, int width, int height) {
         SDL_Texture *tex = SDL_CreateTexture(window->renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, width, height);
-        if(!tex) {
+        if (!tex) {
             throw Exception(std::format("Error creating texture: {}\n", SDL_GetError()));
         }
         texture = tex;
@@ -42,35 +39,35 @@ namespace mx {
 
     void Texture::loadTexture(mxWindow *window, const std::string &filename) {
         int w = 0, h = 0;
-        return loadTexture(window, filename, w, h, false, {0,0,0,0});
+        return loadTexture(window, filename, w, h, false, {0, 0, 0, 0});
     }
-    
+
     void Texture::loadTexture(mxWindow *window, const std::string &filename, int &w, int &h, bool color, SDL_Color key) {
 
-        if(texture != nullptr) {
+        if (texture != nullptr) {
             SDL_DestroyTexture(texture);
             texture = nullptr;
         }
 
         SDL_Surface *surface = nullptr;
         int type = imageType(filename);
-        if(type == 1) {
-            #ifdef WITH_JPEG
+        if (type == 1) {
+#ifdef WITH_JPEG
             surface = jpeg::LoadJPEG(filename.c_str());
-            #else
+#else
             throw Exception(std::format("mx: JPEG for file not suported: {}\n", filename));
-            #endif
-        } else if(type == 2) {
+#endif
+        } else if (type == 2) {
             surface = png::LoadPNG(filename.c_str());
-        } else if(type == 3) {
+        } else if (type == 3) {
             surface = SDL_LoadBMP(filename.c_str());
         } else {
             throw Exception(std::format("mx: Image format not suported for: {}\n", filename));
         }
-        if(!surface) {
+        if (!surface) {
             throw Exception(std::format("mx: Error could not open file: {}\n", filename));
         }
-        if(color)
+        if (color)
             SDL_SetColorKey(surface, SDL_TRUE, SDL_MapRGB(surface->format, key.r, key.g, key.b));
 
         w = surface->w;
@@ -78,10 +75,10 @@ namespace mx {
         width_ = w;
         height_ = h;
         SDL_Texture *tex = SDL_CreateTextureFromSurface(window->renderer, surface);
-        if(!tex) {
+        if (!tex) {
             throw Exception(std::format("mx: Error creating texture from surface..\n"));
         }
-        if(surface)
+        if (surface)
             SDL_FreeSurface(surface);
 
         texture = tex;
@@ -89,26 +86,26 @@ namespace mx {
 
     bool Texture::saveTexture(mxWindow *window, const std::string &filename) {
         int image_t = imageType(filename);
-        switch(image_t) { 
-            case 1:
+        switch (image_t) {
+        case 1:
 #ifdef WITH_JPEG
-                return jpeg::SaveJPEG(window->renderer, texture, filename.c_str());
+            return jpeg::SaveJPEG(window->renderer, texture, filename.c_str());
 #else
 
-                throw Exception("No JPEG  Support use -DJPEG=ON");
+            throw Exception("No JPEG  Support use -DJPEG=ON");
 #endif
-            case 2:
-                return png::SavePNG(texture, window->renderer, filename.c_str());
-            case 3:
-                return this->saveBMP(texture, window->renderer, filename);
-            default:
-                throw Exception("Image type not supported");
-                return false;
+        case 2:
+            return png::SavePNG(texture, window->renderer, filename.c_str());
+        case 3:
+            return this->saveBMP(texture, window->renderer, filename);
+        default:
+            throw Exception("Image type not supported");
+            return false;
         }
     }
- 
+
     Texture::~Texture() {
-        if(texture)
+        if (texture)
             SDL_DestroyTexture(texture);
     }
 
@@ -116,16 +113,16 @@ namespace mx {
         std::string lwr;
         lwr.reserve(filename.length());
         std::ranges::transform(filename, std::back_inserter(lwr), ::tolower);
-        if(lwr.ends_with(".jpg") || lwr.ends_with(".jpeg"))
+        if (lwr.ends_with(".jpg") || lwr.ends_with(".jpeg"))
             return 1;
-        if(lwr.ends_with(".png"))
+        if (lwr.ends_with(".png"))
             return 2;
-        if(lwr.ends_with(".bmp"))
+        if (lwr.ends_with(".bmp"))
             return 3;
         return 0;
     }
 
-    bool Texture::saveBMP(SDL_Texture *texturex,SDL_Renderer *renderer, const std::string &filename) {
+    bool Texture::saveBMP(SDL_Texture *texturex, SDL_Renderer *renderer, const std::string &filename) {
         int width = 0, height = 0;
         Uint32 format = 0;
         int access = 0;
@@ -134,7 +131,7 @@ namespace mx {
         }
         SDL_Texture *old = SDL_GetRenderTarget(renderer);
         SDL_SetRenderTarget(renderer, texturex);
-        SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormat(0, width, height, 24, SDL_PIXELFORMAT_RGB24);
+        SDL_Surface *surface = SDL_CreateRGBSurfaceWithFormat(0, width, height, 24, SDL_PIXELFORMAT_RGB24);
         if (!surface) {
             return false;
         }
@@ -148,4 +145,4 @@ namespace mx {
         return true;
     }
 
-}
+} // namespace mx

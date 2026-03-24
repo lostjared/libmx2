@@ -3,9 +3,9 @@
  * @brief Implementation of mx::MXModel Vulkan OBJ mesh loader.
  */
 #include "vk_model.hpp"
-#include <filesystem>
 #include <cmath>
 #include <cstdio>
+#include <filesystem>
 
 namespace mx {
 
@@ -25,8 +25,7 @@ namespace mx {
         for (size_t i = 0; i < vertices_.size(); ++i) {
             if (map.contains(vertices_[i])) {
                 remap[i] = map[vertices_[i]];
-            }
-            else {
+            } else {
                 uint32_t idx = static_cast<uint32_t>(unique.size());
                 unique.push_back(vertices_[i]);
                 map[vertices_[i]] = idx;
@@ -100,28 +99,23 @@ namespace mx {
                 float x, y, z;
                 if (s >> x >> y >> z)
                     positions.push_back({x * positionScale, y * positionScale, z * positionScale});
-            }
-            else if (tag == "vt") {
+            } else if (tag == "vt") {
                 float u, v;
                 if (s >> u >> v)
                     texcoords.push_back({u, v});
-            }
-            else if (tag == "vn") {
+            } else if (tag == "vn") {
                 float x, y, z;
                 if (s >> x >> y >> z)
                     normals.push_back({x, y, z});
-            }
-            else if (tag == "mtllib") {
+            } else if (tag == "mtllib") {
                 std::string mtlFile;
                 if (s >> mtlFile) {
                     std::filesystem::path objDir = std::filesystem::path(path).parent_path();
                     mtlLibPath_ = (objDir / mtlFile).string();
                 }
-            }
-            else if (tag == "g" || tag == "o") {
+            } else if (tag == "g" || tag == "o") {
                 finalizeGroup();
-            }
-            else if (tag == "usemtl") {
+            } else if (tag == "usemtl") {
                 std::string newMtlName;
                 s >> newMtlName;
                 if (newMtlName.empty())
@@ -130,21 +124,17 @@ namespace mx {
                     finalizeGroup();
                     currentMtlName = newMtlName;
                 }
-            }
-            else if (tag == "f") {
+            } else if (tag == "f") {
                 std::vector<VKVertex> faceVerts;
                 std::string token;
                 while (s >> token) {
                     int vi = 0, ti = 0, ni = 0;
                     if (sscanf(token.c_str(), "%d/%d/%d", &vi, &ti, &ni) == 3) {
-                    }
-                    else if (sscanf(token.c_str(), "%d//%d", &vi, &ni) == 2) {
+                    } else if (sscanf(token.c_str(), "%d//%d", &vi, &ni) == 2) {
                         ti = 0;
-                    }
-                    else if (sscanf(token.c_str(), "%d/%d", &vi, &ti) == 2) {
+                    } else if (sscanf(token.c_str(), "%d/%d", &vi, &ti) == 2) {
                         ni = 0;
-                    }
-                    else {
+                    } else {
                         sscanf(token.c_str(), "%d", &vi);
                         ti = 0;
                         ni = 0;
@@ -256,8 +246,7 @@ namespace mx {
             if (buffer.empty())
                 throw mx::Exception("MXModel::load: failed to read file: " + path);
             text = mx::decompressString(buffer.data(), static_cast<unsigned long>(buffer.size()));
-        }
-        else {
+        } else {
             std::ifstream f(path);
             if (!f.is_open())
                 throw mx::Exception("MXModel::load: failed to open file: " + path);
@@ -342,8 +331,7 @@ namespace mx {
                     uint32_t idx;
                     while (s >> idx)
                         cur->fileIndices.push_back(idx);
-                }
-                break;
+                } break;
                 default:
                     break;
                 }
@@ -422,8 +410,7 @@ namespace mx {
             if (!blk.fileIndices.empty()) {
                 for (auto idx : blk.fileIndices)
                     indices_.push_back(vertexBase + idx);
-            }
-            else {
+            } else {
                 for (uint32_t i = 0; i < static_cast<uint32_t>(vcount); ++i)
                     indices_.push_back(vertexBase + i);
             }
@@ -641,29 +628,21 @@ namespace mx {
                 materials_.emplace_back();
                 current = &materials_.back();
                 s >> current->name;
-            }
-            else if (!current) {
+            } else if (!current) {
                 continue;
-            }
-            else if (tag == "Ka") {
+            } else if (tag == "Ka") {
                 s >> current->ka[0] >> current->ka[1] >> current->ka[2];
-            }
-            else if (tag == "Kd") {
+            } else if (tag == "Kd") {
                 s >> current->kd[0] >> current->kd[1] >> current->kd[2];
-            }
-            else if (tag == "Ks") {
+            } else if (tag == "Ks") {
                 s >> current->ks[0] >> current->ks[1] >> current->ks[2];
-            }
-            else if (tag == "Ns") {
+            } else if (tag == "Ns") {
                 s >> current->ns;
-            }
-            else if (tag == "d") {
+            } else if (tag == "d") {
                 s >> current->d;
-            }
-            else if (tag == "illum") {
+            } else if (tag == "illum") {
                 s >> current->illum;
-            }
-            else if (tag == "map_Kd") {
+            } else if (tag == "map_Kd") {
                 s >> current->map_kd;
             }
         }
@@ -671,4 +650,4 @@ namespace mx {
                   << " material(s) from " << path << "\n";
     }
 
-}
+} // namespace mx

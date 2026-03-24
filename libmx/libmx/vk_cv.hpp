@@ -8,22 +8,22 @@
 #ifndef __VK_OPENCV__H_
 #define __VK_OPENCV__H_
 
-#include<opencv2/opencv.hpp>
-#include"vk.hpp"
-#include"vk_sprite.hpp"
+#include "vk.hpp"
+#include "vk_sprite.hpp"
+#include <opencv2/opencv.hpp>
 
 namespace mx {
 
-/**
- * @class MXCapture
- * @ingroup mxvk_cv_module
- * @brief Vulkan OpenCV video capture source.
- *
- * Opens a video file or camera, decodes frames, and uploads them to a
- * VKSprite texture for Vulkan-accelerated rendering inside a VKWindow.
- */
+    /**
+     * @class MXCapture
+     * @ingroup mxvk_cv_module
+     * @brief Vulkan OpenCV video capture source.
+     *
+     * Opens a video file or camera, decodes frames, and uploads them to a
+     * VKSprite texture for Vulkan-accelerated rendering inside a VKWindow.
+     */
     class MXCapture {
-    public:
+      public:
         /** @brief Default constructor. */
         MXCapture() = default;
         /** @brief Destructor. */
@@ -46,7 +46,7 @@ namespace mx {
          * @param mode Backend hint (0 = auto).
          * @return @c true on success.
          */
-        bool open(int id, int mode=0);
+        bool open(int id, int mode = 0);
 
         /** @brief Close the capture device. */
         void close();
@@ -126,11 +126,12 @@ namespace mx {
          * @return Current value.
          */
         double get(unsigned int option);
-    private:
-        VKSprite *sprite = nullptr;    ///< Backing Vulkan sprite.
-        cv::VideoCapture cap;          ///< OpenCV capture device.
-        cv::Mat frame;                 ///< Most recent decoded frame.
+
+      private:
+        VKSprite *sprite = nullptr; ///< Backing Vulkan sprite.
+        cv::VideoCapture cap;       ///< OpenCV capture device.
+        cv::Mat frame;              ///< Most recent decoded frame.
     };
-}
+} // namespace mx
 
 #endif

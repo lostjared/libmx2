@@ -6,7 +6,7 @@
 #define __GAME_OBJECT__H_
 
 #include "SDL.h"
-#include<memory>
+#include <memory>
 
 namespace mx {
     class mxWindow;
@@ -14,15 +14,15 @@ namespace mx {
 
 namespace obj {
 
-/**
- * @class Object
- * @brief Abstract base class for all drawable game objects.
- *
- * Derived classes are attached to an mx::mxWindow and have their
- * load(), draw(), and event() callbacks invoked each frame.
- */
+    /**
+     * @class Object
+     * @brief Abstract base class for all drawable game objects.
+     *
+     * Derived classes are attached to an mx::mxWindow and have their
+     * load(), draw(), and event() callbacks invoked each frame.
+     */
     class Object {
-    public:
+      public:
         virtual ~Object() = default;
 
         /**
@@ -44,6 +44,6 @@ namespace obj {
          */
         virtual void load(mx::mxWindow *win) = 0;
     };
-}
+} // namespace obj
 
 #endif

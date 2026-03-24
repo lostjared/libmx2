@@ -4,7 +4,7 @@
  */
 #ifndef __LOADPNG_H__
 #define __LOADPNG_H__
-#include"SDL.h"
+#include "SDL.h"
 
 /** @namespace png
  *  @brief Utilities for loading and saving PNG images. */
@@ -15,7 +15,7 @@ namespace png {
      * @param file Path to the PNG file.
      * @return Newly allocated SDL_Surface, or nullptr on failure.
      */
-    SDL_Surface *LoadPNG(const char* file);
+    SDL_Surface *LoadPNG(const char *file);
 
     /**
      * @brief Save an SDL_Texture to a PNG file.
@@ -24,7 +24,7 @@ namespace png {
      * @param filename Destination file path.
      * @return @c true on success, @c false on failure.
      */
-    bool SavePNG(SDL_Texture* texture, SDL_Renderer* renderer, const char* filename);
+    bool SavePNG(SDL_Texture *texture, SDL_Renderer *renderer, const char *filename);
 
     /**
      * @brief Save a raw RGBA pixel buffer to a PNG file.
@@ -35,5 +35,5 @@ namespace png {
      * @return @c true on success, @c false on failure.
      */
     bool SavePNG_RGBA(const char *filename, void *buffer, int w, int h);
-}
+} // namespace png
 #endif

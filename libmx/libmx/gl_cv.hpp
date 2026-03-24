@@ -8,23 +8,23 @@
 #ifndef __GL_OPENCV__H_
 #define __GL_OPENCV__H_
 
-#include<opencv2/opencv.hpp>
-#include"gl.hpp"
-#include<memory>
+#include "gl.hpp"
+#include <memory>
+#include <opencv2/opencv.hpp>
 
 namespace mx {
 
-/**
- * @class MXCapture
- * @ingroup mxgl_cv_module
- * @brief OpenCV video capture source that renders via an OpenGL sprite.
- *
- * Opens a video file or camera device, reads frames frame-by-frame, and
- * uploads each frame to a gl::GLSprite texture for display inside a
- * gl::GLWindow with a custom GLSL shader.
- */
+    /**
+     * @class MXCapture
+     * @ingroup mxgl_cv_module
+     * @brief OpenCV video capture source that renders via an OpenGL sprite.
+     *
+     * Opens a video file or camera device, reads frames frame-by-frame, and
+     * uploads each frame to a gl::GLSprite texture for display inside a
+     * gl::GLWindow with a custom GLSL shader.
+     */
     class MXCapture {
-    public:
+      public:
         /** @brief Default constructor. */
         MXCapture() = default;
         /** @brief Destructor. */
@@ -47,7 +47,7 @@ namespace mx {
          * @param mode Optional backend hint (0 = auto).
          * @return @c true on success.
          */
-        bool open(int id, int mode=0);
+        bool open(int id, int mode = 0);
 
         /** @brief Close the video source. */
         void close();
@@ -125,13 +125,14 @@ namespace mx {
          * @return Current property value.
          */
         double get(unsigned int option);
-    private:
-        gl::GLSprite sprite;                        ///< Rendering sprite.
-        std::unique_ptr<gl::ShaderProgram> shader;  ///< Active shader program.
-        gl::GLWindow *window = nullptr;             ///< Parent GL window.
-        cv::VideoCapture cap;                       ///< OpenCV capture device.
-        cv::Mat frame;                              ///< Most recent decoded frame.
+
+      private:
+        gl::GLSprite sprite;                       ///< Rendering sprite.
+        std::unique_ptr<gl::ShaderProgram> shader; ///< Active shader program.
+        gl::GLWindow *window = nullptr;            ///< Parent GL window.
+        cv::VideoCapture cap;                      ///< OpenCV capture device.
+        cv::Mat frame;                             ///< Most recent decoded frame.
     };
-}
+} // namespace mx
 
 #endif

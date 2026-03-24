@@ -21,11 +21,11 @@
 
 #ifdef WITH_GL
 
-#include "mx.hpp"
 #include "gl.hpp"
+#include "mx.hpp"
 #include "util.hpp"
-#include <vector>
 #include <string>
+#include <vector>
 
 #ifdef __EMSCRIPTEN__
 #include "glm.hpp"
@@ -36,63 +36,65 @@
 namespace mx {
 
     /** @brief Axis selector for deformation operations. */
-    enum class DeformAxis { X = 0, Y = 1, Z = 2 };
+    enum class DeformAxis { X = 0,
+                            Y = 1,
+                            Z = 2 };
 
-/**
- * @struct MXMaterial
- * @brief Parsed Wavefront MTL material properties.
- */
+    /**
+     * @struct MXMaterial
+     * @brief Parsed Wavefront MTL material properties.
+     */
     struct MXMaterial {
-        std::string name;                       ///< Material name (newmtl).
-        float ka[3] = {0.2f, 0.2f, 0.2f};      ///< Ambient colour.
-        float kd[3] = {0.8f, 0.8f, 0.8f};      ///< Diffuse colour.
-        float ks[3] = {0.0f, 0.0f, 0.0f};      ///< Specular colour.
-        float ns = 30.0f;                       ///< Specular exponent.
-        float d = 1.0f;                         ///< Opacity (dissolve).
-        int   illum = 2;                        ///< Illumination model.
-        std::string map_kd;                     ///< Diffuse texture filename.
+        std::string name;                 ///< Material name (newmtl).
+        float ka[3] = {0.2f, 0.2f, 0.2f}; ///< Ambient colour.
+        float kd[3] = {0.8f, 0.8f, 0.8f}; ///< Diffuse colour.
+        float ks[3] = {0.0f, 0.0f, 0.0f}; ///< Specular colour.
+        float ns = 30.0f;                 ///< Specular exponent.
+        float d = 1.0f;                   ///< Opacity (dissolve).
+        int illum = 2;                    ///< Illumination model.
+        std::string map_kd;               ///< Diffuse texture filename.
     };
 
-/**
- * @class Mesh
- * @brief A single OpenGL sub-mesh: geometry buffers, texture bindings, and deformers.
- *
- * Stores vertex, normal, UV, tangent, and bitangent arrays together with
- * an optional index list.  All geometry lives in CPU memory and must be
- * synchronised to the GPU via generateBuffers() / updateBuffers().  A
- * snapshot of the original geometry can be preserved with saveOriginal()
- * and restored with resetToOriginal().
- */
+    /**
+     * @class Mesh
+     * @brief A single OpenGL sub-mesh: geometry buffers, texture bindings, and deformers.
+     *
+     * Stores vertex, normal, UV, tangent, and bitangent arrays together with
+     * an optional index list.  All geometry lives in CPU memory and must be
+     * synchronised to the GPU via generateBuffers() / updateBuffers().  A
+     * snapshot of the original geometry can be preserved with saveOriginal()
+     * and restored with resetToOriginal().
+     */
     class Mesh {
-    public:
-        std::vector<GLfloat> vert;       ///< Vertex position data (x,y,z triples).
-        std::vector<GLfloat> tex;        ///< Texture coordinate data (u,v pairs).
-        std::vector<GLfloat> norm;       ///< Normal vector data (x,y,z triples).
-        std::vector<GLfloat> tangent;    ///< Tangent vector data.
-        std::vector<GLfloat> bitangent;  ///< Bitangent vector data.
-        std::vector<GLuint> indices;     ///< Optional index list for indexed drawing.
+      public:
+        std::vector<GLfloat> vert;         ///< Vertex position data (x,y,z triples).
+        std::vector<GLfloat> tex;          ///< Texture coordinate data (u,v pairs).
+        std::vector<GLfloat> norm;         ///< Normal vector data (x,y,z triples).
+        std::vector<GLfloat> tangent;      ///< Tangent vector data.
+        std::vector<GLfloat> bitangent;    ///< Bitangent vector data.
+        std::vector<GLuint> indices;       ///< Optional index list for indexed drawing.
         std::vector<GLfloat> originalVert; ///< Saved copy of vertex positions.
         std::vector<GLfloat> originalNorm; ///< Saved copy of normals.
-        
-        bool hasOriginal;       ///< Whether an original snapshot exists.
-        GLuint shape_type;      ///< GL primitive type (e.g. GL_TRIANGLES).
-        GLuint texture;         ///< Primary diffuse texture ID.
+
+        bool hasOriginal;         ///< Whether an original snapshot exists.
+        GLuint shape_type;        ///< GL primitive type (e.g. GL_TRIANGLES).
+        GLuint texture;           ///< Primary diffuse texture ID.
         std::string materialName; ///< Material name from OBJ usemtl directive.
+        std::string name;         ///< Optional mesh name from OBJ object/group directive.
 
         GLuint EBO, VAO, positionVBO, normalVBO, texCoordVBO, tangentVBO, bitangentVBO;
-        
+
         GLuint normalMapTexture;       ///< Normal map texture ID.
         GLuint parallaxMapTexture;     ///< Parallax/height map texture ID.
         GLuint aoMapTexture;           ///< Ambient occlusion map texture ID.
         GLuint displacementMapTexture; ///< Displacement map texture ID.
 
-        size_t vertIndex;  ///< Current write position in the vertex array.
-        size_t texIndex;   ///< Current write position in the UV array.
-        size_t normIndex;  ///< Current write position in the normal array.
-
+        size_t vertIndex; ///< Current write position in the vertex array.
+        size_t texIndex;  ///< Current write position in the UV array.
+        size_t normIndex; ///< Current write position in the normal array.
 
         /** @brief Default constructor — zeroes all buffer IDs. */
-        Mesh(); 
+        Mesh();
         /** @brief Destructor — calls cleanup(). */
         ~Mesh();
         Mesh(const Mesh &m) = delete;
@@ -314,16 +316,16 @@ namespace mx {
         void rotate(DeformAxis axis, float angle);
     };
 
-/**
- * @class Model
- * @brief A collection of Mesh objects loaded from an OBJ file.
- *
- * Model is the top-level scene node.  It opens an OBJ file (optionally
- * with index compression), provides shader and texture bindings, and
- * proxies every deformation and map operation to all contained meshes.
- */
+    /**
+     * @class Model
+     * @brief A collection of Mesh objects loaded from an OBJ file.
+     *
+     * Model is the top-level scene node.  It opens an OBJ file (optionally
+     * with index compression), provides shader and texture bindings, and
+     * proxies every deformation and map operation to all contained meshes.
+     */
     class Model {
-    public:
+      public:
         std::vector<Mesh> meshes; ///< All sub-meshes in load order.
 
         /** @brief Default constructor. */
@@ -428,9 +430,9 @@ namespace mx {
         void setTexturesFromMTL(gl::GLWindow *win, const std::string &objDir = "");
 
         /** @return Read-only reference to parsed MTL materials. */
-        const std::vector<MXMaterial>& materials() const { return materials_; }
+        const std::vector<MXMaterial> &materials() const { return materials_; }
         /** @return Path to the MTL library referenced by the OBJ, or empty. */
-        const std::string& mtlLibPath() const { return mtlLibPath_; }
+        const std::string &mtlLibPath() const { return mtlLibPath_; }
 
         /** @brief Take a snapshot of all mesh geometries. */
         void saveOriginal();
@@ -491,7 +493,7 @@ namespace mx {
         /** @brief Set cubemap blending for all meshes. */
         void setCubemapBlending(GLuint cubemap1, GLuint cubemap2, float blendFactor);
 
-    private:
+      private:
         /** @brief Parse a single MXMOD line and accumulate into currentMesh. */
         void parseLine(const std::string &line, Mesh &currentMesh, int &type, size_t &count);
         /** @brief Load a Wavefront OBJ file into meshes. */
@@ -503,7 +505,7 @@ namespace mx {
         std::vector<MXMaterial> materials_;   ///< Parsed MTL materials.
         std::string mtlLibPath_;              ///< Path to .mtl file from OBJ mtllib.
     };
-}
+} // namespace mx
 
 #endif
 #endif

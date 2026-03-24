@@ -1,5 +1,5 @@
-#include"vk_abstract_model.hpp"
-#include"loadpng.hpp"
+#include "vk_abstract_model.hpp"
+#include "loadpng.hpp"
 
 namespace mx {
 
@@ -12,9 +12,12 @@ namespace mx {
             float minY = verts[0].pos[1], maxY = minY;
             float minZ = verts[0].pos[2], maxZ = minZ;
             for (const auto &v : verts) {
-                minX = std::min(minX, v.pos[0]); maxX = std::max(maxX, v.pos[0]);
-                minY = std::min(minY, v.pos[1]); maxY = std::max(maxY, v.pos[1]);
-                minZ = std::min(minZ, v.pos[2]); maxZ = std::max(maxZ, v.pos[2]);
+                minX = std::min(minX, v.pos[0]);
+                maxX = std::max(maxX, v.pos[0]);
+                minY = std::min(minY, v.pos[1]);
+                maxY = std::max(maxY, v.pos[1]);
+                minZ = std::min(minZ, v.pos[2]);
+                maxZ = std::max(maxZ, v.pos[2]);
             }
             modelCenterOffset = glm::vec3(
                 -0.5f * (minX + maxX),
@@ -106,9 +109,8 @@ namespace mx {
         createModelPipeline(win);
         std::cout << ">> VKAbstractModel::setShaders: vert=" << vert << ", frag=" << frag << " [OK]\n";
     }
-    
+
     void VKAbstractModel::render(int cmd) {
-        
     }
 
     void VKAbstractModel::updateUBO(VKWindow *win, uint32_t imageIndex, const mx::UniformBufferObject &ubo) {
@@ -132,10 +134,12 @@ namespace mx {
             std::string line;
             while (std::getline(tf, line)) {
                 size_t b = line.find_first_not_of(" \t\r\n");
-                if (b == std::string::npos) continue;
+                if (b == std::string::npos)
+                    continue;
                 size_t e = line.find_last_not_of(" \t\r\n");
                 line = line.substr(b, e - b + 1);
-                if (line.empty() || line[0] == '#') continue;
+                if (line.empty() || line[0] == '#')
+                    continue;
                 lines.push_back(line);
             }
         }
@@ -198,8 +202,11 @@ namespace mx {
             SDL_Surface *img = png::LoadPNG(imagePaths[i].c_str());
             if (!img) {
                 img = SDL_CreateRGBSurfaceWithFormat(0, 1, 1, 32, SDL_PIXELFORMAT_RGBA32);
-                if (img) { uint32_t *px = (uint32_t*)img->pixels; *px = 0xFFFFFFFF; }
-                else throw mx::Exception("Failed to create placeholder surface");
+                if (img) {
+                    uint32_t *px = (uint32_t *)img->pixels;
+                    *px = 0xFFFFFFFF;
+                } else
+                    throw mx::Exception("Failed to create placeholder surface");
             }
 
             TexEntry tex;
@@ -208,16 +215,17 @@ namespace mx {
             VkDeviceSize imageSize = tex.w * tex.h * 4;
 
             win->createImage(tex.w, tex.h, fmt, VK_IMAGE_TILING_OPTIMAL,
-                        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-                        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, tex.image, tex.memory);
+                             VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, tex.image, tex.memory);
 
             win->transitionImageLayout(tex.image, fmt, VK_IMAGE_LAYOUT_UNDEFINED,
-                                  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+                                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-            VkBuffer staging; VkDeviceMemory stagingMem;
+            VkBuffer staging;
+            VkDeviceMemory stagingMem;
             win->createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                         staging, stagingMem);
+                              VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                              staging, stagingMem);
             void *data;
             vkMapMemory(win->getDevice(), stagingMem, 0, imageSize, 0, &data);
             memcpy(data, img->pixels, (size_t)imageSize);
@@ -225,7 +233,7 @@ namespace mx {
             win->copyBufferToImage(staging, tex.image, tex.w, tex.h);
 
             win->transitionImageLayout(tex.image, fmt, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
             vkDestroyBuffer(win->getDevice(), staging, nullptr);
             vkFreeMemory(win->getDevice(), stagingMem, nullptr);
@@ -237,7 +245,7 @@ namespace mx {
         }
         std::cout << ">> VKAbstractModel::loadModelTextures: " << modelTextures.size() << " texture(s) loaded [OK]\n";
     }
-    
+
     void VKAbstractModel::loadModelTexturesFromMTL(VKWindow *win, const std::string &path) {
         const auto &mats = obj.materials();
         if (mats.empty()) {
@@ -273,7 +281,7 @@ namespace mx {
                     uint8_t r = static_cast<uint8_t>(std::min(1.0f, mats[i].kd[0]) * 255.0f);
                     uint8_t g = static_cast<uint8_t>(std::min(1.0f, mats[i].kd[1]) * 255.0f);
                     uint8_t b = static_cast<uint8_t>(std::min(1.0f, mats[i].kd[2]) * 255.0f);
-                    uint32_t *px = (uint32_t*)img->pixels;
+                    uint32_t *px = (uint32_t *)img->pixels;
                     *px = (0xFF << 24) | (b << 16) | (g << 8) | r;
                 } else {
                     throw mx::Exception("Failed to create placeholder surface for material " + mats[i].name);
@@ -286,16 +294,17 @@ namespace mx {
             VkDeviceSize imageSize = tex.w * tex.h * 4;
 
             win->createImage(tex.w, tex.h, fmt, VK_IMAGE_TILING_OPTIMAL,
-                        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-                        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, tex.image, tex.memory);
+                             VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, tex.image, tex.memory);
 
             win->transitionImageLayout(tex.image, fmt, VK_IMAGE_LAYOUT_UNDEFINED,
-                                  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+                                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-            VkBuffer staging; VkDeviceMemory stagingMem;
+            VkBuffer staging;
+            VkDeviceMemory stagingMem;
             win->createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                         staging, stagingMem);
+                              VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                              staging, stagingMem);
             void *data;
             vkMapMemory(win->getDevice(), stagingMem, 0, imageSize, 0, &data);
             memcpy(data, img->pixels, (size_t)imageSize);
@@ -303,7 +312,7 @@ namespace mx {
             win->copyBufferToImage(staging, tex.image, tex.w, tex.h);
 
             win->transitionImageLayout(tex.image, fmt, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
             vkDestroyBuffer(win->getDevice(), staging, nullptr);
             vkFreeMemory(win->getDevice(), stagingMem, nullptr);
@@ -328,8 +337,10 @@ namespace mx {
         for (size_t i = 0; i < modelUniformBuffers.size(); ++i) {
             if (modelUniformBuffersMapped[i])
                 vkUnmapMemory(win->getDevice(), modelUniformBufferMemory[i]);
-            if (modelUniformBuffers[i]      != VK_NULL_HANDLE) vkDestroyBuffer(win->getDevice(), modelUniformBuffers[i], nullptr);
-            if (modelUniformBufferMemory[i] != VK_NULL_HANDLE) vkFreeMemory(win->getDevice(), modelUniformBufferMemory[i], nullptr);
+            if (modelUniformBuffers[i] != VK_NULL_HANDLE)
+                vkDestroyBuffer(win->getDevice(), modelUniformBuffers[i], nullptr);
+            if (modelUniformBufferMemory[i] != VK_NULL_HANDLE)
+                vkFreeMemory(win->getDevice(), modelUniformBufferMemory[i], nullptr);
         }
         const size_t frameCount = win->swapChainImages.size();
         modelUniformBuffers.assign(frameCount, VK_NULL_HANDLE);
@@ -385,17 +396,17 @@ namespace mx {
 
         for (size_t frame = 0; frame < win->swapChainImages.size(); ++frame) {
             VkDescriptorBufferInfo bufInfo{};
-            bufInfo.buffer = modelUniformBuffers[frame];  // use per-model UBO
+            bufInfo.buffer = modelUniformBuffers[frame]; // use per-model UBO
             bufInfo.offset = 0;
-            bufInfo.range  = sizeof(mx::UniformBufferObject);
+            bufInfo.range = sizeof(mx::UniformBufferObject);
 
             for (size_t tex = 0; tex < texCount; ++tex) {
                 size_t setIndex = frame * texCount + tex;
 
                 VkDescriptorImageInfo imgInfo{};
                 imgInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                imgInfo.imageView   = modelTextures[tex].view;
-                imgInfo.sampler     = win->textureSampler;
+                imgInfo.imageView = modelTextures[tex].view;
+                imgInfo.sampler = win->textureSampler;
 
                 std::array<VkWriteDescriptorSet, 2> writes{};
                 writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -448,16 +459,21 @@ namespace mx {
         for (size_t i = 0; i < modelUniformBuffers.size(); ++i) {
             if (modelUniformBuffersMapped[i])
                 vkUnmapMemory(win->getDevice(), modelUniformBufferMemory[i]);
-            if (modelUniformBuffers[i]   != VK_NULL_HANDLE) vkDestroyBuffer(win->getDevice(), modelUniformBuffers[i], nullptr);
-            if (modelUniformBufferMemory[i] != VK_NULL_HANDLE) vkFreeMemory(win->getDevice(), modelUniformBufferMemory[i], nullptr);
+            if (modelUniformBuffers[i] != VK_NULL_HANDLE)
+                vkDestroyBuffer(win->getDevice(), modelUniformBuffers[i], nullptr);
+            if (modelUniformBufferMemory[i] != VK_NULL_HANDLE)
+                vkFreeMemory(win->getDevice(), modelUniformBufferMemory[i], nullptr);
         }
         modelUniformBuffers.clear();
         modelUniformBufferMemory.clear();
         modelUniformBuffersMapped.clear();
         for (auto &t : modelTextures) {
-            if (t.view   != VK_NULL_HANDLE) vkDestroyImageView(win->getDevice(), t.view, nullptr);
-            if (t.image  != VK_NULL_HANDLE) vkDestroyImage(win->getDevice(), t.image, nullptr);
-            if (t.memory != VK_NULL_HANDLE) vkFreeMemory(win->getDevice(), t.memory, nullptr);
+            if (t.view != VK_NULL_HANDLE)
+                vkDestroyImageView(win->getDevice(), t.view, nullptr);
+            if (t.image != VK_NULL_HANDLE)
+                vkDestroyImage(win->getDevice(), t.image, nullptr);
+            if (t.memory != VK_NULL_HANDLE)
+                vkFreeMemory(win->getDevice(), t.memory, nullptr);
         }
         modelTextures.clear();
         if (modelDescriptorPool != VK_NULL_HANDLE)
@@ -487,76 +503,78 @@ namespace mx {
         VkShaderModule fragModule = win->createShaderModule(fragCode);
 
         VkPipelineShaderStageCreateInfo vertStage{};
-        vertStage.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        vertStage.stage  = VK_SHADER_STAGE_VERTEX_BIT;
+        vertStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        vertStage.stage = VK_SHADER_STAGE_VERTEX_BIT;
         vertStage.module = vertModule;
-        vertStage.pName  = "main";
+        vertStage.pName = "main";
 
         VkPipelineShaderStageCreateInfo fragStage{};
-        fragStage.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        fragStage.stage  = VK_SHADER_STAGE_FRAGMENT_BIT;
+        fragStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        fragStage.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
         fragStage.module = fragModule;
-        fragStage.pName  = "main";
+        fragStage.pName = "main";
 
-        VkPipelineShaderStageCreateInfo stages[] = { vertStage, fragStage };
+        VkPipelineShaderStageCreateInfo stages[] = {vertStage, fragStage};
 
         VkVertexInputBindingDescription binding{};
-        binding.binding   = 0;
-        binding.stride    = sizeof(Vertex);
+        binding.binding = 0;
+        binding.stride = sizeof(Vertex);
         binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
         std::array<VkVertexInputAttributeDescription, 3> attrs{};
-        attrs[0].binding  = 0; attrs[0].location = 0;
-        attrs[0].format   = VK_FORMAT_R32G32B32_SFLOAT;
-        attrs[0].offset   = offsetof(Vertex, pos);
-        attrs[1].binding  = 0; attrs[1].location = 1;
-        attrs[1].format   = VK_FORMAT_R32G32_SFLOAT;
-        attrs[1].offset   = offsetof(Vertex, texCoord);
-        attrs[2].binding  = 0; attrs[2].location = 2;
-        attrs[2].format   = VK_FORMAT_R32G32B32_SFLOAT;
-        attrs[2].offset   = offsetof(Vertex, normal);
+        attrs[0].binding = 0;
+        attrs[0].location = 0;
+        attrs[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+        attrs[0].offset = offsetof(Vertex, pos);
+        attrs[1].binding = 0;
+        attrs[1].location = 1;
+        attrs[1].format = VK_FORMAT_R32G32_SFLOAT;
+        attrs[1].offset = offsetof(Vertex, texCoord);
+        attrs[2].binding = 0;
+        attrs[2].location = 2;
+        attrs[2].format = VK_FORMAT_R32G32B32_SFLOAT;
+        attrs[2].offset = offsetof(Vertex, normal);
 
         VkPipelineVertexInputStateCreateInfo vertexInput{};
         vertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-        vertexInput.vertexBindingDescriptionCount   = 1;
-        vertexInput.pVertexBindingDescriptions       = &binding;
-        vertexInput.vertexAttributeDescriptionCount  = static_cast<uint32_t>(attrs.size());
-        vertexInput.pVertexAttributeDescriptions     = attrs.data();
+        vertexInput.vertexBindingDescriptionCount = 1;
+        vertexInput.pVertexBindingDescriptions = &binding;
+        vertexInput.vertexAttributeDescriptionCount = static_cast<uint32_t>(attrs.size());
+        vertexInput.pVertexAttributeDescriptions = attrs.data();
 
         VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
-        inputAssembly.sType    = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+        inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
         inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
         inputAssembly.primitiveRestartEnable = VK_FALSE;
 
         VkPipelineViewportStateCreateInfo viewportState{};
-        viewportState.sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+        viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
         viewportState.viewportCount = 1;
-        viewportState.scissorCount  = 1;
+        viewportState.scissorCount = 1;
 
         std::array<VkDynamicState, 2> dynStates = {
-            VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR
-        };
+            VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
         VkPipelineDynamicStateCreateInfo dynState{};
-        dynState.sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        dynState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
         dynState.dynamicStateCount = static_cast<uint32_t>(dynStates.size());
-        dynState.pDynamicStates    = dynStates.data();
+        dynState.pDynamicStates = dynStates.data();
 
         VkPipelineRasterizationStateCreateInfo rasterizer{};
-        rasterizer.sType       = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+        rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
         rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-        rasterizer.lineWidth   = 1.0f;
-        rasterizer.cullMode    = VK_CULL_MODE_NONE;
-        rasterizer.frontFace   = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        rasterizer.lineWidth = 1.0f;
+        rasterizer.cullMode = VK_CULL_MODE_NONE;
+        rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 
         VkPipelineMultisampleStateCreateInfo multisampling{};
-        multisampling.sType                = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+        multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
         multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
         VkPipelineDepthStencilStateCreateInfo depthStencil{};
-        depthStencil.sType            = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-        depthStencil.depthTestEnable   = VK_TRUE;
-        depthStencil.depthWriteEnable  = VK_TRUE;
-        depthStencil.depthCompareOp    = VK_COMPARE_OP_LESS;
+        depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+        depthStencil.depthTestEnable = VK_TRUE;
+        depthStencil.depthWriteEnable = VK_TRUE;
+        depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
 
         VkPipelineColorBlendAttachmentState colorBlendAttachment{};
         colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
@@ -564,25 +582,25 @@ namespace mx {
         colorBlendAttachment.blendEnable = VK_FALSE;
 
         VkPipelineColorBlendStateCreateInfo colorBlending{};
-        colorBlending.sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+        colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
         colorBlending.attachmentCount = 1;
-        colorBlending.pAttachments    = &colorBlendAttachment;
+        colorBlending.pAttachments = &colorBlendAttachment;
 
         VkGraphicsPipelineCreateInfo ci{};
-        ci.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-        ci.stageCount          = 2;
-        ci.pStages             = stages;
-        ci.pVertexInputState   = &vertexInput;
+        ci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        ci.stageCount = 2;
+        ci.pStages = stages;
+        ci.pVertexInputState = &vertexInput;
         ci.pInputAssemblyState = &inputAssembly;
-        ci.pViewportState      = &viewportState;
+        ci.pViewportState = &viewportState;
         ci.pRasterizationState = &rasterizer;
-        ci.pMultisampleState   = &multisampling;
-        ci.pDepthStencilState  = &depthStencil;
-        ci.pColorBlendState    = &colorBlending;
-        ci.pDynamicState       = &dynState;
-        ci.layout              = win->pipelineLayout;
-        ci.renderPass          = win->renderPass;
-        ci.subpass             = 0;
+        ci.pMultisampleState = &multisampling;
+        ci.pDepthStencilState = &depthStencil;
+        ci.pColorBlendState = &colorBlending;
+        ci.pDynamicState = &dynState;
+        ci.layout = win->pipelineLayout;
+        ci.renderPass = win->renderPass;
+        ci.subpass = 0;
 
         if (vkCreateGraphicsPipelines(win->getDevice(), VK_NULL_HANDLE, 1, &ci, nullptr, &modelPipeline) != VK_SUCCESS)
             throw mx::Exception("VKAbstractModel: Failed to create model pipeline!");
@@ -597,4 +615,4 @@ namespace mx {
 
         std::cout << ">> VKAbstractModel::createModelPipeline: pipeline created [OK]\n";
     }
-}
+} // namespace mx

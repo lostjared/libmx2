@@ -9,32 +9,32 @@
 #ifndef MX_TSTREAM_H
 #define MX_TSTREAM_H
 
-#include <iostream>
 #include <fstream>
-#include <streambuf>
-#include <stdexcept>
+#include <iostream>
 #include <memory>
+#include <stdexcept>
+#include <streambuf>
 
 namespace mx {
 
-/**
- * @class TeeBuf
- * @brief A std::streambuf that writes every byte to two underlying buffers.
- *
- * Attach two std::streambuf pointers at construction.  Any character written
- * through this buffer is forwarded to both sinks; overflow() and sync() are
- * both propagated.
- */
+    /**
+     * @class TeeBuf
+     * @brief A std::streambuf that writes every byte to two underlying buffers.
+     *
+     * Attach two std::streambuf pointers at construction.  Any character written
+     * through this buffer is forwarded to both sinks; overflow() and sync() are
+     * both propagated.
+     */
     class TeeBuf : public std::streambuf {
-    public:
+      public:
         /**
          * @brief Construct a TeeBuf that mirrors output to buf1 and buf2.
          * @param buf1 First destination stream buffer (must outlive this object).
          * @param buf2 Second destination stream buffer (must outlive this object).
          */
-        TeeBuf(std::streambuf* buf1, std::streambuf* buf2) : buf1(buf1), buf2(buf2) {}
+        TeeBuf(std::streambuf *buf1, std::streambuf *buf2) : buf1(buf1), buf2(buf2) {}
 
-    protected:
+      protected:
         /**
          * @brief Write a single character to both buffers.
          * @param c Character to write (may be EOF).
@@ -74,29 +74,29 @@ namespace mx {
             return (res1 == 0 && res2 == 0) ? 0 : -1;
         }
 
-    private:
-        std::streambuf* buf1 = nullptr; ///< First sink.
-        std::streambuf* buf2 = nullptr; ///< Second sink.
+      private:
+        std::streambuf *buf1 = nullptr; ///< First sink.
+        std::streambuf *buf2 = nullptr; ///< Second sink.
     };
 
-/**
- * @class TeeStream
- * @brief An std::ostream that writes to two output streams simultaneously.
- *
- * Wraps TeeBuf so all normal stream operators (<<, write, flush) are
- * mirrored to both stream1 and stream2.
- */
+    /**
+     * @class TeeStream
+     * @brief An std::ostream that writes to two output streams simultaneously.
+     *
+     * Wraps TeeBuf so all normal stream operators (<<, write, flush) are
+     * mirrored to both stream1 and stream2.
+     */
     class TeeStream : public std::ostream {
-    public:
+      public:
         /**
          * @brief Construct a TeeStream that writes to both stream1 and stream2.
          * @param stream1 First output stream.
          * @param stream2 Second output stream.
          */
-        TeeStream(std::ostream& stream1, std::ostream& stream2)
+        TeeStream(std::ostream &stream1, std::ostream &stream2)
             : std::ostream(&tbuf), tbuf(stream1.rdbuf(), stream2.rdbuf()) {}
 
-    private:
+      private:
         TeeBuf tbuf; ///< Internal tee buffer.
     };
 
@@ -110,6 +110,6 @@ namespace mx {
      * are forwarded to both the terminal and the configured log file.
      */
     void redirect();
-}
+} // namespace mx
 
 #endif
