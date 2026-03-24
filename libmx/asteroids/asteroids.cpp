@@ -20,6 +20,8 @@ public:
     ~MainWindow() override {
 
     }
+
+    
     
     virtual void event(SDL_Event &e) override {}
 
