@@ -7,33 +7,26 @@
 #include <cmath>
 #include <cstdio>
 
-namespace mx
-{
+namespace mx {
 
-    struct Vec2
-    {
+    struct Vec2 {
         float x, y;
     };
-    struct Vec3
-    {
+    struct Vec3 {
         float x, y, z;
     };
 
-    void MXModel::compressIndices()
-    {
+    void MXModel::compressIndices() {
         if (vertices_.empty())
             return;
         std::vector<VKVertex> unique;
         std::unordered_map<VKVertex, uint32_t, VKVertexHash> map;
         std::vector<uint32_t> remap(vertices_.size());
-        for (size_t i = 0; i < vertices_.size(); ++i)
-        {
-            if (map.contains(vertices_[i]))
-            {
+        for (size_t i = 0; i < vertices_.size(); ++i) {
+            if (map.contains(vertices_[i])) {
                 remap[i] = map[vertices_[i]];
             }
-            else
-            {
+            else {
                 uint32_t idx = static_cast<uint32_t>(unique.size());
                 unique.push_back(vertices_[i]);
                 map[vertices_[i]] = idx;
@@ -41,8 +34,7 @@ namespace mx
             }
         }
 
-        for (auto &idx : indices_)
-        {
+        for (auto &idx : indices_) {
             if (idx < static_cast<uint32_t>(remap.size()))
                 idx = remap[idx];
         }
@@ -53,18 +45,15 @@ namespace mx
                   << vertices_.size() << " unique, " << indices_.size() << " indices\n";
     }
 
-    void MXModel::load(const std::string &path, float positionScale)
-    {
-        if (path.ends_with(".obj"))
-        {
+    void MXModel::load(const std::string &path, float positionScale) {
+        if (path.ends_with(".obj")) {
             loadOBJ(path, positionScale);
             return;
         }
         loadMXMOD(path, positionScale);
     }
 
-    void MXModel::loadOBJ(const std::string &path, float positionScale)
-    {
+    void MXModel::loadOBJ(const std::string &path, float positionScale) {
         std::ifstream f(path);
         if (!f.is_open())
             throw mx::Exception("MXModel::load: failed to open file: " + path);
@@ -84,8 +73,7 @@ namespace mx
         materials_.clear();
         mtlLibPath_.clear();
 
-        auto finalizeGroup = [&]()
-        {
+        auto finalizeGroup = [&]() {
             if (currentVerts.empty())
                 return;
             SubMesh sm;
@@ -100,8 +88,7 @@ namespace mx
         };
 
         std::string line;
-        while (std::getline(f, line))
-        {
+        while (std::getline(f, line)) {
             if (line.empty() || line[0] == '#')
                 continue;
 
@@ -109,99 +96,79 @@ namespace mx
             std::string tag;
             s >> tag;
 
-            if (tag == "v")
-            {
+            if (tag == "v") {
                 float x, y, z;
                 if (s >> x >> y >> z)
                     positions.push_back({x * positionScale, y * positionScale, z * positionScale});
             }
-            else if (tag == "vt")
-            {
+            else if (tag == "vt") {
                 float u, v;
                 if (s >> u >> v)
                     texcoords.push_back({u, v});
             }
-            else if (tag == "vn")
-            {
+            else if (tag == "vn") {
                 float x, y, z;
                 if (s >> x >> y >> z)
                     normals.push_back({x, y, z});
             }
-            else if (tag == "mtllib")
-            {
+            else if (tag == "mtllib") {
                 std::string mtlFile;
-                if (s >> mtlFile)
-                {
+                if (s >> mtlFile) {
                     std::filesystem::path objDir = std::filesystem::path(path).parent_path();
                     mtlLibPath_ = (objDir / mtlFile).string();
                 }
             }
-            else if (tag == "g" || tag == "o")
-            {
+            else if (tag == "g" || tag == "o") {
                 finalizeGroup();
             }
-            else if (tag == "usemtl")
-            {
+            else if (tag == "usemtl") {
                 std::string newMtlName;
                 s >> newMtlName;
                 if (newMtlName.empty())
                     continue;
-                if (newMtlName != currentMtlName)
-                {
+                if (newMtlName != currentMtlName) {
                     finalizeGroup();
                     currentMtlName = newMtlName;
                 }
             }
-            else if (tag == "f")
-            {
+            else if (tag == "f") {
                 std::vector<VKVertex> faceVerts;
                 std::string token;
-                while (s >> token)
-                {
+                while (s >> token) {
                     int vi = 0, ti = 0, ni = 0;
-                    if (sscanf(token.c_str(), "%d/%d/%d", &vi, &ti, &ni) == 3)
-                    {
+                    if (sscanf(token.c_str(), "%d/%d/%d", &vi, &ti, &ni) == 3) {
                     }
-                    else if (sscanf(token.c_str(), "%d//%d", &vi, &ni) == 2)
-                    {
+                    else if (sscanf(token.c_str(), "%d//%d", &vi, &ni) == 2) {
                         ti = 0;
                     }
-                    else if (sscanf(token.c_str(), "%d/%d", &vi, &ti) == 2)
-                    {
+                    else if (sscanf(token.c_str(), "%d/%d", &vi, &ti) == 2) {
                         ni = 0;
                     }
-                    else
-                    {
+                    else {
                         sscanf(token.c_str(), "%d", &vi);
                         ti = 0;
                         ni = 0;
                     }
 
                     VKVertex vtx{};
-                    if (vi != 0)
-                    {
+                    if (vi != 0) {
                         int idx = vi > 0 ? vi - 1 : static_cast<int>(positions.size()) + vi;
-                        if (idx >= 0 && idx < static_cast<int>(positions.size()))
-                        {
+                        if (idx >= 0 && idx < static_cast<int>(positions.size())) {
                             vtx.pos[0] = positions[idx].x;
                             vtx.pos[1] = positions[idx].y;
                             vtx.pos[2] = positions[idx].z;
                         }
                     }
-                    if (ti != 0)
-                    {
+                    if (ti != 0) {
                         int idx = ti > 0 ? ti - 1 : static_cast<int>(texcoords.size()) + ti;
-                        if (idx >= 0 && idx < static_cast<int>(texcoords.size()))
-                        {
+                        if (idx >= 0 && idx < static_cast<int>(texcoords.size())) {
                             vtx.texCoord[0] = texcoords[idx].x;
                             vtx.texCoord[1] = texcoords[idx].y;
                         }
                     }
-                    if (ni != 0)
-                    {
+                    if (ni != 0) {
                         int idx = ni > 0 ? ni - 1 : static_cast<int>(normals.size()) + ni;
-                        if (idx >= 0 && idx < static_cast<int>(normals.size()))
-                        {
+                        if (idx >= 0 && idx < static_cast<int>(normals.size())) {
                             vtx.normal[0] = normals[idx].x;
                             vtx.normal[1] = normals[idx].y;
                             vtx.normal[2] = normals[idx].z;
@@ -209,8 +176,7 @@ namespace mx
                     }
                     faceVerts.push_back(vtx);
                 }
-                for (size_t i = 2; i < faceVerts.size(); ++i)
-                {
+                for (size_t i = 2; i < faceVerts.size(); ++i) {
                     currentVerts.push_back(faceVerts[0]);
                     currentVerts.push_back(faceVerts[i - 1]);
                     currentVerts.push_back(faceVerts[i]);
@@ -220,18 +186,15 @@ namespace mx
 
         finalizeGroup();
 
-        if (!mtlLibPath_.empty())
-        {
+        if (!mtlLibPath_.empty()) {
             loadMTL(mtlLibPath_);
 
             std::unordered_map<std::string, uint32_t> materialIndex;
             for (uint32_t i = 0; i < static_cast<uint32_t>(materials_.size()); ++i)
                 materialIndex[materials_[i].name] = i;
 
-            for (auto &sm : subMeshes_)
-            {
-                if (!sm.materialName.empty())
-                {
+            for (auto &sm : subMeshes_) {
+                if (!sm.materialName.empty()) {
                     auto it = materialIndex.find(sm.materialName);
                     if (it != materialIndex.end())
                         sm.textureIndex = it->second;
@@ -242,8 +205,7 @@ namespace mx
         if (vertices_.empty())
             throw mx::Exception("MXModel::load: no vertices found in " + path);
 
-        if (subMeshes_.empty())
-        {
+        if (subMeshes_.empty()) {
             SubMesh sm;
             sm.firstIndex = 0;
             sm.indexCount = static_cast<uint32_t>(vertices_.size());
@@ -252,10 +214,8 @@ namespace mx
         }
 
         bool hasNormals = !normals.empty();
-        if (!hasNormals)
-        {
-            for (size_t i = 0; i + 2 < vertices_.size(); i += 3)
-            {
+        if (!hasNormals) {
+            for (size_t i = 0; i + 2 < vertices_.size(); i += 3) {
                 float ax = vertices_[i + 1].pos[0] - vertices_[i].pos[0];
                 float ay = vertices_[i + 1].pos[1] - vertices_[i].pos[1];
                 float az = vertices_[i + 1].pos[2] - vertices_[i].pos[2];
@@ -266,14 +226,12 @@ namespace mx
                 float ny = az * bx - ax * bz;
                 float nz = ax * by - ay * bx;
                 float len = std::sqrt(nx * nx + ny * ny + nz * nz);
-                if (len > 0.0f)
-                {
+                if (len > 0.0f) {
                     nx /= len;
                     ny /= len;
                     nz /= len;
                 }
-                for (int j = 0; j < 3; ++j)
-                {
+                for (int j = 0; j < 3; ++j) {
                     vertices_[i + j].normal[0] = nx;
                     vertices_[i + j].normal[1] = ny;
                     vertices_[i + j].normal[2] = nz;
@@ -291,18 +249,15 @@ namespace mx
                   << " - " << subMeshes_.size() << " sub-mesh(es) [OK]\n";
     }
 
-    void MXModel::loadMXMOD(const std::string &path, float positionScale)
-    {
+    void MXModel::loadMXMOD(const std::string &path, float positionScale) {
         std::string text;
-        if (path.ends_with(".mxmod.z"))
-        {
+        if (path.ends_with(".mxmod.z")) {
             auto buffer = mx::readFile(path);
             if (buffer.empty())
                 throw mx::Exception("MXModel::load: failed to read file: " + path);
             text = mx::decompressString(buffer.data(), static_cast<unsigned long>(buffer.size()));
         }
-        else
-        {
+        else {
             std::ifstream f(path);
             if (!f.is_open())
                 throw mx::Exception("MXModel::load: failed to open file: " + path);
@@ -314,17 +269,14 @@ namespace mx
         if (text.size() >= 3 &&
             (unsigned char)text[0] == 0xEF &&
             (unsigned char)text[1] == 0xBB &&
-            (unsigned char)text[2] == 0xBF)
-        {
+            (unsigned char)text[2] == 0xBF) {
             text.erase(0, 3);
         }
 
         std::istringstream file(text);
-        auto trim = [](std::string &s)
-        {
+        auto trim = [](std::string &s) {
             size_t b = s.find_first_not_of(" \t\r\n");
-            if (b == std::string::npos)
-            {
+            if (b == std::string::npos) {
                 s.clear();
                 return;
             }
@@ -332,8 +284,7 @@ namespace mx
             s = s.substr(b, e - b + 1);
         };
 
-        struct TriBlock
-        {
+        struct TriBlock {
             uint32_t textureIndex = 0;
             std::vector<Vec3> pos;
             std::vector<Vec2> uv;
@@ -347,8 +298,7 @@ namespace mx
         size_t count = 0;
         std::string line;
 
-        while (std::getline(file, line))
-        {
+        while (std::getline(file, line)) {
             if (line.empty())
                 continue;
             size_t commentPos = line.find('#');
@@ -361,8 +311,7 @@ namespace mx
             if (line.size() >= 3 &&
                 (unsigned char)line[0] == 0xEF &&
                 (unsigned char)line[1] == 0xBB &&
-                (unsigned char)line[2] == 0xBF)
-            {
+                (unsigned char)line[2] == 0xBF) {
                 line.erase(0, 3);
                 trim(line);
                 if (line.empty())
@@ -374,11 +323,9 @@ namespace mx
             char c = line[line.find_first_not_of(" \t")];
             bool isData = (c >= '0' && c <= '9') || c == '-' || c == '+' || c == '.';
 
-            if (isData && cur)
-            {
+            if (isData && cur) {
                 float x = 0, y = 0, z = 0;
-                switch (type)
-                {
+                switch (type) {
                 case 0:
                     if (s >> x >> y >> z)
                         cur->pos.push_back({x * positionScale, y * positionScale, z * positionScale});
@@ -391,8 +338,7 @@ namespace mx
                     if (s >> x >> y >> z)
                         cur->nrm.push_back({x, y, z});
                     break;
-                case 5:
-                {
+                case 5: {
                     uint32_t idx;
                     while (s >> idx)
                         cur->fileIndices.push_back(idx);
@@ -409,8 +355,7 @@ namespace mx
             if (tag.empty())
                 continue;
 
-            if (tag == "tri")
-            {
+            if (tag == "tri") {
                 uint32_t st = 0, ti = 0;
                 s >> st >> ti;
                 triBlocks.emplace_back();
@@ -420,26 +365,22 @@ namespace mx
                 type = -1;
                 continue;
             }
-            if (tag == "vert")
-            {
+            if (tag == "vert") {
                 s >> count;
                 type = 0;
                 continue;
             }
-            if (tag == "tex")
-            {
+            if (tag == "tex") {
                 s >> count;
                 type = 1;
                 continue;
             }
-            if (tag == "norm")
-            {
+            if (tag == "norm") {
                 s >> count;
                 type = 2;
                 continue;
             }
-            if (tag == "indices")
-            {
+            if (tag == "indices") {
                 s >> count;
                 type = 5;
                 continue;
@@ -453,27 +394,23 @@ namespace mx
         indices_.clear();
         subMeshes_.clear();
 
-        for (auto &blk : triBlocks)
-        {
+        for (auto &blk : triBlocks) {
             if (blk.pos.empty())
                 continue;
 
             uint32_t vertexBase = static_cast<uint32_t>(vertices_.size());
             int vcount = static_cast<int>(blk.pos.size());
 
-            for (int i = 0; i < vcount; ++i)
-            {
+            for (int i = 0; i < vcount; ++i) {
                 VKVertex v{};
                 v.pos[0] = blk.pos[i].x;
                 v.pos[1] = blk.pos[i].y;
                 v.pos[2] = blk.pos[i].z;
-                if (i < (int)blk.uv.size())
-                {
+                if (i < (int)blk.uv.size()) {
                     v.texCoord[0] = blk.uv[i].x;
                     v.texCoord[1] = blk.uv[i].y;
                 }
-                if (i < (int)blk.nrm.size())
-                {
+                if (i < (int)blk.nrm.size()) {
                     v.normal[0] = blk.nrm[i].x;
                     v.normal[1] = blk.nrm[i].y;
                     v.normal[2] = blk.nrm[i].z;
@@ -482,13 +419,11 @@ namespace mx
             }
 
             uint32_t firstIndex = static_cast<uint32_t>(indices_.size());
-            if (!blk.fileIndices.empty())
-            {
+            if (!blk.fileIndices.empty()) {
                 for (auto idx : blk.fileIndices)
                     indices_.push_back(vertexBase + idx);
             }
-            else
-            {
+            else {
                 for (uint32_t i = 0; i < static_cast<uint32_t>(vcount); ++i)
                     indices_.push_back(vertexBase + i);
             }
@@ -510,8 +445,7 @@ namespace mx
     }
 
     void MXModel::upload(VkDevice device, VkPhysicalDevice physicalDevice,
-                         VkCommandPool commandPool, VkQueue graphicsQueue)
-    {
+                         VkCommandPool commandPool, VkQueue graphicsQueue) {
         std::cout << ">> MXModel::upload: uploading " << vertices_.size()
                   << " vertices, " << indices_.size() << " indices to GPU...\n";
         cleanup(device);
@@ -563,18 +497,15 @@ namespace mx
         std::cout << ">> MXModel::upload: GPU buffers created, staging buffers released [OK]\n";
     }
 
-    void MXModel::cleanup(VkDevice device)
-    {
-        if (vertexBuffer_ != VK_NULL_HANDLE)
-        {
+    void MXModel::cleanup(VkDevice device) {
+        if (vertexBuffer_ != VK_NULL_HANDLE) {
             std::cout << ">> MXModel::cleanup: destroying vertex and index buffers\n";
             vkDestroyBuffer(device, vertexBuffer_, nullptr);
             vkFreeMemory(device, vertexBufferMemory_, nullptr);
             vertexBuffer_ = VK_NULL_HANDLE;
             vertexBufferMemory_ = VK_NULL_HANDLE;
         }
-        if (indexBuffer_ != VK_NULL_HANDLE)
-        {
+        if (indexBuffer_ != VK_NULL_HANDLE) {
             vkDestroyBuffer(device, indexBuffer_, nullptr);
             vkFreeMemory(device, indexBufferMemory_, nullptr);
             indexBuffer_ = VK_NULL_HANDLE;
@@ -582,10 +513,8 @@ namespace mx
         }
     }
 
-    void MXModel::draw(VkCommandBuffer cmd) const
-    {
-        if (vertexBuffer_ == VK_NULL_HANDLE || indexBuffer_ == VK_NULL_HANDLE)
-        {
+    void MXModel::draw(VkCommandBuffer cmd) const {
+        if (vertexBuffer_ == VK_NULL_HANDLE || indexBuffer_ == VK_NULL_HANDLE) {
             std::cout << ">> MXModel::draw: skipped (no buffers)\n";
             return;
         }
@@ -597,15 +526,12 @@ namespace mx
         vkCmdDrawIndexed(cmd, indexCount(), 1, 0, 0, 0);
     }
 
-    void MXModel::drawSubMesh(VkCommandBuffer cmd, size_t index) const
-    {
-        if (vertexBuffer_ == VK_NULL_HANDLE || indexBuffer_ == VK_NULL_HANDLE)
-        {
+    void MXModel::drawSubMesh(VkCommandBuffer cmd, size_t index) const {
+        if (vertexBuffer_ == VK_NULL_HANDLE || indexBuffer_ == VK_NULL_HANDLE) {
             std::cout << ">> MXModel::drawSubMesh: skipped (no buffers)\n";
             return;
         }
-        if (index >= subMeshes_.size())
-        {
+        if (index >= subMeshes_.size()) {
             std::cout << ">> MXModel::drawSubMesh: index " << index << " out of range (" << subMeshes_.size() << " sub-meshes)\n";
             return;
         }
@@ -622,8 +548,7 @@ namespace mx
     void MXModel::createBuffer(VkDevice device, VkPhysicalDevice physicalDevice,
                                VkDeviceSize size, VkBufferUsageFlags usage,
                                VkMemoryPropertyFlags properties,
-                               VkBuffer &buffer, VkDeviceMemory &bufferMemory)
-    {
+                               VkBuffer &buffer, VkDeviceMemory &bufferMemory) {
         VkBufferCreateInfo bufferInfo{};
         bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         bufferInfo.size = size;
@@ -649,15 +574,12 @@ namespace mx
     }
 
     uint32_t MXModel::findMemoryType(VkPhysicalDevice physicalDevice,
-                                     uint32_t typeFilter, VkMemoryPropertyFlags properties)
-    {
+                                     uint32_t typeFilter, VkMemoryPropertyFlags properties) {
         VkPhysicalDeviceMemoryProperties memProperties;
         vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
-        for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
-        {
+        for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
             if ((typeFilter & (1 << i)) &&
-                (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
-            {
+                (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
                 return i;
             }
         }
@@ -666,8 +588,7 @@ namespace mx
 
     void MXModel::copyBuffer(VkDevice device, VkCommandPool commandPool,
                              VkQueue graphicsQueue,
-                             VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
-    {
+                             VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
         std::cout << ">> MXModel::copyBuffer: copying " << size << " bytes to device-local memory\n";
         VkCommandBufferAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -700,61 +621,49 @@ namespace mx
         vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
     }
 
-    void MXModel::loadMTL(const std::string &path)
-    {
+    void MXModel::loadMTL(const std::string &path) {
         std::ifstream f(path);
-        if (!f.is_open())
-        {
+        if (!f.is_open()) {
             std::cerr << ">> MXModel::loadMTL: warning - cannot open: " << path << "\n";
             return;
         }
 
         MXMaterial *current = nullptr;
         std::string line;
-        while (std::getline(f, line))
-        {
+        while (std::getline(f, line)) {
             if (line.empty() || line[0] == '#')
                 continue;
             std::istringstream s(line);
             std::string tag;
             s >> tag;
 
-            if (tag == "newmtl")
-            {
+            if (tag == "newmtl") {
                 materials_.emplace_back();
                 current = &materials_.back();
                 s >> current->name;
             }
-            else if (!current)
-            {
+            else if (!current) {
                 continue;
             }
-            else if (tag == "Ka")
-            {
+            else if (tag == "Ka") {
                 s >> current->ka[0] >> current->ka[1] >> current->ka[2];
             }
-            else if (tag == "Kd")
-            {
+            else if (tag == "Kd") {
                 s >> current->kd[0] >> current->kd[1] >> current->kd[2];
             }
-            else if (tag == "Ks")
-            {
+            else if (tag == "Ks") {
                 s >> current->ks[0] >> current->ks[1] >> current->ks[2];
             }
-            else if (tag == "Ns")
-            {
+            else if (tag == "Ns") {
                 s >> current->ns;
             }
-            else if (tag == "d")
-            {
+            else if (tag == "d") {
                 s >> current->d;
             }
-            else if (tag == "illum")
-            {
+            else if (tag == "illum") {
                 s >> current->illum;
             }
-            else if (tag == "map_Kd")
-            {
+            else if (tag == "map_Kd") {
                 s >> current->map_kd;
             }
         }

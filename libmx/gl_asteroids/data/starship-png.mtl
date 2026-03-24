@@ -1,0 +1,49 @@
+# Materials for starship.obj
+
+newmtl tailcap_mat
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.200 0.200 0.200
+Ns 40.000
+illum 2
+map_Kd ship_engine.jpg
+
+newmtl fuselage_mat
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.200 0.200 0.200
+Ns 40.000
+illum 2
+map_Kd plane.jpg
+
+newmtl wings_mat
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.200 0.200 0.200
+Ns 40.000
+illum 2
+map_Kd plane.jpg
+
+newmtl cockpit_mat
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.200 0.200 0.200
+Ns 40.000
+illum 2
+map_Kd ship_cockpit.jpg
+
+newmtl fin_mat
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.200 0.200 0.200
+Ns 40.000
+illum 2
+map_Kd ship_fin.jpg
+
+newmtl engines_mat
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.200 0.200 0.200
+Ns 40.000
+illum 2
+map_Kd ship_engine.jpg
