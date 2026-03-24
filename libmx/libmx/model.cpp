@@ -36,7 +36,6 @@ namespace mx {
         float position[3];
         float normal[3];
         float texCoord[2];
-
         bool operator==(const Vertex &other) const = default;
     };
 
@@ -1018,6 +1017,7 @@ namespace mx {
         currentMesh.materialName.clear();
 
         std::string currentMtlName;
+        std::string currentMeshName = "default";
         materials_.clear();
         mtlLibPath_.clear();
 
@@ -1027,6 +1027,7 @@ namespace mx {
             currentMesh.texture = static_cast<GLuint>(meshes.size());
             currentMesh.materialName = currentMtlName;
             currentMesh.name = name;
+            currentMeshName = name;
         };
 
         auto finalizeMesh = [&]() {
@@ -1058,6 +1059,7 @@ namespace mx {
             currentMesh.setShapeType(GL_TRIANGLES);
             currentMesh.texture = static_cast<GLuint>(meshes.size());
             currentMesh.materialName = currentMtlName;
+            currentMesh.name = currentMeshName;
         };
 
         startNewMesh("default");
@@ -1157,8 +1159,14 @@ namespace mx {
                 std::string newMtlName;
                 s >> newMtlName;
                 if (!newMtlName.empty()) {
-                    currentMtlName = newMtlName;
-                    currentMesh.materialName = currentMtlName;
+                    if (newMtlName != currentMtlName) {
+                        if (!currentMesh.vert.empty()) {
+                            finalizeMesh();
+                            startNewMesh(currentMeshName);
+                        }
+                        currentMtlName = newMtlName;
+                        currentMesh.materialName = currentMtlName;
+                    }
                 }
             }
         }

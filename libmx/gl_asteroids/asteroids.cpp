@@ -1257,7 +1257,7 @@ uniform sampler2D starTexture;
 
 void main() {
     
-    float ambientStrength = 0.8;
+    float ambientStrength = 0.4;
     vec3 ambient = ambientStrength * vec3(1.0, 1.0, 1.0);
     
     
