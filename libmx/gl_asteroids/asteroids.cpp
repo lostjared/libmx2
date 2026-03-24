@@ -1298,17 +1298,17 @@ class Exhaust {
 
     const size_t maxExhaustParticles = 50;
 
-    void spawnExhaustParticle(const glm::vec3 &shipPos, const glm::vec3 &shipRotation) {
+    void spawnExhaustParticle(const glm::vec3 &shipPos, const glm::vec3 &shipRotation, float shipScale) {
         glm::mat4 rotationMatrix(1.0f);
         rotationMatrix = glm::rotate(rotationMatrix, glm::radians(shipRotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
         rotationMatrix = glm::rotate(rotationMatrix, glm::radians(shipRotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
         rotationMatrix = glm::rotate(rotationMatrix, glm::radians(shipRotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
 
-        glm::vec4 leftOffset1(0.29f, -0.05f, 0.25f, 1.0f);
-        glm::vec4 leftOffset2(0.29f, -0.02f, 0.25f, 1.0f);
+        glm::vec4 leftOffset1(0.1214f * shipScale, 0.0f, 0.4425f * shipScale, 1.0f);
+        glm::vec4 leftOffset2(0.1214f * shipScale, 0.0f, 0.4425f * shipScale, 1.0f);
 
-        glm::vec4 rightOffset1(-0.29f, -0.05f, 0.25f, 1.0f);
-        glm::vec4 rightOffset2(-0.29f, -0.02f, 0.25f, 1.0f);
+        glm::vec4 rightOffset1(-0.1186f * shipScale, 0.0f, 0.4425f * shipScale, 1.0f);
+        glm::vec4 rightOffset2(-0.1186f * shipScale, 0.0f, 0.4425f * shipScale, 1.0f);
         glm::vec3 leftPos1 = shipPos + glm::vec3(rotationMatrix * leftOffset1);
         glm::vec3 leftPos2 = shipPos + glm::vec3(rotationMatrix * leftOffset2);
         glm::vec3 rightPos1 = shipPos + glm::vec3(rotationMatrix * rightOffset1);
@@ -1696,6 +1696,8 @@ class Projectiles {
 
 class StarFighter {
   public:
+    static constexpr float modelScale = 1.9f;
+
     Exhaust exhaust;
     Projectiles projectiles;
     GLuint exhaustTexture = 0;
@@ -1823,7 +1825,7 @@ class StarFighter {
         float spawnInterval = 0.05f - (currentSpeed / maxSpeed) * 0.04f;
 
         if (exhaustTimer >= spawnInterval && currentSpeed > minSpeed * 1.2f) {
-            exhaust.spawnExhaustParticle(position, rotation);
+            exhaust.spawnExhaustParticle(position, rotation, modelScale);
             exhaustTimer = 0.0f;
         }
 
@@ -1893,7 +1895,7 @@ class StarFighter {
         modelMatrix = glm::rotate(modelMatrix, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
         modelMatrix = glm::rotate(modelMatrix, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
 
-        modelMatrix = glm::scale(modelMatrix, glm::vec3(2.1f, 2.1f, 2.1f));
+        modelMatrix = glm::scale(modelMatrix, glm::vec3(modelScale, modelScale, modelScale));
 
         shader.setUniform("model", modelMatrix);
         shader.setUniform("view", viewMatrix);
