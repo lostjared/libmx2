@@ -1257,7 +1257,7 @@ uniform sampler2D starTexture;
 
 void main() {
     
-    float ambientStrength = 0.4;
+    float ambientStrength = 0.2;
     vec3 ambient = ambientStrength * vec3(1.0, 1.0, 1.0);
     
     
@@ -2453,12 +2453,13 @@ class Game : public gl::GLObject {
 
         emiter.update(deltaTime);
         emiter.draw(win);
-
+#ifndef NO_DEBUG
         win->text.setColor({0xBD, 0, 0, 255});
         win->text.printText_Solid(font, win->w - 250.0f, 25.0f, "MX2 Asteroids " + std::string(ASTEROIDS_VERSION));
         win->text.setColor({255, 255, 255, 255});
         win->text.printText_Solid(font, win->w - 250.0f, 50.0f, "Score: " + std::to_string(score));
         win->text.printText_Solid(font, win->w - 250.0f, 75.0f, "Lives: " + std::to_string(lives));
+#endif
 
         int numPlanets = 0;
         for (auto &p : planets) {
@@ -2470,6 +2471,7 @@ class Game : public gl::GLObject {
             randomizePlanetPositions();
         }
 
+#ifndef NO_DEBUG
         win->text.printText_Solid(font, win->w - 250.0f, 100.0f, "Asteroids: " + std::to_string(numPlanets));
         win->text.printText_Solid(font, win->w - 250.0f, 125.0f, "[F1 for Debug]");
         if (inverted_controls) {
@@ -2511,6 +2513,7 @@ class Game : public gl::GLObject {
             win->text.printText_Solid(font, 25.0f, 225.0f, "Controller: " + con_str);
             win->text.printText_Solid(font, 25.0f, 250.0f, "Press ENTER to randomize asteroids");
         }
+#endif
     }
 
     void handleInput(gl::GLWindow *win, float deltaTime) {

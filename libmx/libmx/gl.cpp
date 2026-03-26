@@ -645,7 +645,7 @@ namespace gl {
         if (!state)
             return false;
         release();
-        mx::system_out << "libmx2: ShaderProgram::loadProgram reloading from files\n";
+        //mx::system_out << "libmx2: ShaderProgram::loadProgram reloading from files\n";
         state->shader_id = createProgramFromFile(v, f);
         return state->shader_id != 0;
     }
@@ -654,7 +654,7 @@ namespace gl {
         if (!state)
             return false;
         release();
-        mx::system_out << "libmx2: ShaderProgram::loadProgramFromText reloading from source text\n";
+        //mx::system_out << "libmx2: ShaderProgram::loadProgramFromText reloading from source text\n";
         state->shader_id = createProgram(v.c_str(), f.c_str());
         return state->shader_id != 0;
     }
