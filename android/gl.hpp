@@ -1,12 +1,12 @@
 #ifndef GL_H__
 #define GL_H__
-#include "mx.hpp"
-#include<string>
-#include<memory>
-#include <GLES3/gl3.h>
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/type_ptr.hpp"
+#include "mx.hpp"
+#include <GLES3/gl3.h>
+#include <memory>
+#include <string>
 
 namespace gl {
 
@@ -14,11 +14,11 @@ namespace gl {
     extern const char *fSource;
 
     class ShaderProgram {
-    public:
+      public:
         ShaderProgram();
         ~ShaderProgram();
         ShaderProgram(GLuint id);
-        ShaderProgram &operator=(const ShaderProgram &p);        
+        ShaderProgram &operator=(const ShaderProgram &p);
         int printShaderLog(GLuint err);
         void printProgramLog(int p);
         bool checkError();
@@ -38,39 +38,41 @@ namespace gl {
         void setUniform(const std::string &name, const glm::vec4 &value);
         void setUniform(const std::string &name, const glm::mat4 &value);
 
-    private:
+      private:
         GLuint shader_id = 0, vertex_shader = 0, fragment_shader = 0;
         std::string name_;
     };
-    
+
     class GLText {
-    public:
+      public:
         GLText();
         void init(int w, int h);
         GLuint createText(const std::string &text, TTF_Font *font, SDL_Color color, int &textWidth, int &textHeight);
         void renderText(GLuint texture, float x, float y, int textWidth, int textHeight, int screenWidth, int screenHeight);
         void printText_Solid(const mx::Font &f, float x, float y, const std::string &text);
         void setColor(SDL_Color col);
-    private:
+
+      private:
         ShaderProgram textShader;
-        SDL_Color color = {255,255,255,255};
+        SDL_Color color = {255, 255, 255, 255};
         int w = 0, h = 0;
     };
 
     class GLSprite {
-    public:
+      public:
         GLSprite();
         ~GLSprite();
         void initSize(float w, float h);
         void setName(const std::string &name);
         void setShader(ShaderProgram *program);
         void initWithTexture(ShaderProgram *program, GLuint texture, float x, float y, int textWidth, int textHeight);
-        void loadTexture(ShaderProgram *shader, const std::string &tex, float x, float  y, int textWidth, int textHeight);
+        void loadTexture(ShaderProgram *shader, const std::string &tex, float x, float y, int textWidth, int textHeight);
         void loadTexture(ShaderProgram *shader, const std::string &tex, float x, float y);
         void draw();
         void draw(GLuint texture_id, float x, float y, int w, int h);
         void updateTexture(SDL_Surface *surf);
-    private:
+
+      private:
         ShaderProgram *shader;
         GLuint texture = 0;
         GLuint VBO = 0, VAO = 0;
@@ -81,10 +83,10 @@ namespace gl {
     };
 
     class GLObject;
-   
+
     class GLWindow {
-    public:
-        GLWindow(const std::string &text, int width, int height) : glContext{nullptr}, window{nullptr} { 
+      public:
+        GLWindow(const std::string &text, int width, int height) : glContext{nullptr}, window{nullptr} {
             initGL(text, width, height);
         };
         virtual ~GLWindow();
@@ -111,17 +113,18 @@ namespace gl {
 #ifdef WITH_MIXER
         mx::Mixer mixer;
 #endif
-        GLText text;  
+        GLText text;
         SDL_Window *window;
-    protected:
+
+      protected:
         SDL_GLContext glContext;
-        
+
         bool active = false;
         SDL_Event e;
     };
 
     class GLObject {
-    public:
+      public:
         GLObject() = default;
         virtual ~GLObject() = default;
         virtual void load(GLWindow *win) = 0;
@@ -132,8 +135,8 @@ namespace gl {
 
     GLuint loadTexture(const std::string &filename);
     GLuint loadTexture(const std::string &filename, int &w, int &h);
-    void updateTexture(GLuint texture, SDL_Surface *surface, bool flip);    
+    void updateTexture(GLuint texture, SDL_Surface *surface, bool flip);
     GLuint createTexture(SDL_Surface *surface, bool flip);
     SDL_Surface *createSurface(int w, int h);
-}
+} // namespace gl
 #endif

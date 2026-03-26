@@ -1,12 +1,12 @@
 #ifndef __START_H__
 #define __START_H__
 
-#include <iostream>
-#include "mx.hpp"
 #include "gl.hpp"
+#include "mx.hpp"
+#include <iostream>
 
 class Start : public gl::GLObject {
-public:
+  public:
     Start() {}
     virtual void load(gl::GLWindow *win) override {
         load_shader();
@@ -17,7 +17,8 @@ public:
     void load_shader();
     virtual void event(gl::GLWindow *win, SDL_Event &e) override;
     virtual void draw(gl::GLWindow *win) override;
-private:
+
+  private:
     gl::ShaderProgram program;
     gl::GLSprite start;
     float fade = 0.0f;

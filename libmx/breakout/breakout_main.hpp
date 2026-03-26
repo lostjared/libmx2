@@ -3,11 +3,11 @@
 
 #include "breakout_game.hpp"
 #include "mx.hpp"
-#include <vector>
 #include <string>
+#include <vector>
 
 class Breakout {
-public:
+  public:
     Breakout() : mode(2), endScore(0), score(0) {
         setup();
     }
@@ -23,19 +23,18 @@ public:
             "data/img/block_pink.png",
             "data/img/block_yellow.png",
             "data/img/block_red.png",
-            "data/img/block_red.png"
-        };
+            "data/img/block_red.png"};
 
-        for(size_t i = 0; i < imgFiles.size(); ++i){
+        for (size_t i = 0; i < imgFiles.size(); ++i) {
             imgTex[i].loadTexture(win, win->util.getFilePath(imgFiles[i]));
         }
-        the_font.loadFont(win->util.getFilePath("data/font.ttf"),14);
+        the_font.loadFont(win->util.getFilePath("data/font.ttf"), 14);
     }
 
     void draw(mx::mxWindow *win) {
         SDL_SetRenderDrawColor(win->renderer, 0, 0, 0, 255);
-        
-        win->text.setColor({255,255,255,255});
+
+        win->text.setColor({255, 255, 255, 255});
 
         if (mode == 2) {
             SDL_RenderCopy(win->renderer, startImg.wrapper().unwrap(), nullptr, nullptr);
@@ -56,7 +55,7 @@ public:
         }
     }
 
-    void handleEvent(const SDL_Event& e) {
+    void handleEvent(const SDL_Event &e) {
         if (e.type == SDL_KEYDOWN || e.type == SDL_JOYBUTTONDOWN) {
             if (mode == 1 && (e.key.keysym.sym == SDLK_RETURN || e.jbutton.button == 1)) {
                 setup();
@@ -71,9 +70,11 @@ public:
 
     void processInput() {
         if (mode == 0) {
-            const Uint8* keyStates = SDL_GetKeyboardState(nullptr);
-            if (keyStates[SDL_SCANCODE_LEFT] || stick.getHat(0) & SDL_HAT_LEFT) paddle.moveLeft();
-            if (keyStates[SDL_SCANCODE_RIGHT] || stick.getHat(0) & SDL_HAT_RIGHT) paddle.moveRight();
+            const Uint8 *keyStates = SDL_GetKeyboardState(nullptr);
+            if (keyStates[SDL_SCANCODE_LEFT] || stick.getHat(0) & SDL_HAT_LEFT)
+                paddle.moveLeft();
+            if (keyStates[SDL_SCANCODE_RIGHT] || stick.getHat(0) & SDL_HAT_RIGHT)
+                paddle.moveRight();
         }
     }
 
@@ -84,7 +85,7 @@ public:
             if (current_time - previous_time >= 15) {
                 processInput();
                 previous_time = current_time;
-            
+
                 ball.update(paddle, grid);
                 if (ball.lives <= 0) {
                     endScore = ball.score;
@@ -101,20 +102,20 @@ public:
     ~Breakout() {
     }
 
-private:
+  private:
     Paddle paddle;
-    Grid grid{ 1280 / 32, (720 / 4) / 16 };
+    Grid grid{1280 / 32, (720 / 4) / 16};
     Ball ball;
     mx::Joystick stick;
 
-    mx::Texture background, startImg , gameoverImg;
+    mx::Texture background, startImg, gameoverImg;
     mx::Font the_font;
     mx::Texture imgTex[7];
 
     int mode;
     int endScore;
     int score;
-    
+
     void setup() {
         grid.reset();
         ball.reset(true);
@@ -124,4 +125,4 @@ private:
     }
 };
 
-#endif 
+#endif

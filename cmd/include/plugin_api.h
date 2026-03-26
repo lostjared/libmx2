@@ -19,7 +19,7 @@ extern "C" {
 #endif
 
 /* Callback the plugin invokes to write text to the host's output stream. */
-typedef void (*plugin_output_fn)(void* ctx, const char* text);
+typedef void (*plugin_output_fn)(void *ctx, const char *text);
 
 /*
  * Canonical plugin function signature.
@@ -31,8 +31,8 @@ typedef void (*plugin_output_fn)(void* ctx, const char* text);
  *
  * Return 0 on success, non-zero on failure.
  */
-typedef int (*plugin_func_t)(int argc, const char** argv,
-                             void* out_ctx, plugin_output_fn out_fn);
+typedef int (*plugin_func_t)(int argc, const char **argv,
+                             void *out_ctx, plugin_output_fn out_fn);
 
 #ifdef __cplusplus
 }

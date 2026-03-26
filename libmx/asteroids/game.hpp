@@ -1,22 +1,24 @@
 #ifndef __GAME__H_
 #define __GAME__H_
-#include<cmath>
-#include"mx.hpp"
-#include<cstdlib>
-#include<ctime>
-#include<algorithm>
+#include "mx.hpp"
+#include <algorithm>
+#include <cmath>
+#include <cstdlib>
+#include <ctime>
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
 
-inline void fillPolygon(SDL_Renderer* renderer, const std::vector<SDL_Point>& vertices) {
+inline void fillPolygon(SDL_Renderer *renderer, const std::vector<SDL_Point> &vertices) {
     int minY = vertices[0].y, maxY = vertices[0].y;
-    for (const auto& v : vertices) {
-        if (v.y < minY) minY = v.y;
-        if (v.y > maxY) maxY = v.y;
+    for (const auto &v : vertices) {
+        if (v.y < minY)
+            minY = v.y;
+        if (v.y > maxY)
+            maxY = v.y;
     }
     for (int y = minY; y <= maxY; y++) {
-        std::vector<int> nodeX; 
+        std::vector<int> nodeX;
         size_t j = vertices.size() - 1;
         for (size_t i = 0; i < vertices.size(); i++) {
             if ((vertices[i].y < y && vertices[j].y >= y) ||
@@ -33,16 +35,15 @@ inline void fillPolygon(SDL_Renderer* renderer, const std::vector<SDL_Point>& ve
     }
 }
 
-
 class Game : public obj::Object {
-public:
+  public:
     Game() = default;
     virtual ~Game() {}
 
     constexpr static int tex_width = 640, tex_height = 480;
 
-    virtual void load(mx::mxWindow* win) override {
-        if(stick.open(0)) {
+    virtual void load(mx::mxWindow *win) override {
+        if (stick.open(0)) {
             mx::system_out << "Initialized Joystick: " << stick.name() << "\n";
         }
         std::srand(static_cast<unsigned>(std::time(0)));
@@ -53,30 +54,30 @@ public:
         score = 0;
         lives = 3;
 
-        const int numStars = 300; 
+        const int numStars = 300;
         for (int i = 0; i < numStars; ++i) {
             Star star;
             star.x = static_cast<float>(std::rand() % tex_width);
             star.y = static_cast<float>(std::rand() % tex_height);
-            star.speed = 0.5f + static_cast<float>(std::rand() % 100) / 100.0f; 
+            star.speed = 0.5f + static_cast<float>(std::rand() % 100) / 100.0f;
             stars.push_back(star);
         }
         the_font.loadFont(win->util.getFilePath("data/font.ttf"), 14);
     }
 
-    void drawStars(SDL_Renderer* renderer) {
-        for (const auto& star : stars) {
+    void drawStars(SDL_Renderer *renderer) {
+        for (const auto &star : stars) {
             int x = static_cast<int>(star.x);
             int y = static_cast<int>(star.y);
 
-            Uint8 brightness = static_cast<Uint8>(150 + star.speed * 70); 
+            Uint8 brightness = static_cast<Uint8>(150 + star.speed * 70);
 
             SDL_SetRenderDrawColor(renderer, brightness, brightness, brightness, 255);
             SDL_RenderDrawPoint(renderer, x, y);
         }
     }
 
-    bool update(mx::mxWindow* win) {
+    bool update(mx::mxWindow *win) {
         static Uint32 lastUpdate = SDL_GetTicks();
         Uint32 current = SDL_GetTicks();
         Uint32 delta = current - lastUpdate;
@@ -86,11 +87,11 @@ public:
             updateShip();
             updateAsteroids();
             updateBullets();
-            if(checkShipCollision(win)) {
+            if (checkShipCollision(win)) {
                 return true;
             }
 
-            const Uint8* state = SDL_GetKeyboardState(NULL);
+            const Uint8 *state = SDL_GetKeyboardState(NULL);
             if (state[SDL_SCANCODE_LEFT] || stick.getHat(0) & SDL_HAT_LEFT) {
                 ship.angle -= 5;
             }
@@ -107,29 +108,28 @@ public:
             if (state[SDL_SCANCODE_SPACE] && currentTime - lastFireTime >= fireCooldown) {
                 fireBullet();
                 lastFireTime = currentTime;
-            } else if(stick.getButton(1) && currentTime - lastFireTime >= fireCooldown) {
+            } else if (stick.getButton(1) && currentTime - lastFireTime >= fireCooldown) {
                 fireBullet();
                 lastFireTime = currentTime;
             }
 
-            for (auto& star : stars) {
+            for (auto &star : stars) {
                 star.y += star.speed;
                 if (star.y >= tex_height) {
                     star.y -= tex_height;
                     star.x = static_cast<float>(std::rand() % tex_width);
                 }
-            }  
+            }
         }
         return false;
     }
 
-    virtual void draw(mx::mxWindow* win) override;
+    virtual void draw(mx::mxWindow *win) override;
 
-    virtual void event(mx::mxWindow* win, SDL_Event& e) override {
-        
+    virtual void event(mx::mxWindow *win, SDL_Event &e) override {
     }
 
-private:
+  private:
     mx::Font the_font;
     mx::Joystick stick;
     int score = 0;
@@ -140,20 +140,20 @@ private:
         float angle;
         float speed;
     } ship{tex_width / 2.0f, tex_height / 2.0f, 0.0f, 0.0f};
-     
+
     struct Asteroid {
-        float x, y;           
-        float radius; 
-        float dx, dy;        
-        float collisionRadius; 
-        std::vector<SDL_Point> vertices; 
-    
+        float x, y;
+        float radius;
+        float dx, dy;
+        float collisionRadius;
+        std::vector<SDL_Point> vertices;
+
         Asteroid(float x, float y, float radius) : x(x), y(y), radius(radius) {
             dx = (std::rand() % 100 - 50) / 100.0f;
             dy = (std::rand() % 100 - 50) / 100.0f;
             generateVertices();
         }
-        
+
         void generateVertices(int num_points = 12) {
             vertices.resize(num_points);
             float maxRadius = 0.0f;
@@ -170,7 +170,6 @@ private:
             collisionRadius = maxRadius;
         }
     };
-    
 
     struct Bullet {
         float x, y;
@@ -190,19 +189,23 @@ private:
         float x = static_cast<float>(std::rand() % tex_width);
         float y = static_cast<float>(std::rand() % tex_height);
         float radius = 20 + std::rand() % 30;
-    
+
         Asteroid asteroid(x, y, radius);
         asteroids.push_back(asteroid);
     }
 
     void updateAsteroids() {
-        for (auto& asteroid : asteroids) {
+        for (auto &asteroid : asteroids) {
             asteroid.x += asteroid.dx;
             asteroid.y += asteroid.dy;
-            if (asteroid.x < 0) asteroid.x += tex_width;
-            if (asteroid.x > tex_width) asteroid.x -= tex_width;
-            if (asteroid.y < 0) asteroid.y += tex_height;
-            if (asteroid.y > tex_height) asteroid.y -= tex_height;
+            if (asteroid.x < 0)
+                asteroid.x += tex_width;
+            if (asteroid.x > tex_width)
+                asteroid.x -= tex_width;
+            if (asteroid.y < 0)
+                asteroid.y += tex_height;
+            if (asteroid.y > tex_height)
+                asteroid.y -= tex_height;
         }
 
         if (asteroids.size() < 5) {
@@ -260,12 +263,12 @@ private:
     }
 
     bool checkShipCollision(mx::mxWindow *win) {
-        const float shipCollisionRadius = 10.0f;  
-        for (const auto& asteroid : asteroids) {
+        const float shipCollisionRadius = 10.0f;
+        for (const auto &asteroid : asteroids) {
             float dx = ship.x - asteroid.x;
             float dy = ship.y - asteroid.y;
             float dist = std::sqrt(dx * dx + dy * dy);
-            
+
             if (dist <= asteroid.collisionRadius + shipCollisionRadius) {
                 lives--;
                 if (lives > 0) {
@@ -290,25 +293,28 @@ private:
     void updateShip() {
         ship.x += ship.speed * std::cos(ship.angle * M_PI / 180.0);
         ship.y += ship.speed * std::sin(ship.angle * M_PI / 180.0);
-        if (ship.x < 0) ship.x += tex_width;
-        if (ship.x > tex_width) ship.x -= tex_width;
-        if (ship.y < 0) ship.y += tex_height;
-        if (ship.y > tex_height) ship.y -= tex_height;
-        ship.speed *= 0.99f; 
+        if (ship.x < 0)
+            ship.x += tex_width;
+        if (ship.x > tex_width)
+            ship.x -= tex_width;
+        if (ship.y < 0)
+            ship.y += tex_height;
+        if (ship.y > tex_height)
+            ship.y -= tex_height;
+        ship.speed *= 0.99f;
     }
 
-    template<typename T>
-    T min(T one, T two){
+    template <typename T>
+    T min(T one, T two) {
         return one < two ? one : two;
     }
 
-    template<typename T>
+    template <typename T>
     T max(T one, T two) {
         return one > two ? one : two;
     }
-    
 
-    void drawShip(SDL_Renderer* renderer, int ship_x, int ship_y, float ship_angle) {
+    void drawShip(SDL_Renderer *renderer, int ship_x, int ship_y, float ship_angle) {
         SDL_Color color_inner = {200, 200, 200, 255};
         SDL_Color color_outer = {100, 100, 100, 255};
 
@@ -323,11 +329,15 @@ private:
         int minY = points[0].y;
         int maxY = points[0].y;
 
-        if (points[1].y < minY) minY = points[1].y;
-        if (points[2].y < minY) minY = points[2].y;
+        if (points[1].y < minY)
+            minY = points[1].y;
+        if (points[2].y < minY)
+            minY = points[2].y;
 
-        if (points[1].y > maxY) maxY = points[1].y;
-        if (points[2].y > maxY) maxY = points[2].y;
+        if (points[1].y > maxY)
+            maxY = points[1].y;
+        if (points[2].y > maxY)
+            maxY = points[2].y;
 
         for (int y = minY; y <= maxY; y++) {
             int startX = tex_width, endX = 0;
@@ -354,26 +364,26 @@ private:
                 SDL_RenderDrawPoint(renderer, x, y);
             }
         }
-    } 
-/*
-    void drawShip(SDL_Renderer* renderer, int ship_x, int ship_y, float ship_angle) {
-        SDL_Color color = {200, 200, 200, 255};
-        SDL_Point points[3];
-        points[0] = { static_cast<int>(ship_x + 15 * std::cos(ship_angle * M_PI / 180.0)),
-                      static_cast<int>(ship_y + 15 * std::sin(ship_angle * M_PI / 180.0)) };
-        points[1] = { static_cast<int>(ship_x + 15 * std::cos((ship_angle + 140) * M_PI / 180.0)),
-                      static_cast<int>(ship_y + 15 * std::sin((ship_angle + 140) * M_PI / 180.0)) };
-        points[2] = { static_cast<int>(ship_x + 15 * std::cos((ship_angle + 220) * M_PI / 180.0)),
-                      static_cast<int>(ship_y + 15 * std::sin((ship_angle + 220) * M_PI / 180.0)) };
-    
-        SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
-        SDL_RenderDrawLine(renderer, points[0].x, points[0].y, points[1].x, points[1].y);
-        SDL_RenderDrawLine(renderer, points[1].x, points[1].y, points[2].x, points[2].y);
-        SDL_RenderDrawLine(renderer, points[2].x, points[2].y, points[0].x, points[0].y);
     }
-*/
+    /*
+        void drawShip(SDL_Renderer* renderer, int ship_x, int ship_y, float ship_angle) {
+            SDL_Color color = {200, 200, 200, 255};
+            SDL_Point points[3];
+            points[0] = { static_cast<int>(ship_x + 15 * std::cos(ship_angle * M_PI / 180.0)),
+                          static_cast<int>(ship_y + 15 * std::sin(ship_angle * M_PI / 180.0)) };
+            points[1] = { static_cast<int>(ship_x + 15 * std::cos((ship_angle + 140) * M_PI / 180.0)),
+                          static_cast<int>(ship_y + 15 * std::sin((ship_angle + 140) * M_PI / 180.0)) };
+            points[2] = { static_cast<int>(ship_x + 15 * std::cos((ship_angle + 220) * M_PI / 180.0)),
+                          static_cast<int>(ship_y + 15 * std::sin((ship_angle + 220) * M_PI / 180.0)) };
 
-    void drawAsteroid(SDL_Renderer* renderer, const Asteroid& asteroid) {
+            SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
+            SDL_RenderDrawLine(renderer, points[0].x, points[0].y, points[1].x, points[1].y);
+            SDL_RenderDrawLine(renderer, points[1].x, points[1].y, points[2].x, points[2].y);
+            SDL_RenderDrawLine(renderer, points[2].x, points[2].y, points[0].x, points[0].y);
+        }
+    */
+
+    void drawAsteroid(SDL_Renderer *renderer, const Asteroid &asteroid) {
         std::vector<SDL_Point> points(asteroid.vertices.size());
         for (size_t i = 0; i < asteroid.vertices.size(); i++) {
             points[i].x = static_cast<int>(asteroid.x) + asteroid.vertices[i].x;
@@ -384,24 +394,26 @@ private:
         SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
         SDL_RenderDrawLines(renderer, points.data(), points.size());
         SDL_RenderDrawLine(renderer, points.back().x, points.back().y,
-                                    points.front().x, points.front().y);
+                           points.front().x, points.front().y);
     }
 
-    void drawAsteroids(SDL_Renderer* renderer) {
-        for (const auto& asteroid : asteroids) {
+    void drawAsteroids(SDL_Renderer *renderer) {
+        for (const auto &asteroid : asteroids) {
             drawAsteroid(renderer, asteroid);
         }
     }
-    
-    void draw_circle_outline(SDL_Renderer* renderer, int center_x, int center_y, int radius) {
+
+    void draw_circle_outline(SDL_Renderer *renderer, int center_x, int center_y, int radius) {
         const float threshold = 1.0f;
         for (int y = -radius; y <= radius; y++) {
             for (int x = -radius; x <= radius; x++) {
                 float dist = std::sqrt(static_cast<float>(x * x + y * y));
                 if (std::abs(dist - radius) < threshold) {
                     float shade = 255 * (1 - (dist / radius));
-                    if (shade < 0) shade = 0;
-                    if (shade > 255) shade = 255;
+                    if (shade < 0)
+                        shade = 0;
+                    if (shade > 255)
+                        shade = 255;
                     SDL_SetRenderDrawColor(renderer,
                                            static_cast<Uint8>(shade),
                                            static_cast<Uint8>(shade),
@@ -413,9 +425,9 @@ private:
         }
     }
 
-    void drawBullets(SDL_Renderer* renderer) {
+    void drawBullets(SDL_Renderer *renderer) {
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-        for (const auto& bullet : bullets) {
+        for (const auto &bullet : bullets) {
             SDL_Rect rect = {static_cast<int>(bullet.x - 2),
                              static_cast<int>(bullet.y - 2),
                              4, 4};

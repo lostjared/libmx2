@@ -2,45 +2,45 @@
 #ifndef MODEL_VIEW_HPP
 #define MODEL_VIEW_HPP
 
-#include <QMainWindow>
-#include <QVBoxLayout>
-#include <QHBoxLayout>
-#include <QLineEdit>
-#include <QPushButton>
-#include <QLabel>
-#include <QFileDialog>
-#include <QMessageBox>
-#include <QPlainTextEdit>
-#include <QGroupBox>
-#include <QScrollBar>
-#include <QTextCharFormat>
-#include <QCloseEvent>
-#include <QProcess>
-#include <QComboBox>
-#include <QSpinBox>
-#include <QSettings>
-#include <QMenuBar>
-#include <QMenu>
 #include <QAction>
-#include <QToolBar>
-#include <QStatusBar>
-#include <QListWidget>
-#include <QSplitter>
-#include <QStyle>
-#include <QIcon>
+#include <QCheckBox>
+#include <QCloseEvent>
+#include <QComboBox>
 #include <QDragEnterEvent>
 #include <QDropEvent>
+#include <QFileDialog>
+#include <QGroupBox>
+#include <QHBoxLayout>
+#include <QIcon>
+#include <QLabel>
+#include <QLineEdit>
+#include <QListWidget>
+#include <QMainWindow>
+#include <QMenu>
+#include <QMenuBar>
+#include <QMessageBox>
 #include <QMimeData>
-#include <QCheckBox>
+#include <QPlainTextEdit>
+#include <QProcess>
+#include <QPushButton>
+#include <QScrollBar>
+#include <QSettings>
+#include <QSpinBox>
+#include <QSplitter>
+#include <QStatusBar>
+#include <QStyle>
+#include <QTextCharFormat>
+#include <QToolBar>
+#include <QVBoxLayout>
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
 
-public:
+  public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow() override;
 
-private slots:
+  private slots:
     void browseModelFile();
     void browseTextureFile();
     void browseTextureDirectory();
@@ -55,7 +55,7 @@ private slots:
     void updateRecentFiles(const QString &modelPath);
     void removeRecentFile();
 
-private:
+  private:
     void initWindow();
     void setupMenuBar();
     void setupToolBar();
@@ -66,29 +66,29 @@ private:
     void validatePaths();
     void loadRecentFiles();
     void populateResolutionCombo();
-    
-protected:
+
+  protected:
     void closeEvent(QCloseEvent *event) override;
     void dragEnterEvent(QDragEnterEvent *event) override;
     void dropEvent(QDropEvent *event) override;
 
-private:
+  private:
     QLineEdit *modelLineEdit;
     QLineEdit *textureLineEdit;
     QLineEdit *textureDirLineEdit;
     QPlainTextEdit *consoleOutput;
     QProcess *activeProcess;
-    
+
     QPushButton *openButton;
     QPushButton *stopButton;
     QPushButton *clearButton;
-    
+
     QComboBox *resolutionCombo;
     QComboBox *backendCombo;
     QSpinBox *fpsSpinBox;
     QComboBox *recentFilesCombo;
     QCheckBox *compressCheckBox;
-    
+
     QAction *openModelAction;
     QAction *openTextureAction;
     QAction *openTextureDirAction;
@@ -96,13 +96,13 @@ private:
     QAction *exitAction;
     QAction *aboutAction;
     QAction *settingsAction;
-    
+
     QLabel *statusLabel;
-    
+
     QSettings *settings;
     QString executablePath;
     QStringList recentModels;
-    
+
     static constexpr int MAX_RECENT_FILES = 10;
 };
 

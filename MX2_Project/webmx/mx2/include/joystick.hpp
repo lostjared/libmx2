@@ -9,31 +9,31 @@
 #ifndef __JOYSTICK__H__
 #define __JOYSTICK__H__
 
-#include"SDL.h"
-#include<string>
-#include<optional>
-#include"wrapper.hpp"
+#include "SDL.h"
+#include "wrapper.hpp"
+#include <optional>
+#include <string>
 
 namespace mx {
 
-/**
- * @class Joystick
- * @brief RAII wrapper for a raw SDL_Joystick device.
- *
- * Opens an SDL joystick by index and provides axis, hat, and button
- * read-back.  The handle is automatically closed on destruction.
- */
+    /**
+     * @class Joystick
+     * @brief RAII wrapper for a raw SDL_Joystick device.
+     *
+     * Opens an SDL joystick by index and provides axis, hat, and button
+     * read-back.  The handle is automatically closed on destruction.
+     */
     class Joystick {
-    public:
+      public:
         /** @brief Default constructor — device not yet opened. */
         Joystick();
         /** @brief Destructor — closes the joystick if open. */
         ~Joystick();
 
-        Joystick(const Joystick&) = delete;
-        Joystick& operator=(const Joystick&) = delete;
-        Joystick(Joystick&&) = delete;
-        Joystick& operator=(Joystick&&) = delete;
+        Joystick(const Joystick &) = delete;
+        Joystick &operator=(const Joystick &) = delete;
+        Joystick(Joystick &&) = delete;
+        Joystick &operator=(Joystick &&) = delete;
 
         /**
          * @brief Open the joystick at the given device index.
@@ -55,7 +55,7 @@ namespace mx {
          * @brief Return the underlying SDL_Joystick handle as an optional.
          * @return std::optional containing the handle, or std::nullopt.
          */
-        std::optional<SDL_Joystick*> handle();
+        std::optional<SDL_Joystick *> handle();
 
         /**
          * @brief Unwrap the SDL_Joystick pointer, asserting it is open.
@@ -108,33 +108,34 @@ namespace mx {
          * @return Wrapper holding the pointer or nullopt.
          */
         mx::Wrapper<SDL_Joystick *> wrapper() const {
-            if(stick)
+            if (stick)
                 return stick;
             return std::nullopt;
         }
-    protected:
+
+      protected:
         SDL_Joystick *stick = nullptr; ///< Underlying SDL joystick handle.
         int index = -1;                ///< Device index (-1 if not open).
     };
 
-/**
- * @class Controller
- * @brief RAII wrapper for SDL_GameController (standard layout mapping).
- *
- * Provides button, hat, and axis queries using SDL's gamecontroller API,
- * which normalises button layouts across different physical devices.
- */
+    /**
+     * @class Controller
+     * @brief RAII wrapper for SDL_GameController (standard layout mapping).
+     *
+     * Provides button, hat, and axis queries using SDL's gamecontroller API,
+     * which normalises button layouts across different physical devices.
+     */
     class Controller {
-    public:
+      public:
         /** @brief Default constructor — device not yet opened. */
         Controller();
         /** @brief Destructor — closes the controller if open. */
         ~Controller();
 
-        Controller(const Controller&) = delete;
-        Controller& operator=(const Controller&) = delete;
-        Controller(Controller&&) = delete;
-        Controller& operator=(Controller&&) = delete;
+        Controller(const Controller &) = delete;
+        Controller &operator=(const Controller &) = delete;
+        Controller(Controller &&) = delete;
+        Controller &operator=(Controller &&) = delete;
 
         /**
          * @brief Open a game controller by device index.
@@ -163,7 +164,7 @@ namespace mx {
          * @brief Return the underlying SDL_GameController handle as an optional.
          * @return std::optional containing the handle, or std::nullopt.
          */
-        std::optional<SDL_GameController*> handle();
+        std::optional<SDL_GameController *> handle();
 
         /**
          * @brief Unwrap the SDL_GameController pointer, asserting it is open.
@@ -209,7 +210,7 @@ namespace mx {
          * @return Wrapper holding the pointer or nullopt.
          */
         mx::Wrapper<SDL_GameController *> wrapper() const {
-            if(stick)
+            if (stick)
                 return stick;
             return std::nullopt;
         }
@@ -218,11 +219,16 @@ namespace mx {
          * @brief Check whether the controller is currently usable.
          * @return @c true if the controller is open and has a valid index.
          */
-        bool active() const { if(index >= 0 && stick != nullptr) return true; return false; }
-    protected:
+        bool active() const {
+            if (index >= 0 && stick != nullptr)
+                return true;
+            return false;
+        }
+
+      protected:
         SDL_GameController *stick = nullptr; ///< Underlying SDL game controller handle.
         int index = -1;                      ///< Device index (-1 if not open).
     };
-}
+} // namespace mx
 
 #endif

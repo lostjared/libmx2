@@ -1,11 +1,11 @@
-     #ifndef CFG_H_X 
+#ifndef CFG_H_X
 #define CFG_H_X
 
-#include<iostream>
-#include<fstream>
-#include<string>
-#include<unordered_map>
-#include<vector>
+#include <fstream>
+#include <iostream>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace mx {
 

@@ -1,13 +1,13 @@
 #ifndef __INTRO_H__
 #define __INTRO_H__
 
-#include "mx.hpp"
 #include "game.hpp"
+#include "mx.hpp"
 
 class Intro : public obj::Object {
-public:
+  public:
     Intro() {}
-    virtual ~Intro()  {}
+    virtual ~Intro() {}
     virtual void load(mx::mxWindow *win) override {
         tex.loadTexture(win, win->util.getFilePath("data/logo.png"));
     }
@@ -17,15 +17,15 @@ public:
         Uint32 current_time = SDL_GetTicks();
         SDL_SetTextureAlphaMod(tex.wrapper().unwrap(), alpha);
         SDL_RenderCopy(win->renderer, tex.wrapper().unwrap(), nullptr, nullptr);
-        if(done == true) {
+        if (done == true) {
             win->setObject(new Game());
             win->object->load(win);
             return;
-        }        
+        }
         if (current_time - previous_time >= 15) {
             previous_time = current_time;
             if (fading_out) {
-                alpha -= 3;  
+                alpha -= 3;
                 if (alpha <= 0) {
                     alpha = 0;
                     fading_out = false;
@@ -42,7 +42,8 @@ public:
         }
     }
     virtual void event(mx::mxWindow *win, SDL_Event &e) override {}
-private:
+
+  private:
     mx::Texture tex;
     int alpha = 255;
     bool fading_out = true;

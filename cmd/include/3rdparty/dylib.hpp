@@ -3,7 +3,7 @@
  * @version 2.2.1
  * @brief C++ cross-platform wrapper around dynamic loading of shared libraries
  * @link https://github.com/martin-olivier/dylib
- * 
+ *
  * @author Martin Olivier <martin.olivier@live.fr>
  * @copyright (c) 2023 Martin Olivier
  *
@@ -12,8 +12,8 @@
 
 #pragma once
 
-#include <string>
 #include <stdexcept>
+#include <string>
 #include <utility>
 
 #if ((defined(_MSVC_LANG) && _MSVC_LANG >= 201703L) || __cplusplus >= 201703L)
@@ -45,11 +45,11 @@
 #endif
 
 /**
- *  The dylib class can hold a dynamic library instance and interact with it 
+ *  The dylib class can hold a dynamic library instance and interact with it
  *  by getting its symbols like functions or global variables
  */
 class dylib {
-public:
+  public:
     struct filename_components {
         static constexpr const char *prefix = DYLIB_WIN_OTHER("", "lib");
         static constexpr const char *suffix = DYLIB_WIN_MAC_OTHER(".dll", ".dylib", ".so");
@@ -69,7 +69,7 @@ public:
      *  @param message the error message
      */
     class exception : public std::runtime_error {
-    public:
+      public:
         explicit exception(const std::string &message) : std::runtime_error(message) {}
     };
 
@@ -79,7 +79,7 @@ public:
      *  @param message the error message
      */
     class load_error : public exception {
-    public:
+      public:
         explicit load_error(const std::string &message) : exception(message) {}
     };
 
@@ -89,18 +89,18 @@ public:
      *  @param message the error message
      */
     class symbol_error : public exception {
-    public:
+      public:
         explicit symbol_error(const std::string &message) : exception(message) {}
     };
 
-    dylib(const dylib&) = delete;
-    dylib& operator=(const dylib&) = delete;
+    dylib(const dylib &) = delete;
+    dylib &operator=(const dylib &) = delete;
 
     dylib(dylib &&other) noexcept : m_handle(other.m_handle) {
         other.m_handle = nullptr;
     }
 
-    dylib& operator=(dylib &&other) noexcept {
+    dylib &operator=(dylib &&other) noexcept {
         if (this != &other)
             std::swap(m_handle, other.m_handle);
         return *this;
@@ -170,7 +170,7 @@ public:
 
     /**
      *  Get a symbol from the dynamic library currently loaded in the object
-     * 
+     *
      *  @throws dylib::symbol_error if the symbol could not be found
      *
      *  @param symbol_name the symbol name to get from the dynamic library
@@ -196,7 +196,7 @@ public:
 
     /**
      *  Get a function from the dynamic library currently loaded in the object
-     * 
+     *
      *  @throws dylib::symbol_error if the symbol could not be found
      *
      *  @param T the template argument must be the function prototype to get
@@ -204,7 +204,7 @@ public:
      *
      *  @return a pointer to the requested function
      */
-    template<typename T>
+    template <typename T>
     T *get_function(const char *symbol_name) const {
 #if (defined(__GNUC__) && __GNUC__ >= 8)
 #pragma GCC diagnostic push
@@ -216,14 +216,14 @@ public:
 #endif
     }
 
-    template<typename T>
+    template <typename T>
     T *get_function(const std::string &symbol_name) const {
         return get_function<T>(symbol_name.c_str());
     }
 
     /**
      *  Get a variable from the dynamic library currently loaded in the object
-     * 
+     *
      *  @throws dylib::symbol_error if the symbol could not be found
      *
      *  @param T the template argument must be the type of the variable to get
@@ -231,19 +231,19 @@ public:
      *
      *  @return a reference to the requested variable
      */
-    template<typename T>
+    template <typename T>
     T &get_variable(const char *symbol_name) const {
         return *reinterpret_cast<T *>(get_symbol(symbol_name));
     }
 
-    template<typename T>
+    template <typename T>
     T &get_variable(const std::string &symbol_name) const {
         return get_variable<T>(symbol_name.c_str());
     }
 
     /**
-     *  Check if a symbol exists in the currently loaded dynamic library. 
-     *  This method will return false if no dynamic library is currently loaded 
+     *  Check if a symbol exists in the currently loaded dynamic library.
+     *  This method will return false if no dynamic library is currently loaded
      *  or if the symbol name is nullptr
      *
      *  @param symbol_name the symbol name to look for
@@ -267,7 +267,7 @@ public:
         return m_handle;
     }
 
-protected:
+  protected:
     native_handle_type m_handle{nullptr};
 
     static native_handle_type open(const char *path) noexcept {

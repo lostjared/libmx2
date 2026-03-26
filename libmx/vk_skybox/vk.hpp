@@ -11,34 +11,35 @@
 #endif
 
 #include "exception.hpp"
+#include "joystick.hpp"
 #include "util.hpp"
 #include "vk_model.hpp"
-#include "joystick.hpp"
 
-#include <iostream>
-#include <stdexcept>
-#include <cstdlib>
-#include <vector>
-#include <optional>
-#include <set>
-#include <fstream>
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdlib>
 #include <cstring>
+#include <format>
+#include <fstream>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <iostream>
 #include <opencv2/opencv.hpp>
-#include <format>
+#include <optional>
+#include <set>
+#include <stdexcept>
+#include <vector>
 
 #ifndef VK_CHECK_RESULT
-#define VK_CHECK_RESULT(f) { \
-    VkResult res = (f); \
-    if (res != VK_SUCCESS) { \
-        throw mx::Exception(std::format("Fatal : VkResult is \"{}\" in {} at line {}", static_cast<int>(res), __FILE__, __LINE__)); \
-    } \
-}
+#define VK_CHECK_RESULT(f)                                                                                                              \
+    {                                                                                                                                   \
+        VkResult res = (f);                                                                                                             \
+        if (res != VK_SUCCESS) {                                                                                                        \
+            throw mx::Exception(std::format("Fatal : VkResult is \"{}\" in {} at line {}", static_cast<int>(res), __FILE__, __LINE__)); \
+        }                                                                                                                               \
+    }
 #endif
 
 namespace mx {
@@ -63,7 +64,7 @@ namespace mx {
         alignas(16) glm::mat4 model;
         alignas(16) glm::mat4 view;
         alignas(16) glm::mat4 proj;
-        alignas(16) glm::vec4 params; 
+        alignas(16) glm::vec4 params;
     };
 
     struct ExtPushConstants {
@@ -91,9 +92,9 @@ namespace mx {
     };
 
     class SkyboxViewer {
-    public:
+      public:
         SkyboxViewer() = default;
-        SkyboxViewer(const std::string &title, int width, int height, bool full = false, const std::string& shaderDir = "");
+        SkyboxViewer(const std::string &title, int width, int height, bool full = false, const std::string &shaderDir = "");
         virtual ~SkyboxViewer() {}
 
         void initWindow(const std::string &title, int width, int height, bool full = false);
@@ -113,7 +114,7 @@ namespace mx {
         int w = 0, h = 0;
         mxUtil util;
 
-    protected:
+      protected:
         bool active = true;
 
         MXModel model;
@@ -134,7 +135,7 @@ namespace mx {
 
         std::vector<VkBuffer> uniformBuffers;
         std::vector<VkDeviceMemory> uniformBuffersMemory;
-        std::vector<void*> uniformBuffersMapped;
+        std::vector<void *> uniformBuffersMapped;
 
         VkRenderPass renderPass = VK_NULL_HANDLE;
         VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
@@ -147,7 +148,6 @@ namespace mx {
         VkSemaphore imageAvailableSemaphore = VK_NULL_HANDLE;
         VkSemaphore renderFinishedSemaphore = VK_NULL_HANDLE;
 
-        
         VkImage cubemapImage = VK_NULL_HANDLE;
         VkDeviceMemory cubemapImageMemory = VK_NULL_HANDLE;
         VkImageView cubemapImageView = VK_NULL_HANDLE;
@@ -177,7 +177,7 @@ namespace mx {
         std::vector<VkDescriptorSet> extVertDescSets;
         std::vector<VkBuffer> extSpriteBuffers;
         std::vector<VkDeviceMemory> extSpriteMemory;
-        std::vector<void*> extSpriteMapped;
+        std::vector<void *> extSpriteMapped;
 
         VkImage depthImage = VK_NULL_HANDLE;
         VkDeviceMemory depthImageMemory = VK_NULL_HANDLE;
@@ -223,31 +223,31 @@ namespace mx {
         void createDescriptorSets();
         void cleanupSwapChain();
         void recreateSwapChain();
-        void loadShaderIndex(const std::string& shaderDir);
+        void loadShaderIndex(const std::string &shaderDir);
         void swapFragmentShader(size_t shaderIndex);
         void setupTextureImage(int width, int height);
         void createTextureImageView();
-        void updateTextureFromFrame(const cv::Mat& frame);
+        void updateTextureFromFrame(const cv::Mat &frame);
         void updateExtFragDescriptors();
 
         QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
-        VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
-        VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
-        VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
+        VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats);
+        VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes);
+        VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities);
         bool isDeviceSuitable(VkPhysicalDevice device);
         SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
-        VkShaderModule createShaderModule(const std::vector<char>& code);
+        VkShaderModule createShaderModule(const std::vector<char> &code);
 
-        void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
+        void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer &buffer, VkDeviceMemory &bufferMemory);
         uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
         void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
         void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t layerCount = 1);
         void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t w, uint32_t h, uint32_t layer = 0);
         VkCommandBuffer beginSingleTimeCommands();
         void endSingleTimeCommands(VkCommandBuffer commandBuffer);
-        VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
+        VkFormat findSupportedFormat(const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
         VkFormat findDepthFormat();
     };
-}
+} // namespace mx
 
 #endif

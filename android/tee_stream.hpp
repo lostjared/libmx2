@@ -1,11 +1,11 @@
 #ifndef MX_TSTREAM_H
 #define MX_TSTREAM_H
 
-#include <iostream>
 #include <fstream>
-#include <streambuf>
-#include <stdexcept>
+#include <iostream>
 #include <memory>
+#include <stdexcept>
+#include <streambuf>
 
 namespace mx {
 
@@ -58,10 +58,10 @@ namespace mx {
     private:
         TeeBuf tbuf;
     };
-    
+
     extern TeeStream system_out;
     extern TeeStream system_err;
     void redirect(); */
-} 
+}
 
-#endif 
+#endif

@@ -2,35 +2,35 @@
 #define __MX__H___
 
 #ifdef __EMSCRIPTEN__
-#include"config.hpp"
+#include "config.hpp"
 #else
-#include"config.h"
+#include "config.h"
 #endif
 
-#include"SDL.h"
-#include"SDL_ttf.h"
-#include<iostream>
-#include<string>
-#include"util.hpp"
-#include"object.hpp"
-#include"font.hpp"
-#include"tee_stream.hpp"
-#include"texture.hpp"
-#include"exception.hpp"
-#include"joystick.hpp"
-#include"wrapper.hpp"
-#include"loadpng.hpp"
-#include"input.hpp"
-#include<memory>
-#include"SDL_image.h"
+#include "SDL.h"
+#include "SDL_image.h"
+#include "SDL_ttf.h"
+#include "exception.hpp"
+#include "font.hpp"
+#include "input.hpp"
+#include "joystick.hpp"
+#include "loadpng.hpp"
+#include "object.hpp"
+#include "tee_stream.hpp"
+#include "texture.hpp"
+#include "util.hpp"
+#include "wrapper.hpp"
+#include <iostream>
+#include <memory>
+#include <string>
 #ifdef WITH_MIXER
-#include"sound.hpp"
+#include "sound.hpp"
 #endif
 
 namespace mx {
 
     class mxWindow {
-    public:
+      public:
         std::unique_ptr<obj::Object> object;
         mxWindow() = delete;
         mxWindow(const std::string &name, int w, int h, bool full = false);
@@ -57,11 +57,11 @@ namespace mx {
 #ifdef WITH_MIXER
         Mixer mixer;
 #endif
-    protected:
-        void create_window(const std::string &name, int w, int h, bool full); 
-        bool active = false; 
+      protected:
+        void create_window(const std::string &name, int w, int h, bool full);
+        bool active = false;
         SDL_Event e;
     };
-}
+} // namespace mx
 
 #endif

@@ -1,20 +1,20 @@
 #ifndef __WRAPPER_H__
 #define __WRAPPER_H__
 
-#include<iostream>
-#include<optional>
+#include "exception.hpp"
 #include "tee_stream.hpp"
-#include<sstream>
-#include"exception.hpp"
+#include <iostream>
+#include <optional>
+#include <sstream>
 
 namespace mx {
 
-//    template <typename T>
-//    concept WrapType = std::is_pointer_v<T>;
+    //    template <typename T>
+    //    concept WrapType = std::is_pointer_v<T>;
 
-    template<typename T>
+    template <typename T>
     class Wrapper {
-    public:
+      public:
         Wrapper() : type{std::nullopt} {}
         Wrapper(const T &t) : type{t} {}
         Wrapper(std::nullopt_t n) : type{n} {}
@@ -30,7 +30,7 @@ namespace mx {
             type = n;
             return *this;
         }
-        
+
         Wrapper<T> &operator=(const Wrapper<T> &w) {
             this->type = w.type;
             return *this;
@@ -42,7 +42,7 @@ namespace mx {
         }
 
         bool has_value() const {
-            if(type.has_value()) 
+            if (type.has_value())
                 return true;
 
             return false;
@@ -53,34 +53,34 @@ namespace mx {
         }
 
         T expect(const std::string &msg) {
-            if(type.has_value() && type.value() != nullptr)
+            if (type.has_value() && type.value() != nullptr)
                 return type.value();
 
-//           std::ostringstream stream; 
-//            stream << "panic: " << msg;
-//         // thrwo Exception(stream.str());
-	    return NULL;
+            //           std::ostringstream stream;
+            //            stream << "panic: " << msg;
+            //         // thrwo Exception(stream.str());
+            return NULL;
         }
 
         T unwrap() {
-            if(type.has_value() && type.value() != nullptr)
+            if (type.has_value() && type.value() != nullptr)
                 return type.value();
 
-            //std::ostringstream stream;
-            //stream << "mx: panic, Wrapper Error: type is null...";
-            //throw Exception(stream.str());
+            // std::ostringstream stream;
+            // stream << "mx: panic, Wrapper Error: type is null...";
+            // throw Exception(stream.str());
             return T();
         }
 
         T unwrap_or(T value) {
-            if(type.has_value() && type.value() != nullptr)
+            if (type.has_value() && type.value() != nullptr)
                 return type.value();
             return value;
         }
 
-    private:
+      private:
         std::optional<T> type;
     };
-}
+} // namespace mx
 
 #endif

@@ -36,9 +36,11 @@
 namespace mx {
 
     /** @brief Axis selector for deformation operations. */
-    enum class DeformAxis { X = 0,
-                            Y = 1,
-                            Z = 2 };
+    enum class DeformAxis {
+        X = 0,
+        Y = 1,
+        Z = 2
+    };
 
     /**
      * @struct MXMaterial

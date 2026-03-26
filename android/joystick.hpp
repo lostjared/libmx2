@@ -1,21 +1,21 @@
 #ifndef __JOYSTICK__H__
 #define __JOYSTICK__H__
 
-#include"SDL.h"
-#include<string>
-#include<optional>
-#include"wrapper.hpp"
+#include "SDL.h"
+#include "wrapper.hpp"
+#include <optional>
+#include <string>
 
 namespace mx {
 
     class Joystick {
-    public:
+      public:
         Joystick();
         ~Joystick();
         bool open(int index);
         std::string name() const;
         void close();
-        std::optional<SDL_Joystick*> handle();
+        std::optional<SDL_Joystick *> handle();
         SDL_Joystick *unwrap() const;
         int joystickIndex() const;
         static int joysticks() {
@@ -30,24 +30,25 @@ namespace mx {
         Sint16 getAxis(int axis);
 
         mx::Wrapper<SDL_Joystick *> wrapper() const {
-            if(stick)
+            if (stick)
                 return stick;
             return std::nullopt;
         }
-    protected:
+
+      protected:
         SDL_Joystick *stick = nullptr;
         int index = -1;
     };
 
     class Controller {
-    public:
+      public:
         Controller();
         ~Controller();
         bool open(int index);
         bool connectEvent(SDL_Event &e);
         std::string name() const;
         void close();
-        std::optional<SDL_GameController*> handle();
+        std::optional<SDL_GameController *> handle();
         SDL_GameController *unwrap() const;
         int controllerIndex() const;
         static int joysticks() {
@@ -57,15 +58,20 @@ namespace mx {
         Uint8 getHat(int hat);
         Sint16 getAxis(SDL_GameControllerAxis axis);
         mx::Wrapper<SDL_GameController *> wrapper() const {
-            if(stick)
+            if (stick)
                 return stick;
             return std::nullopt;
         }
-        bool active() const { if(index >= 0 && stick != nullptr) return true; return false; }
-    protected:
+        bool active() const {
+            if (index >= 0 && stick != nullptr)
+                return true;
+            return false;
+        }
+
+      protected:
         SDL_GameController *stick = nullptr;
         int index = -1;
     };
-}
+} // namespace mx
 
 #endif

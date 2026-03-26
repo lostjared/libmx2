@@ -1,12 +1,12 @@
 #ifndef _INTRO_H__
 #define _INTRO_H__
 
-#include <iostream>
-#include "mx.hpp"
 #include "gl.hpp"
+#include "mx.hpp"
+#include <iostream>
 
 class Intro : public gl::GLObject {
-public:
+  public:
     Intro() {}
     virtual void load(gl::GLWindow *win) override {
         load_shader();
@@ -17,12 +17,12 @@ public:
     void load_shader();
     virtual void event(gl::GLWindow *win, SDL_Event &e) override;
     virtual void draw(gl::GLWindow *win) override;
-private:
+
+  private:
     gl::ShaderProgram program;
     gl::GLSprite intro;
     Uint32 lastUpdateTime = 0;
     float fade = 1.0f;
 };
-
 
 #endif

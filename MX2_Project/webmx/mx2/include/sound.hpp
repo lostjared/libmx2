@@ -8,38 +8,38 @@
 #ifndef __SOUND__HPP_H__
 #define __SOUND__HPP_H__
 #ifdef __EMSCRIPTEN__
-#include"config.hpp"
+#include "config.hpp"
 #else
-#include"config.h"
+#include "config.h"
 #endif
 #ifdef WITH_MIXER
-#include"SDL.h"
-#include"SDL_mixer.h"
-#include<vector>
-#include<string>
+#include "SDL.h"
+#include "SDL_mixer.h"
+#include <string>
+#include <vector>
 
 namespace mx {
 
-/**
- * @class Mixer
- * @brief SDL_mixer–based audio manager.
- *
- * Provides facilities for loading WAV sound chunks and streamed music
- * tracks, playing them on SDL_mixer channels, and querying playback state.
- * Only available when the library is built with WITH_MIXER defined.
- */
+    /**
+     * @class Mixer
+     * @brief SDL_mixer–based audio manager.
+     *
+     * Provides facilities for loading WAV sound chunks and streamed music
+     * tracks, playing them on SDL_mixer channels, and querying playback state.
+     * Only available when the library is built with WITH_MIXER defined.
+     */
     class Mixer {
-    public:
+      public:
         /** @brief Initialise SDL_mixer and open the audio device. */
         Mixer();
 
         /** @brief Halt all playback and free all loaded audio resources. */
         ~Mixer();
 
-        Mixer(const Mixer&) = delete;
-        Mixer& operator=(const Mixer&) = delete;
-        Mixer(Mixer&&) = delete;
-        Mixer& operator=(Mixer&&) = delete;
+        Mixer(const Mixer &) = delete;
+        Mixer &operator=(const Mixer &) = delete;
+        Mixer(Mixer &&) = delete;
+        Mixer &operator=(Mixer &&) = delete;
 
         /** @brief Open the audio device (called automatically by constructor). */
         void init();
@@ -87,12 +87,13 @@ namespace mx {
 
         /** @brief Stop background music playback immediately. */
         void stopMusic();
-    private:
-        bool init_ = false;               ///< Whether the audio device is open.
-        std::vector<Mix_Music *> files;   ///< Loaded music tracks.
-        std::vector<Mix_Chunk *> wav;     ///< Loaded WAV chunks.
+
+      private:
+        bool init_ = false;             ///< Whether the audio device is open.
+        std::vector<Mix_Music *> files; ///< Loaded music tracks.
+        std::vector<Mix_Chunk *> wav;   ///< Loaded WAV chunks.
     };
-}
+} // namespace mx
 
 #endif
 #endif

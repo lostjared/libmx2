@@ -1,19 +1,16 @@
 #ifndef __MX2_OLLAMA_HPP__
 #define __MX2_OLLAMA_HPP__
 
-
-#include <curl/curl.h>
-#include <iostream>
-#include <string>
-#include <sstream>
-#include <regex>
-#include <fstream>
-#include <algorithm>    
+#include <algorithm>
 #include <cctype>
-
+#include <curl/curl.h>
+#include <fstream>
+#include <iostream>
+#include <regex>
+#include <sstream>
+#include <string>
 
 namespace mx {
-
 
     struct ResponseData {
         std::string response;
@@ -21,18 +18,18 @@ namespace mx {
     };
 
     class ObjectRequestException : public std::exception {
-    public:
+      public:
         explicit ObjectRequestException(const std::string &message) : msg(message) {}
-        virtual const char* what() const noexcept override {
+        virtual const char *what() const noexcept override {
             return msg.c_str();
         }
-    private:
+
+      private:
         std::string msg;
-    };  
+    };
 
     class ObjectRequest {
-    public:
-
+      public:
         explicit ObjectRequest(const std::string &host_ = "localhost", const std::string &model_ = "codellama:7b", const std::string &filename_ = "shader.glsl") : host(host_), model(model_), filename(filename_) {}
         void setHost(const std::string &host_) {
             host = host_;
@@ -53,8 +50,9 @@ namespace mx {
 
         static std::string unescape(const std::string &input);
         std::string generateCode();
-        static size_t WriteCallback(void* contents, size_t size, size_t nmemb, ResponseData* data);
-    private:
+        static size_t WriteCallback(void *contents, size_t size, size_t nmemb, ResponseData *data);
+
+      private:
         std::string host;
         std::string model;
         std::string filename;
@@ -62,8 +60,6 @@ namespace mx {
         std::string prompt;
     };
 
-
-
-}
+} // namespace mx
 
 #endif

@@ -6,21 +6,21 @@
 #ifdef __EMSCRIPTEN__
 #include "gtc/random.hpp"
 #else
-#include<glm/gtc/random.hpp>
+#include <glm/gtc/random.hpp>
 #endif
 
 namespace effect {
 
     struct Particle {
         glm::vec3 position;
-        glm::vec3 velocity; 
+        glm::vec3 velocity;
         glm::vec4 color;
         float lifetime;
     };
 
-    class Explosion { 
-    public:
-        Explosion(unsigned int max, bool isBoss); 
+    class Explosion {
+      public:
+        Explosion(unsigned int max, bool isBoss);
         ~Explosion() = default;
         void load(gl::GLWindow *win);
         void setInfo(gl::ShaderProgram *prog, GLuint texture_id);
@@ -37,11 +37,11 @@ namespace effect {
         GLuint textureID = 0;
         glm::vec4 particleColor;
         bool is_active = false;
-        bool isBoss; 
+        bool isBoss;
     };
 
     class ExplosionEmiter {
-    public:
+      public:
         ExplosionEmiter();
         glm::mat4 projection, view, model;
         gl::ShaderProgram shader_program;
@@ -50,11 +50,11 @@ namespace effect {
         void load(gl::GLWindow *win);
         void update(gl::GLWindow *win, float deltaTime);
         void draw(gl::GLWindow *win);
-        void explode(gl::GLWindow *win, glm::vec3 pos, glm::vec4 particleColor, bool isBoss); 
+        void explode(gl::GLWindow *win, glm::vec3 pos, glm::vec4 particleColor, bool isBoss);
 
         std::vector<std::unique_ptr<Explosion>> explosions;
     };
 
-} 
+} // namespace effect
 
-#endif 
+#endif

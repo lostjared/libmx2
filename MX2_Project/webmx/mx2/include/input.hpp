@@ -12,42 +12,42 @@
 
 namespace mx {
 
-/**
- * @enum Input_Button
- * @brief Logical button identifiers for a standard gamepad.
- */
+    /**
+     * @enum Input_Button
+     * @brief Logical button identifiers for a standard gamepad.
+     */
     enum class Input_Button {
-        BTN_A = 0,     ///< A / Cross button.
-        BTN_B,         ///< B / Circle button.
-        BTN_X,         ///< X / Square button.
-        BTN_Y,         ///< Y / Triangle button.
-        BTNL_L,        ///< Left shoulder button.
-        BTN_R,         ///< Right shoulder button.
-        BTN_D_UP,      ///< D-pad up.
-        BTN_D_DOWN,    ///< D-pad down.
-        BTN_D_LEFT,    ///< D-pad left.
-        BTN_D_RIGHT,   ///< D-pad right.
-        BTN_START,     ///< Start / Menu button.
-        BTN_BACK,      ///< Back / Select button.
+        BTN_A = 0,   ///< A / Cross button.
+        BTN_B,       ///< B / Circle button.
+        BTN_X,       ///< X / Square button.
+        BTN_Y,       ///< Y / Triangle button.
+        BTNL_L,      ///< Left shoulder button.
+        BTN_R,       ///< Right shoulder button.
+        BTN_D_UP,    ///< D-pad up.
+        BTN_D_DOWN,  ///< D-pad down.
+        BTN_D_LEFT,  ///< D-pad left.
+        BTN_D_RIGHT, ///< D-pad right.
+        BTN_START,   ///< Start / Menu button.
+        BTN_BACK,    ///< Back / Select button.
     };
 
-/**
- * @class Input
- * @brief Convenience wrapper that queries controller buttons by logical name.
- *
- * Inherits Controller, adding getButton(Input_Button) to allow polling
- * gamepad input without knowing the underlying SDL button codes.
- */
+    /**
+     * @class Input
+     * @brief Convenience wrapper that queries controller buttons by logical name.
+     *
+     * Inherits Controller, adding getButton(Input_Button) to allow polling
+     * gamepad input without knowing the underlying SDL button codes.
+     */
     class Input : public Controller {
-    public:
+      public:
         /** @brief Default constructor. */
         Input() = default;
         ~Input() = default;
 
-        Input(const Input&) = delete;
-        Input& operator=(const Input&) = delete;
-        Input(Input&&) = delete;
-        Input& operator=(Input&&) = delete;
+        Input(const Input &) = delete;
+        Input &operator=(const Input &) = delete;
+        Input(Input &&) = delete;
+        Input &operator=(Input &&) = delete;
 
         /**
          * @brief Query whether a logical gamepad button is currently pressed.
@@ -57,9 +57,6 @@ namespace mx {
         bool getButton(Input_Button b);
     };
 
-}
-
+} // namespace mx
 
 #endif
-
-

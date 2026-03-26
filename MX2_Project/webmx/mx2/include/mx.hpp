@@ -9,43 +9,43 @@
 #define __MX__H___
 
 #ifdef __EMSCRIPTEN__
-#include"config.hpp"
+#include "config.hpp"
 #else
-#include"config.h"
+#include "config.h"
 #endif
 
-#include"SDL.h"
-#include"SDL_ttf.h"
-#include<iostream>
-#include<string>
-#include"util.hpp"
-#include"object.hpp"
-#include"font.hpp"
-#include"tee_stream.hpp"
-#include"texture.hpp"
-#include"exception.hpp"
-#include"joystick.hpp"
-#include"wrapper.hpp"
-#include"loadpng.hpp"
-#include"input.hpp"
-#include<memory>
+#include "SDL.h"
+#include "SDL_ttf.h"
+#include "exception.hpp"
+#include "font.hpp"
+#include "input.hpp"
+#include "joystick.hpp"
+#include "loadpng.hpp"
+#include "object.hpp"
+#include "tee_stream.hpp"
+#include "texture.hpp"
+#include "util.hpp"
+#include "wrapper.hpp"
+#include <iostream>
+#include <memory>
+#include <string>
 
 #ifdef WITH_MIXER
-#include"sound.hpp"
+#include "sound.hpp"
 #endif
 
 namespace mx {
 
-/**
- * @class mxWindow
- * @brief Main SDL2 application window.
- *
- * Creates and manages the SDL2 window and renderer.  Derived classes must
- * implement event() and draw() to provide application-specific behaviour.
- * The window runs a blocking loop() that drives the frame and event cycle.
- */
+    /**
+     * @class mxWindow
+     * @brief Main SDL2 application window.
+     *
+     * Creates and manages the SDL2 window and renderer.  Derived classes must
+     * implement event() and draw() to provide application-specific behaviour.
+     * The window runs a blocking loop() that drives the frame and event cycle.
+     */
     class mxWindow {
-    public:
+      public:
         std::unique_ptr<obj::Object> object; ///< Optional attached game object.
 
         mxWindow() = delete;
@@ -62,10 +62,10 @@ namespace mx {
         /** @brief Destructor — destroys the SDL2 window and renderer. */
         virtual ~mxWindow();
 
-        mxWindow(const mxWindow&) = delete;
-        mxWindow& operator=(const mxWindow&) = delete;
-        mxWindow(mxWindow&&) = delete;
-        mxWindow& operator=(mxWindow&&) = delete;
+        mxWindow(const mxWindow &) = delete;
+        mxWindow &operator=(const mxWindow &) = delete;
+        mxWindow(mxWindow &&) = delete;
+        mxWindow &operator=(mxWindow &&) = delete;
 
         /**
          * @brief Process a single SDL event (pure virtual).
@@ -129,11 +129,11 @@ namespace mx {
         /** @brief Request the SDL event loop to quit. */
         void quit();
 
-        mxUtil util;               ///< Utility/asset helper.
-        Text text;                 ///< 2D text renderer.
+        mxUtil util;                      ///< Utility/asset helper.
+        Text text;                        ///< 2D text renderer.
         SDL_Renderer *renderer = nullptr; ///< Active SDL renderer.
-        int width = 0;             ///< Window width in pixels.
-        int height = 0;            ///< Window height in pixels.
+        int width = 0;                    ///< Window width in pixels.
+        int height = 0;                   ///< Window height in pixels.
 
         /**
          * @brief Attach an obj::Object to receive draw/event callbacks.
@@ -152,7 +152,7 @@ namespace mx {
 #ifdef WITH_MIXER
         Mixer mixer; ///< Audio mixer (only when built with WITH_MIXER).
 #endif
-    protected:
+      protected:
         /**
          * @brief Internal helper: create and initialise the SDL window+renderer.
          * @param name  Title string.
@@ -164,6 +164,6 @@ namespace mx {
         bool active = false; ///< Controls the main loop.
         SDL_Event e;         ///< Reusable SDL event structure.
     };
-}
+} // namespace mx
 
 #endif

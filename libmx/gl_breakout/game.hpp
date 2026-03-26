@@ -4,7 +4,7 @@
 #include "game_objects.hpp"
 
 class BreakoutGame : public gl::GLObject {
-public:
+  public:
     std::vector<Block> Blocks;
     Paddle PlayerPaddle;
     Ball GameBall;
@@ -18,14 +18,14 @@ public:
 
     mx::Font font;
     int score = 0;
-    Uint32 lastTapTime = 0; 
-    const Uint32 doubleTapThreshold = 300; 
+    Uint32 lastTapTime = 0;
+    const Uint32 doubleTapThreshold = 300;
     float gridRotation = 0.0f;
-    float gridYRotation = 0.0f; 
-    float rotationSpeed = 50.0f; 
+    float gridYRotation = 0.0f;
+    float rotationSpeed = 50.0f;
     BreakoutGame() {}
     ~BreakoutGame() override {
-        for(auto &t : Textures) {
+        for (auto &t : Textures) {
             glDeleteTextures(1, &t);
         }
     }
@@ -39,7 +39,8 @@ public:
     virtual void event(gl::GLWindow *win, SDL_Event &e) override;
     GLuint createTextTexture(const std::string &text, TTF_Font *font, SDL_Color color, int &textWidth, int &textHeight);
     void renderText(GLuint texture, int textWidth, int textHeight, int screenWidth, int screenHeight);
-private:
+
+  private:
     mx::Controller stick;
 #ifdef WITH_MIXER
     int ping = -1;
@@ -47,6 +48,5 @@ private:
     int die = -1;
 #endif
 };
-
 
 #endif

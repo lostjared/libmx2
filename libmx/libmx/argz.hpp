@@ -56,11 +56,13 @@ concept StringType = std::is_class_v<T> && requires(T type) {
 };
 
 /** @brief Discriminator for option kind used inside Argument. */
-enum class ArgType { ARG_SINGLE,
-                     ARG_SINGLE_VALUE,
-                     ARG_DOUBLE,
-                     ARG_DOUBLE_VALUE,
-                     ARG_NONE };
+enum class ArgType {
+    ARG_SINGLE,
+    ARG_SINGLE_VALUE,
+    ARG_DOUBLE,
+    ARG_DOUBLE_VALUE,
+    ARG_NONE
+};
 
 /**
  * @struct Argument

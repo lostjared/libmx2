@@ -18,14 +18,15 @@
 #include <string>
 
 class PluginOutput {
-    void*            ctx_;
+    void *ctx_;
     plugin_output_fn fn_;
-public:
-    PluginOutput(void* ctx, plugin_output_fn fn) : ctx_(ctx), fn_(fn) {}
+
+  public:
+    PluginOutput(void *ctx, plugin_output_fn fn) : ctx_(ctx), fn_(fn) {}
 
     /* Catch-all: convert any streamable type through a local ostringstream. */
-    template<typename T>
-    PluginOutput& operator<<(const T& val) {
+    template <typename T>
+    PluginOutput &operator<<(const T &val) {
         std::ostringstream ss;
         ss << val;
         fn_(ctx_, ss.str().c_str());
@@ -33,23 +34,24 @@ public:
     }
 
     /* Fast path for C string literals / const char*. */
-    PluginOutput& operator<<(const char* s) {
+    PluginOutput &operator<<(const char *s) {
         fn_(ctx_, s);
         return *this;
     }
 
     /* Fast path for std::string (stays within the plugin). */
-    PluginOutput& operator<<(const std::string& s) {
+    PluginOutput &operator<<(const std::string &s) {
         fn_(ctx_, s.c_str());
         return *this;
     }
 
     /* Handle std::endl and other ostream manipulators. */
-    PluginOutput& operator<<(std::ostream& (*manip)(std::ostream&)) {
+    PluginOutput &operator<<(std::ostream &(*manip)(std::ostream &)) {
         std::ostringstream ss;
         manip(ss);
         std::string s = ss.str();
-        if (!s.empty()) fn_(ctx_, s.c_str());
+        if (!s.empty())
+            fn_(ctx_, s.c_str());
         return *this;
     }
 };

@@ -398,8 +398,10 @@ namespace gl {
     };
 
     /** @brief OpenGL mode: desktop GL or OpenGL ES. */
-    enum class GLMode { DESKTOP,
-                        ES };
+    enum class GLMode {
+        DESKTOP,
+        ES
+    };
 
     class GLObject;
 

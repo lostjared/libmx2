@@ -1,19 +1,19 @@
 #ifndef __SOUND__HPP_H__
 #define __SOUND__HPP_H__
 #ifdef __EMSCRIPTEN__
-#include"config.hpp"
+#include "config.hpp"
 #else
-#include"config.h"
+#include "config.h"
 #endif
 #ifdef WITH_MIXER
-#include"SDL.h"
-#include"SDL_mixer.h"
-#include<vector>
-#include<string>
+#include "SDL.h"
+#include "SDL_mixer.h"
+#include <string>
+#include <vector>
 
 namespace mx {
     class Mixer {
-    public:
+      public:
         Mixer();
         ~Mixer();
         void init();
@@ -24,12 +24,13 @@ namespace mx {
         bool isPlaying(int channel) const;
         void cleanup();
         void stopMusic();
-    private:
+
+      private:
         bool init_ = false;
         std::vector<Mix_Music *> files;
         std::vector<Mix_Chunk *> wav;
     };
-}
+} // namespace mx
 
 #endif
 #endif

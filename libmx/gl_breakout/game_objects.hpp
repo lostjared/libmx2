@@ -1,48 +1,46 @@
 #ifndef __GAME_OBJ_H__
 #define __GAME_OBJ_H__
 
-#include "mx.hpp"
 #include "argz.hpp"
+#include "mx.hpp"
 
 #ifdef __EMSCRIPTEN__
+#include <GLES3/gl3.h>
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
-#include <GLES3/gl3.h>
 #endif
 
-#include"gl.hpp"
-#include"loadpng.hpp"
-#include"model.hpp"
-#include<memory>
-#include<vector>
+#include "gl.hpp"
+#include "loadpng.hpp"
+#include "model.hpp"
+#include <memory>
+#include <vector>
 
-#define CHECK_GL_ERROR() \
-    { GLenum err = glGetError(); \
-      if (err != GL_NO_ERROR) \
-        printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
-
+#define CHECK_GL_ERROR()                                                    \
+    {                                                                       \
+        GLenum err = glGetError();                                          \
+        if (err != GL_NO_ERROR)                                             \
+            printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); \
+    }
 
 class GameObject {
-public:
+  public:
     glm::vec3 Position, Size;
     glm::vec3 Velocity;
     GLfloat Rotation;
     GLuint texture;
     bool owner = false;
-    gl::ShaderProgram* shaderProgram; 
+    gl::ShaderProgram *shaderProgram;
     mx::Model cube;
-    GameObject(const GameObject&) = delete;
-    GameObject& operator=(const GameObject&) = delete;
-    GameObject(GameObject&&) = default;
-    GameObject& operator=(GameObject&&) = default;
-
-
-
+    GameObject(const GameObject &) = delete;
+    GameObject &operator=(const GameObject &) = delete;
+    GameObject(GameObject &&) = default;
+    GameObject &operator=(GameObject &&) = default;
 
     GameObject() : Position(0, 0, 0), Size(1, 1, 1), Velocity(0), Rotation(0), shaderProgram(nullptr) {}
     virtual ~GameObject() {}
 
-    void setShaderProgram(gl::ShaderProgram* shaderProgram) {
+    void setShaderProgram(gl::ShaderProgram *shaderProgram) {
         this->shaderProgram = shaderProgram;
     }
 
@@ -50,7 +48,7 @@ public:
         if (!shaderProgram) {
             throw mx::Exception("Shader program not set for GameObject");
         }
-        if(!cube.openModel(win->util.getFilePath("data/cube.mxmod"))) {
+        if (!cube.openModel(win->util.getFilePath("data/cube.mxmod"))) {
             throw mx::Exception("Could not load model cube.mxmod");
         }
 
@@ -58,7 +56,7 @@ public:
         cube.setShaderProgram(shaderProgram, "texture1");
         glBindVertexArray(0);
 
-        if(gen_texture) {    
+        if (gen_texture) {
             glGenTextures(1, &texture);
             glBindTexture(GL_TEXTURE_2D, texture);
 
@@ -74,7 +72,6 @@ public:
             std::vector<GLuint> textures{texture};
             cube.setTextures(textures);
         }
-        
     }
 
     virtual void draw(gl::GLWindow *win) {
@@ -97,13 +94,11 @@ public:
     }
 };
 
-
-
 class Paddle : public GameObject {
-public:
-    float CurrentRotation;  
-    bool Rotating;          
-    float RotationSpeed;    
+  public:
+    float CurrentRotation;
+    bool Rotating;
+    float RotationSpeed;
 
     Paddle() : CurrentRotation(0.0f), Rotating(false), RotationSpeed(360.0f) {}
 
@@ -112,10 +107,10 @@ public:
         Size = glm::vec3(2.0f, 0.5f, 1.0f);
     }
 
-   void processInput(mx::Controller &stick, const Uint8 *state, float deltaTime) {
+    void processInput(mx::Controller &stick, const Uint8 *state, float deltaTime) {
         float speed = 5.0f;
-        float analogThreshold = 8000.0f; 
-        float analogInput = stick.getAxis(SDL_CONTROLLER_AXIS_LEFTX); 
+        float analogThreshold = 8000.0f;
+        float analogInput = stick.getAxis(SDL_CONTROLLER_AXIS_LEFTX);
         if (state[SDL_SCANCODE_LEFT]) {
             Position.x -= speed * deltaTime;
         }
@@ -123,10 +118,10 @@ public:
             Position.x += speed * deltaTime;
         }
         if (analogInput < -analogThreshold) {
-            Position.x -= speed * deltaTime * (std::abs(analogInput) / 32768.0f); 
+            Position.x -= speed * deltaTime * (std::abs(analogInput) / 32768.0f);
         }
         if (analogInput > analogThreshold) {
-            Position.x += speed * deltaTime * (std::abs(analogInput) / 32768.0f); 
+            Position.x += speed * deltaTime * (std::abs(analogInput) / 32768.0f);
         }
         // D-pad left/right for paddle movement
         if (stick.getButton(SDL_CONTROLLER_BUTTON_DPAD_LEFT)) {
@@ -139,13 +134,12 @@ public:
     }
 
     void eventProc(SDL_Event &e) {
-        
     }
 
     void startRotation() {
         if (!Rotating) {
             Rotating = true;
-            CurrentRotation = 0.0f; 
+            CurrentRotation = 0.0f;
         }
     }
 
@@ -153,8 +147,8 @@ public:
         if (Rotating) {
             CurrentRotation += RotationSpeed * deltaTime;
             if (CurrentRotation >= 360.0f) {
-                CurrentRotation = 0.0f; 
-                Rotating = false;      
+                CurrentRotation = 0.0f;
+                Rotating = false;
             }
         }
     }
@@ -176,12 +170,12 @@ public:
     }
 
     void handleTouch(float touchX) {
-        Position.x = glm::clamp(touchX, -5.0f, 5.0f); 
+        Position.x = glm::clamp(touchX, -5.0f, 5.0f);
     }
 };
 
 class Ball : public GameObject {
-public:
+  public:
     float Radius;
     bool Stuck;
 
@@ -212,25 +206,23 @@ public:
 };
 
 class Block : public GameObject {
-public:
+  public:
     bool Destroyed;
-    bool Rotating;          
-    float CurrentRotation;  
-    float RotationSpeed;   
+    bool Rotating;
+    float CurrentRotation;
+    float RotationSpeed;
 
     Block() : Destroyed(false), Rotating(false), CurrentRotation(0.0f), RotationSpeed(360.0f) {}
 
     void load(gl::GLWindow *win, bool gen_texture) override {
         GameObject::load(win, false);
         Size = glm::vec3(1.0f, 0.5f, 1.0f);
-
-
     }
 
     void startRotation() {
         if (!Rotating) {
             Rotating = true;
-            CurrentRotation = 0.0f; 
+            CurrentRotation = 0.0f;
         }
     }
 
@@ -238,8 +230,8 @@ public:
         if (Rotating) {
             CurrentRotation += RotationSpeed * deltaTime;
             if (CurrentRotation >= 360.0f) {
-                CurrentRotation = 0.0f; 
-                Rotating = false;      
+                CurrentRotation = 0.0f;
+                Rotating = false;
                 Destroyed = true;
             }
         }

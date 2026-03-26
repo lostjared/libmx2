@@ -1,18 +1,18 @@
 #ifndef __MX_E__
 #define __MX_E__
 
-#include<iostream>
-#include<string>
-
+#include <iostream>
+#include <string>
 
 namespace mx {
     class Exception {
-    public:
+      public:
         explicit Exception(const std::string &text_);
         std::string text() const;
-    private:
+
+      private:
         std::string text_value;
     };
-}
+} // namespace mx
 
 #endif

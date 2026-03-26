@@ -1,33 +1,34 @@
 #ifndef _GAME_STATE__
 #define _GAME_STATE__
 
-#include<string>
-#include<iostream>
-#include<iomanip>
-#include<fstream>
-#include<sstream>
-#include<unordered_map>
-#include<regex>
-#include<set>
-#include<random>
-#include<algorithm>
+#include <algorithm>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <random>
+#include <regex>
+#include <set>
+#include <sstream>
+#include <string>
+#include <unordered_map>
 
 namespace state {
 
     class StateException {
-        public:
-            StateException(const std::string& message) : message(message) {}
-            const char* what() const noexcept { return message.c_str(); }
-        private: 
-            std::string message;
+      public:
+        StateException(const std::string &message) : message(message) {}
+        const char *what() const noexcept { return message.c_str(); }
+
+      private:
+        std::string message;
     };
 
     class GameState {
-    public:
+      public:
         GameState() = default;
         ~GameState() = default;
 
-        void createList(const std::string& name) {
+        void createList(const std::string &name) {
             if (lists.find(name) == lists.end()) {
                 lists[name] = std::vector<std::string>();
             } else {
@@ -35,7 +36,7 @@ namespace state {
             }
         }
 
-        void filList(const std::string &name, const std::vector<std::string>& values) {
+        void filList(const std::string &name, const std::vector<std::string> &values) {
             auto it = lists.find(name);
             if (it != lists.end()) {
                 it->second = values;
@@ -47,10 +48,10 @@ namespace state {
         void initList(const std::string &name, const std::string &filln, size_t number) {
             auto it = lists.find(name);
             if (it != lists.end()) {
-                if(!it->second.empty())
-                    it->second.clear();    
+                if (!it->second.empty())
+                    it->second.clear();
                 it->second.resize(number);
-                for(size_t i = 0; i < number; ++i) {
+                for (size_t i = 0; i < number; ++i) {
                     it->second.at(i) = filln;
                 }
             } else {
@@ -69,32 +70,32 @@ namespace state {
             } else {
                 throw StateException("List not found: " + name);
             }
-        } 
+        }
 
-        bool hasList(const std::string& name) const {
+        bool hasList(const std::string &name) const {
             return lists.find(name) != lists.end();
         }
 
-        std::string getFromList(const std::string& name, int index) const {
+        std::string getFromList(const std::string &name, int index) const {
             auto it = lists.find(name);
             if (it != lists.end()) {
-                    if(index < 0 || index > static_cast<int>(it->second.size()-1)) {
-                        throw StateException("list_get: Index of: " + name + " out of range: " + std::to_string(index) + " len: " + std::to_string(it->second.size()));
-                    }
-                    return it->second.at(index);
+                if (index < 0 || index > static_cast<int>(it->second.size() - 1)) {
+                    throw StateException("list_get: Index of: " + name + " out of range: " + std::to_string(index) + " len: " + std::to_string(it->second.size()));
+                }
+                return it->second.at(index);
             }
             throw StateException("List not found: " + name);
         }
 
-        size_t getListSize(const std::string& name) const {
+        size_t getListSize(const std::string &name) const {
             auto it = lists.find(name);
             if (it != lists.end()) {
                 return it->second.size();
             }
             throw StateException("List not found: " + name);
         }
-        
-        void sortList(const std::string& name) {
+
+        void sortList(const std::string &name) {
             auto it = lists.find(name);
             if (it != lists.end()) {
                 std::sort(it->second.begin(), it->second.end());
@@ -103,7 +104,7 @@ namespace state {
             }
         }
 
-        void shuffleList(const std::string& name) {
+        void shuffleList(const std::string &name) {
             auto it = lists.find(name);
             if (it != lists.end()) {
                 std::shuffle(it->second.begin(), it->second.end(), std::mt19937(std::random_device()()));
@@ -112,7 +113,7 @@ namespace state {
             }
         }
 
-        void reverseList(const std::string& name) {
+        void reverseList(const std::string &name) {
             auto it = lists.find(name);
             if (it != lists.end()) {
                 std::reverse(it->second.begin(), it->second.end());
@@ -121,7 +122,7 @@ namespace state {
             }
         }
 
-        void copyList(const std::string& name, const std::string& newName) {
+        void copyList(const std::string &name, const std::string &newName) {
             auto it = lists.find(name);
             if (it != lists.end()) {
                 lists[newName] = it->second;
@@ -129,8 +130,8 @@ namespace state {
                 throw StateException("List not found: " + name);
             }
         }
-        
-        void concatList(const std::string& name, const std::string& newName) {
+
+        void concatList(const std::string &name, const std::string &newName) {
             auto it = lists.find(name);
             auto it2 = lists.find(newName);
             if (it != lists.end() && it2 != lists.end()) {
@@ -139,8 +140,8 @@ namespace state {
                 throw StateException("List not found: " + name + " or " + newName);
             }
         }
-        
-        void popList(const std::string& name) {
+
+        void popList(const std::string &name) {
             auto it = lists.find(name);
             if (it != lists.end()) {
                 if (!it->second.empty()) {
@@ -153,7 +154,7 @@ namespace state {
             }
         }
 
-        std::vector<std::string> getListTokens(const std::string& name) const {
+        std::vector<std::string> getListTokens(const std::string &name) const {
             auto it = lists.find(name);
             if (it != lists.end()) {
                 return it->second;
@@ -161,43 +162,41 @@ namespace state {
             throw StateException("List not found: " + name);
         }
 
-        size_t getListLength(const std::string& name) const {
+        size_t getListLength(const std::string &name) const {
             auto it = lists.find(name);
             if (it != lists.end()) {
                 return it->second.size();
             }
             throw StateException("List not found: " + name);
         }
-        
-        void addToList(const std::string& name, const std::string& value) {
+
+        void addToList(const std::string &name, const std::string &value) {
             auto it = lists.find(name);
             if (it != lists.end()) {
                 it->second.push_back(value);
             } else {
                 throw StateException("List not found: " + name);
             }
-
         }
-        void removeFromList(const std::string& name, const size_t pos) {
+        void removeFromList(const std::string &name, const size_t pos) {
             auto it = lists.find(name);
             if (it != lists.end()) {
                 auto &list = it->second;
                 if (pos < list.size()) {
                     list.erase(list.begin() + pos);
                 } else {
-                    throw StateException("Index " + std::to_string(pos) + 
-                                        " out of bounds for list: " + name + 
-                                        " (size: " + std::to_string(list.size()) + ")");
+                    throw StateException("Index " + std::to_string(pos) +
+                                         " out of bounds for list: " + name +
+                                         " (size: " + std::to_string(list.size()) + ")");
                 }
-            } 
-            else {
+            } else {
                 throw StateException("List not found: " + name);
             }
         }
-        void clearList(const std::string& name) {
+        void clearList(const std::string &name) {
             auto it = lists.find(name);
             if (it != lists.end()) {
-                if(!it->second.empty()) {
+                if (!it->second.empty()) {
                     it->second.clear();
                 }
             } else {
@@ -208,10 +207,10 @@ namespace state {
             lists.clear();
         }
 
-        void setVariable(const std::string& name, const std::string& value) {
+        void setVariable(const std::string &name, const std::string &value) {
             variables[name] = value;
         }
-        std::string getVariable(const std::string& name) const {
+        std::string getVariable(const std::string &name) const {
             auto it = variables.find(name);
             if (it != variables.end()) {
                 return expandVariables(it->second);
@@ -219,12 +218,12 @@ namespace state {
             throw StateException("Variable not found: " + name);
         }
 
-        void listVariables(std::ostream& output) const {
+        void listVariables(std::ostream &output) const {
             auto listSorted = [&](std::ostream &o, auto &l) -> void {
                 std::vector<std::pair<std::string, std::string>> lst;
-                for (auto &f: l) {
+                for (auto &f : l) {
                     lst.push_back(std::make_pair(f.first, f.second));
-                }  
+                }
                 std::sort(lst.begin(), lst.end());
                 size_t maxNameLength = 0;
                 for (auto &i : lst) {
@@ -236,38 +235,38 @@ namespace state {
                     if (!i.first.empty() && i.first[0] != currentLetter) {
                         currentLetter = i.first[0];
                         if (varIndex > 0) {
-                            o << "\n"; 
+                            o << "\n";
                         }
                         o << "  --- " << (char)std::toupper(currentLetter) << " ---\n";
                     }
                     o << "    " << std::setw(3) << std::right << varIndex++ << ": "
-                    << std::setw(maxNameLength) << std::left << i.first << " = "
-                    << "\"" << expandVariables(i.second) << "\"\n";
+                      << std::setw(maxNameLength) << std::left << i.first << " = "
+                      << "\"" << expandVariables(i.second) << "\"\n";
                 }
                 if (lst.empty()) {
                     o << "    (no variables defined)\n";
                 }
             };
-           auto listSorted_list = [&](std::ostream &o, auto &l) -> void {
+            auto listSorted_list = [&](std::ostream &o, auto &l) -> void {
                 std::vector<std::pair<std::string, std::vector<std::string>>> lst;
-                for(auto &f: l) {
+                for (auto &f : l) {
                     lst.push_back(std::make_pair(f.first, f.second));
                 }
-                
+
                 std::sort(lst.begin(), lst.end());
                 size_t maxNameLength = 0;
-                for(auto &i : lst) {
+                for (auto &i : lst) {
                     maxNameLength = std::max(maxNameLength, i.first.length());
                 }
-                
+
                 int listIndex = 0;
-                for(auto &i : lst) {
-                    o << std::setfill(' ') << std::setw(3) << listIndex++ << ": " 
-                    << std::setw(maxNameLength) << std::left << i.first << " {" << "\n";
+                for (auto &i : lst) {
+                    o << std::setfill(' ') << std::setw(3) << listIndex++ << ": "
+                      << std::setw(maxNameLength) << std::left << i.first << " {" << "\n";
                     int itemIndex = 0;
                     for (auto &v : i.second) {
-                        o << "    " << std::setw(3) << std::right << itemIndex++ << ": " 
-                        << v << "\n";
+                        o << "    " << std::setw(3) << std::right << itemIndex++ << ": "
+                          << v << "\n";
                     }
                     o << "}" << "\n\n";
                 }
@@ -282,7 +281,7 @@ namespace state {
         void clearVariables() {
             variables.clear();
         }
-        void clearVariable(const std::string& name) {
+        void clearVariable(const std::string &name) {
             auto it = variables.find(name);
             if (it != variables.end()) {
                 variables.erase(it);
@@ -293,14 +292,14 @@ namespace state {
 
         void searchVariables(std::ostream &output, const std::string &pattern) {
             bool found = false;
-            for(auto &v : variables) {
+            for (auto &v : variables) {
                 std::regex re(pattern, std::regex::extended);
-                if(std::regex_search(v.second, re)) {
+                if (std::regex_search(v.second, re)) {
                     found = true;
                     output << v.first << ": " << expandVariables(v.second) << "\n";
-                } 
+                }
             }
-            if(found == false) {
+            if (found == false) {
                 output << "deubg: pattern not found.\n";
             }
         }
@@ -308,27 +307,29 @@ namespace state {
         bool dumpVariables(const std::string &filename) {
             std::fstream file;
             file.open(filename, std::ios::out);
-            if(!file.is_open()) return false;
+            if (!file.is_open())
+                return false;
 
-            for(auto &v : variables) {
-                file << v.first << ": "  << v.second << "\n";
+            for (auto &v : variables) {
+                file << v.first << ": " << v.second << "\n";
             }
             file.close();
             return true;
         }
 
-        std::string expandVariables(const std::string& input, std::set<std::string> expandingVars = {}) const {
+        std::string expandVariables(const std::string &input, std::set<std::string> expandingVars = {}) const {
             std::string result = input;
             size_t pos = 0;
             while ((pos = result.find("%{", pos)) != std::string::npos) {
                 size_t end = result.find("}", pos);
-                if (end == std::string::npos) break;
+                if (end == std::string::npos)
+                    break;
                 std::string varName = result.substr(pos + 2, end - pos - 2);
-                
+
                 if (expandingVars.find(varName) != expandingVars.end()) {
                     throw state::StateException("Circular reference detected for variable: " + varName);
                 }
-                
+
                 auto it = variables.find(varName);
                 if (it != variables.end()) {
                     std::set<std::string> newExpandingVars = expandingVars;
@@ -340,16 +341,15 @@ namespace state {
                     result.replace(pos, end - pos + 1, "");
                 }
             }
-            return result; 
-        }        
-    protected:
-       std::unordered_map<std::string, std::string> variables;
-       std::unordered_map<std::string, std::vector<std::string>> lists;
+            return result;
+        }
+
+      protected:
+        std::unordered_map<std::string, std::string> variables;
+        std::unordered_map<std::string, std::vector<std::string>> lists;
     };
 
     GameState *getGameState();
-}
-
-
+} // namespace state
 
 #endif

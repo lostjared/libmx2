@@ -5,29 +5,29 @@
 #ifndef _TEXTURE_H___
 #define _TEXTURE_H___
 
-#include"SDL.h"
-#include<string>
-#include<iostream>
-#include<vector>
-#include"tee_stream.hpp"
-#include<optional>
-#include"wrapper.hpp"
+#include "SDL.h"
+#include "tee_stream.hpp"
+#include "wrapper.hpp"
+#include <iostream>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace mx {
 
     class mxWindow;
 
-/**
- * @class Texture
- * @brief RAII wrapper around an SDL_Texture.
- *
- * Manages the lifetime of an SDL_Texture and provides helpers for loading
- * from image files, creating blank textures, saving to BMP, and an in-place
- * vertical flip of an SDL_Surface.  Only move semantics are supported;
- * copying is disabled to prevent double-free.
- */
+    /**
+     * @class Texture
+     * @brief RAII wrapper around an SDL_Texture.
+     *
+     * Manages the lifetime of an SDL_Texture and provides helpers for loading
+     * from image files, creating blank textures, saving to BMP, and an in-place
+     * vertical flip of an SDL_Surface.  Only move semantics are supported;
+     * copying is disabled to prevent double-free.
+     */
     class Texture {
-    public:
+      public:
         /** @brief Default constructor — no texture loaded. */
         Texture() = default;
         Texture(const Texture &tex) = delete;
@@ -80,9 +80,9 @@ namespace mx {
          * @brief Return the SDL_Texture as an optional.
          * @return std::optional with the texture, or std::nullopt if not loaded.
          */
-        std::optional<SDL_Texture *> handle() const { 
-            if(texture)
-                return texture; 
+        std::optional<SDL_Texture *> handle() const {
+            if (texture)
+                return texture;
             return std::nullopt;
         }
 
@@ -92,7 +92,7 @@ namespace mx {
          * @throws mx::Exception if texture is not loaded.
          */
         SDL_Texture *unwrap() const {
-            if(texture) {
+            if (texture) {
                 return texture;
             }
             throw Exception("unwrap: Invalid texture");
@@ -104,9 +104,9 @@ namespace mx {
          * @return Wrapper<SDL_Texture*> holding the pointer or nullopt.
          */
         Wrapper<SDL_Texture *> wrapper() const {
-            if(texture)
+            if (texture)
                 return texture;
-            
+
             return std::nullopt;
         }
 
@@ -115,16 +115,16 @@ namespace mx {
          * @param surface Surface to flip.
          * @return The same surface pointer after flipping.
          */
-        static SDL_Surface* flipSurface(SDL_Surface* surface) {
+        static SDL_Surface *flipSurface(SDL_Surface *surface) {
             if (SDL_LockSurface(surface) != 0) {
                 return surface;
             }
-            Uint8* pixels = (Uint8*)surface->pixels;
+            Uint8 *pixels = (Uint8 *)surface->pixels;
             int pitch = surface->pitch;
             std::vector<Uint8> tempRow(pitch);
             for (int y = 0; y < surface->h / 2; ++y) {
-                Uint8* row1 = pixels + y * pitch;
-                Uint8* row2 = pixels + (surface->h - y - 1) * pitch;
+                Uint8 *row1 = pixels + y * pitch;
+                Uint8 *row2 = pixels + (surface->h - y - 1) * pitch;
                 memcpy(tempRow.data(), row1, pitch);
                 memcpy(row1, row2, pitch);
                 memcpy(row2, tempRow.data(), pitch);
@@ -137,7 +137,8 @@ namespace mx {
         int width() const { return width_; }
         /** @return Height of the loaded texture in pixels. */
         int height() const { return height_; }
-    private:
+
+      private:
         SDL_Texture *texture = nullptr; ///< Managed SDL texture handle.
         int width_ = 0;                 ///< Cached texture width.
         int height_ = 0;                ///< Cached texture height.
@@ -146,6 +147,6 @@ namespace mx {
         bool saveBMP(SDL_Texture *texture, SDL_Renderer *renderer, const std::string &name);
     };
 
-}
+} // namespace mx
 
 #endif

@@ -1,12 +1,12 @@
 #ifndef __GAME_OVER__H_
 #define __GAME_OVER__H_
 
-#include <iostream>
-#include "mx.hpp"
 #include "gl.hpp"
+#include "mx.hpp"
+#include <iostream>
 
 class GameOver : public gl::GLObject {
-public:
+  public:
     GameOver(int score, int level) : score_{score}, level_{level} {
     }
     virtual void load(gl::GLWindow *win) override {
@@ -19,7 +19,8 @@ public:
     void load_shader();
     virtual void event(gl::GLWindow *win, SDL_Event &e) override;
     virtual void draw(gl::GLWindow *win) override;
-private:
+
+  private:
     gl::ShaderProgram program;
     gl::GLSprite game_over;
     Uint32 lastUpdateTime = 0;
