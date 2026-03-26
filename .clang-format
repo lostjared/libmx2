@@ -8,3 +8,4 @@ PointerAlignment: Right
 ReferenceAlignment: Pointer
 ColumnLimit: 0
 NamespaceIndentation: All
+AllowShortEnumsOnASingleLine: false
