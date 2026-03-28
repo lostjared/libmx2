@@ -82,6 +82,7 @@ namespace mx {
         GLuint shape_type;        ///< GL primitive type (e.g. GL_TRIANGLES).
         GLuint texture;           ///< Primary diffuse texture ID.
         std::string materialName; ///< Material name from OBJ usemtl directive.
+        std::string name;         ///< Optional mesh name from OBJ object/group directive.
 
         GLuint EBO, VAO, positionVBO, normalVBO, texCoordVBO, tangentVBO, bitangentVBO;
 

@@ -18,13 +18,17 @@
 #define WITH_MIXER
 #endif
 
+#ifndef WITH_JPEG
+#define WITH_JPEG
+#endif
+
 /** @brief Major version number of the project. */
 #ifndef PROJECT_VERSION_MAJOR
-#define PROJECT_VERSION_MAJOR 1
+#define PROJECT_VERSION_MAJOR 2 
 #endif
 
 /** @brief Minor version number of the project. */
 #ifndef PROJECT_VERSION_MINOR
-#define PROJECT_VERSION_MINOR 0
+#define PROJECT_VERSION_MINOR 2
 #endif
 #endif

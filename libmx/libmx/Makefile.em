@@ -1,5 +1,5 @@
 CXX = em++
-CXXFLAGS = -std=c++20 -O2 -DFOR_WASM -DWITH_MIXER -DWITH_GL -s USE_SDL=2 -s USE_SDL_TTF=2 -s USE_SDL_MIXER=2 -I/usr/local/include/glm -I/usr/include/glm
+CXXFLAGS = -std=c++20 -O2 -DFOR_WASM -DWITH_MIXER -DWITH_GL -s USE_SDL=2 -s USE_SDL_TTF=2 -s USE_SDL_MIXER=2 -I/usr/local/include/glm -I/usr/include/glm -s USE_LIBJPEG=1
 LIBS_PATH = $(HOME)/emscripten-libs
 ZLIB_INCLUDE = -s USE_ZLIB=1 #-I$(LIBS_PATH)/zlib/include
 PNG_INCLUDE = -s USE_LIBPNG=1 #-I$(LIBS_PATH)/libpng/include
