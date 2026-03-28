@@ -25,7 +25,6 @@
 
 #ifdef __EMSCRIPTEN__
 #include "glm.hpp"
-#include <emscripten/emscripten.h>
 #else
 #include <glm/glm.hpp>
 #endif
@@ -779,14 +778,9 @@ namespace mx {
             count = 0;
         };
 
-        [[maybe_unused]] size_t lineCount = 0;
         while (std::getline(file, line)) {
             if (line.empty())
                 continue;
-#ifdef __EMSCRIPTEN__
-            if (++lineCount % 5000 == 0)
-                emscripten_sleep(0);
-#endif
             size_t commentPos = line.find('#');
             if (commentPos != std::string::npos)
                 line = line.substr(0, commentPos);
