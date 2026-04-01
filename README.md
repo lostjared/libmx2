@@ -10,7 +10,7 @@
 <img width="1280" height="720" alt="image" src="https://github.com/user-attachments/assets/afe3d99f-daa5-4b25-bb3f-12aaec12ee18" />
 
 
-# Tech Specifications
+# Tech Specifications for MX2
 https://lostsidedead.biz/libmx2/mx.html
 
 # Documentation
