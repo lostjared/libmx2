@@ -74,6 +74,53 @@ namespace mx {
         return outStr;
     }
 
+    std::unique_ptr<char[]> compressData(const char* data, uLong sourceLen, uLong &destLen) {
+        destLen = compressBound(sourceLen);
+        std::unique_ptr<char[]> compressedData(new char[destLen]);
+
+        int ret = ::compress(reinterpret_cast<Bytef*>(compressedData.get()), &destLen,
+                             reinterpret_cast<const Bytef*>(data), sourceLen);
+        if (ret != Z_OK) {
+            destLen = 0;
+            throw std::runtime_error("Compression failed with error code: " + std::to_string(ret));
+        }
+        
+        return compressedData;
+    }
+
+    std::vector<char> decompressData(const void *data, uLong size_) {
+        z_stream strm = {};
+        strm.avail_in = size_;
+        strm.next_in = reinterpret_cast<Bytef*>(const_cast<void*>(data));
+
+        if (inflateInit(&strm) != Z_OK) {
+            throw std::runtime_error("inflateInit failed");
+        }
+
+        std::vector<char> outData;
+        const size_t chunkSize = 16384;
+        char outBuffer[chunkSize];
+        int ret;
+
+        do {
+            strm.avail_out = chunkSize;
+            strm.next_out = reinterpret_cast<Bytef*>(outBuffer);
+            ret = inflate(&strm, Z_NO_FLUSH);
+            
+            if (ret != Z_OK && ret != Z_STREAM_END) {
+                inflateEnd(&strm);
+                throw std::runtime_error("inflate failed with error code: " + std::to_string(ret));
+            }
+            
+            size_t have = chunkSize - strm.avail_out;
+            outData.insert(outData.end(), outBuffer, outBuffer + have);
+        } while (ret != Z_STREAM_END);
+
+        inflateEnd(&strm);
+        return outData;
+    }
+
+
     std::vector<char> readFile(const std::string &filename) {
         std::ifstream file(filename, std::ios::ate | std::ios::binary);
         if (!file.is_open()) {

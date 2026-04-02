@@ -245,7 +245,8 @@ namespace mx {
             auto buffer = mx::readFile(path);
             if (buffer.empty())
                 throw mx::Exception("MXModel::load: failed to read file: " + path);
-            text = mx::decompressString(buffer.data(), static_cast<unsigned long>(buffer.size()));
+            auto decompressed = mx::decompressData(buffer.data(), static_cast<unsigned long>(buffer.size()));
+            text.assign(decompressed.begin(), decompressed.end());
         } else {
             std::ifstream f(path);
             if (!f.is_open())

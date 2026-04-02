@@ -677,7 +677,8 @@ namespace mx {
             }
 
             if (filename.ends_with(".mxmod.z")) {
-                text = decompressString(buffer.data(), static_cast<uLong>(buffer.size()));
+                auto decompressed = decompressData(buffer.data(), static_cast<uLong>(buffer.size()));
+                text.assign(decompressed.begin(), decompressed.end());
             } else {
                 text.assign(buffer.begin(), buffer.end());
             }

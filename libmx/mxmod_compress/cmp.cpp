@@ -1,58 +1,78 @@
-#include"argz.hpp"
-#include<zlib.h>
-#include<memory>
-#include<fstream>
-#include<iostream>
-#include<string>
-#include<vector>
+#include "argz.hpp"
+#include <zlib.h>
+#include <memory>
+#include <fstream>
+#include <iostream>
+#include <string>
+#include <vector>
+#include <stdexcept>
 
 namespace cmp {
-    std::unique_ptr<char[]> compressString(const std::string &text, uLong &len) {
-        uLong sourceLen = text.size();
-        uLong destLen = compressBound(sourceLen);
+
+    /**
+     * @brief Compresses raw binary data using zlib.
+     * * @param data Pointer to the input data.
+     * @param sourceLen Length of the input data.
+     * @param destLen Output parameter that will store the compressed size.
+     * @return std::unique_ptr<char[]> Pointer to the compressed data buffer.
+     */
+    std::unique_ptr<char[]> compressData(const char* data, uLong sourceLen, uLong &destLen) {
+        destLen = compressBound(sourceLen);
         std::unique_ptr<char[]> compressedData(new char[destLen]);
-    
+
         int ret = ::compress(reinterpret_cast<Bytef*>(compressedData.get()), &destLen,
-                             reinterpret_cast<const Bytef*>(text.data()), sourceLen);
+                             reinterpret_cast<const Bytef*>(data), sourceLen);
         if (ret != Z_OK) {
-            len = 0;
+            destLen = 0;
             throw std::runtime_error("Compression failed with error code: " + std::to_string(ret));
         }
-        len = destLen;
+        
         return compressedData;
     }
 
-    std::string decompressString(void *data, uLong size_) {
-        z_stream strm;
-        strm.zalloc = Z_NULL;
-        strm.zfree = Z_NULL;
-        strm.opaque = Z_NULL;
+    /**
+     * @brief Decompresses zlib-compressed data.
+     * * @param data Pointer to the compressed data.
+     * @param size_ Size of the compressed data.
+     * @return std::vector<char> The decompressed raw binary data.
+     */
+    std::vector<char> decompressData(const void *data, uLong size_) {
+        z_stream strm = {};
         strm.avail_in = size_;
-        strm.next_in = reinterpret_cast<Bytef*>(data);
-        int ret = inflateInit(&strm);
-        if (ret != Z_OK) {
+        strm.next_in = reinterpret_cast<Bytef*>(const_cast<void*>(data));
+
+        if (inflateInit(&strm) != Z_OK) {
             throw std::runtime_error("inflateInit failed");
         }
-    
-        std::string outStr;
+
+        std::vector<char> outData;
         const size_t chunkSize = 16384;
         char outBuffer[chunkSize];
+        int ret;
+
         do {
             strm.avail_out = chunkSize;
             strm.next_out = reinterpret_cast<Bytef*>(outBuffer);
             ret = inflate(&strm, Z_NO_FLUSH);
+            
             if (ret != Z_OK && ret != Z_STREAM_END) {
                 inflateEnd(&strm);
                 throw std::runtime_error("inflate failed with error code: " + std::to_string(ret));
             }
+            
             size_t have = chunkSize - strm.avail_out;
-            outStr.append(outBuffer, have);
+            outData.insert(outData.end(), outBuffer, outBuffer + have);
         } while (ret != Z_STREAM_END);
-    
+
         inflateEnd(&strm);
-        return outStr;
+        return outData;
     }
-    
+
+    /**
+     * @brief Reads an entire file into a character vector.
+     * * @param filename Path to the file.
+     * @return std::vector<char> Buffer containing the file's contents.
+     */
     std::vector<char> readFile(const std::string& filename) {
         std::ifstream file(filename, std::ios::ate | std::ios::binary);
         if (!file.is_open()) {
@@ -62,24 +82,25 @@ namespace cmp {
         std::vector<char> buffer(fileSize);
         file.seekg(0);
         file.read(buffer.data(), fileSize);
-        file.close();
         return buffer;
     }
 }
 
 int main(int argc, char **argv) {
-    Arguments args;
-	Argz<std::string> parser(argc, argv);
+    Arguments args; 
+    Argz<std::string> parser(argc, argv);
     parser.addOptionSingleValue('c', "Model to compress")
         .addOptionSingleValue('o', "Output")
         .addOptionSingleValue('z', "Model to decompress")
         .addOptionSingle('h', "Help")
         .addOptionSingle('v', "Version");
+
     Argument<std::string> arg;
     std::string compress_file;
     std::string decomp_file;
     std::string output;
     int value = 0;
+
     try {
         while((value = parser.proc(arg)) != -1) {
             switch(value) {
@@ -97,7 +118,7 @@ int main(int argc, char **argv) {
                 case 'o':
                     output = arg.arg_value;
                     if(!compress_file.empty() && output.rfind(".mxmod.z") == std::string::npos) {
-                        std::cout << "Error model file must end in .mxmod.z to be recongized\n";
+                        std::cerr << "Error model file must end in .mxmod.z to be recognized\n";
                         exit(EXIT_FAILURE);
                     }
                     break;
@@ -105,9 +126,10 @@ int main(int argc, char **argv) {
         }
     } catch (const ArgException<std::string>& e) {
         std::cerr << "mx: Argument Exception" << e.text() << std::endl;
-		std::cerr.flush();
-        exit(0);
+        std::cerr.flush();
+        exit(EXIT_FAILURE);
     }
+
     try {
         if(compress_file.empty() && decomp_file.empty()) {
             std::cerr << "mx: Error no file to compress or decompress\nmx: Use -h for help\n";
@@ -121,32 +143,34 @@ int main(int argc, char **argv) {
             std::cerr << "mx: Error no output file specified\n";
             exit(EXIT_FAILURE);
         }
-        if(!compress_file.empty() && !output.empty()) {
+
+        if(!compress_file.empty()) {
             std::vector<char> buffer_value = cmp::readFile(compress_file);
-            uLong size_val = buffer_value.size();   
-            auto compressed_data = cmp::compressString(std::string(buffer_value.begin(), buffer_value.end()), size_val);
-            std::fstream ofile;
-            ofile.open(output, std::ios::out | std::ios::binary);
+            uLong destLen = 0;
+            
+            auto compressed_data = cmp::compressData(buffer_value.data(), buffer_value.size(), destLen);
+            
+            std::fstream ofile(output, std::ios::out | std::ios::binary);
             if(!ofile.is_open()) {
                 throw std::runtime_error("Error could not open file: " + output + " for writing");
             }
-            ofile.write(reinterpret_cast<char *>(compressed_data.get()), size_val);
-            ofile.close();
+            ofile.write(compressed_data.get(), destLen);
         }
 
-        if(!decomp_file.empty()  && !output.empty()) {
+        if(!decomp_file.empty()) {
             std::vector<char> buffer_value = cmp::readFile(decomp_file);
-            std::string decomp_data = cmp::decompressString(buffer_value.data(), buffer_value.size());
-            std::fstream ofile;
-            ofile.open(output, std::ios::out | std::ios::binary);
+            
+            std::vector<char> decomp_data = cmp::decompressData(buffer_value.data(), buffer_value.size());
+            
+            std::fstream ofile(output, std::ios::out | std::ios::binary);
             if(!ofile.is_open()) {
                 throw std::runtime_error("Error could not open file: " + output + " for writing");
             }
-            ofile.write(decomp_data.c_str(), decomp_data.size());
-            ofile.close();
+            ofile.write(decomp_data.data(), decomp_data.size());
         }
     } catch(const std::exception &e) {
         std::cerr << e.what() << "\n";
+        return EXIT_FAILURE;
     }
-    return 0;
+    return EXIT_SUCCESS;
 }

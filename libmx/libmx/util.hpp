@@ -153,6 +153,23 @@ namespace mx {
      * @return Random integer in [min, max].
      */
     int generateRandomInt(int min, int max);
+     /**
+     * @brief Decompresses zlib-compressed data.
+     * * @param data Pointer to the compressed data.
+     * @param size_ Size of the compressed data.
+     * @return std::vector<char> The decompressed raw binary data.
+     */
+    std::vector<char> decompressData(const void *data, uLong size_);
+
+    /**
+     * @brief Compresses raw binary data using zlib.
+     * * @param data Pointer to the input data.
+     * @param sourceLen Length of the input data.
+     * @param destLen Output parameter that will store the compressed size.
+     * @return std::unique_ptr<char[]> Pointer to the compressed data buffer.
+     */
+    std::unique_ptr<char[]> compressData(const char* data, uLong sourceLen, uLong &destLen);
+
 } // namespace mx
 
 #endif
