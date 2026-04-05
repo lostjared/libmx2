@@ -1,0 +1,128 @@
+# Tux MTL - Generated Material Library
+
+newmtl body
+Ka 0.0150 0.0150 0.0240
+Kd 0.0500 0.0500 0.0800
+Ks 0.1000 0.1000 0.1000
+Ns 32.0000
+d 1.0000
+illum 2
+map_Kd tux_body.png
+
+newmtl belly
+Ka 0.2850 0.2850 0.2760
+Kd 0.9500 0.9500 0.9200
+Ks 0.1000 0.1000 0.1000
+Ns 32.0000
+d 1.0000
+illum 2
+map_Kd tux_belly.png
+
+newmtl head
+Ka 0.0150 0.0150 0.0240
+Kd 0.0500 0.0500 0.0800
+Ks 0.1000 0.1000 0.1000
+Ns 32.0000
+d 1.0000
+illum 2
+map_Kd tux_head.png
+
+newmtl face
+Ka 0.2850 0.2850 0.2760
+Kd 0.9500 0.9500 0.9200
+Ks 0.1000 0.1000 0.1000
+Ns 32.0000
+d 1.0000
+illum 2
+map_Kd tux_face.png
+
+newmtl left_eye
+Ka 0.3000 0.3000 0.3000
+Kd 1.0000 1.0000 1.0000
+Ks 0.1000 0.1000 0.1000
+Ns 32.0000
+d 1.0000
+illum 2
+map_Kd tux_eye_l.png
+
+newmtl right_eye
+Ka 0.3000 0.3000 0.3000
+Kd 1.0000 1.0000 1.0000
+Ks 0.1000 0.1000 0.1000
+Ns 32.0000
+d 1.0000
+illum 2
+map_Kd tux_eye_r.png
+
+newmtl left_pupil
+Ka 0.0060 0.0060 0.0060
+Kd 0.0200 0.0200 0.0200
+Ks 0.1000 0.1000 0.1000
+Ns 32.0000
+d 1.0000
+illum 2
+map_Kd tux_pupil_l.png
+
+newmtl right_pupil
+Ka 0.0060 0.0060 0.0060
+Kd 0.0200 0.0200 0.0200
+Ks 0.1000 0.1000 0.1000
+Ns 32.0000
+d 1.0000
+illum 2
+map_Kd tux_pupil_r.png
+
+newmtl beak_upper
+Ka 0.2850 0.2250 0.0450
+Kd 0.9500 0.7500 0.1500
+Ks 0.1000 0.1000 0.1000
+Ns 32.0000
+d 1.0000
+illum 2
+map_Kd tux_beak_upper.png
+
+newmtl beak_lower
+Ka 0.2550 0.1950 0.0300
+Kd 0.8500 0.6500 0.1000
+Ks 0.1000 0.1000 0.1000
+Ns 32.0000
+d 1.0000
+illum 2
+map_Kd tux_beak_lower.png
+
+newmtl left_foot
+Ka 0.2850 0.2340 0.0360
+Kd 0.9500 0.7800 0.1200
+Ks 0.1000 0.1000 0.1000
+Ns 32.0000
+d 1.0000
+illum 2
+map_Kd tux_foot_l.png
+
+newmtl right_foot
+Ka 0.2850 0.2340 0.0360
+Kd 0.9500 0.7800 0.1200
+Ks 0.1000 0.1000 0.1000
+Ns 32.0000
+d 1.0000
+illum 2
+map_Kd tux_foot_r.png
+
+newmtl left_wing
+Ka 0.0150 0.0150 0.0240
+Kd 0.0500 0.0500 0.0800
+Ks 0.1000 0.1000 0.1000
+Ns 32.0000
+d 1.0000
+illum 2
+map_Kd tux_wing_l.png
+
+newmtl right_wing
+Ka 0.0150 0.0150 0.0240
+Kd 0.0500 0.0500 0.0800
+Ks 0.1000 0.1000 0.1000
+Ns 32.0000
+d 1.0000
+illum 2
+map_Kd tux_wing_r.png
+

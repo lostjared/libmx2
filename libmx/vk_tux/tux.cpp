@@ -1,17 +1,17 @@
-#include "vk.hpp"
-#include "vk_model.hpp"
-#include "loadpng.hpp"
 #include "SDL.h"
 #include "argz.hpp"
+#include "loadpng.hpp"
+#include "vk.hpp"
+#include "vk_model.hpp"
+#include <array>
+#include <fstream>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include <fstream>
 #include <sstream>
-#include <array>
 
 class TuxWindow : public mx::VKWindow {
-public:
-    TuxWindow(const std::string& path, int wx, int wy, bool full)
+  public:
+    TuxWindow(const std::string &path, int wx, int wy, bool full)
         : mx::VKWindow("-[ Vulkan Tux Model ]-", wx, wy, full) {
         setPath(path);
     }
@@ -30,9 +30,12 @@ public:
             float minY = verts[0].pos[1], maxY = minY;
             float minZ = verts[0].pos[2], maxZ = minZ;
             for (const auto &v : verts) {
-                minX = std::min(minX, v.pos[0]); maxX = std::max(maxX, v.pos[0]);
-                minY = std::min(minY, v.pos[1]); maxY = std::max(maxY, v.pos[1]);
-                minZ = std::min(minZ, v.pos[2]); maxZ = std::max(maxZ, v.pos[2]);
+                minX = std::min(minX, v.pos[0]);
+                maxX = std::max(maxX, v.pos[0]);
+                minY = std::min(minY, v.pos[1]);
+                maxY = std::max(maxY, v.pos[1]);
+                minZ = std::min(minZ, v.pos[2]);
+                maxZ = std::max(maxZ, v.pos[2]);
             }
             modelCenterOffset = glm::vec3(
                 -0.5f * (minX + maxX),
@@ -63,7 +66,7 @@ public:
     void draw() override {
         uint32_t imageIndex = 0;
         VkResult result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX,
-                                                 imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+                                                imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
         if (result == VK_ERROR_OUT_OF_DATE_KHR) {
             recreateSwapChain();
             return;
@@ -97,7 +100,7 @@ public:
         VkViewport viewport{};
         viewport.x = 0.0f;
         viewport.y = 0.0f;
-        viewport.width  = static_cast<float>(swapChainExtent.width);
+        viewport.width = static_cast<float>(swapChainExtent.width);
         viewport.height = static_cast<float>(swapChainExtent.height);
         viewport.minDepth = 0.0f;
         viewport.maxDepth = 1.0f;
@@ -108,16 +111,16 @@ public:
         if (spritePipeline != VK_NULL_HANDLE && !sprites.empty()) {
             vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, spritePipeline);
             for (auto &s : sprites) {
-                if (s) s->renderSprites(cmd, spritePipelineLayout,
-                                        swapChainExtent.width, swapChainExtent.height);
+                if (s)
+                    s->renderSprites(cmd, spritePipelineLayout,
+                                     swapChainExtent.width, swapChainExtent.height);
             }
         }
 
-
         VkPipeline activePipeline = (useWireFrame && graphicsPipelineMatrix != VK_NULL_HANDLE)
-                                    ? graphicsPipelineMatrix : graphicsPipeline;
+                                        ? graphicsPipelineMatrix
+                                        : graphicsPipeline;
         vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, activePipeline);
-
 
         mx::UniformBufferObject ubo{};
         float time = SDL_GetTicks() / 1000.0f;
@@ -134,11 +137,11 @@ public:
 
         float aspect = static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height);
         ubo.model = modelMat;
-        ubo.view  = glm::lookAt(glm::vec3(0.0f, 0.0f, camDist), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-        ubo.proj  = glm::perspective(glm::radians(45.0f), aspect, 0.01f, 1000.0f);
-        ubo.proj[1][1] *= -1;  // Vulkan Y-flip
+        ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, camDist), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        ubo.proj = glm::perspective(glm::radians(45.0f), aspect, 0.01f, 1000.0f);
+        ubo.proj[1][1] *= -1; // Vulkan Y-flip
         ubo.params = glm::vec4(time, (float)swapChainExtent.width, (float)swapChainExtent.height, 0.0f);
-        ubo.color  = glm::vec4(1.0f);
+        ubo.color = glm::vec4(1.0f);
 
         if (imageIndex < uniformBuffersMapped.size() && uniformBuffersMapped[imageIndex])
             memcpy(uniformBuffersMapped[imageIndex], &ubo, sizeof(ubo));
@@ -208,31 +211,52 @@ public:
         vkWaitForFences(device, 1, &inFlightFence, VK_TRUE, UINT64_MAX);
         clearTextQueue();
         for (auto &s : sprites) {
-            if (s) s->clearQueue();
+            if (s)
+                s->clearQueue();
         }
     }
 
-    void event(SDL_Event& e) override {
-        if (e.type == SDL_QUIT) { quit(); return; }
+    void event(SDL_Event &e) override {
+        if (e.type == SDL_QUIT) {
+            quit();
+            return;
+        }
         if (e.type == SDL_KEYDOWN) {
             switch (e.key.keysym.sym) {
-                case SDLK_ESCAPE: quit(); break;
-                case SDLK_w:
-                    useWireFrame = !useWireFrame;
-                    break;
-                case SDLK_r:
-                    autoRotate = !autoRotate;
-                    break;
-                case SDLK_UP:    rotationX -= 5.0f; break;
-                case SDLK_DOWN:  rotationX += 5.0f; break;
-                case SDLK_LEFT:  rotationY -= 5.0f; break;
-                case SDLK_RIGHT: rotationY += 5.0f; break;
-                case SDLK_EQUALS: case SDLK_PLUS:
-                    camDist = std::max(0.1f, camDist - 0.5f); break;
-                case SDLK_MINUS:
-                    camDist = std::min(100.0f, camDist + 0.5f); break;
-                case SDLK_HOME:
-                    rotationX = 0; rotationY = 0; camDist = 5.0f; autoAngle = 0; break;
+            case SDLK_ESCAPE:
+                quit();
+                break;
+            case SDLK_w:
+                useWireFrame = !useWireFrame;
+                break;
+            case SDLK_r:
+                autoRotate = !autoRotate;
+                break;
+            case SDLK_UP:
+                rotationX -= 5.0f;
+                break;
+            case SDLK_DOWN:
+                rotationX += 5.0f;
+                break;
+            case SDLK_LEFT:
+                rotationY -= 5.0f;
+                break;
+            case SDLK_RIGHT:
+                rotationY += 5.0f;
+                break;
+            case SDLK_EQUALS:
+            case SDLK_PLUS:
+                camDist = std::max(0.1f, camDist - 0.5f);
+                break;
+            case SDLK_MINUS:
+                camDist = std::min(100.0f, camDist + 0.5f);
+                break;
+            case SDLK_HOME:
+                rotationX = 0;
+                rotationY = 0;
+                camDist = 5.0f;
+                autoAngle = 0;
+                break;
             }
         }
         if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
@@ -278,9 +302,12 @@ public:
         vkDeviceWaitIdle(device);
         model.cleanup(device);
         for (auto &t : modelTextures) {
-            if (t.view   != VK_NULL_HANDLE) vkDestroyImageView(device, t.view, nullptr);
-            if (t.image  != VK_NULL_HANDLE) vkDestroyImage(device, t.image, nullptr);
-            if (t.memory != VK_NULL_HANDLE) vkFreeMemory(device, t.memory, nullptr);
+            if (t.view != VK_NULL_HANDLE)
+                vkDestroyImageView(device, t.view, nullptr);
+            if (t.image != VK_NULL_HANDLE)
+                vkDestroyImage(device, t.image, nullptr);
+            if (t.memory != VK_NULL_HANDLE)
+                vkFreeMemory(device, t.memory, nullptr);
         }
         modelTextures.clear();
         if (modelDescriptorPool != VK_NULL_HANDLE)
@@ -288,41 +315,60 @@ public:
         mx::VKWindow::cleanup();
     }
 
-private:
+  private:
     struct TexEntry {
-        VkImage        image  = VK_NULL_HANDLE;
+        VkImage image = VK_NULL_HANDLE;
         VkDeviceMemory memory = VK_NULL_HANDLE;
-        VkImageView    view   = VK_NULL_HANDLE;
-        uint32_t       w = 0, h = 0;
+        VkImageView view = VK_NULL_HANDLE;
+        uint32_t w = 0, h = 0;
     };
 
     void loadModelTextures() {
-        std::string texPath = util.getFilePath("data/tux.tex");
-        std::ifstream tf(texPath);
-        if (!tf.is_open())
-            throw mx::Exception("Failed to open .tex file: " + texPath);
-
         std::string prefix = util.path + "/data";
         std::vector<std::string> imagePaths;
-        std::string line;
-        while (std::getline(tf, line)) {
-            size_t b = line.find_first_not_of(" \t\r\n");
-            if (b == std::string::npos) continue;
-            size_t e = line.find_last_not_of(" \t\r\n");
-            line = line.substr(b, e - b + 1);
-            if (line.empty() || line[0] == '#') continue;
-            imagePaths.push_back(prefix + "/" + line);
+
+        // Use material info from the loaded OBJ/MTL
+        const auto &materials = model.materials();
+        if (!materials.empty()) {
+            for (const auto &mat : materials) {
+                if (!mat.map_kd.empty())
+                    imagePaths.push_back(prefix + "/" + mat.map_kd);
+            }
         }
+
+        // Fallback to .tex file if no MTL materials found
+        if (imagePaths.empty()) {
+            std::string texPath = util.getFilePath("data/tux.tex");
+            std::ifstream tf(texPath);
+            if (!tf.is_open())
+                throw mx::Exception("Failed to open .tex file: " + texPath);
+
+            std::string line;
+            while (std::getline(tf, line)) {
+                size_t b = line.find_first_not_of(" \t\r\n");
+                if (b == std::string::npos)
+                    continue;
+                size_t e = line.find_last_not_of(" \t\r\n");
+                line = line.substr(b, e - b + 1);
+                if (line.empty() || line[0] == '#')
+                    continue;
+                imagePaths.push_back(prefix + "/" + line);
+            }
+        }
+
         if (imagePaths.empty())
-            throw mx::Exception("No textures in .tex file");
+            throw mx::Exception("No textures found from MTL or .tex file");
 
         VkFormat fmt = VK_FORMAT_R8G8B8A8_UNORM;
         for (size_t i = 0; i < imagePaths.size(); ++i) {
             SDL_Surface *img = png::LoadPNG(imagePaths[i].c_str());
             if (!img) {
                 img = SDL_CreateRGBSurfaceWithFormat(0, 1, 1, 32, SDL_PIXELFORMAT_RGBA32);
-                if (img) { uint32_t *px = (uint32_t*)img->pixels; *px = 0xFFFFFFFF; }
-                else throw mx::Exception("Failed to create placeholder surface");
+                if (img) {
+                    uint32_t *px = (uint32_t *)img->pixels;
+                    *px = 0xFFFFFFFF;
+                } else
+                    throw mx::Exception("Failed to create placeholder surface");
             }
 
             TexEntry tex;
@@ -337,7 +383,8 @@ private:
             transitionImageLayout(tex.image, fmt, VK_IMAGE_LAYOUT_UNDEFINED,
                                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-            VkBuffer staging; VkDeviceMemory stagingMem;
+            VkBuffer staging;
+            VkDeviceMemory stagingMem;
             createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
                          staging, stagingMem);
@@ -394,15 +441,15 @@ private:
             VkDescriptorBufferInfo bufInfo{};
             bufInfo.buffer = uniformBuffers[frame];
             bufInfo.offset = 0;
-            bufInfo.range  = sizeof(mx::UniformBufferObject);
+            bufInfo.range = sizeof(mx::UniformBufferObject);
 
             for (size_t tex = 0; tex < texCount; ++tex) {
                 size_t setIndex = frame * texCount + tex;
 
                 VkDescriptorImageInfo imgInfo{};
                 imgInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                imgInfo.imageView   = modelTextures[tex].view;
-                imgInfo.sampler     = textureSampler;
+                imgInfo.imageView = modelTextures[tex].view;
+                imgInfo.sampler = textureSampler;
 
                 std::array<VkWriteDescriptorSet, 2> writes{};
                 writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -425,7 +472,7 @@ private:
         }
     }
 
-    mx::VKSprite* sprite = nullptr;
+    mx::VKSprite *sprite = nullptr;
     mx::MXModel model;
 
     std::vector<TexEntry> modelTextures;
@@ -447,7 +494,8 @@ private:
     void textQuads_clear() {
         clearTextQueue();
         for (auto &s : sprites) {
-            if (s) s->clearQueue();
+            if (s)
+                s->clearQueue();
         }
     }
 };

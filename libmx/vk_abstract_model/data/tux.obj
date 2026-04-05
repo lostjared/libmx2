@@ -1,5 +1,6 @@
 # Tux the Linux Penguin - Improved Model
 # High-poly with multiple texture groups
+mtllib tux.mtl
 
 # body
 g body
