@@ -214,6 +214,23 @@ namespace png {
         return true;
     }
 
+    bool SaveRawBytes(const char *filename, void *buffer, size_t w, size_t h, size_t bpp) {
+        FILE *fptr = fopen(filename, "wb");
+        if(!fptr) {
+            mx::system_err << "mx: Failed to open output file: " << filename << "\n";
+            return false;
+        }
+        size_t size = w * h * bpp;
+        size_t bytes = fwrite(buffer, sizeof(unsigned char), size, fptr);
+        if(size != bytes) {
+            mx::system_err << "Error writing frame: " << filename << "\n";
+            fclose(fptr);
+            return false;
+        }
+        fclose(fptr);
+        return true;
+    }
+
     bool SavePNG_RGBA(const char *filename, void *buffer, int w, int h) {
         int pitch = w * 4;
         FILE *fp = fopen(filename, "wb");

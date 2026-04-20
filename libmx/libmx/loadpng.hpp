@@ -27,6 +27,16 @@ namespace png {
     bool SavePNG(SDL_Texture *texture, SDL_Renderer *renderer, const char *filename);
 
     /**
+     * @brief Save raw data to a file.
+     * @param filename Output file path
+     * @param buffer   Pointer to the source data (read-only)
+     * @param w        Width of the image in pixels
+     * @param h        Height of the image in pixels
+     * @param bpp      Bytes per pixel (e.g., 2 for YUYV, 4 for RGBA)
+     * @return @c true on success, @c false on failure.
+     */
+    bool SaveRawBytes(const char *filename, const void *buffer, size_t w, size_t h, size_t bpp);
+    /**
      * @brief Save a raw RGBA pixel buffer to a PNG file.
      * @param filename Destination file path.
      * @param buffer   Pointer to the raw RGBA pixel data.
