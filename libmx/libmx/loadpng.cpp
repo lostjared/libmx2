@@ -214,7 +214,7 @@ namespace png {
         return true;
     }
 
-    bool SaveRawBytes(const char *filename, void *buffer, size_t w, size_t h, size_t bpp) {
+    bool SaveRawBytes(const char *filename, const void *buffer, size_t w, size_t h, size_t bpp) {
         FILE *fptr = fopen(filename, "wb");
         if(!fptr) {
             mx::system_err << "mx: Failed to open output file: " << filename << "\n";
