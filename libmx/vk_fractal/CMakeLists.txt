@@ -1,4 +1,5 @@
 
+find_package(CUDAToolkit REQUIRED)
 find_package(MXWrite REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(Threads REQUIRED)

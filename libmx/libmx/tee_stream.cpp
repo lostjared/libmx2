@@ -24,7 +24,7 @@ namespace mx {
         if (!error_file.is_open()) {
             std::filesystem::path logFilePath = tempDir / "error.log.txt";
             error_file.open(logFilePath, std::ios::out);
-            if (!log_file.is_open()) {
+            if (!error_file.is_open()) {
                 std::cerr << "Error";
             }
             system_out << "Redirected to: " << logFilePath << "\n";
