@@ -3,10 +3,22 @@
 #include "loadpng.hpp"
 #include <cmath>
 #include <algorithm>
+#include <cstring>
 #include <fstream>
 #include <sstream>
 #include <iomanip>
 #include <mxwrite.hpp>
+
+#if __has_include(<cuda_runtime.h>)
+#include <cuda_runtime.h>
+#define MX_HAS_CUDA_RUNTIME 1
+#else
+#define MX_HAS_CUDA_RUNTIME 0
+#endif
+
+#if defined(__linux__)
+#include <unistd.h>
+#endif
 
 #if defined(__APPLE__) || defined(_WIN32) || defined(__linux__)
 #include "argz.hpp"
@@ -48,6 +60,12 @@ public:
     std::vector<uint8_t> recordPixelData;
     uint32_t recordBufferWidth = 0;
     uint32_t recordBufferHeight = 0;
+
+#if MX_HAS_CUDA_RUNTIME && defined(__linux__)
+    cudaExternalMemory_t recordCudaExternalMemory = nullptr;
+    void *recordCudaRgbaBuffer = nullptr;
+    bool recordCudaInteropReady = false;
+#endif
     
     // Shader cycling
     std::vector<std::string> availableFragmentShaders;
@@ -76,8 +94,128 @@ public:
                 recordStagingBufferMemory = VK_NULL_HANDLE;
             }
         }
+#if MX_HAS_CUDA_RUNTIME && defined(__linux__)
+        if (recordCudaExternalMemory != nullptr) {
+            cudaDestroyExternalMemory(recordCudaExternalMemory);
+            recordCudaExternalMemory = nullptr;
+        }
+        if (recordCudaRgbaBuffer != nullptr) {
+            recordCudaRgbaBuffer = nullptr;
+        }
+        recordCudaInteropReady = false;
+#endif
         recordBufferWidth = 0;
         recordBufferHeight = 0;
+    }
+
+    bool setupCudaInterop(VkDeviceSize bufferSize, uint32_t width, uint32_t height) {
+#if MX_HAS_CUDA_RUNTIME && defined(__linux__)
+        if (!externalMemoryFdEnabled ||
+            (swapChainImageFormat != VK_FORMAT_R8G8B8A8_UNORM && swapChainImageFormat != VK_FORMAT_R8G8B8A8_SRGB)) {
+            return false;
+        }
+
+        auto fail = [&]() {
+            if (recordCudaExternalMemory != nullptr) {
+                cudaDestroyExternalMemory(recordCudaExternalMemory);
+                recordCudaExternalMemory = nullptr;
+            }
+            recordCudaRgbaBuffer = nullptr;
+            if (recordStagingBuffer != VK_NULL_HANDLE) {
+                vkDestroyBuffer(device, recordStagingBuffer, nullptr);
+                recordStagingBuffer = VK_NULL_HANDLE;
+            }
+            if (recordStagingBufferMemory != VK_NULL_HANDLE) {
+                vkFreeMemory(device, recordStagingBufferMemory, nullptr);
+                recordStagingBufferMemory = VK_NULL_HANDLE;
+            }
+            recordCudaInteropReady = false;
+            return false;
+        };
+
+        VkExternalMemoryBufferCreateInfo externalBufferInfo{};
+        externalBufferInfo.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO;
+        externalBufferInfo.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
+
+        VkBufferCreateInfo bufferInfo{};
+        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        bufferInfo.pNext = &externalBufferInfo;
+        bufferInfo.size = bufferSize;
+        bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+        bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        if (vkCreateBuffer(device, &bufferInfo, nullptr, &recordStagingBuffer) != VK_SUCCESS) {
+            return fail();
+        }
+
+        VkMemoryRequirements memRequirements{};
+        vkGetBufferMemoryRequirements(device, recordStagingBuffer, &memRequirements);
+
+        VkExportMemoryAllocateInfo exportAllocInfo{};
+        exportAllocInfo.sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO;
+        exportAllocInfo.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
+
+        VkMemoryAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        allocInfo.pNext = &exportAllocInfo;
+        allocInfo.allocationSize = memRequirements.size;
+        allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+        if (vkAllocateMemory(device, &allocInfo, nullptr, &recordStagingBufferMemory) != VK_SUCCESS) {
+            return fail();
+        }
+
+        if (vkBindBufferMemory(device, recordStagingBuffer, recordStagingBufferMemory, 0) != VK_SUCCESS) {
+            return fail();
+        }
+
+        auto getMemoryFd = reinterpret_cast<PFN_vkGetMemoryFdKHR>(vkGetDeviceProcAddr(device, "vkGetMemoryFdKHR"));
+        if (getMemoryFd == nullptr) {
+            return fail();
+        }
+
+        VkMemoryGetFdInfoKHR getFdInfo{};
+        getFdInfo.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
+        getFdInfo.memory = recordStagingBufferMemory;
+        getFdInfo.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
+
+        int memoryFd = -1;
+        if (getMemoryFd(device, &getFdInfo, &memoryFd) != VK_SUCCESS || memoryFd < 0) {
+            return fail();
+        }
+
+        cudaExternalMemoryHandleDesc extMemDesc{};
+        extMemDesc.type = cudaExternalMemoryHandleTypeOpaqueFd;
+        extMemDesc.handle.fd = memoryFd;
+        extMemDesc.size = static_cast<unsigned long long>(bufferSize);
+        if (cudaImportExternalMemory(&recordCudaExternalMemory, &extMemDesc) != cudaSuccess) {
+            close(memoryFd);
+            return fail();
+        }
+
+        cudaExternalMemoryBufferDesc bufferDesc{};
+        bufferDesc.offset = 0;
+        bufferDesc.size = static_cast<unsigned long long>(bufferSize);
+        if (cudaExternalMemoryGetMappedBuffer(&recordCudaRgbaBuffer, recordCudaExternalMemory, &bufferDesc) != cudaSuccess) {
+            return fail();
+        }
+
+        recordCudaInteropReady = true;
+        std::cout << "MXWrite: Vulkan-CUDA external memory interop enabled (" << width << "x" << height << ")\n";
+        return true;
+#else
+        (void)bufferSize;
+        (void)width;
+        (void)height;
+        return false;
+#endif
+    }
+
+    void setupCpuCaptureBuffer(VkDeviceSize bufferSize, uint32_t width, uint32_t height) {
+        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            recordStagingBuffer, recordStagingBufferMemory);
+        recordPixelData.resize(static_cast<size_t>(width) * static_cast<size_t>(height) * 4);
     }
     
     void cleanup() override {
@@ -142,13 +280,16 @@ public:
         uint32_t height = swapChainExtent.height;
         VkDeviceSize bufferSize = width * height * 4;
         
-        // Recreate staging buffer if dimensions changed
+        // Recreate recording buffers when dimensions change.
         if (width != recordBufferWidth || height != recordBufferHeight) {
             cleanupRecordingBuffers();
-            createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                recordStagingBuffer, recordStagingBufferMemory);
-            recordPixelData.resize(width * height * 4);
+            recordPixelData.resize(static_cast<size_t>(width) * static_cast<size_t>(height) * 4);
+
+            const bool interopReady = setupCudaInterop(bufferSize, width, height);
+            if (!interopReady) {
+                setupCpuCaptureBuffer(bufferSize, width, height);
+            }
+
             recordBufferWidth = width;
             recordBufferHeight = height;
         }
@@ -199,23 +340,42 @@ public:
             0, 0, nullptr, 0, nullptr, 1, &barrier);
         
         endSingleTimeCommands(cmdBuffer);
+
+        if (writer.is_open()) {
+#if MX_HAS_CUDA_RUNTIME && defined(__linux__)
+            if (recordCudaInteropReady && recordCudaRgbaBuffer != nullptr) {
+                if (writer.write_cuda_rgba(recordCudaRgbaBuffer, static_cast<int>(width * 4), false)) {
+                    return;
+                }
+            }
+#endif
+        }
         
         void* data;
         vkMapMemory(device, recordStagingBufferMemory, 0, bufferSize, 0, &data);
         uint8_t* src = static_cast<uint8_t*>(data);
         uint8_t* dst = recordPixelData.data();
         const uint32_t pixelCount = width * height;
+        const bool srcIsBgra =
+            (swapChainImageFormat == VK_FORMAT_B8G8R8A8_UNORM) ||
+            (swapChainImageFormat == VK_FORMAT_B8G8R8A8_SRGB);
         for (uint32_t i = 0; i < pixelCount; i++) {
-            dst[0] = src[2];
-            dst[1] = src[1];
-            dst[2] = src[0];
+            if (srcIsBgra) {
+                dst[0] = src[2];
+                dst[1] = src[1];
+                dst[2] = src[0];
+            } else {
+                dst[0] = src[0];
+                dst[1] = src[1];
+                dst[2] = src[2];
+            }
             dst[3] = 255;
             src += 4;
             dst += 4;
         }
         vkUnmapMemory(device, recordStagingBufferMemory);
         
-        if(writer.is_open()) {
+        if (writer.is_open()) {
             writer.write(recordPixelData.data());
         }
     }
@@ -499,7 +659,7 @@ public:
                 case SDLK_t:
                     record = true;
                     if(!writer.is_open()) {
-                        writer.open("output.mp4", swapChainExtent.width, swapChainExtent.height, 30.0f, "14");
+                        writer.open("output.mp4", swapChainExtent.width, swapChainExtent.height, 60.0f, "18");
                     }
                     break;
             }

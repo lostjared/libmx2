@@ -362,6 +362,7 @@ namespace mx {
         VkPolygonMode currentPolygonMode = VK_POLYGON_MODE_FILL; ///< Current polygon fill mode.
         bool useWireFrame = false;                               ///< Wireframe rendering toggle.
         bool supportsWireFrame = false;                          ///< Whether the device supports wireframe.
+        bool externalMemoryFdEnabled = false;                    ///< True when VK_KHR_external_memory_fd is enabled on device.
         std::vector<VkFramebuffer> swapChainFramebuffers;        ///< Framebuffers for each swapchain image.
 
         VkCommandPool commandPool = VK_NULL_HANDLE;  ///< Command pool for graphics commands.

@@ -45,5 +45,15 @@ namespace png {
      * @return @c true on success, @c false on failure.
      */
     bool SavePNG_RGBA(const char *filename, void *buffer, int w, int h);
+
+    /**
+     * @brief Save a raw 16-bit RGBA pixel buffer to a PNG file.
+     * @param filename Destination file path.
+     * @param buffer   Pointer to the raw 16-bit RGBA pixel data.
+     * @param w        Image width in pixels.
+     * @param h        Image height in pixels.
+     * @return @c true on success, @c false on failure.
+     */
+    bool SavePNG_RGBA16(const char *filename, const void *buffer, int w, int h);
 } // namespace png
 #endif

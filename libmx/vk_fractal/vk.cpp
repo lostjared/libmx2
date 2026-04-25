@@ -374,6 +374,32 @@ namespace mx {
             VK_KHR_SWAPCHAIN_EXTENSION_NAME
         };
 
+#if defined(__linux__)
+        uint32_t extCountLinux = 0;
+        vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extCountLinux, nullptr);
+        std::vector<VkExtensionProperties> availableExtensionsLinux(extCountLinux);
+        vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extCountLinux, availableExtensionsLinux.data());
+
+        bool hasExternalMemory = false;
+        bool hasExternalMemoryFd = false;
+        for (const auto& ext : availableExtensionsLinux) {
+            if (strcmp(ext.extensionName, VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME) == 0) {
+                hasExternalMemory = true;
+            }
+            if (strcmp(ext.extensionName, VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME) == 0) {
+                hasExternalMemoryFd = true;
+            }
+        }
+
+        if (hasExternalMemory && hasExternalMemoryFd) {
+            deviceExtensions.push_back(VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME);
+            deviceExtensions.push_back(VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME);
+            externalMemoryFdEnabled = true;
+        } else {
+            externalMemoryFdEnabled = false;
+        }
+#endif
+
 #ifdef WITH_MOLTEN
         
         uint32_t extensionCount;
