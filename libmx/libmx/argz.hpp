@@ -291,7 +291,7 @@ class Argz {
      * @param value Long option name (without @c --).
      * @return The registered code, or @c -1 if not found.
      */
-    int lookUpCode(const String &value) {
+    int lookUpCode(const String &value) const {
         for (const auto &i : arg_info) {
             if (i.second.arg_name == value) {
                 return i.second.arg_letter;
@@ -325,15 +325,20 @@ class Argz {
                         } else {
                             a = pos->second;
                             a.arg_name = name;
-                            if (++index < static_cast<int>(arg_data.args.size()) && arg_data.args[index][0] != '-') {
-                                a.arg_name = name;
-                                a.arg_value = arg_data.args[index];
-                                index++;
-                                return code;
-                            } else {
-                                if constexpr (std::is_same<typename String::value_type, char>::value) {
-                                    throw ArgException<String>("Expected Value");
+                            if (++index < static_cast<int>(arg_data.args.size())) {
+                                const String &s{arg_data.args[index]};
+                                if (canUseAsOptionValue(s)) {
+                                    a.arg_name = name;
+                                    a.arg_value = s;
+                                    index++;
+                                    return code;
                                 }
+                            }
+                            if constexpr (std::is_same<typename String::value_type, char>::value) {
+                                throw ArgException<String>("Expected Value");
+                            }
+                            if constexpr (std::is_same<typename String::value_type, wchar_t>::value) {
+                                throw ArgException<String>(L"Expected Value");
                             }
                         }
                     }
@@ -376,14 +381,7 @@ class Argz {
                     } else if (pos->second.arg_type == ArgType::ARG_SINGLE_VALUE) {
                         if (index < static_cast<int>(arg_data.args.size())) {
                             const String &s{arg_data.args[index]};
-                            if (s.length() > 1 && s[0] == '-' && !(s[1] >= '0' && s[1] <= '9')) {
-                                if constexpr (std::is_same<typename String::value_type, char>::value) {
-                                    throw ArgException<String>("Expected value");
-                                }
-                                if constexpr (std::is_same<typename String::value_type, wchar_t>::value) {
-                                    throw ArgException<String>(L"Expected value");
-                                }
-                            } else if (s.length() == 1 && s[0] == '-') {
+                            if (!canUseAsOptionValue(s)) {
                                 if constexpr (std::is_same<typename String::value_type, char>::value) {
                                     throw ArgException<String>("Expected Value found -");
                                 }
@@ -504,6 +502,96 @@ class Argz {
     std::unordered_map<int, Argument<String>> arg_info;
 
   private:
+    bool isSignedNumericToken(const String &s) const {
+        if (s.empty()) {
+            return false;
+        }
+
+        const auto ch_minus = static_cast<typename String::value_type>('-');
+        const auto ch_plus = static_cast<typename String::value_type>('+');
+        const auto ch_dot = static_cast<typename String::value_type>('.');
+        const auto ch_e = static_cast<typename String::value_type>('e');
+        const auto ch_E = static_cast<typename String::value_type>('E');
+        const auto ch_0 = static_cast<typename String::value_type>('0');
+        const auto ch_9 = static_cast<typename String::value_type>('9');
+
+        size_t i = 0;
+        if (s[i] == ch_minus || s[i] == ch_plus) {
+            ++i;
+        }
+        if (i >= s.length()) {
+            return false;
+        }
+
+        bool has_digit = false;
+        bool has_dot = false;
+        for (; i < s.length(); ++i) {
+            const auto ch = s[i];
+            if (ch >= ch_0 && ch <= ch_9) {
+                has_digit = true;
+                continue;
+            }
+            if (ch == ch_dot && !has_dot) {
+                has_dot = true;
+                continue;
+            }
+            if ((ch == ch_e || ch == ch_E) && has_digit) {
+                size_t j = i + 1;
+                if (j < s.length() && (s[j] == ch_minus || s[j] == ch_plus)) {
+                    ++j;
+                }
+                if (j >= s.length()) {
+                    return false;
+                }
+                bool exp_digit = false;
+                for (; j < s.length(); ++j) {
+                    if (s[j] >= ch_0 && s[j] <= ch_9) {
+                        exp_digit = true;
+                    } else {
+                        return false;
+                    }
+                }
+                return exp_digit;
+            }
+            return false;
+        }
+        return has_digit;
+    }
+
+    bool isRecognizedOptionToken(const String &s) const {
+        if (s.length() <= 1 || s[0] != static_cast<typename String::value_type>('-')) {
+            return false;
+        }
+
+        if (s.length() > 2 && s[1] == static_cast<typename String::value_type>('-')) {
+            String name{};
+            for (size_t z = 2; z < s.length(); ++z) {
+                name += s[z];
+            }
+            return lookUpCode(name) != -1;
+        }
+
+        for (size_t z = 1; z < s.length(); ++z) {
+            if (arg_info.find(static_cast<int>(s[z])) == arg_info.end()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool canUseAsOptionValue(const String &s) const {
+        if (s.empty()) {
+            return false;
+        }
+        if (s[0] != static_cast<typename String::value_type>('-')) {
+            return true;
+        }
+        if (isSignedNumericToken(s)) {
+            return true;
+        }
+        return !isRecognizedOptionToken(s);
+    }
+
     int index = 0, cindex = 1;
 };
 
