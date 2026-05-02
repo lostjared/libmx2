@@ -165,7 +165,7 @@ namespace gl {
         SDL_GL_SetSwapInterval(0);
     }
 
-    void GLWindow::initGL(const std::string &title, int width, int height, bool resize_) {
+    void GLWindow::initGL(const std::string &title, int width, int height, bool resize_, int major, int minor) {
         mx::redirect();
         mx::system_out << "libmx2: GLWindow::initGL starting...\n";
         mx::system_out.flush();
@@ -181,8 +181,8 @@ namespace gl {
 #ifndef __EMSCRIPTEN__
 
         if (gl_mode == GLMode::DESKTOP) {
-            SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-            SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+            SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, major);
+            SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, minor);
             SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
             SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
             SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);

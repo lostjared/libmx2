@@ -430,11 +430,13 @@ namespace gl {
          * @param height Height in pixels.
          * @param resize_ Allow window resizing if @c true.
          * @param mode   GL mode (DESKTOP or ES).
+         * @param major Major version
+         * @param minor Minor version
          */
-        GLWindow(const std::string &text, int width, int height, bool resize_ = true, GLMode mode = GLMode::DESKTOP) : gl_mode(mode), glContext{nullptr}, window{nullptr} {
-            initGL(text, width, height, resize_);
+        GLWindow(const std::string &text, int width, int height, bool resize_ = true, GLMode mode = GLMode::DESKTOP, int major = 4, int minor = 1) : gl_mode(mode), glContext{nullptr}, window{nullptr} {
+            initGL(text, width, height, resize_, major, minor);
         }
-
+        
         /**
          * @brief Construct a window from dimensions and mode (internal use).
          * @param width  Width.
@@ -457,8 +459,10 @@ namespace gl {
          * @param width  Width.
          * @param height Height.
          * @param resize_ Allow resizing.
+         * @param major major version
+         * @param minor minor version
          */
-        void initGL(const std::string &title, int width, int height, bool resize_ = true);
+        void initGL(const std::string &title, int width, int height, bool resize_ = true, int major = 4, int minor = 1);
 
         /**
          * @brief Reinitialise with only dimensions (used by Emscripten).
