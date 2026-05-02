@@ -1,243 +1,222 @@
 #include"mx.hpp"
 #include"argz.hpp"
-
-#ifdef __EMSCRIPTEN__
-#include <emscripten/emscripten.h>
-#include <GLES3/gl3.h>
-#endif
-
 #include"gl.hpp"
 #include"loadpng.hpp"
 #include"model.hpp"
+
 
 #define CHECK_GL_ERROR() \
     { GLenum err = glGetError(); \
       if (err != GL_NO_ERROR) \
         printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
-#if defined(__EMSCRIPTEN__) || defined(__ANDOIRD__)
-    const char *g_vSource = R"(#version 300 es
-        precision highp float;
-        layout (location = 0) in vec3 aPos;
-        layout (location = 1) in vec3 aNormal;
-        layout (location = 2) in vec2 aTexCoords;
-        uniform mat4 model;
-        uniform mat4 view;
-        uniform mat4 projection;
 
-        uniform vec3 lightPos;
-        uniform vec3 viewPos;
-        uniform vec3 lightColor;
-        uniform vec3 objectColor;
-
-        out vec3 vertexColor;
-        out vec2 TexCoords;
-
-        void main()
-        {
-            vec4 worldPos = model * vec4(aPos, 1.0);
-            gl_Position = projection * view * worldPos;
-            vec3 norm = normalize(mat3(transpose(inverse(model))) * aNormal);
-            vec3 lightDir = normalize(lightPos - vec3(worldPos));
-            float ambientStrength = 0.1;
-            vec3 ambient = ambientStrength * lightColor;
-            float diff = max(dot(norm, lightDir), 0.0);
-            vec3 diffuse = diff * lightColor;
-            float specularStrength = 1.0;    // Increase from 0.5 to 1.0 for more shine
-            float shininess = 64.0;          // Increase this value for a tighter, shinier highlight
-            vec3 viewDir = normalize(viewPos - vec3(worldPos));
-            vec3 reflectDir = reflect(-lightDir, norm);
-            float spec = pow(max(dot(viewDir, reflectDir), 0.0), shininess);
-            vec3 specular = specularStrength * spec * lightColor;
-            vec3 finalColor = (ambient + diffuse + specular) * objectColor;
-            vertexColor = finalColor;
-            TexCoords = aTexCoords;
-        }
-    )";
-
-    const char *g_fSource = R"(#version 300 es
-            precision highp float;
-            in vec3 vertexColor;
-            in vec2 TexCoords;
-            uniform sampler2D texture1;  
-            out vec4 FragColor;
-
-            void main()
-            {
-                FragColor = vec4(vertexColor, 1.0) * texture(texture1, TexCoords);
-                FragColor.a =  0.5;
-            }
-    )";
-    #else
-    const char *g_vSource = R"(#version 330 core
-        layout (location = 0) in vec3 aPos;
-
-        layout (location = 1) in vec3 aNormal;
-        layout (location = 2) in vec2 aTexCoords;
-        uniform mat4 model;
-        uniform mat4 view;
-        uniform mat4 projection;
-
-        uniform vec3 lightPos;
-        uniform vec3 viewPos;
-        uniform vec3 lightColor;
-        uniform vec3 objectColor;
-
-        out vec3 vertexColor;
-        out vec2 TexCoords;
-
-        void main()
-        {
-            vec4 worldPos = model * vec4(aPos, 1.0);
-            gl_Position = projection * view * worldPos;
-            vec3 norm = normalize(mat3(transpose(inverse(model))) * aNormal);
-            vec3 lightDir = normalize(lightPos - vec3(worldPos));
-            float ambientStrength = 0.1;
-            vec3 ambient = ambientStrength * lightColor;
-            float diff = max(dot(norm, lightDir), 0.0);
-            vec3 diffuse = diff * lightColor;
-            float specularStrength = 1.0;    // Increase from 0.5 to 1.0 for more shine
-            float shininess = 64.0;          // Increase this value for a tighter, shinier highlight
-            vec3 viewDir = normalize(viewPos - vec3(worldPos));
-            vec3 reflectDir = reflect(-lightDir, norm);
-            float spec = pow(max(dot(viewDir, reflectDir), 0.0), shininess);
-            vec3 specular = specularStrength * spec * lightColor;
-            vec3 finalColor = (ambient + diffuse + specular) * objectColor;
-            vertexColor = finalColor;
-            TexCoords = aTexCoords;
-        }
-
-    )";
-    const char *g_fSource = R"(#version 330 core
-            in vec3 vertexColor;
-            in vec2 TexCoords;
-            uniform sampler2D texture1;  
-            out vec4 FragColor;
-
-            void main()
-            {
-                FragColor = vec4(vertexColor, 1.0) * texture(texture1, TexCoords);
-                FragColor.a = 0.5;
-            }
-    )";
-#endif
-
-class Cube : public gl::GLObject {
-public:
-    gl::ShaderProgram shaderProgram;
-    GLuint VAO, VBO;
-    GLuint texture;
-    mx::Model cube;        
-    mx::Font font;
-    Cube() = default;
-    virtual ~Cube() override {
-    }
-
-    std::vector<GLfloat> cubeData;
-
-    virtual void load(gl::GLWindow *win) override {     
-        font.loadFont(win->util.getFilePath("data/font.ttf"), 18);
-        if(cube.openModel(win->util.getFilePath("data/cube.mxmod.z")) == false) {
-            throw mx::Exception("Error loading model");
-        }
-        if (!shaderProgram.loadProgramFromText(g_vSource, g_fSource)) {
-            throw mx::Exception("Failed to load shader program");
-        }
-        shaderProgram.useProgram();
-        cube.setTextures(win, win->util.getFilePath("data/cube.tex"), win->util.getFilePath("data"));
-    }
-
-    virtual void draw(gl::GLWindow *win) override {
-        shaderProgram.useProgram();
-        CHECK_GL_ERROR();
-#ifdef __EMSCRIPTEN__
-        static Uint32 lastTime = emscripten_get_now(); 
-        float currentTime = emscripten_get_now();
-        float deltaTime = (currentTime - lastTime) / 1000.0f;
-        lastTime = currentTime;
-#else
-        static Uint32 lastTime = SDL_GetTicks(); 
-        Uint32 currentTime = SDL_GetTicks();
-        float deltaTime = (currentTime - lastTime) / 1000.0f;
-        lastTime = currentTime;
-#endif
-        static float rotationAngle = 0.0f;
-        rotationAngle += deltaTime * 50.0f; 
-        cube.setShaderProgram(&shaderProgram, "texture1");
-        shaderProgram.useProgram();
-        cameraPosition = glm::vec3(0.0f, 2.0f, 5.0f);
-        glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
-        glm::vec3 upVector = glm::vec3(0.0f, 1.0f, 0.0f);
-        modelMatrix = glm::mat4(1.0f);
-        modelMatrix = glm::scale(modelMatrix, glm::vec3(2.0f, 2.0f, 2.0f));
-        modelMatrix = glm::rotate(modelMatrix, glm::radians(rotationAngle), glm::vec3(rot_x, 1.0f, 0.0f));
-        viewMatrix = glm::lookAt(cameraPosition, cameraTarget, upVector);
-        float aspectRatio = static_cast<float>(win->w) / static_cast<float>(win->h);
-        projectionMatrix = glm::perspective(glm::radians(45.0f), aspectRatio, 0.1f, 100.0f);      
-        glUniformMatrix4fv(glGetUniformLocation(shaderProgram.id(), "model"), 1, GL_FALSE, glm::value_ptr(modelMatrix));
-        glUniformMatrix4fv(glGetUniformLocation(shaderProgram.id(), "view"), 1, GL_FALSE, glm::value_ptr(viewMatrix));
-        glUniformMatrix4fv(glGetUniformLocation(shaderProgram.id(), "projection"), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
-        glUniform3f(glGetUniformLocation(shaderProgram.id(), "lightPos"), lightPos.x, lightPos.y, lightPos.z);
-        glUniform3f(glGetUniformLocation(shaderProgram.id(), "viewPos"), cameraPosition.x, cameraPosition.y, cameraPosition.z);
-        glUniform3f(glGetUniformLocation(shaderProgram.id(), "lightColor"), 1.0f, 1.0f, 1.0f);
-        glUniform3f(glGetUniformLocation(shaderProgram.id(), "objectColor"), 1.0f, 1.0f, 1.0f); 
-        CHECK_GL_ERROR();
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        glDepthMask(GL_FALSE);
-        cube.drawArrays();
-        glDepthMask(GL_TRUE);
-        glDisable(GL_BLEND);
-        win->text.setColor({255, 255, 255, 255});
-        win->text.printText_Solid(font, 25.0f, 25.0f, "Press Arrow keys / Page Up Down to move light source Enter to reset");
-        win->text.printText_Solid(font, 25.0f, 60.0f, "Press Space to rotate cube");
-    }
-  
-    void event(gl::GLWindow *win, SDL_Event &e) override {
-        if (e.type == SDL_KEYDOWN) {
-            float moveSpeed = 0.05f; 
-            switch (e.key.keysym.sym) {
-                case SDLK_LEFT:
-                    lightPos.x -= moveSpeed;
-                    break;
-                case SDLK_RIGHT:
-                    lightPos.x += moveSpeed;
-                    break;
-                case SDLK_UP:
-                    lightPos.z -= moveSpeed;
-                    break;
-                case SDLK_DOWN:
-                    lightPos.z += moveSpeed;
-                    break;
-                case SDLK_PAGEUP:
-                    lightPos.y += moveSpeed;
-                    break;
-                case SDLK_PAGEDOWN:
-                    lightPos.y -= moveSpeed;
-                    break;
-                case SDLK_RETURN:
-                    lightPos = glm::vec3(0.0f, 5.0f, 0.0f);
-                    break;
-                case SDLK_SPACE:
-                    if(rot_x >  0) rot_x = 0; else rot_x = 1.0f;
-                    break;
-            }
-            std::cout << "Light Position: " << lightPos.x << ", " << lightPos.y << ", " << lightPos.z << "\n";
-        }
-    }
+class Compute : public gl::GLObject {
 private:
-    glm::mat4 modelMatrix{1.0f};
-    glm::mat4 viewMatrix{1.0f};
-    glm::mat4 projectionMatrix{1.0f};
-    glm::vec3 cameraPosition{0.0f, 2.0f, 5.0f};
-    glm::vec3 lightPos{0.0f, 5.0f, 0.0f};
-    float rot_x =  1.0f;
+    GLuint computeProgram;
+    GLuint renderProgram;
+    GLuint textureID;
+    GLuint quadVAO;
+    GLuint quadVBO;
+    int frameCount;
+    bool computeReady;
+    int texWidth = 512;
+    int texHeight = 512;
+
+    void checkCompileErrors(GLuint shader, std::string type) {
+        GLint success;
+        GLchar infoLog[1024];
+        if (type != "PROGRAM") {
+            glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+            if (!success) {
+                glGetShaderInfoLog(shader, 1024, NULL, infoLog);
+                mx::system_err << "libmx2 ERROR::SHADER_COMPILATION_ERROR of type: " << type << "\n" << infoLog << "\n";
+            }
+            else {
+                mx::system_out << "libmx2 program compilation succesfull.\n";
+            }
+        } else {
+            glGetProgramiv(shader, GL_LINK_STATUS, &success);
+            if (!success) {
+                glGetProgramInfoLog(shader, 1024, NULL, infoLog);
+                mx::system_err << "ERROR::PROGRAM_LINKING_ERROR of type: " << type << "\n" << infoLog << "\n";
+            } else {
+
+                mx::system_out << "libmx2: compute shader linked.\n";
+            }
+        }
+    }
+
+public:
+    Compute() : computeProgram(0), renderProgram(0), textureID(0), quadVAO(0), quadVBO(0), frameCount(0), computeReady(false) {}
+
+    void load(gl::GLWindow *win) {
+        const char* computeSource = R"glsl(
+            #version 430 core
+            layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+            layout (rgba8, binding = 0) uniform image2D destTex;
+            uniform int uFrame;
+
+            void main() {
+                ivec2 pos = ivec2(gl_GlobalInvocationID.xy);
+                ivec2 imgSize = imageSize(destTex);
+                if(pos.x >= imgSize.x || pos.y >= imgSize.y) return;
+
+                if (uFrame == 0) {
+                    float r = float(pos.x ^ pos.y) / 255.0;
+                    float g = float(pos.x % 128) / 128.0;
+                    float b = float(pos.y % 128) / 128.0;
+                    imageStore(destTex, pos, vec4(r, g, b, 1.0));
+                    return;
+                }
+
+                vec4 currentPixel = imageLoad(destTex, pos);
+                ivec2 neighborPos = ivec2(pos.x, (pos.y + 1) % imgSize.y);
+                vec4 neighborPixel = imageLoad(destTex, neighborPos);
+                vec4 evolvedPixel = vec4(
+                    (currentPixel.g + neighborPixel.r) * 0.505, // Slight boost to prevent fading to black
+                    (currentPixel.b + neighborPixel.g) * 0.495, // Slight decay
+                    (currentPixel.r + neighborPixel.b) * 0.5,
+                    1.0
+                );
+                 imageStore(destTex, pos, evolvedPixel);
+            }
+        )glsl";
+
+        const char* vertexSource = R"glsl(
+            #version 430 core
+            layout (location = 0) in vec2 aPos;
+            layout (location = 1) in vec2 aUV;
+            out vec2 vUV;
+
+            void main() {
+                vUV = aUV;
+                gl_Position = vec4(aPos, 0.0, 1.0);
+            }
+        )glsl";
+
+        const char* fragmentSource = R"glsl(
+            #version 430 core
+            in vec2 vUV;
+            out vec4 FragColor;
+            uniform sampler2D screenTex;
+
+            void main() {
+                FragColor = texture(screenTex, vUV);
+            }
+        )glsl";
+
+        // 2. Compile the Compute Shader
+        GLuint computeShader = glCreateShader(GL_COMPUTE_SHADER);
+        glShaderSource(computeShader, 1, &computeSource, NULL);
+        glCompileShader(computeShader);
+        checkCompileErrors(computeShader, "COMPUTE");
+
+        // 3. Link into a Program
+        computeProgram = glCreateProgram();
+        glAttachShader(computeProgram, computeShader);
+        glLinkProgram(computeProgram);
+        checkCompileErrors(computeProgram, "PROGRAM");
+
+        // Cleanup the shader object as it is now linked into the program
+        glDeleteShader(computeShader);
+
+        GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
+        glShaderSource(vertexShader, 1, &vertexSource, NULL);
+        glCompileShader(vertexShader);
+        checkCompileErrors(vertexShader, "VERTEX");
+
+        GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+        glShaderSource(fragmentShader, 1, &fragmentSource, NULL);
+        glCompileShader(fragmentShader);
+        checkCompileErrors(fragmentShader, "FRAGMENT");
+
+        renderProgram = glCreateProgram();
+        glAttachShader(renderProgram, vertexShader);
+        glAttachShader(renderProgram, fragmentShader);
+        glLinkProgram(renderProgram);
+        checkCompileErrors(renderProgram, "PROGRAM");
+
+        glDeleteShader(vertexShader);
+        glDeleteShader(fragmentShader);
+
+        // 4. Create a Texture to store the compute shader output
+        glGenTextures(1, &textureID);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, textureID);
+        
+        // Define texture parameters
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        
+        // Allocate immutable storage for the texture (required for Image Load/Store)
+        glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, texWidth, texHeight);
+        
+        // Bind the texture to Image Unit 0 so the compute shader can write to it
+        glBindImageTexture(0, textureID, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA8);
+
+        float quadVertices[] = {
+            -1.0f, -1.0f, 0.0f, 0.0f,
+             1.0f, -1.0f, 1.0f, 0.0f,
+            -1.0f,  1.0f, 0.0f, 1.0f,
+             1.0f,  1.0f, 1.0f, 1.0f
+        };
+
+        glGenVertexArrays(1, &quadVAO);
+        glGenBuffers(1, &quadVBO);
+        glBindVertexArray(quadVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+        glEnableVertexAttribArray(1);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+        
+        CHECK_GL_ERROR();
+    }
+
+    void draw(gl::GLWindow *win) {
+        if (!computeReady) {
+            return;
+        }
+        glUseProgram(computeProgram);
+        glUniform1i(glGetUniformLocation(computeProgram, "uFrame"), frameCount);
+        GLuint numGroupsX = (texWidth + 15) / 16;
+        GLuint numGroupsY = (texHeight + 15) / 16;
+        glDispatchCompute(numGroupsX, numGroupsY, 1);
+        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT);
+        glUseProgram(renderProgram);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, textureID);
+        glUniform1i(glGetUniformLocation(renderProgram, "screenTex"), 0);        
+        glBindVertexArray(quadVAO);
+        glDisable(GL_DEPTH_TEST);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        glBindVertexArray(0);
+        ++frameCount;
+    }
+
+    void event(gl::GLWindow *win, SDL_Event &e) {
+        // Handle input events here
+    }
+
+    ~Compute() {
+        if (computeProgram) glDeleteProgram(computeProgram);
+        if (renderProgram) glDeleteProgram(renderProgram);
+        if (textureID) glDeleteTextures(1, &textureID);
+        if (quadVBO) glDeleteBuffers(1, &quadVBO);
+        if (quadVAO) glDeleteVertexArrays(1, &quadVAO);
+    }
 };
 
 class MainWindow : public gl::GLWindow {
 public:
-    MainWindow(std::string path, int tw, int th) : gl::GLWindow("Transparent Rotating Cube", tw, th) {
+    MainWindow(std::string path, int tw, int th) : gl::GLWindow("Compute Shader", tw, th, false, gl::GLMode::DESKTOP, 4, 3) {
         setPath(path);
-        setObject(new Cube());
+        setObject(new Compute());
 		object->load(this);
     }
     
@@ -246,29 +225,18 @@ public:
     virtual void event(SDL_Event &e) override {}
 
     virtual void draw() override {
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glEnable(GL_DEPTH_TEST);
         glViewport(0, 0, w, h);
-
         object->draw(this);
         swap();
     }
 private:
 };
 
-MainWindow *main_w = nullptr;
-
-void eventProc() {
-    main_w->proc();
-}
 
 int main(int argc, char **argv) {
-#ifdef __EMSCRIPTEN__
-    MainWindow main_window("/", 960, 720);
-    main_w =&main_window;
-    emscripten_set_main_loop(eventProc, 0, 1);
-#else
     Argz<std::string> parser(argc, argv);    
     parser.addOptionSingle('h', "Display help message")
           .addOptionSingleValue('p', "assets path")
@@ -278,7 +246,7 @@ int main(int argc, char **argv) {
     Argument<std::string> arg;
     std::string path;
     int value = 0;
-    int tw = 960, th = 720;
+    int tw = 1280, th = 720;
     try {
         while((value = parser.proc(arg)) != -1) {
             switch(value) {
@@ -323,6 +291,5 @@ int main(int argc, char **argv) {
         mx::system_err.flush();
         exit(EXIT_FAILURE);
     } 
-#endif
     return 0;
 }
