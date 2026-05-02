@@ -18,9 +18,8 @@ private:
     GLuint quadVAO;
     GLuint quadVBO;
     int frameCount;
-    bool computeReady;
-    int texWidth = 512;
-    int texHeight = 512;
+    int texWidth = 640;
+    int texHeight = 480;
 
     void checkCompileErrors(GLuint shader, std::string type) {
         GLint success;
@@ -47,38 +46,30 @@ private:
     }
 
 public:
-    Compute() : computeProgram(0), renderProgram(0), textureID(0), quadVAO(0), quadVBO(0), frameCount(0), computeReady(false) {}
+    Compute() : computeProgram(0), renderProgram(0), textureID(0), quadVAO(0), quadVBO(0), frameCount(0) {}
 
     void load(gl::GLWindow *win) {
         const char* computeSource = R"glsl(
             #version 430 core
             layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
             layout (rgba8, binding = 0) uniform image2D destTex;
-            uniform int uFrame;
 
             void main() {
                 ivec2 pos = ivec2(gl_GlobalInvocationID.xy);
                 ivec2 imgSize = imageSize(destTex);
                 if(pos.x >= imgSize.x || pos.y >= imgSize.y) return;
 
-                if (uFrame == 0) {
-                    float r = float(pos.x ^ pos.y) / 255.0;
-                    float g = float(pos.x % 128) / 128.0;
-                    float b = float(pos.y % 128) / 128.0;
-                    imageStore(destTex, pos, vec4(r, g, b, 1.0));
-                    return;
-                }
-
                 vec4 currentPixel = imageLoad(destTex, pos);
-                ivec2 neighborPos = ivec2(pos.x, (pos.y + 1) % imgSize.y);
-                vec4 neighborPixel = imageLoad(destTex, neighborPos);
+                ivec2 nR = ivec2((pos.x + 1 + imgSize.x) % imgSize.x, pos.y);
+                ivec2 nG = ivec2(pos.x, (pos.y + 1 + imgSize.y) % imgSize.y);
+                ivec2 nB = ivec2((pos.x + 1 + imgSize.x) % imgSize.x, (pos.y + 1 + imgSize.y) % imgSize.y);
                 vec4 evolvedPixel = vec4(
-                    (currentPixel.g + neighborPixel.r) * 0.505, // Slight boost to prevent fading to black
-                    (currentPixel.b + neighborPixel.g) * 0.495, // Slight decay
-                    (currentPixel.r + neighborPixel.b) * 0.5,
+                    mix(imageLoad(destTex, nR).r, currentPixel.r, 0.5),
+                    mix(imageLoad(destTex, nG).g, currentPixel.g, 0.6),
+                    mix(imageLoad(destTex, nB).b, currentPixel.b, 0.7),
                     1.0
                 );
-                 imageStore(destTex, pos, evolvedPixel);
+                imageStore(destTex, pos, evolvedPixel);
             }
         )glsl";
 
@@ -138,23 +129,14 @@ public:
 
         glDeleteShader(vertexShader);
         glDeleteShader(fragmentShader);
-
-        // 4. Create a Texture to store the compute shader output
-        glGenTextures(1, &textureID);
+        textureID = gl::loadTexture(win->util.getFilePath("data/bg.png"), texWidth, texHeight);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, textureID);
-        
-        // Define texture parameters
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        
-        // Allocate immutable storage for the texture (required for Image Load/Store)
-        glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, texWidth, texHeight);
-        
-        // Bind the texture to Image Unit 0 so the compute shader can write to it
-        glBindImageTexture(0, textureID, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA8);
+        glBindImageTexture(0, textureID, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA8);
 
         float quadVertices[] = {
             -1.0f, -1.0f, 0.0f, 0.0f,
@@ -179,11 +161,7 @@ public:
     }
 
     void draw(gl::GLWindow *win) {
-        if (!computeReady) {
-            return;
-        }
         glUseProgram(computeProgram);
-        glUniform1i(glGetUniformLocation(computeProgram, "uFrame"), frameCount);
         GLuint numGroupsX = (texWidth + 15) / 16;
         GLuint numGroupsY = (texHeight + 15) / 16;
         glDispatchCompute(numGroupsX, numGroupsY, 1);
