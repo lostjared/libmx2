@@ -29,9 +29,20 @@ if(GLSLC_EXECUTABLE)
         COMMENT "Compiling vk_compute/data/compute.comp → compute.spv"
         VERBATIM
     )
-    add_custom_target(vk_compute_shaders ALL DEPENDS ${_COMP_SPV})
+
+    set(_XORBLEND_SRC ${CMAKE_SOURCE_DIR}/vk_compute/data/xorblend.comp)
+    set(_XORBLEND_SPV ${CMAKE_SOURCE_DIR}/vk_compute/data/xorblend.spv)
+    add_custom_command(
+        OUTPUT  ${_XORBLEND_SPV}
+        COMMAND ${GLSLC_EXECUTABLE} -fshader-stage=compute ${_XORBLEND_SRC} -o ${_XORBLEND_SPV}
+        DEPENDS ${_XORBLEND_SRC}
+        COMMENT "Compiling vk_compute/data/xorblend.comp → xorblend.spv"
+        VERBATIM
+    )
+
+    add_custom_target(vk_compute_shaders ALL DEPENDS ${_COMP_SPV} ${_XORBLEND_SPV})
     add_dependencies(vk_compute vk_compute_shaders)
 else()
-    message(WARNING "glslc not found – compute.spv must be compiled manually before running vk_compute")
+    message(WARNING "glslc not found – compute.spv / xorblend.spv must be compiled manually before running vk_compute")
 endif()
 
