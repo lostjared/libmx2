@@ -96,20 +96,14 @@ class Compute : public gl::GLObject {
                 FragColor = texture(screenTex, vUV);
             }
         )glsl";
-
-        // 2. Compile the Compute Shader
         GLuint computeShader = glCreateShader(GL_COMPUTE_SHADER);
         glShaderSource(computeShader, 1, &computeSource, NULL);
         glCompileShader(computeShader);
         checkCompileErrors(computeShader, "compute");
-
-        // 3. Link into a Program
         computeProgram = glCreateProgram();
         glAttachShader(computeProgram, computeShader);
         glLinkProgram(computeProgram);
         checkCompileErrors(computeProgram, "program");
-
-        // Cleanup the shader object as it is now linked into the program
         glDeleteShader(computeShader);
 
         GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -177,9 +171,7 @@ class Compute : public gl::GLObject {
         ++frameCount;
     }
 
-    void event(gl::GLWindow *win, SDL_Event &e) {
-        // Handle input events here
-    }
+    void event(gl::GLWindow *win, SDL_Event &e) {}
 
     ~Compute() {
         if (computeProgram)
