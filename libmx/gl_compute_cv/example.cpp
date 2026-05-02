@@ -1,8 +1,12 @@
 #include "argz.hpp"
 #include "gl.hpp"
+#include "gl_cv.hpp"
 #include "loadpng.hpp"
 #include "model.hpp"
 #include "mx.hpp"
+#include <array>
+#include <cstdlib>
+#include <ctime>
 
 #ifndef MX2_COMPUTE
 #error "gl_compute requires MX2_COMPUTE (build with -DCOMPUTE=ON)"
@@ -17,40 +21,236 @@
 
 class Compute : public gl::GLObject {
   private:
+        static constexpr int HISTORY_SIZE = 32;
+
     gl::ShaderProgram computeProgram;
     gl::ShaderProgram renderProgram;
-    GLuint textureID;
+    mx::MXCapture capture;
+    std::array<GLuint, HISTORY_SIZE> historyTextures;
+    std::array<GLuint, 2> workTextures;
+    GLuint outputTexture;
     GLuint quadVAO;
     GLuint quadVBO;
     int frameCount;
-    int texWidth = 640;
-    int texHeight = 480;
+    int cameraIndex;
+    int historyIndex;
+    int historyCount;
+    int texWidth = 1920;
+    int texHeight = 1080;
+
+    GLuint createFloatTexture(const void *data = nullptr) {
+        GLuint texture = 0;
+        glGenTextures(1, &texture);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, texWidth, texHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+        return texture;
+    }
+
+    void uploadFrame(GLuint texture, const cv::Mat &rgba) {
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, texWidth, texHeight, GL_RGBA, GL_UNSIGNED_BYTE, rgba.ptr());
+    }
+
+    void setTextureUniforms() {
+        computeProgram.useProgram();
+        computeProgram.setUniform("sourceTex", 0);
+        for (int i = 0; i < HISTORY_SIZE; ++i) {
+            computeProgram.setUniform("historyTex[" + std::to_string(i) + "]", i + 1);
+        }
+    }
+
+    void bindHistoryTextures() {
+        for (int i = 0; i < HISTORY_SIZE; ++i) {
+            glActiveTexture(GL_TEXTURE1 + i);
+            glBindTexture(GL_TEXTURE_2D, historyTextures[i]);
+        }
+    }
+
+    void dispatchCompute(GLuint sourceTexture, GLuint destTexture, int mode) {
+        computeProgram.useProgram();
+        computeProgram.setUniform("mode", mode);
+        computeProgram.setUniform("historyCount", historyCount);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, sourceTexture);
+        bindHistoryTextures();
+        glBindImageTexture(0, destTexture, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA16F);
+        GLuint numGroupsX = (texWidth + 15) / 16;
+        GLuint numGroupsY = (texHeight + 15) / 16;
+        computeProgram.dispatchCompute(numGroupsX, numGroupsY, 1);
+        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT);
+    }
+
+    static cv::Mat toDisplayFrame(const cv::Mat &frame) {
+        cv::Mat rgba;
+        if (frame.channels() == 4) {
+            cv::cvtColor(frame, rgba, cv::COLOR_BGRA2RGBA);
+        } else if (frame.channels() == 3) {
+            cv::cvtColor(frame, rgba, cv::COLOR_BGR2RGBA);
+        } else if (frame.channels() == 1) {
+            cv::cvtColor(frame, rgba, cv::COLOR_GRAY2RGBA);
+        } else {
+            throw mx::Exception("Unsupported camera frame format");
+        }
+        return rgba;
+    }
 
   public:
-    Compute() : textureID(0), quadVAO(0), quadVBO(0), frameCount(0) {}
+    explicit Compute(int cameraIndex)
+        : historyTextures{}, workTextures{}, outputTexture(0), quadVAO(0), quadVBO(0), frameCount(0), cameraIndex(cameraIndex), historyIndex(0), historyCount(0) {
+        static bool seeded = false;
+        if (!seeded) {
+            std::srand(static_cast<unsigned>(std::time(nullptr)));
+            seeded = true;
+        }
+    }
 
     void load(gl::GLWindow *win) {
+        /*
         const char *computeSource = R"glsl(
             #version 430 core
             layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
             layout (rgba16f, binding = 0) uniform image2D destTex;
+            uniform sampler2D sourceTex;
+            uniform sampler2D historyTex[8];
+            uniform int mode;
+            uniform int historyCount;
+
+            float medianValue(float values[9]) {
+                for (int i = 0; i < 8; ++i) {
+                    for (int j = i + 1; j < 9; ++j) {
+                        if (values[j] < values[i]) {
+                            float temp = values[i];
+                            values[i] = values[j];
+                            values[j] = temp;
+                        }
+                    }
+                }
+                return values[4];
+            }
+
+            vec3 median3x3(ivec2 pos, ivec2 imgSize) {
+                float red[9];
+                float green[9];
+                float blue[9];
+                int index = 0;
+                for (int y = -1; y <= 1; ++y) {
+                    for (int x = -1; x <= 1; ++x) {
+                        ivec2 samplePos = clamp(pos + ivec2(x, y), ivec2(0), imgSize - ivec2(1));
+                        vec3 color = texelFetch(sourceTex, samplePos, 0).rgb;
+                        red[index] = color.r;
+                        green[index] = color.g;
+                        blue[index] = color.b;
+                        ++index;
+                    }
+                }
+                return vec3(medianValue(red), medianValue(green), medianValue(blue));
+            }
+
+            uvec3 toByteColor(vec3 color) {
+                return uvec3(round(clamp(color, 0.0, 1.0) * 255.0));
+            }
+
             void main() {
                 ivec2 pos = ivec2(gl_GlobalInvocationID.xy);
                 ivec2 imgSize = imageSize(destTex);
                 if(pos.x >= imgSize.x || pos.y >= imgSize.y) return;
-                vec4 currentPixel = imageLoad(destTex, pos);
-                ivec2 nR = ivec2((pos.x + 1 + imgSize.x) % imgSize.x, pos.y);
-                ivec2 nG = ivec2(pos.x, (pos.y + 1 + imgSize.y) % imgSize.y);
-                ivec2 nB = ivec2((pos.x + 1 + imgSize.x) % imgSize.x, (pos.y + 1 + imgSize.y) % imgSize.y);
-                vec4 evolvedPixel = vec4(
-                    fract(mix(imageLoad(destTex, nR).r, currentPixel.r, 0.5) - 0.005), 
-                    fract(mix(imageLoad(destTex, nG).g, currentPixel.g, 0.6) - 0.005), 
-                    fract(mix(imageLoad(destTex, nB).b, currentPixel.b, 0.7) - 0.005), 
-                    1.0
-                );
-                imageStore(destTex, pos, evolvedPixel);
+
+                if (mode == 0) {
+                    vec3 blurred = median3x3(pos, imgSize);
+                    imageStore(destTex, pos, vec4(blurred, 1.0));
+                    return;
+                }
+
+                uvec3 currentPixel = toByteColor(texelFetch(sourceTex, pos, 0).rgb);
+                uvec3 value = uvec3(0u);
+                for (int j = 0; j < historyCount; ++j) {
+                    value += toByteColor(texelFetch(historyTex[j], pos, 0).rgb);
+                }
+                uvec3 xorValue = (value + uvec3(1u)) & uvec3(255u);
+                uvec3 result = currentPixel ^ xorValue;
+                imageStore(destTex, pos, vec4(vec3(result) / 255.0, 1.0));
             }
-        )glsl";
+        )glsl";*/
+
+        const char *computeSource = R"glsl(
+        #version 430 core
+        layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+        layout (rgba16f, binding = 0) uniform image2D destTex;
+        uniform sampler2D sourceTex;
+        uniform sampler2D historyTex[32];
+
+        uniform int mode;
+        uniform int historyCount;
+        uniform int square_size;
+        uniform int start_history_index;
+        uniform int history_dir;
+
+        vec3 blur3x3(ivec2 pos, ivec2 imgSize) {
+            vec3 sum = vec3(0.0);
+            int count = 0;
+            for (int y = -1; y <= 1; ++y) {
+                for (int x = -1; x <= 1; ++x) {
+                    ivec2 samplePos = clamp(pos + ivec2(x, y), ivec2(0), imgSize - ivec2(1));
+                    sum += texelFetch(sourceTex, samplePos, 0).rgb;
+                    ++count;
+                }
+            }
+            return sum / float(count);
+        }
+
+        int wrapPingPongIndex(int idx, int maxIndex) {
+            if (maxIndex <= 0) {
+                return 0;
+            }
+            int cycle = maxIndex * 2;
+            int wrapped = idx % cycle;
+            if (wrapped < 0) {
+                wrapped += cycle;
+            }
+            if (wrapped > maxIndex) {
+                wrapped = cycle - wrapped;
+            }
+            return wrapped;
+        }
+
+        void main() {
+            ivec2 pos = ivec2(gl_GlobalInvocationID.xy);
+            ivec2 imgSize = imageSize(destTex);
+            if (pos.x >= imgSize.x || pos.y >= imgSize.y) {
+                return;
+            }
+
+            if (mode == 0) {
+                vec3 blurred = blur3x3(pos, imgSize);
+                imageStore(destTex, pos, vec4(blurred, 1.0));
+                return;
+            }
+
+            vec3 currentPixel = texelFetch(sourceTex, pos, 0).rgb;
+            if (historyCount <= 0) {
+                imageStore(destTex, pos, vec4(currentPixel, 1.0));
+                return;
+            }
+
+            int safeSquare = max(square_size, 1);
+            ivec2 blockPos = (pos / safeSquare) * safeSquare;
+            int blockRow = blockPos.y / safeSquare;
+
+            int maxHistoryIndex = min(historyCount, 32) - 1;
+            int offset = blockRow * history_dir;
+            int rawIndex = start_history_index + offset;
+            int historyIndex = wrapPingPongIndex(rawIndex, maxHistoryIndex);
+
+            vec3 historyPixel = texelFetch(historyTex[historyIndex], pos, 0).rgb;
+            vec3 blended = mix(currentPixel, historyPixel, 0.5);
+            imageStore(destTex, pos, vec4(blended, 1.0));
+        }
+    )glsl";
 
         const char *vertexSource = R"glsl(
             #version 430 core
@@ -87,25 +287,31 @@ class Compute : public gl::GLObject {
             throw mx::Exception("Failed to load render shader");
         }
 
-        const std::string bgPath = win->util.getFilePath("data/bg.png");
-        SDL_Surface *surface = png::LoadPNG(bgPath.c_str());
-        if (!surface) {
-            throw mx::Exception("Failed to load PNG texture: " + bgPath);
+        if (!capture.open(cameraIndex)) {
+            throw mx::Exception("Failed to open camera index: " + std::to_string(cameraIndex));
+        }
+        
+        capture.set(cv::CAP_PROP_FRAME_WIDTH, 1920);
+        capture.set(cv::CAP_PROP_FRAME_HEIGHT, 1080);
+        capture.set(cv::CAP_PROP_FPS, 60.0);
+        
+        cv::Mat frame;
+        if (!capture.read(frame) || frame.empty()) {
+            throw mx::Exception("Failed to read initial camera frame");
         }
 
-        texWidth = surface->w;
-        texHeight = surface->h;
+        cv::Mat rgba = toDisplayFrame(frame);
+        texWidth = rgba.cols;
+        texHeight = rgba.rows;
 
-        glGenTextures(1, &textureID);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, textureID);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, texWidth, texHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, surface->pixels);
-        SDL_FreeSurface(surface);
-        glBindImageTexture(0, textureID, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA16F);
+        workTextures[0] = createFloatTexture(rgba.ptr());
+        workTextures[1] = createFloatTexture();
+        outputTexture = createFloatTexture();
+        for (GLuint &texture : historyTextures) {
+            texture = createFloatTexture();
+        }
+        setTextureUniforms();
+
         float quadVertices[] = {
             -1.0f, -1.0f, 0.0f, 1.0f, // Bottom-Left position -> Top-Left UV
             1.0f, -1.0f, 1.0f, 1.0f, // Bottom-Right position -> Top-Right UV
@@ -127,14 +333,70 @@ class Compute : public gl::GLObject {
         CHECK_GL_ERROR();
     }
 
+    int current_square_size = 4, square_dir = 1;
+    int current_index = 0;
+    int current_dir = 1;
+
     void draw(gl::GLWindow *win) {
-        GLuint numGroupsX = (texWidth + 15) / 16;
-        GLuint numGroupsY = (texHeight + 15) / 16;
-        computeProgram.dispatchCompute(numGroupsX, numGroupsY, 1);
-        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT);
+        cv::Mat frame;
+        if (capture.read(frame) && !frame.empty()) {
+            cv::Mat rgba = toDisplayFrame(frame);
+            if (rgba.cols == texWidth && rgba.rows == texHeight) {
+                uploadFrame(workTextures[0], rgba);
+            }
+        }
+
+        computeProgram.useProgram();
+        computeProgram.setUniform("square_size", current_square_size);
+        computeProgram.setUniform("start_history_index", current_index);
+        computeProgram.setUniform("history_dir", current_dir);
+
+        if(current_dir == 1) {
+            ++current_index;
+            if(current_index > HISTORY_SIZE - 1) {
+                current_index = HISTORY_SIZE - 1;
+                current_dir = -1;
+            }
+        } else {
+            --current_index;
+            if(current_index <= 0) {
+                current_index = 0;
+                current_dir = 1;
+            }
+        }
+        if(square_dir == 1) {
+            current_square_size += 2;
+            if(current_square_size >= 64) {
+                current_square_size = 64;
+                square_dir = 0;
+            }
+        } else {
+            current_square_size -= 2;
+            if(current_square_size <= 2) {
+                current_square_size = 2;
+                square_dir = 1;
+            }
+        }
+
+        int sourceIndex = 0;
+        int destIndex = 1;
+        const int passes = 3 + (std::rand() % 7);
+        for (int i = 0; i < passes; ++i) {
+            dispatchCompute(workTextures[sourceIndex], workTextures[destIndex], 0);
+            std::swap(sourceIndex, destIndex);
+        }
+
+        glCopyImageSubData(workTextures[sourceIndex], GL_TEXTURE_2D, 0, 0, 0, 0,
+                           historyTextures[historyIndex], GL_TEXTURE_2D, 0, 0, 0, 0,
+                           texWidth, texHeight, 1);
+        if (historyCount < HISTORY_SIZE) {
+            ++historyCount;
+        }
+        historyIndex = (historyIndex + 1) % HISTORY_SIZE;
+        dispatchCompute(workTextures[sourceIndex], outputTexture, 1);
         renderProgram.useProgram();
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, textureID);
+        glBindTexture(GL_TEXTURE_2D, outputTexture);
         renderProgram.setUniform("screenTex", 0);
         glBindVertexArray(quadVAO);
         glDisable(GL_DEPTH_TEST);
@@ -146,8 +408,17 @@ class Compute : public gl::GLObject {
     void event(gl::GLWindow *win, SDL_Event &e) {}
 
     ~Compute() {
-        if (textureID)
-            glDeleteTextures(1, &textureID);
+        capture.close();
+        for (GLuint &texture : historyTextures) {
+            if (texture)
+                glDeleteTextures(1, &texture);
+        }
+        for (GLuint &texture : workTextures) {
+            if (texture)
+                glDeleteTextures(1, &texture);
+        }
+        if (outputTexture)
+            glDeleteTextures(1, &outputTexture);
         if (quadVBO)
             glDeleteBuffers(1, &quadVBO);
         if (quadVAO)
@@ -157,9 +428,9 @@ class Compute : public gl::GLObject {
 
 class MainWindow : public gl::GLWindow {
   public:
-    MainWindow(std::string path, int tw, int th) : gl::GLWindow("Compute Shader", tw, th, false, gl::GLMode::DESKTOP, 4, 3) {
+        MainWindow(std::string path, int tw, int th, int cameraIndex) : gl::GLWindow("Compute Shader", tw, th, true, gl::GLMode::DESKTOP, 4, 3) {
         setPath(path);
-        setObject(new Compute());
+                setObject(new Compute(cameraIndex));
         object->load(this);
     }
 
@@ -182,6 +453,8 @@ class MainWindow : public gl::GLWindow {
 int main(int argc, char **argv) {
     Argz<std::string> parser(argc, argv);
     parser.addOptionSingle('h', "Display help message")
+        .addOptionSingleValue('c', "Camera index")
+        .addOptionDoubleValue('C', "camera", "Camera index")
         .addOptionSingleValue('p', "assets path")
         .addOptionDoubleValue('P', "path", "assets path")
         .addOptionSingleValue('r', "Resolution WidthxHeight")
@@ -189,7 +462,8 @@ int main(int argc, char **argv) {
     Argument<std::string> arg;
     std::string path;
     int value = 0;
-    int tw = 1280, th = 720;
+    int cameraIndex = 0;
+    int tw = 1920, th = 1080;
     try {
         while ((value = parser.proc(arg)) != -1) {
             switch (value) {
@@ -197,6 +471,10 @@ int main(int argc, char **argv) {
             case 'v':
                 parser.help(std::cout);
                 exit(EXIT_SUCCESS);
+                break;
+            case 'c':
+            case 'C':
+                cameraIndex = atoi(arg.arg_value.c_str());
                 break;
             case 'p':
             case 'P':
@@ -226,7 +504,7 @@ int main(int argc, char **argv) {
         path = ".";
     }
     try {
-        MainWindow main_window(path, tw, th);
+        MainWindow main_window(path, tw, th, cameraIndex);
         main_window.loop();
     } catch (const mx::Exception &e) {
         mx::system_err << "mx: Exception: " << e.text() << "\n";
