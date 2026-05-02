@@ -31,7 +31,7 @@ private:
                 mx::system_err << "libmx2 ERROR::SHADER_COMPILATION_ERROR of type: " << type << "\n" << infoLog << "\n";
             }
             else {
-                mx::system_out << "libmx2 program compilation succesfull.\n";
+                mx::system_out << "libmx2: shader [" << shader << "] (" << type << ") compiled.\n";
             }
         } else {
             glGetProgramiv(shader, GL_LINK_STATUS, &success);
@@ -39,8 +39,7 @@ private:
                 glGetProgramInfoLog(shader, 1024, NULL, infoLog);
                 mx::system_err << "ERROR::PROGRAM_LINKING_ERROR of type: " << type << "\n" << infoLog << "\n";
             } else {
-
-                mx::system_out << "libmx2: compute shader linked.\n";
+                mx::system_out << "libmx2: shader [" << shader << "] (" << type << ") linked.\n";
             }
         }
     }
@@ -100,13 +99,13 @@ public:
         GLuint computeShader = glCreateShader(GL_COMPUTE_SHADER);
         glShaderSource(computeShader, 1, &computeSource, NULL);
         glCompileShader(computeShader);
-        checkCompileErrors(computeShader, "COMPUTE");
+        checkCompileErrors(computeShader, "compute");
 
         // 3. Link into a Program
         computeProgram = glCreateProgram();
         glAttachShader(computeProgram, computeShader);
         glLinkProgram(computeProgram);
-        checkCompileErrors(computeProgram, "PROGRAM");
+        checkCompileErrors(computeProgram, "program");
 
         // Cleanup the shader object as it is now linked into the program
         glDeleteShader(computeShader);
@@ -114,18 +113,18 @@ public:
         GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
         glShaderSource(vertexShader, 1, &vertexSource, NULL);
         glCompileShader(vertexShader);
-        checkCompileErrors(vertexShader, "VERTEX");
+        checkCompileErrors(vertexShader, "vertex");
 
         GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
         glShaderSource(fragmentShader, 1, &fragmentSource, NULL);
         glCompileShader(fragmentShader);
-        checkCompileErrors(fragmentShader, "FRAGMENT");
+        checkCompileErrors(fragmentShader, "fragment");
 
         renderProgram = glCreateProgram();
         glAttachShader(renderProgram, vertexShader);
         glAttachShader(renderProgram, fragmentShader);
         glLinkProgram(renderProgram);
-        checkCompileErrors(renderProgram, "PROGRAM");
+        checkCompileErrors(renderProgram, "program");
 
         glDeleteShader(vertexShader);
         glDeleteShader(fragmentShader);
