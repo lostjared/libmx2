@@ -1,17 +1,18 @@
-#include"mx.hpp"
-#include"argz.hpp"
-#include"gl.hpp"
-#include"loadpng.hpp"
-#include"model.hpp"
+#include "argz.hpp"
+#include "gl.hpp"
+#include "loadpng.hpp"
+#include "model.hpp"
+#include "mx.hpp"
 
-
-#define CHECK_GL_ERROR() \
-    { GLenum err = glGetError(); \
-      if (err != GL_NO_ERROR) \
-        printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); }
+#define CHECK_GL_ERROR()                                                    \
+    {                                                                       \
+        GLenum err = glGetError();                                          \
+        if (err != GL_NO_ERROR)                                             \
+            printf("OpenGL Error: %d at %s:%d\n", err, __FILE__, __LINE__); \
+    }
 
 class Compute : public gl::GLObject {
-private:
+  private:
     GLuint computeProgram;
     GLuint renderProgram;
     GLuint textureID;
@@ -28,27 +29,28 @@ private:
             glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
             if (!success) {
                 glGetShaderInfoLog(shader, 1024, NULL, infoLog);
-                mx::system_err << "libmx2 ERROR::SHADER_COMPILATION_ERROR of type: " << type << "\n" << infoLog << "\n";
-            }
-            else {
+                mx::system_err << "libmx2 ERROR::SHADER_COMPILATION_ERROR of type: " << type << "\n"
+                               << infoLog << "\n";
+            } else {
                 mx::system_out << "libmx2: shader [" << shader << "] (" << type << ") compiled.\n";
             }
         } else {
             glGetProgramiv(shader, GL_LINK_STATUS, &success);
             if (!success) {
                 glGetProgramInfoLog(shader, 1024, NULL, infoLog);
-                mx::system_err << "ERROR::PROGRAM_LINKING_ERROR of type: " << type << "\n" << infoLog << "\n";
+                mx::system_err << "ERROR::PROGRAM_LINKING_ERROR of type: " << type << "\n"
+                               << infoLog << "\n";
             } else {
                 mx::system_out << "libmx2: shader [" << shader << "] (" << type << ") linked.\n";
             }
         }
     }
 
-public:
+  public:
     Compute() : computeProgram(0), renderProgram(0), textureID(0), quadVAO(0), quadVBO(0), frameCount(0) {}
 
     void load(gl::GLWindow *win) {
-        const char* computeSource = R"glsl(
+        const char *computeSource = R"glsl(
             #version 430 core
             layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
             layout (rgba8, binding = 0) uniform image2D destTex;
@@ -72,7 +74,7 @@ public:
             }
         )glsl";
 
-        const char* vertexSource = R"glsl(
+        const char *vertexSource = R"glsl(
             #version 430 core
             layout (location = 0) in vec2 aPos;
             layout (location = 1) in vec2 aUV;
@@ -84,7 +86,7 @@ public:
             }
         )glsl";
 
-        const char* fragmentSource = R"glsl(
+        const char *fragmentSource = R"glsl(
             #version 430 core
             in vec2 vUV;
             out vec4 FragColor;
@@ -139,23 +141,22 @@ public:
 
         float quadVertices[] = {
             -1.0f, -1.0f, 0.0f, 0.0f,
-             1.0f, -1.0f, 1.0f, 0.0f,
-            -1.0f,  1.0f, 0.0f, 1.0f,
-             1.0f,  1.0f, 1.0f, 1.0f
-        };
+            1.0f, -1.0f, 1.0f, 0.0f,
+            -1.0f, 1.0f, 0.0f, 1.0f,
+            1.0f, 1.0f, 1.0f, 1.0f};
 
         glGenVertexArrays(1, &quadVAO);
         glGenBuffers(1, &quadVBO);
         glBindVertexArray(quadVAO);
         glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
         glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
         glEnableVertexAttribArray(1);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindVertexArray(0);
-        
+
         CHECK_GL_ERROR();
     }
 
@@ -168,7 +169,7 @@ public:
         glUseProgram(renderProgram);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, textureID);
-        glUniform1i(glGetUniformLocation(renderProgram, "screenTex"), 0);        
+        glUniform1i(glGetUniformLocation(renderProgram, "screenTex"), 0);
         glBindVertexArray(quadVAO);
         glDisable(GL_DEPTH_TEST);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
@@ -181,24 +182,29 @@ public:
     }
 
     ~Compute() {
-        if (computeProgram) glDeleteProgram(computeProgram);
-        if (renderProgram) glDeleteProgram(renderProgram);
-        if (textureID) glDeleteTextures(1, &textureID);
-        if (quadVBO) glDeleteBuffers(1, &quadVBO);
-        if (quadVAO) glDeleteVertexArrays(1, &quadVAO);
+        if (computeProgram)
+            glDeleteProgram(computeProgram);
+        if (renderProgram)
+            glDeleteProgram(renderProgram);
+        if (textureID)
+            glDeleteTextures(1, &textureID);
+        if (quadVBO)
+            glDeleteBuffers(1, &quadVBO);
+        if (quadVAO)
+            glDeleteVertexArrays(1, &quadVAO);
     }
 };
 
 class MainWindow : public gl::GLWindow {
-public:
+  public:
     MainWindow(std::string path, int tw, int th) : gl::GLWindow("Compute Shader", tw, th, false, gl::GLMode::DESKTOP, 4, 3) {
         setPath(path);
         setObject(new Compute());
-		object->load(this);
+        object->load(this);
     }
-    
+
     ~MainWindow() override {}
-    
+
     virtual void event(SDL_Event &e) override {}
 
     virtual void draw() override {
@@ -209,64 +215,63 @@ public:
         object->draw(this);
         swap();
     }
-private:
+
+  private:
 };
 
-
 int main(int argc, char **argv) {
-    Argz<std::string> parser(argc, argv);    
+    Argz<std::string> parser(argc, argv);
     parser.addOptionSingle('h', "Display help message")
-          .addOptionSingleValue('p', "assets path")
-          .addOptionDoubleValue('P', "path", "assets path")
-          .addOptionSingleValue('r',"Resolution WidthxHeight")
-          .addOptionDoubleValue('R',"resolution", "Resolution WidthxHeight");
+        .addOptionSingleValue('p', "assets path")
+        .addOptionDoubleValue('P', "path", "assets path")
+        .addOptionSingleValue('r', "Resolution WidthxHeight")
+        .addOptionDoubleValue('R', "resolution", "Resolution WidthxHeight");
     Argument<std::string> arg;
     std::string path;
     int value = 0;
     int tw = 1280, th = 720;
     try {
-        while((value = parser.proc(arg)) != -1) {
-            switch(value) {
-                case 'h':
-                case 'v':
-                    parser.help(std::cout);
-                    exit(EXIT_SUCCESS);
-                    break;
-                case 'p':
-                case 'P':
-                    path = arg.arg_value;
+        while ((value = parser.proc(arg)) != -1) {
+            switch (value) {
+            case 'h':
+            case 'v':
+                parser.help(std::cout);
+                exit(EXIT_SUCCESS);
                 break;
-                case 'r':
-                case 'R': {
-                    auto pos = arg.arg_value.find("x");
-                    if(pos == std::string::npos)  {
-                        mx::system_err << "Error invalid resolution use WidthxHeight\n";
-                        mx::system_err.flush();
-                        exit(EXIT_FAILURE);
-                    }
-                    std::string left, right;
-                    left = arg.arg_value.substr(0, pos);
-                    right = arg.arg_value.substr(pos+1);
-                    tw = atoi(left.c_str());
-                    th = atoi(right.c_str());
+            case 'p':
+            case 'P':
+                path = arg.arg_value;
+                break;
+            case 'r':
+            case 'R': {
+                auto pos = arg.arg_value.find("x");
+                if (pos == std::string::npos) {
+                    mx::system_err << "Error invalid resolution use WidthxHeight\n";
+                    mx::system_err.flush();
+                    exit(EXIT_FAILURE);
                 }
-                break;
+                std::string left, right;
+                left = arg.arg_value.substr(0, pos);
+                right = arg.arg_value.substr(pos + 1);
+                tw = atoi(left.c_str());
+                th = atoi(right.c_str());
+            } break;
             }
         }
-    } catch (const ArgException<std::string>& e) {
+    } catch (const ArgException<std::string> &e) {
         mx::system_err << e.text() << "\n";
     }
-    if(path.empty()) {
+    if (path.empty()) {
         mx::system_out << "mx: No path provided trying default current directory.\n";
         path = ".";
     }
     try {
         MainWindow main_window(path, tw, th);
         main_window.loop();
-    } catch(const mx::Exception &e) {
+    } catch (const mx::Exception &e) {
         mx::system_err << "mx: Exception: " << e.text() << "\n";
         mx::system_err.flush();
         exit(EXIT_FAILURE);
-    } 
+    }
     return 0;
 }
