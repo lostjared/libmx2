@@ -724,6 +724,12 @@ if(EXAMPLES)
      add_subdirectory(vk_stickball)
      add_subdirectory(vk_tux)
      add_subdirectory(vk_abstract_model)
+
+     if(COMPUTE AND CV)
+	     add_subdirectory(vk_compute)
+     endif()
+
+
      if(CV AND VULKAN OR CV AND MOLTEN)
         add_subdirectory(vk_matrix_cv)
         add_subdirectory(vk_opencv)

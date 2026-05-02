@@ -607,6 +607,7 @@ struct Arguments {
     std::string filename;   ///< Optional input filename (@c --filename).
     std::string texture;    ///< Optional texture file path (@c --texture).
     std::string shaderPath; ///< Optional SPV shader folder path (@c -S / @c --shader-path).
+    int camera_index = 0; ///< Optional camera index
 };
 
 /**
@@ -640,7 +641,8 @@ inline Arguments proc_args(int &argc, char **argv) {
         .addOptionDoubleValue(256, "filename", "input filename")
         .addOptionDoubleValue(257, "texture", "texture file (.png or .tex)")
         .addOptionSingleValue('S', "shader SPV folder path (contains index.txt)")
-        .addOptionDoubleValue(258, "shader-path", "shader SPV folder path (contains index.txt)");
+        .addOptionDoubleValue(258, "shader-path", "shader SPV folder path (contains index.txt)")
+        .addOptionDoubleValue(300, "camera", "camera index");
 
     Argument<std::string> arg;
     std::string path;
@@ -650,6 +652,7 @@ inline Arguments proc_args(int &argc, char **argv) {
     std::string filename;
     std::string texture;
     std::string shaderPath;
+    int camera_index = 0;
     try {
         while ((value = parser.proc(arg)) != -1) {
             switch (value) {
@@ -690,6 +693,8 @@ inline Arguments proc_args(int &argc, char **argv) {
             case 'F':
                 fullscreen = true;
                 break;
+            case 300:
+                camera_index = atoi(arg.arg_value.c_str());
             }
         }
     } catch (const ArgException<std::string> &e) {
@@ -711,6 +716,7 @@ inline Arguments proc_args(int &argc, char **argv) {
     args.filename = filename;
     args.texture = texture;
     args.shaderPath = shaderPath;
+    args.camera_index = camera_index;
     return args;
 }
 

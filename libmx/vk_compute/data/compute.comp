@@ -1,0 +1,67 @@
+#version 450
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+// Binding 0: output storage image (compute writes here)
+layout(set = 0, binding = 0, rgba8) uniform image2D destTex;
+// Binding 1: current camera / work frame (sampled)
+layout(set = 0, binding = 1) uniform sampler2D sourceTex;
+// Binding 2: ring of history frames (sampled, dynamically-uniform index)
+layout(set = 0, binding = 2) uniform sampler2D historyTex[32];
+
+layout(push_constant) uniform PC {
+    int mode;           // 0 = 3x3 blur, 1 = history blend
+    int historyCount;   // number of valid history frames [0..32]
+    int historyIdx;     // which history frame to blend with (uniform per dispatch)
+    int square_size;    // block size for blend-factor variation
+    int history_dir;    // direction scalar used for the stripe phase
+} pc;
+
+// ─────────────────────────── helpers ──────────────────────────────────────────
+
+vec3 blur3x3(ivec2 pos, ivec2 imgSize) {
+    vec3 sum = vec3(0.0);
+    for (int dy = -1; dy <= 1; ++dy) {
+        for (int dx = -1; dx <= 1; ++dx) {
+            ivec2 sp = clamp(pos + ivec2(dx, dy), ivec2(0), imgSize - ivec2(1));
+            sum += texelFetch(sourceTex, sp, 0).rgb;
+        }
+    }
+    return sum / 9.0;
+}
+
+// ─────────────────────────── main ─────────────────────────────────────────────
+
+void main() {
+    ivec2 pos = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 sz  = imageSize(destTex);
+    if (pos.x >= sz.x || pos.y >= sz.y) return;
+
+    // ── mode 0: box-blur pass ──────────────────────────────────────────────────
+    if (pc.mode == 0) {
+        imageStore(destTex, pos, vec4(blur3x3(pos, sz), 1.0));
+        return;
+    }
+
+    // ── mode 1: history-blend pass ────────────────────────────────────────────
+    vec3 cur = texelFetch(sourceTex, pos, 0).rgb;
+
+    if (pc.historyCount <= 0) {
+        imageStore(destTex, pos, vec4(cur, 1.0));
+        return;
+    }
+
+    // historyIdx is a push-constant → dynamically-uniform across all invocations,
+    // so this array access satisfies shaderSampledImageArrayDynamicIndexing.
+    int idx  = clamp(pc.historyIdx, 0, pc.historyCount - 1);
+    vec3 hist = texelFetch(historyTex[idx], pos, 0).rgb;
+
+    // Spatial blend-factor variation based on block row (mimics the stripe effect
+    // of the GL version without requiring non-uniform descriptor indexing).
+    int safeSquare = max(pc.square_size, 1);
+    int blockRow   = pos.y / safeSquare;
+    float phase    = float(blockRow + pc.historyIdx * pc.history_dir) * 0.3927; // pi/8
+    float blend    = clamp(0.5 + 0.45 * sin(phase), 0.05, 0.95);
+
+    imageStore(destTex, pos, vec4(mix(cur, hist, blend), 1.0));
+}
