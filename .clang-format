@@ -9,3 +9,5 @@ ReferenceAlignment: Pointer
 ColumnLimit: 0
 NamespaceIndentation: All
 AllowShortEnumsOnASingleLine: false
+AlignConsecutiveAssignments: None
+AlignConsecutiveDeclarations: None
