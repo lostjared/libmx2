@@ -36,3 +36,9 @@
 #define WITH_OPENGL_ES3
 #endif
 #endif
+
+#if @WITH_COMPUTE_VAL@
+#ifndef MX2_COMPUTE
+#define MX2_COMPUTE
+#endif
+#endif

@@ -4,6 +4,10 @@
 #include "model.hpp"
 #include "mx.hpp"
 
+#ifndef MX2_COMPUTE
+#error "gl_compute requires MX2_COMPUTE (build with -DCOMPUTE=ON)"
+#endif
+
 #define CHECK_GL_ERROR()                                                    \
     {                                                                       \
         GLenum err = glGetError();                                          \
@@ -13,8 +17,8 @@
 
 class Compute : public gl::GLObject {
   private:
-    GLuint computeProgram;
-    GLuint renderProgram;
+    gl::ShaderProgram computeProgram;
+    gl::ShaderProgram renderProgram;
     GLuint textureID;
     GLuint quadVAO;
     GLuint quadVBO;
@@ -22,32 +26,8 @@ class Compute : public gl::GLObject {
     int texWidth = 640;
     int texHeight = 480;
 
-    void checkCompileErrors(GLuint shader, std::string type) {
-        GLint success;
-        GLchar infoLog[1024];
-        if (type != "PROGRAM") {
-            glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-            if (!success) {
-                glGetShaderInfoLog(shader, 1024, NULL, infoLog);
-                mx::system_err << "libmx2 ERROR::SHADER_COMPILATION_ERROR of type: " << type << "\n"
-                               << infoLog << "\n";
-            } else {
-                mx::system_out << "libmx2: shader [" << shader << "] (" << type << ") compiled.\n";
-            }
-        } else {
-            glGetProgramiv(shader, GL_LINK_STATUS, &success);
-            if (!success) {
-                glGetProgramInfoLog(shader, 1024, NULL, infoLog);
-                mx::system_err << "ERROR::PROGRAM_LINKING_ERROR of type: " << type << "\n"
-                               << infoLog << "\n";
-            } else {
-                mx::system_out << "libmx2: shader [" << shader << "] (" << type << ") linked.\n";
-            }
-        }
-    }
-
   public:
-    Compute() : computeProgram(0), renderProgram(0), textureID(0), quadVAO(0), quadVBO(0), frameCount(0) {}
+    Compute() : textureID(0), quadVAO(0), quadVBO(0), frameCount(0) {}
 
     void load(gl::GLWindow *win) {
         const char *computeSource = R"glsl(
@@ -96,34 +76,17 @@ class Compute : public gl::GLObject {
                 FragColor = texture(screenTex, vUV);
             }
         )glsl";
-        GLuint computeShader = glCreateShader(GL_COMPUTE_SHADER);
-        glShaderSource(computeShader, 1, &computeSource, NULL);
-        glCompileShader(computeShader);
-        checkCompileErrors(computeShader, "compute");
-        computeProgram = glCreateProgram();
-        glAttachShader(computeProgram, computeShader);
-        glLinkProgram(computeProgram);
-        checkCompileErrors(computeProgram, "program");
-        glDeleteShader(computeShader);
 
-        GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-        glShaderSource(vertexShader, 1, &vertexSource, NULL);
-        glCompileShader(vertexShader);
-        checkCompileErrors(vertexShader, "vertex");
+        computeProgram.setName("compute");
+        if (!computeProgram.loadComputeFromText(computeSource)) {
+            throw mx::Exception("Failed to load compute shader");
+        }
 
-        GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-        glShaderSource(fragmentShader, 1, &fragmentSource, NULL);
-        glCompileShader(fragmentShader);
-        checkCompileErrors(fragmentShader, "fragment");
+        renderProgram.setName("render");
+        if (!renderProgram.loadProgramFromText(vertexSource, fragmentSource)) {
+            throw mx::Exception("Failed to load render shader");
+        }
 
-        renderProgram = glCreateProgram();
-        glAttachShader(renderProgram, vertexShader);
-        glAttachShader(renderProgram, fragmentShader);
-        glLinkProgram(renderProgram);
-        checkCompileErrors(renderProgram, "program");
-
-        glDeleteShader(vertexShader);
-        glDeleteShader(fragmentShader);
         textureID = gl::loadTexture(win->util.getFilePath("data/bg.png"), texWidth, texHeight);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, textureID);
@@ -155,15 +118,14 @@ class Compute : public gl::GLObject {
     }
 
     void draw(gl::GLWindow *win) {
-        glUseProgram(computeProgram);
         GLuint numGroupsX = (texWidth + 15) / 16;
         GLuint numGroupsY = (texHeight + 15) / 16;
-        glDispatchCompute(numGroupsX, numGroupsY, 1);
+        computeProgram.dispatchCompute(numGroupsX, numGroupsY, 1);
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT);
-        glUseProgram(renderProgram);
+        renderProgram.useProgram();
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, textureID);
-        glUniform1i(glGetUniformLocation(renderProgram, "screenTex"), 0);
+        renderProgram.setUniform("screenTex", 0);
         glBindVertexArray(quadVAO);
         glDisable(GL_DEPTH_TEST);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
@@ -174,10 +136,6 @@ class Compute : public gl::GLObject {
     void event(gl::GLWindow *win, SDL_Event &e) {}
 
     ~Compute() {
-        if (computeProgram)
-            glDeleteProgram(computeProgram);
-        if (renderProgram)
-            glDeleteProgram(renderProgram);
         if (textureID)
             glDeleteTextures(1, &textureID);
         if (quadVBO)

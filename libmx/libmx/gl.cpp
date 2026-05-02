@@ -451,6 +451,11 @@ namespace gl {
         if (fragment_shader && glIsShader(fragment_shader)) {
             glDeleteShader(fragment_shader);
         }
+#ifdef MX2_COMPUTE
+        if (compute_shader && glIsShader(compute_shader)) {
+            glDeleteShader(compute_shader);
+        }
+#endif
         if (shader_id && glIsProgram(shader_id)) {
             glDeleteProgram(shader_id);
         }
@@ -472,6 +477,10 @@ namespace gl {
                 ++releasedShaderCount;
             if (state->fragment_shader != 0)
                 ++releasedShaderCount;
+#ifdef MX2_COMPUTE
+            if (state->compute_shader != 0)
+                ++releasedShaderCount;
+#endif
             if (state->shader_id != 0)
                 ++releasedShaderCount;
         }
@@ -658,6 +667,99 @@ namespace gl {
         state->shader_id = createProgram(v.c_str(), f.c_str());
         return state->shader_id != 0;
     }
+
+#ifdef MX2_COMPUTE
+    GLuint ShaderProgram::createComputeProgram(const char *cshaderSource) {
+        if (!state)
+            return 0;
+#if defined(__EMSCRIPTEN__) || !defined(GL_COMPUTE_SHADER)
+        (void)cshaderSource;
+        mx::system_err << "libmx2: ShaderProgram::createComputeProgram compute shaders are not supported on this build.\n";
+        mx::system_err.flush();
+        return 0;
+#else
+        GLint compiled = 0;
+        GLint linked = 0;
+        GLuint cShader = glCreateShader(GL_COMPUTE_SHADER);
+        if (cShader == 0) {
+            mx::system_err << "libmx2: glCreateShader(GL_COMPUTE_SHADER) failed (compute shaders require OpenGL 4.3+).\n";
+            mx::system_err.flush();
+            return 0;
+        }
+        glShaderSource(cShader, 1, &cshaderSource, NULL);
+        glCompileShader(cShader);
+        checkError();
+        glGetShaderiv(cShader, GL_COMPILE_STATUS, &compiled);
+        if (compiled != GL_TRUE) {
+            mx::system_err << "Error on Compute compile:\n";
+            printShaderLog(cShader);
+            glDeleteShader(cShader);
+            return 0;
+        }
+
+        GLuint cProgram = glCreateProgram();
+        glAttachShader(cProgram, cShader);
+#if !defined(__EMSCRIPTEN__) && !defined(__APPLE__)
+        if (glProgramParameteri != nullptr) {
+            glProgramParameteri(cProgram, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE);
+        }
+#endif
+        glLinkProgram(cProgram);
+        checkError();
+        glGetProgramiv(cProgram, GL_LINK_STATUS, &linked);
+        if (linked != GL_TRUE) {
+            mx::system_err << "Linking failed (compute)...\n";
+            mx::system_err.flush();
+            printProgramLog(cProgram);
+            glDeleteShader(cShader);
+            glDeleteProgram(cProgram);
+            return 0;
+        }
+
+        state->compute_shader = cShader;
+        return cProgram;
+#endif
+    }
+
+    bool ShaderProgram::loadCompute(const std::string &path) {
+        if (!state)
+            return false;
+        std::fstream f;
+        f.open(path, std::ios::in);
+        if (!f.is_open()) {
+            mx::system_err << "Error could not open file: " << path << "\n";
+            mx::system_err.flush();
+            return false;
+        }
+        std::ostringstream stream;
+        stream << f.rdbuf();
+        return loadComputeFromText(stream.str());
+    }
+
+    bool ShaderProgram::loadComputeFromText(const std::string &src) {
+        if (!state)
+            return false;
+        release();
+        state->shader_id = createComputeProgram(src.c_str());
+        return state->shader_id != 0;
+    }
+
+    void ShaderProgram::dispatchCompute(GLuint numGroupsX, GLuint numGroupsY, GLuint numGroupsZ) {
+        if (!state || !state->shader_id)
+            return;
+#if defined(__EMSCRIPTEN__) || !defined(GL_COMPUTE_SHADER)
+        (void)numGroupsX;
+        (void)numGroupsY;
+        (void)numGroupsZ;
+        if (!state->silent_) {
+            mx::system_err << "libmx2: ShaderProgram::dispatchCompute not supported on this build.\n";
+        }
+#else
+        glUseProgram(state->shader_id);
+        glDispatchCompute(numGroupsX, numGroupsY, numGroupsZ);
+#endif
+    }
+#endif // MX2_COMPUTE
 
     void ShaderProgram::setUniform(const std::string &name, int value) {
         if (!state || !state->shader_id)

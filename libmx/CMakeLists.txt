@@ -825,6 +825,12 @@ else()
   set(WITH_JPEG_VAL 0)
 endif()
 
+if(COMPUTE)
+  set(WITH_COMPUTE_VAL 1)
+else()
+  set(WITH_COMPUTE_VAL 0)
+endif()
+
 configure_file(
     ${CMAKE_SOURCE_DIR}/config.h.in
     ${CMAKE_BINARY_DIR}/config.h

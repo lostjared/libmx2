@@ -59,6 +59,9 @@ namespace gl {
         struct SharedState {
             GLuint vertex_shader = 0;
             GLuint fragment_shader = 0;
+#ifdef MX2_COMPUTE
+            GLuint compute_shader = 0;
+#endif
             GLuint shader_id = 0;
             std::string name_;
             bool silent_ = false;
@@ -122,6 +125,43 @@ namespace gl {
          */
         bool loadProgramFromText(const std::string &v, const std::string &f);
 
+#ifdef MX2_COMPUTE
+        /**
+         * @brief Compile and link a compute shader from a file path.
+         *
+         * Creates a program containing only a single GL_COMPUTE_SHADER stage.
+         * Requires OpenGL 4.3+ desktop context; not available under
+         * Emscripten/WebGL builds.
+         *
+         * @param path Path to the GLSL compute shader source file.
+         * @return @c true on success.
+         */
+        bool loadCompute(const std::string &path);
+
+        /**
+         * @brief Compile and link a compute shader from source text.
+         *
+         * Requires OpenGL 4.3+ desktop context; not available under
+         * Emscripten/WebGL builds.
+         *
+         * @param src Compute shader GLSL source.
+         * @return @c true on success.
+         */
+        bool loadComputeFromText(const std::string &src);
+
+        /**
+         * @brief Dispatch the currently-loaded compute program.
+         *
+         * Calls glUseProgram followed by glDispatchCompute. Caller is responsible
+         * for issuing glMemoryBarrier as appropriate after dispatch.
+         *
+         * @param numGroupsX Number of work groups in X.
+         * @param numGroupsY Number of work groups in Y.
+         * @param numGroupsZ Number of work groups in Z.
+         */
+        void dispatchCompute(GLuint numGroupsX, GLuint numGroupsY, GLuint numGroupsZ = 1);
+#endif // MX2_COMPUTE
+
         /**
          * @brief Upload an integer uniform variable.
          * @param name  Uniform name in the shader.
@@ -167,6 +207,9 @@ namespace gl {
       private:
         GLuint createProgram(const char *vshaderSource, const char *fshaderSource);
         GLuint createProgramFromFile(const std::string &vert, const std::string &frag);
+#ifdef MX2_COMPUTE
+        GLuint createComputeProgram(const char *cshaderSource);
+#endif
         int printShaderLog(GLuint shader);
         void printProgramLog(int p);
         bool checkError();
