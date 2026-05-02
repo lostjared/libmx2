@@ -33,21 +33,19 @@ class Compute : public gl::GLObject {
         const char *computeSource = R"glsl(
             #version 430 core
             layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
-            layout (rgba8, binding = 0) uniform image2D destTex;
-
+            layout (rgba16f, binding = 0) uniform image2D destTex;
             void main() {
                 ivec2 pos = ivec2(gl_GlobalInvocationID.xy);
                 ivec2 imgSize = imageSize(destTex);
                 if(pos.x >= imgSize.x || pos.y >= imgSize.y) return;
-
                 vec4 currentPixel = imageLoad(destTex, pos);
                 ivec2 nR = ivec2((pos.x + 1 + imgSize.x) % imgSize.x, pos.y);
                 ivec2 nG = ivec2(pos.x, (pos.y + 1 + imgSize.y) % imgSize.y);
                 ivec2 nB = ivec2((pos.x + 1 + imgSize.x) % imgSize.x, (pos.y + 1 + imgSize.y) % imgSize.y);
                 vec4 evolvedPixel = vec4(
-                    mix(imageLoad(destTex, nR).r, currentPixel.r, 0.5),
-                    mix(imageLoad(destTex, nG).g, currentPixel.g, 0.6),
-                    mix(imageLoad(destTex, nB).b, currentPixel.b, 0.7),
+                    fract(mix(imageLoad(destTex, nR).r, currentPixel.r, 0.5) - 0.005), 
+                    fract(mix(imageLoad(destTex, nG).g, currentPixel.g, 0.6) - 0.005), 
+                    fract(mix(imageLoad(destTex, nB).b, currentPixel.b, 0.7) - 0.005), 
                     1.0
                 );
                 imageStore(destTex, pos, evolvedPixel);
@@ -71,9 +69,11 @@ class Compute : public gl::GLObject {
             in vec2 vUV;
             out vec4 FragColor;
             uniform sampler2D screenTex;
-
             void main() {
-                FragColor = texture(screenTex, vUV);
+                vec3 h_color = texture(screenTex, vUV).rgb;
+                vec3 mapped = h_color;
+                //vec3 mapped = h_color / (h_color + vec3(1.0));
+                FragColor = vec4(mapped, 1.0);
             }
         )glsl";
 
@@ -87,21 +87,31 @@ class Compute : public gl::GLObject {
             throw mx::Exception("Failed to load render shader");
         }
 
-        textureID = gl::loadTexture(win->util.getFilePath("data/bg.png"), texWidth, texHeight);
+        const std::string bgPath = win->util.getFilePath("data/bg.png");
+        SDL_Surface *surface = png::LoadPNG(bgPath.c_str());
+        if (!surface) {
+            throw mx::Exception("Failed to load PNG texture: " + bgPath);
+        }
+
+        texWidth = surface->w;
+        texHeight = surface->h;
+
+        glGenTextures(1, &textureID);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, textureID);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glBindImageTexture(0, textureID, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA8);
-
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, texWidth, texHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, surface->pixels);
+        SDL_FreeSurface(surface);
+        glBindImageTexture(0, textureID, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA16F);
         float quadVertices[] = {
-            -1.0f, -1.0f, 0.0f, 0.0f,
-            1.0f, -1.0f, 1.0f, 0.0f,
-            -1.0f, 1.0f, 0.0f, 1.0f,
-            1.0f, 1.0f, 1.0f, 1.0f};
-
+            -1.0f, -1.0f, 0.0f, 1.0f, // Bottom-Left position -> Top-Left UV
+            1.0f, -1.0f, 1.0f, 1.0f, // Bottom-Right position -> Top-Right UV
+            -1.0f,  1.0f, 0.0f, 0.0f, // Top-Left position -> Bottom-Left UV
+            1.0f,  1.0f, 1.0f, 0.0f  // Top-Right position -> Bottom-Right UV
+        };
         glGenVertexArrays(1, &quadVAO);
         glGenBuffers(1, &quadVBO);
         glBindVertexArray(quadVAO);
