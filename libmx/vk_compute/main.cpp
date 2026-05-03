@@ -17,6 +17,10 @@ struct ComputePC {
     int32_t historyIdx;
     int32_t square_size;
     int32_t history_dir;
+    float alpha;       
+    int32_t do_swap;   
+    int32_t do_invert; 
+
 };
 
 class ComputeWindow : public mx::VKWindow {
@@ -75,9 +79,11 @@ class ComputeWindow : public mx::VKWindow {
         if (e.type == SDL_KEYDOWN) {
             if (e.key.keysym.sym == SDLK_UP && !spvFiles.empty()) {
                 currentSpvIndex = (currentSpvIndex - 1 + static_cast<int>(spvFiles.size())) % static_cast<int>(spvFiles.size());
+                std::cout << "Current index: " << spvFiles[currentSpvIndex] << "\n";
                 reloadPipeline();
             } else if (e.key.keysym.sym == SDLK_DOWN && !spvFiles.empty()) {
                 currentSpvIndex = (currentSpvIndex + 1) % static_cast<int>(spvFiles.size());
+                std::cout << "Current index: " << spvFiles[currentSpvIndex] << "\n";
                 reloadPipeline();
             }
         }
@@ -129,6 +135,9 @@ class ComputeWindow : public mx::VKWindow {
     int square_dir = 1;
     int current_histIdx = 0;
     int current_dir = 1;
+    float alpha = 1.0f;
+    int32_t do_swap = 0;
+    int32_t is_negative = 0;
 
     std::vector<std::string> spvFiles;
     int currentSpvIndex = 0;
@@ -401,6 +410,9 @@ class ComputeWindow : public mx::VKWindow {
         pc.historyIdx = current_histIdx;
         pc.square_size = current_square;
         pc.history_dir = current_dir;
+        pc.alpha = alpha;
+        pc.do_invert = 0;
+        pc.do_swap = 0;
 
         vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, compPipeline);
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
@@ -499,7 +511,9 @@ class ComputeWindow : public mx::VKWindow {
             ++historyCount;
         historyIndex = (historyIndex + 1) % HISTORY_SIZE;
 
-        dispatchOne(cmd, blendDS[srcIdx], 1);
+        const bool isMetalMedian = !spvFiles.empty() &&
+            spvFiles[currentSpvIndex].find("metalmedianblend") != std::string::npos;
+        dispatchOne(cmd, blendDS[srcIdx], isMetalMedian ? 2 : 1);
 
         {
             setLayout(cmd, outImg.image,
@@ -552,7 +566,24 @@ class ComputeWindow : public mx::VKWindow {
                 current_square = 2;
                 square_dir = 1;
             }
+        
         }
+        static int zdir = 1;
+        if (zdir == 1) {
+            alpha += 0.005f;
+            if (alpha >= (255.0f / 32.0f)) {
+                alpha  = 255.0f / 32.0f;
+                zdir   = -1;
+            }
+        } else {
+            alpha -= 0.005f;
+            if (alpha <= 1.0f) {
+                alpha = 1.0f;
+                zdir  = 1;
+            }
+        }
+        do_swap = 0;
+        is_negative = 0;
     }
 
     static void setLayout(VkCommandBuffer cmd, VkImage img,
