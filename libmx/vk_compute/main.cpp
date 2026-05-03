@@ -255,7 +255,7 @@ class ComputeWindow : public mx::VKWindow {
     }
 
     void buildComputePipeline() {
-        const std::string spvPath = util.path + "/" + spvFiles[currentSpvIndex];
+        const std::string spvPath = util.path + "/data/" + spvFiles[currentSpvIndex];
         std::ifstream spvFile(spvPath, std::ios::binary | std::ios::ate);
         if (!spvFile.is_open())
             throw mx::Exception("Cannot open compute SPIR-V: " + spvPath);
