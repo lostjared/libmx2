@@ -1,0 +1,85 @@
+#version 450
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+layout(set = 0, binding = 0, rgba8) uniform image2D destTex;
+layout(set = 0, binding = 1) uniform sampler2D sourceTex;
+layout(set = 0, binding = 2) uniform sampler2D historyTex[8];
+
+layout(push_constant) uniform PC {
+    int mode;
+    int historyCount;
+    int historyIdx;
+    int square_size;
+    int history_dir;
+    float alpha;
+    int do_swap;
+    int do_invert;
+} pc;
+
+float median5(float n[5]) {
+    float temp;
+    #define swap(a,b) temp=min(a,b); b=max(a,b); a=temp;
+    swap(n[0], n[1]); swap(n[3], n[4]); swap(n[0], n[3]);
+    swap(n[1], n[4]); swap(n[1], n[2]); swap(n[2], n[3]);
+    swap(n[1], n[2]);
+    return n[2];
+}
+
+vec3 medianCross(ivec2 pos, ivec2 imgSize) {
+    vec3 c[5];
+    c[0] = texelFetch(sourceTex, pos, 0).rgb;
+    c[1] = texelFetch(sourceTex, clamp(pos + ivec2( 0,-1), ivec2(0), imgSize-ivec2(1)), 0).rgb;
+    c[2] = texelFetch(sourceTex, clamp(pos + ivec2( 0, 1), ivec2(0), imgSize-ivec2(1)), 0).rgb;
+    c[3] = texelFetch(sourceTex, clamp(pos + ivec2(-1, 0), ivec2(0), imgSize-ivec2(1)), 0).rgb;
+    c[4] = texelFetch(sourceTex, clamp(pos + ivec2( 1, 0), ivec2(0), imgSize-ivec2(1)), 0).rgb;
+    float r[5] = {c[0].r, c[1].r, c[2].r, c[3].r, c[4].r};
+    float g[5] = {c[0].g, c[1].g, c[2].g, c[3].g, c[4].g};
+    float b[5] = {c[0].b, c[1].b, c[2].b, c[3].b, c[4].b};
+    return vec3(median5(r), median5(g), median5(b));
+}
+
+void main() {
+    ivec2 pos     = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 imgSize = imageSize(destTex);
+    if (pos.x >= imgSize.x || pos.y >= imgSize.y) return;
+    if (pc.mode == 0) {
+        imageStore(destTex, pos, vec4(medianCross(pos, imgSize), 1.0));
+        return;
+    }   
+    vec3 pixel = texelFetch(sourceTex, pos, 0).rgb;
+    // Work in byte space so % 255 wraps like unsigned char overflow
+    uvec3 pixByte = uvec3(round(pixel * 255.0));
+    uvec3 scaledByte = uvec3(pixByte.r % 255u, pixByte.g % 255u, pixByte.b % 255u);
+    // Apply alpha scale with wrapping modulo
+    uint alphaInt = uint(round(pc.alpha));
+    scaledByte = uvec3((pixByte.r * alphaInt) % 255u,
+                       (pixByte.g * alphaInt) % 255u,
+                       (pixByte.b * alphaInt) % 255u);
+    // blend: 25% scaled + 75% original, in byte space with wrap
+    uvec3 blendedByte = uvec3((25u * scaledByte.r + 75u * pixByte.r) / 100u % 255u,
+                               (25u * scaledByte.g + 75u * pixByte.g) / 100u % 255u,
+                               (25u * scaledByte.b + 75u * pixByte.b) / 100u % 255u);
+    // AddInvert: 255 - value (wrapping invert)
+    uvec3 curByte = uvec3(255u - blendedByte.r,
+                          255u - blendedByte.g,
+                          255u - blendedByte.b);
+    uint sumR = 0u, sumG = 0u, sumB = 0u;
+    for (int j = 0; j < pc.historyCount; ++j) {
+        uvec3 h = uvec3(round(texelFetch(historyTex[j], pos, 0).rgb * 255.0));
+        sumR += h.r;
+        sumG += h.g;
+        sumB += h.b;
+    }
+
+    uvec3 result;
+    result.r = (curByte.r ^ ((sumR + 1u) & 0xFFu)) & 0xFFu;
+    result.g = (curByte.g ^ ((sumG + 1u) & 0xFFu)) & 0xFFu;
+    result.b = (curByte.b ^ ((sumB + 1u) & 0xFFu)) & 0xFFu;
+    vec3 finalColor = vec3(result) / 255.0;
+    finalColor = finalColor.bgr;
+    if (pc.do_invert == 1) {
+        finalColor = 1.0 - finalColor;
+    }
+
+    imageStore(destTex, pos, vec4(finalColor, 1.0));
+}
