@@ -767,13 +767,9 @@ public:
         
         SDL_Color white {255, 255, 255, 255};
         SDL_Color yellow {255, 255, 0, 255};
-        
-        static uint64_t frameCount = 0;
         static Uint64 fpsLastTime = SDL_GetPerformanceCounter();
         static double fps = 0.0;
-        static int fpsUpdateCounter = 0;
-        
-        ++frameCount;
+        static int fpsUpdateCounter = 0;     
         ++fpsUpdateCounter;
         
         Uint64 fpsCurrentTime = SDL_GetPerformanceCounter();

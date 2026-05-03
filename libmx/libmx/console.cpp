@@ -423,9 +423,8 @@ namespace console {
         if (cursorPos == 0 || c_chars.characters.empty())
             return;
 
-        int x = console_rect.x;
-        int y = console_rect.y;
-        int charWidth = c_chars.characters['A']->w;
+        int x = console_rect.x;      
+	int charWidth = c_chars.characters['A']->w;
         int maxWidth = console_rect.w - 50;
 
         for (size_t i = 0; i < text.length(); ++i) {
@@ -435,7 +434,6 @@ namespace console {
             char c = text[i];
             if (c == '\n') {
                 x = console_rect.x;
-                y += c_chars.characters['A']->h;
             } else {
                 int width = 0;
                 if (c == '\t') {
@@ -453,7 +451,6 @@ namespace console {
 
                 if (x >= (console_rect.x + maxWidth)) {
                     x = console_rect.x;
-                    y += c_chars.characters['A']->h;
                 }
             }
         }
