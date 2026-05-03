@@ -26,6 +26,19 @@ class ComputeWindow : public mx::VKWindow {
         setPath(path);
     }
 
+    void loadSPV() {
+        std::ifstream f(util.path + "/index.txt");
+        if (!f.is_open())
+            throw mx::Exception("Cannot open: " + util.path + "/index.txt");
+        std::string line;
+        while (std::getline(f, line)) {
+            if (!line.empty())
+                spvFiles.push_back(line);
+        }
+        if (spvFiles.empty())
+            throw mx::Exception("index.txt contains no entries");
+    }
+
     void initVulkan() override {
         mx::VKWindow::initVulkan();
         initComputeResources();
@@ -59,6 +72,15 @@ class ComputeWindow : public mx::VKWindow {
         if (e.type == SDL_QUIT ||
             (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE))
             quit();
+        if (e.type == SDL_KEYDOWN) {
+            if (e.key.keysym.sym == SDLK_UP && !spvFiles.empty()) {
+                currentSpvIndex = (currentSpvIndex - 1 + static_cast<int>(spvFiles.size())) % static_cast<int>(spvFiles.size());
+                reloadPipeline();
+            } else if (e.key.keysym.sym == SDLK_DOWN && !spvFiles.empty()) {
+                currentSpvIndex = (currentSpvIndex + 1) % static_cast<int>(spvFiles.size());
+                reloadPipeline();
+            }
+        }
     }
 
     void cleanup() override {
@@ -107,6 +129,9 @@ class ComputeWindow : public mx::VKWindow {
     int square_dir = 1;
     int current_histIdx = 0;
     int current_dir = 1;
+
+    std::vector<std::string> spvFiles;
+    int currentSpvIndex = 0;
 
     void initComputeResources() {
         if (!capture.open(cameraIndex))
@@ -158,6 +183,7 @@ class ComputeWindow : public mx::VKWindow {
         si.maxAnisotropy = 1.0f;
         VK_CHECK_RESULT(vkCreateSampler(device, &si, nullptr, &computeSampler));
 
+        loadSPV();
         buildDescriptorSetLayout();
         buildComputePipeline();
         buildDescriptorSets();
@@ -196,6 +222,13 @@ class ComputeWindow : public mx::VKWindow {
                              0, 0, nullptr, 0, nullptr, 1, &b);
     }
 
+    void reloadPipeline() {
+        vkDeviceWaitIdle(device);
+        if (compPipeline)   { vkDestroyPipeline(device, compPipeline, nullptr);           compPipeline   = VK_NULL_HANDLE; }
+        if (compPipeLayout) { vkDestroyPipelineLayout(device, compPipeLayout, nullptr);   compPipeLayout = VK_NULL_HANDLE; }
+        buildComputePipeline();
+    }
+
     void buildDescriptorSetLayout() {
         std::array<VkDescriptorSetLayoutBinding, 3> bindings{};
 
@@ -222,7 +255,7 @@ class ComputeWindow : public mx::VKWindow {
     }
 
     void buildComputePipeline() {
-        const std::string spvPath = util.path + "/data/xorblend.spv";
+        const std::string spvPath = util.path + "/" + spvFiles[currentSpvIndex];
         std::ifstream spvFile(spvPath, std::ios::binary | std::ios::ate);
         if (!spvFile.is_open())
             throw mx::Exception("Cannot open compute SPIR-V: " + spvPath);

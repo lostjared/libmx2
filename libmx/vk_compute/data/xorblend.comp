@@ -1,0 +1,68 @@
+#version 450
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+layout(set = 0, binding = 0, rgba8) uniform image2D destTex;
+layout(set = 0, binding = 1) uniform sampler2D sourceTex;
+layout(set = 0, binding = 2) uniform sampler2D historyTex[8];
+
+layout(push_constant) uniform PC {
+    int mode;           
+    int historyCount;   
+    int historyIdx;     
+    int square_size;    
+    int history_dir;    
+} pc;
+
+float medianValue(float values[9]) {
+    for (int i = 0; i < 9; ++i) {
+        for (int j = i + 1; j < 9; ++j) {
+            if (values[j] < values[i]) {
+                float tmp  = values[i];
+                values[i]  = values[j];
+                values[j]  = tmp;
+            }
+        }
+    }
+    return values[4];
+}
+
+vec3 median3x3(ivec2 pos, ivec2 imgSize) {
+    float red[9];
+    float green[9];
+    float blue[9];
+    int idx = 0;
+    for (int y = -1; y <= 1; ++y) {
+        for (int x = -1; x <= 1; ++x) {
+            ivec2 sp = clamp(pos + ivec2(x, y), ivec2(0), imgSize - ivec2(1));
+            vec3 c   = texelFetch(sourceTex, sp, 0).rgb;
+            red[idx]   = c.r;
+            green[idx] = c.g;
+            blue[idx]  = c.b;
+            ++idx;
+        }
+    }
+    return vec3(medianValue(red), medianValue(green), medianValue(blue));
+}
+
+uvec3 toByteColor(vec3 color) {
+    return uvec3(round(clamp(color, 0.0, 1.0) * 255.0));
+}
+
+void main() {
+    ivec2 pos     = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 imgSize = imageSize(destTex);
+    if (pos.x >= imgSize.x || pos.y >= imgSize.y) return;
+    if (pc.mode == 0) {
+        imageStore(destTex, pos, vec4(median3x3(pos, imgSize), 1.0));
+        return;
+    }
+    uvec3 currentPixel = toByteColor(texelFetch(sourceTex, pos, 0).rgb);
+    uvec3 accumulated  = uvec3(0u);
+    for (int j = 0; j < pc.historyCount; ++j) {
+        accumulated += toByteColor(texelFetch(historyTex[j], pos, 0).rgb);
+    }
+    uvec3 xorValue = (accumulated + uvec3(1u)) & uvec3(255u);
+    uvec3 result   = currentPixel ^ xorValue;
+    imageStore(destTex, pos, vec4(vec3(result) / 255.0, 1.0));
+}
+
