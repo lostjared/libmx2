@@ -1,0 +1,72 @@
+#version 450
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+// Binding 0: output storage image
+layout(set = 0, binding = 0, rgba8) uniform image2D destTex;
+
+// Binding 1: current camera / work frame
+layout(set = 0, binding = 1) uniform sampler2D sourceTex;
+
+// Binding 2: history frames
+layout(set = 0, binding = 2) uniform sampler2D historyTex[8];
+
+layout(push_constant) uniform PC {
+    int mode;           
+    int historyCount;   
+    int historyIdx;     // CPU passes the cumulative block count here
+    int square_size;    // CPU manages the pulsing size and passes it here
+    int history_dir;    // (Unused in this effect, but kept to match your struct)
+} pc;
+
+void main() {
+    ivec2 pos = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 sz  = imageSize(destTex);
+
+    if (pos.x >= sz.x || pos.y >= sz.y) return;
+
+    // Fetch the current frame pixel
+    vec3 cur = texelFetch(sourceTex, pos, 0).rgb;
+
+    // Fallback if history is empty or square size is invalid
+    if (pc.historyCount <= 1 || pc.square_size <= 0) {
+        imageStore(destTex, pos, vec4(cur, 1.0));
+        return;
+    }
+
+    // 1. Calculate how many blocks fit in a single row
+    // This mimics the C++ loop: for(int i = 0; i < frame.cols; i += square_size)
+    int blocks_per_row = (sz.x + pc.square_size - 1) / pc.square_size;
+
+    // 2. Calculate this specific pixel's block coordinate
+    int block_x = pos.x / pc.square_size;
+    int block_y = pos.y / pc.square_size;
+
+    // 3. Linear index of the block within the current frame
+    int block_idx = block_y * blocks_per_row + block_x;
+
+    // 4. Ping-Pong math (Replaces the static int index and dir)
+    // pc.historyIdx represents the total blocks processed in all previous frames combined
+    int total_steps = pc.historyIdx + block_idx;
+    int max_idx = pc.historyCount - 1;
+    int cycle_len = max_idx * 2;
+
+    // Triangle wave algorithm to bounce back and forth between 0 and max_idx
+    int step = total_steps % cycle_len;
+    int tex_idx = (step <= max_idx) ? step : (cycle_len - step);
+
+    // Safety clamp to ensure we never read out of bounds
+    tex_idx = clamp(tex_idx, 0, max_idx);
+
+    // Fetch the history pixel from the calculated texture array index
+    vec3 hist = texelFetch(historyTex[tex_idx], pos, 0).rgb;
+
+    // 5. Blend: 0.5 * current + 0.5 * history
+    vec3 blended = (0.5 * cur) + (0.5 * hist);
+
+    // 6. AddInvert(frame): Inverting colors (1.0 - color)
+    vec3 inverted = vec3(1.0) - blended;
+
+    // Write out the result
+    imageStore(destTex, pos, vec4(inverted, 1.0));
+}
