@@ -16,6 +16,7 @@ else()
 endif()
 
 find_package(SDL2 REQUIRED)
+find_package(Threads REQUIRED)
 
 target_include_directories(mx PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
@@ -28,7 +29,7 @@ target_include_directories(mx PUBLIC
 )
 
 add_library(libmx2::mx ALIAS mx)
-target_link_libraries(mx PUBLIC SDL2::SDL2 SDL2_ttf::SDL2_ttf ${IMG_LIB} ${MIXER_LIB})
+target_link_libraries(mx PUBLIC SDL2::SDL2 SDL2_ttf::SDL2_ttf Threads::Threads ${IMG_LIB} ${MIXER_LIB})
 
 install(TARGETS mx
     EXPORT libmx2Targets
