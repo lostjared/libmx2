@@ -1,5 +1,6 @@
 #include "vk.hpp"
 #include "vk_model.hpp"
+#include "vk_cv.hpp"
 #include "loadpng.hpp"
 #include "SDL.h"
 #include <random>
@@ -103,14 +104,30 @@ public:
         this->filename = filename;
     }
 
+    int camera_width;
+    int camera_height;
+    int index = 1;
+    std::string fragment = "data/universe_fragment_frag.spv";
     void initVulkan() override {
         mx::VKWindow::initVulkan();
+        camera_width = width;
+        camera_height = height;
         model->upload(device, physicalDevice, commandPool, graphicsQueue);
-
-        background = createSprite(util.getFilePath("data/universe.png"),
+        cap.open(index, 0);
+        if(!cap.is_open()) {
+            throw mx::Exception("Error could not open camera at index: " + std::to_string(index));
+        }
+        cap.set(cv::CAP_PROP_FRAME_WIDTH, 1920);
+        cap.set(cv::CAP_PROP_FRAME_HEIGHT, 1080);
+        cap.set(cv::CAP_PROP_FPS, 60.0);
+        camera_width = static_cast<int>(cap.get(cv::CAP_PROP_FRAME_WIDTH));
+        camera_height = static_cast<int>(cap.get(cv::CAP_PROP_FRAME_HEIGHT));
+        VKWindow::resizeWindow(camera_width, camera_height);
+        cap.createImage(this, camera_width, camera_height,
             util.getFilePath("data/sprite_vert.spv"),
-            util.getFilePath("data/universe_fragment_frag.spv")
+            fragment
         );
+        background = cap.getSprite();
 
         loadGlassTexture();
         createGlassPipeline();
@@ -309,6 +326,7 @@ public:
         if (dt > 0.05f) dt = 0.05f;
 
         if (background) {
+            cap.read();
             float bgTime = SDL_GetTicks() / 1000.0f;
             background->setShaderParams(1.0f, 1.0f, 1.0f, bgTime);
             background->drawSpriteRect(0, 0, getWidth(), getHeight());
@@ -635,6 +653,7 @@ private:
     std::vector<LightOrb> orbs;
     mx::VKSprite *orbSprite = nullptr;
     mx::VKSprite *background = nullptr;
+    mx::MXCapture cap;
     VkPipeline glassPipeline = VK_NULL_HANDLE;
     std::unique_ptr<mx::MXModel> model;
     bool wireframe = true;
@@ -663,6 +682,9 @@ int main(int argc, char **argv) {
     Arguments args = proc_args(argc, argv);
     try {
         PointSpriteWindow window(args.path, args.width, args.height, args.fullscreen);
+        window.index = args.camera_index;
+        if(!args.filename.empty())
+            window.fragment = args.filename;
         window.initVulkan();
         window.loop();
         window.cleanup();

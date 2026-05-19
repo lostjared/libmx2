@@ -3,7 +3,8 @@ target_include_directories(vk_point_sprite3D PRIVATE
     ${CMAKE_SOURCE_DIR}/libmx 
     ${SDL2_INCLUDE_DIRS} 
     ${SDL2_TTF_INCLUDE_DIRS}
+    ${OpenCV_INCLUDE_DIRS}
 )
 
-target_link_libraries(vk_point_sprite3D PUBLIC SDL2::SDL2main mxvk $<$<NOT:$<BOOL:${MOLTEN}>>:volk>)
+target_link_libraries(vk_point_sprite3D PUBLIC SDL2::SDL2main mxvk $<$<NOT:$<BOOL:${MOLTEN}>>:volk> mxvk_cv)
 
