@@ -624,7 +624,7 @@ int main(int argc, char **argv) {
         if(!args.texture.empty())
             window.setFile(args.texture);
         else
-            window.setCamera(0);
+            window.setCamera(args.camera_index);
         window.initVulkan();
         window.loop();
         window.cleanup();

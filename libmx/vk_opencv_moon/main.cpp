@@ -1547,7 +1547,7 @@ int main(int argc, char **argv) {
         if(args.filename.empty())
             window.openFile(args.path + "/data/eye1.mp4");
         else if(args.filename == "camera") 
-            window.openCamera(1, args.width, args.height);
+            window.openCamera(args.camera_index, args.width, args.height);
         else 
             window.openFile(args.filename);
         window.loop();
