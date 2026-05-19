@@ -90,6 +90,7 @@ namespace mx {
         void loop();
         virtual void proc();
         virtual void cleanup();
+        virtual void beforeTextCleanup() {}
         virtual void event(SDL_Event &e) = 0;
         virtual void draw();
         void createGraphicsPipeline();

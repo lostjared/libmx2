@@ -582,7 +582,26 @@ public:
 
         cv::Mat rgba;
         cv::cvtColor(frame, rgba, cv::COLOR_BGR2RGBA);
-        VkDeviceSize imageSize = rgba.cols * rgba.rows * 4;
+
+        if (rgba.empty()) {
+            return;
+        }
+
+        if (camera_width != rgba.cols || camera_height != rgba.rows) {
+            camera_width = rgba.cols;
+            camera_height = rgba.rows;
+            vkDeviceWaitIdle(device);
+            setupTextureImage(static_cast<uint32_t>(camera_width), static_cast<uint32_t>(camera_height));
+            createTextureImageView();
+            updateDescriptorSets();
+            updateExtFragDescriptors();
+        }
+
+        if (!rgba.isContinuous()) {
+            rgba = rgba.clone();
+        }
+
+        const VkDeviceSize imageSize = static_cast<VkDeviceSize>(rgba.total() * rgba.elemSize());
         updateTexture(rgba.data, imageSize);
         printText("LostSideDead.biz", 15, 15, {255, 0, 150, 255});
         printText("Model: " + models[modelIndex],15,45, {255,255,255,255});
@@ -759,6 +778,8 @@ public:
             throw mx::Exception("Failed to present swap chain image!");
         }
 
+        VK_CHECK_RESULT(vkQueueWaitIdle(graphicsQueue));
+
         clearTextQueue();
     }
 
@@ -802,14 +823,21 @@ public:
 
     void loadStarTexture(const std::string& path, VkImage& outTex,
                          VkDeviceMemory& outMem, VkImageView& outView) {
-        SDL_Surface* img = png::LoadPNG(path.c_str());
-        if (!img || !img->pixels)
+        SDL_Surface* raw = png::LoadPNG(path.c_str());
+        if (!raw || !raw->pixels)
             throw mx::Exception("Failed to load star texture: " + path);
 
-        int w = img->w, h = img->h;
-        VkDeviceSize imageSize = w * h * 4;
+        std::cout << "Loaded: " << path << "\n";
 
-        
+        // Normalise to RGBA32 so we always have 4 bytes/pixel with predictable format
+        SDL_Surface* img = SDL_ConvertSurfaceFormat(raw, SDL_PIXELFORMAT_RGBA32, 0);
+        SDL_FreeSurface(raw);
+        if (!img || !img->pixels)
+            throw mx::Exception("Failed to convert star texture to RGBA32: " + path);
+
+        int w = img->w, h = img->h;
+        VkDeviceSize imageSize = static_cast<VkDeviceSize>(w) * h * 4;
+
         VkBuffer stagingBuf;
         VkDeviceMemory stagingMem;
         VkBufferCreateInfo bufInfo{};
@@ -831,7 +859,12 @@ public:
 
         void* data;
         vkMapMemory(device, stagingMem, 0, imageSize, 0, &data);
-        memcpy(data, img->pixels, (size_t)imageSize);
+        // Copy row-by-row respecting SDL pitch (may differ from w*4 due to alignment padding)
+        const auto* src = static_cast<const uint8_t*>(img->pixels);
+        auto* dst = static_cast<uint8_t*>(data);
+        const int rowBytes = w * 4;
+        for (int y = 0; y < h; ++y)
+            std::memcpy(dst + y * rowBytes, src + y * img->pitch, rowBytes);
         vkUnmapMemory(device, stagingMem);
         SDL_FreeSurface(img);
 
@@ -1514,7 +1547,7 @@ int main(int argc, char **argv) {
         if(args.filename.empty())
             window.openFile(args.path + "/data/eye1.mp4");
         else if(args.filename == "camera") 
-            window.openCamera(0, args.width, args.height);
+            window.openCamera(1, args.width, args.height);
         else 
             window.openFile(args.filename);
         window.loop();

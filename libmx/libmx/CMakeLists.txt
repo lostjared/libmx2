@@ -50,9 +50,11 @@ if(OPENGL)
 
     if(BUILD_STATIC_LIB)
         add_library(mxgl STATIC ${MXGL_SOURCES})
-        message(STATUS "Building mxgl (OpenGL) as a static library.")
+        set_target_properties(mxgl PROPERTIES POSITION_INDEPENDENT_CODE ON)
+	message(STATUS "Building mxgl (OpenGL) as a static library.")
     else()
         add_library(mxgl SHARED ${MXGL_SOURCES})
+	set_target_properties(mxgl PROPERTIES POSITION_INDEPENDENT_CODE ON)
         message(STATUS "Building mxgl (OpenGL) as a shared library.")
     endif()
 

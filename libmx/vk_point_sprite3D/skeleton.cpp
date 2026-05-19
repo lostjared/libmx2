@@ -498,6 +498,8 @@ public:
             throw mx::Exception("Failed to present swap chain image!");
         }
 
+        VK_CHECK_RESULT(vkQueueWaitIdle(graphicsQueue));
+
         clearTextQueue();
         for (auto& sprite : sprites) {
             if (sprite) {

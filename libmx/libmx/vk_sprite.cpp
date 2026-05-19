@@ -1037,7 +1037,15 @@ namespace mx {
 
         void *data;
         VK_CHECK_RESULT(vkMapMemory(device, stagingMemory, 0, imageSize, 0, &data));
-        memcpy(data, surface->pixels, imageSize);
+        const int rowBytes = surface->w * 4;
+        if (surface->pitch == rowBytes) {
+            memcpy(data, surface->pixels, imageSize);
+        } else {
+            const auto *src = static_cast<const uint8_t *>(surface->pixels);
+            auto *dst = static_cast<uint8_t *>(data);
+            for (int y = 0; y < surface->h; ++y)
+                memcpy(dst + y * rowBytes, src + y * surface->pitch, rowBytes);
+        }
         vkUnmapMemory(device, stagingMemory);
 
         transitionImageLayout(spriteImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);

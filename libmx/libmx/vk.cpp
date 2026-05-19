@@ -4,6 +4,8 @@
  */
 #include "vk.hpp"
 #include "loadpng.hpp"
+#include <cstdint>
+#include <cstring>
 #include <format>
 
 namespace mx {
@@ -95,8 +97,29 @@ namespace mx {
     }
 
     void VKWindow::updateTexture(SDL_Surface *newSurface) {
-        VkDeviceSize imageSize = newSurface->w * newSurface->h * 4;
-        updateTexture(newSurface->pixels, imageSize);
+        if (newSurface == nullptr || newSurface->pixels == nullptr) {
+            throw mx::Exception("updateTexture: SDL surface is null");
+        }
+        if (newSurface->w <= 0 || newSurface->h <= 0) {
+            throw mx::Exception("updateTexture: SDL surface has invalid dimensions");
+        }
+
+        const VkDeviceSize rowBytes = static_cast<VkDeviceSize>(newSurface->w) * 4;
+        const VkDeviceSize imageSize = rowBytes * static_cast<VkDeviceSize>(newSurface->h);
+        if (newSurface->pitch == static_cast<int>(rowBytes)) {
+            updateTexture(newSurface->pixels, imageSize);
+            return;
+        }
+
+        // Repack pitched SDL surfaces into tightly packed RGBA rows for Vulkan copy.
+        std::vector<uint8_t> packed(static_cast<size_t>(imageSize));
+        const auto *src = static_cast<const uint8_t *>(newSurface->pixels);
+        for (int y = 0; y < newSurface->h; ++y) {
+            std::memcpy(packed.data() + static_cast<size_t>(y) * static_cast<size_t>(rowBytes),
+                        src + static_cast<size_t>(y) * static_cast<size_t>(newSurface->pitch),
+                        static_cast<size_t>(rowBytes));
+        }
+        updateTexture(packed.data(), imageSize);
     }
 
     void VKWindow::createDescriptorSetLayout() {
@@ -1107,6 +1130,22 @@ namespace mx {
     }
 
     void VKWindow::updateTexture(void *pixels, VkDeviceSize imageSize) {
+        if (pixels == nullptr) {
+            throw mx::Exception("updateTexture: pixel buffer is null");
+        }
+        if (width == 0 || height == 0 || textureImage == VK_NULL_HANDLE) {
+            throw mx::Exception("updateTexture: texture image is not initialized");
+        }
+
+        const VkDeviceSize expectedSize = static_cast<VkDeviceSize>(width) * static_cast<VkDeviceSize>(height) * 4;
+        if (imageSize != expectedSize) {
+            throw mx::Exception(std::format("updateTexture: upload size mismatch (got {}, expected {} for {}x{} RGBA)",
+                                            static_cast<uint64_t>(imageSize),
+                                            static_cast<uint64_t>(expectedSize),
+                                            width,
+                                            height));
+        }
+
         VkBuffer stagingBuffer;
         VkDeviceMemory stagingBufferMemory;
         createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,

@@ -558,7 +558,8 @@ namespace mx {
         if (vkAllocateMemory(device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
             throw mx::Exception("MXModel: Failed to allocate buffer memory!");
 
-        vkBindBufferMemory(device, buffer, bufferMemory, 0);
+        if (vkBindBufferMemory(device, buffer, bufferMemory, 0) != VK_SUCCESS)
+            throw mx::Exception("MXModel: Failed to bind buffer memory!");
     }
 
     uint32_t MXModel::findMemoryType(VkPhysicalDevice physicalDevice,
@@ -585,26 +586,31 @@ namespace mx {
         allocInfo.commandBufferCount = 1;
 
         VkCommandBuffer commandBuffer;
-        vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
+        if (vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer) != VK_SUCCESS)
+            throw mx::Exception("MXModel: Failed to allocate copy command buffer!");
 
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        vkBeginCommandBuffer(commandBuffer, &beginInfo);
+        if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
+            throw mx::Exception("MXModel: Failed to begin copy command buffer!");
 
         VkBufferCopy copyRegion{};
         copyRegion.size = size;
         vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
 
-        vkEndCommandBuffer(commandBuffer);
+        if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
+            throw mx::Exception("MXModel: Failed to end copy command buffer!");
 
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &commandBuffer;
 
-        vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-        vkQueueWaitIdle(graphicsQueue);
+        if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS)
+            throw mx::Exception("MXModel: Failed to submit copy command buffer!");
+        if (vkQueueWaitIdle(graphicsQueue) != VK_SUCCESS)
+            throw mx::Exception("MXModel: Failed to wait for copy to complete!");
 
         vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
     }

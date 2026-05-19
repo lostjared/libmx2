@@ -1795,6 +1795,8 @@ namespace mx {
         cleanupPostFX();
         cleanupOffscreenResources();
 
+        beforeTextCleanup();
+
         if (textRenderer != nullptr) {
             textRenderer.reset();
         }

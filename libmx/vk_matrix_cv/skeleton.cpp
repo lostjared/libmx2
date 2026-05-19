@@ -310,6 +310,10 @@ public:
     virtual ~RaycastWindow() {
         cleanupMatrix();
     }
+
+    void beforeTextCleanup() override {
+        cleanupMatrix();
+    }
     
     void openLibrary(const std::string &path, const std::string &filename) {
         library.load(path, filename);
@@ -602,6 +606,8 @@ private:
     }
     
     void cleanupMatrix() {
+        glyphCache.reset();
+
         if (matrixFont) {
             TTF_CloseFont(matrixFont);
             matrixFont = nullptr;

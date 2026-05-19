@@ -14,6 +14,6 @@ target_include_directories(cross PRIVATE
     ${SDL2_INCLUDE_DIRS} 
     ${SDL2_TTF_INCLUDE_DIRS}
 )
-target_link_libraries(cross PUBLIC SDL2::SDL2main mxgl)
+target_link_libraries(cross PRIVATE SDL2::SDL2main mxgl)
 endif()
 
