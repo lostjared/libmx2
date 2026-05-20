@@ -8,6 +8,7 @@
 #include "argz.hpp"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <filesystem>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -91,7 +92,68 @@ struct LightOrb {
 };
 
 class PointSpriteWindow : public mx::VKWindow {
+
+    class ShaderLibrary {
+    public:
+        ShaderLibrary() = default;
+        ~ShaderLibrary() = default;
+        ShaderLibrary &operator=(const ShaderLibrary &) = delete;
+        ShaderLibrary &operator=(ShaderLibrary &&) = delete;
+        ShaderLibrary(const ShaderLibrary &) = delete;
+        ShaderLibrary(ShaderLibrary &&) = delete;
+
+        void load(const std::string &path, const std::string &text) {
+            if(!shader_names.empty()) 
+                shader_names.clear();
+
+            std::fstream file;
+            file.open(text, std::ios::in);
+            if(!file.is_open()) {
+                throw mx::Exception("acvk: Error loading index file: " + text);
+            }
+            std::string s;
+            while(std::getline(file, s)) {
+                if(!s.empty() ) {
+                    std::string path_name = path + "/" + s;
+                    if(std::filesystem::exists(path_name)) {
+                        shader_names.push_back(s);
+                        std::cout << "acvk: Shader Filename: " << s << "\n";
+                    }
+                    else {
+                        std::cerr << "acvk: File: " << path_name << " does not exisit at path: " << path << "\n";
+                    }
+                }
+            }
+        }
+
+        std::string getShaderName(int index) {
+            if(index >= 0 && index < static_cast<int>(shader_names.size())) 
+                return shader_names[index];
+            throw mx::Exception("acvk: Shader Index out of obounds of get name");
+        }
+
+        int size() const {
+            return static_cast<int>(shader_names.size());
+        }
+
+        std::vector<char> loadShader(int index) {
+            if(index >= 0 && index < static_cast<int>(shader_names.size()))
+                return mx::readFile(shader_names[index]);
+            throw mx::Exception("acvk: Could not load shader file: " + shader_names[index]);
+        }
+
+        void release() {
+
+        }
+
+    protected:
+        std::vector<std::string> shader_names;
+    };
+
+    ShaderLibrary library;
+
 public:
+
     PointSpriteWindow(const std::string& path, int wx, int wy, bool full)
         : mx::VKWindow("-[ Vulkan Point Sprites - Stars in Sphere ]-", wx, wy, full) {
         setPath(path);
@@ -102,6 +164,23 @@ public:
 
     void setFileName(const std::string &filename) {
         this->filename = filename;
+    }
+
+    void loadLibrary(const std::string &path, const std::string &filename) {
+        library.load(path, filename);
+        shader_path = path;
+    }
+
+    void switchShader(int index) {
+        if(library.size() == 0) return;
+        shaderIndex = ((index % library.size()) + library.size()) % library.size();
+        std::string fragPath = shader_path + "/" + library.getShaderName(shaderIndex);
+        vkDeviceWaitIdle(device);
+        if(!cap.reload(camera_width, camera_height,
+                util.path + "/data/sprite_vert.spv", fragPath)) {
+            throw mx::Exception("Error reloading shader: " + fragPath);
+        }
+        std::cout << "acvk: Switched to shader: " << library.getShaderName(shaderIndex) << "\n";
     }
 
     int camera_width;
@@ -123,9 +202,12 @@ public:
         camera_width = static_cast<int>(cap.get(cv::CAP_PROP_FRAME_WIDTH));
         camera_height = static_cast<int>(cap.get(cv::CAP_PROP_FRAME_HEIGHT));
         VKWindow::resizeWindow(camera_width, camera_height);
+        std::string fragPath = (library.size() > 0)
+            ? shader_path + "/" + library.getShaderName(shaderIndex)
+            : util.getFilePath(fragment);
         cap.createImage(this, camera_width, camera_height,
             util.getFilePath("data/sprite_vert.spv"),
-            fragment
+            fragPath
         );
         background = cap.getSprite();
 
@@ -377,7 +459,9 @@ public:
             printText("-[ Stars Bouncing Inside Wireframe Sphere ]-", 20, 20, {255, 255, 255, 255});
             std::string orbInfo = "Stars: " + std::to_string(orbs.size()) + " | FPS: " + std::to_string(static_cast<int>(1.0f / std::max(dt, 0.001f)));
             printText(orbInfo, 20, 50, {200, 200, 200, 255});
-            printText("SPACE: add stars | C: reset | W: wireframe | K: kaleidoscope | ESC: quit", 20, 80, {150, 150, 150, 255});
+            printText("SPACE: add stars | C: reset | W: wireframe | K: kaleidoscope | UP/DOWN: radius | ESC: quit", 20, 80, {150, 150, 150, 255});
+            if(library.size() > 0)
+                printText("Shader [+/-]: " + library.getShaderName(shaderIndex), 20, 110, {200, 200, 100, 255});
         }
     }
 
@@ -573,6 +657,14 @@ public:
                 sphereRadius -= 0.1f;
                 if (sphereRadius < 0.3f) sphereRadius = 0.3f;
             }
+            if (e.key.keysym.sym == SDLK_EQUALS || e.key.keysym.sym == SDLK_PLUS) {
+                if(library.size() > 0)
+                    switchShader(shaderIndex + 1);
+            }
+            if (e.key.keysym.sym == SDLK_MINUS) {
+                if(library.size() > 0)
+                    switchShader(shaderIndex - 1);
+            }
             if (e.key.keysym.sym == SDLK_LEFT) {
                 cameraAngleY -= 0.1f;
             }
@@ -667,6 +759,8 @@ private:
     int lastMouseY = 0;
     Uint32 lastTime = 0;
     std::string filename;
+    std::string shader_path;
+    int shaderIndex = 0;
     std::random_device rd;
     std::mt19937 gen{rd()};
 
@@ -683,8 +777,13 @@ int main(int argc, char **argv) {
     try {
         PointSpriteWindow window(args.path, args.width, args.height, args.fullscreen);
         window.index = args.camera_index;
-        if(!args.filename.empty())
-            window.fragment = args.filename;
+        if(!args.filename.empty()) {
+            std::string shader_path = std::filesystem::path(args.filename).parent_path().string();
+            if(!args.shaderPath.empty())
+                shader_path = args.shaderPath;
+            std::cout << "acvk: Setting shader path: " << shader_path << "\n";
+            window.loadLibrary(shader_path, args.filename);
+        }
         window.initVulkan();
         window.loop();
         window.cleanup();
