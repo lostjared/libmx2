@@ -352,7 +352,7 @@ if(VULKAN)
   endif()
   
   set(CMAKE_PREFIX_PATH "$ENV{VULKAN_SDK}")
-  find_package(Vulkan QUIET)
+  find_package(Vulkan 1.4 QUIET)
   
   if(NOT Vulkan_FOUND)
     message(WARNING "Vulkan not found. Disabling Vulkan support.\n"

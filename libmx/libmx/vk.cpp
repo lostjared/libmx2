@@ -857,6 +857,24 @@ namespace mx {
 
     void VKWindow::createVertexBuffer() {
 
+        // recreateSwapChain() calls this path; release previous allocations first.
+        if (vertexBuffer != VK_NULL_HANDLE) {
+            vkDestroyBuffer(device, vertexBuffer, nullptr);
+            vertexBuffer = VK_NULL_HANDLE;
+        }
+        if (vertexBufferMemory != VK_NULL_HANDLE) {
+            vkFreeMemory(device, vertexBufferMemory, nullptr);
+            vertexBufferMemory = VK_NULL_HANDLE;
+        }
+        if (indexBuffer != VK_NULL_HANDLE) {
+            vkDestroyBuffer(device, indexBuffer, nullptr);
+            indexBuffer = VK_NULL_HANDLE;
+        }
+        if (indexBufferMemory != VK_NULL_HANDLE) {
+            vkFreeMemory(device, indexBufferMemory, nullptr);
+            indexBufferMemory = VK_NULL_HANDLE;
+        }
+
         std::vector<Vertex> vertices = {
 
             {{-1.0f, -1.0f, 0.0f}, {0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}},
@@ -2162,6 +2180,15 @@ namespace mx {
     }
 
     void VKWindow::createTextPipeline() {
+        if (textPipeline != VK_NULL_HANDLE) {
+            vkDestroyPipeline(device, textPipeline, nullptr);
+            textPipeline = VK_NULL_HANDLE;
+        }
+        if (textPipelineLayout != VK_NULL_HANDLE) {
+            vkDestroyPipelineLayout(device, textPipelineLayout, nullptr);
+            textPipelineLayout = VK_NULL_HANDLE;
+        }
+
         try {
             auto textVertShaderCode = readFile(util.getFilePath("data/text_vert.spv"));
             auto textFragShaderCode = readFile(util.getFilePath("data/text_frag.spv"));
@@ -2321,6 +2348,14 @@ namespace mx {
             std::cerr << "Text rendering will be disabled. Compile text shaders with:" << std::endl;
             std::cerr << "  glslc text_vertex.vert -o text_vert.spv" << std::endl;
             std::cerr << "  glslc text_fragment.frag -o text_frag.spv" << std::endl;
+            if (textPipeline != VK_NULL_HANDLE) {
+                vkDestroyPipeline(device, textPipeline, nullptr);
+                textPipeline = VK_NULL_HANDLE;
+            }
+            if (textPipelineLayout != VK_NULL_HANDLE) {
+                vkDestroyPipelineLayout(device, textPipelineLayout, nullptr);
+                textPipelineLayout = VK_NULL_HANDLE;
+            }
             textPipeline = VK_NULL_HANDLE;
         }
     }
