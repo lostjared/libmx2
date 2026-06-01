@@ -5,4 +5,4 @@ target_include_directories(vk_cube PRIVATE
     ${SDL2_TTF_INCLUDE_DIRS}
 )
 
-target_link_libraries(vk_cube PUBLIC SDL2::SDL2main mxvk $<$<NOT:$<BOOL:${MOLTEN}>>:volk>)
+target_link_libraries(vk_cube PUBLIC SDL2::SDL2main mx_vk $<$<NOT:$<BOOL:${MOLTEN}>>:volk>)

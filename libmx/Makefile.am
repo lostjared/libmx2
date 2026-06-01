@@ -58,7 +58,7 @@ pkgconfig_DATA   += libmxgl.pc
 endif
 
 if ENABLE_VULKAN
-pkgconfig_DATA   += libmxvk.pc
+pkgconfig_DATA   += libmx_vk.pc
 endif
 
 if ENABLE_OPENGL
@@ -69,16 +69,16 @@ endif
 
 if ENABLE_VULKAN
 if ENABLE_OPENCV
-pkgconfig_DATA   += libmxvk_cv.pc
+pkgconfig_DATA   += libmx_vk_cv.pc
 endif
 endif
 
 EXTRA_DIST = \
 	libmx.pc.in \
 	libmxgl.pc.in \
-	libmxvk.pc.in \
+	libmx_vk.pc.in \
 	libmxgl_cv.pc.in \
-	libmxvk_cv.pc.in
+	libmx_vk_cv.pc.in
 
 ## ============================================================================
 ##  LIBRARIES
@@ -187,28 +187,28 @@ mx2volk_HEADERS = volk/volk.h
 
 endif ## ENABLE_VULKAN
 
-## ── libmxvk  (Vulkan library, static) ──────────────────────────────────────
+## ── libmx_vk  (Vulkan library, static) ──────────────────────────────────────
 
 if ENABLE_VULKAN
 
-lib_LTLIBRARIES += libmxvk.la
+lib_LTLIBRARIES += libmx_vk.la
 
-libmxvk_la_SOURCES = \
+libmx_vk_la_SOURCES = \
 	libmx/vk.cpp \
 	libmx/vk_model.cpp \
 	libmx/vk_abstract_model.cpp \
 	libmx/vk_text.cpp \
 	libmx/vk_sprite.cpp
 
-libmxvk_la_CPPFLAGS = $(AM_CPPFLAGS) -DWITH_VK
-libmxvk_la_CXXFLAGS = $(AM_CXXFLAGS)
+libmx_vk_la_CPPFLAGS = $(AM_CPPFLAGS) -DWITH_VK
+libmx_vk_la_CXXFLAGS = $(AM_CXXFLAGS)
 
-libmxvk_la_LIBADD = \
+libmx_vk_la_LIBADD = \
 	libmx.la \
 	libvolk.la \
 	$(VULKAN_LIBS)
 
-libmxvk_la_LDFLAGS = -static
+libmx_vk_la_LDFLAGS = -static
 
 ## Installed VK headers
 mx2include_HEADERS += \
@@ -242,22 +242,22 @@ mx2include_HEADERS += libmx/gl_cv.hpp
 endif ## ENABLE_OPENCV
 endif ## ENABLE_OPENGL
 
-## ── libmxvk_cv  (Vulkan + OpenCV bridge) ──────────────────────────────────
+## ── libmx_vk_cv  (Vulkan + OpenCV bridge) ──────────────────────────────────
 
 if ENABLE_VULKAN
 if ENABLE_OPENCV
 
-lib_LTLIBRARIES += libmxvk_cv.la
+lib_LTLIBRARIES += libmx_vk_cv.la
 
-libmxvk_cv_la_SOURCES  = libmx/vk_cv.cpp
-libmxvk_cv_la_CPPFLAGS = $(AM_CPPFLAGS) -DWITH_VK
-libmxvk_cv_la_CXXFLAGS = $(AM_CXXFLAGS)
+libmx_vk_cv_la_SOURCES  = libmx/vk_cv.cpp
+libmx_vk_cv_la_CPPFLAGS = $(AM_CPPFLAGS) -DWITH_VK
+libmx_vk_cv_la_CXXFLAGS = $(AM_CXXFLAGS)
 
-libmxvk_cv_la_LIBADD = \
-	libmxvk.la \
+libmx_vk_cv_la_LIBADD = \
+	libmx_vk.la \
 	$(OPENCV_LIBS)
 
-libmxvk_cv_la_LDFLAGS = -version-info 1:14:0 -no-undefined
+libmx_vk_cv_la_LDFLAGS = -version-info 1:14:0 -no-undefined
 
 mx2include_HEADERS += libmx/vk_cv.hpp
 
@@ -574,93 +574,93 @@ mx2_gl_walktest_cv_LDADD          = libmxgl_cv.la libmxgl.la libmx.la $(OPENCV_L
 ## ── Vulkan examples ────────────────────────────────────────────────────────
 
 mx2_vk_skeleton_SOURCES           = vk_skeleton/skeleton.cpp
-mx2_vk_skeleton_LDADD             = libmxvk.la libvolk.la
+mx2_vk_skeleton_LDADD             = libmx_vk.la libvolk.la
 
 mx2_vk_example_SOURCES            = vk_example/main.cpp
-mx2_vk_example_LDADD              = libmxvk.la libvolk.la
+mx2_vk_example_LDADD              = libmx_vk.la libvolk.la
 
 mx2_vk_tex_cube_SOURCES           = vk_tex_cube/main.cpp vk_tex_cube/vk.cpp
-mx2_vk_tex_cube_LDADD             = libmxvk.la libvolk.la
+mx2_vk_tex_cube_LDADD             = libmx_vk.la libvolk.la
 
 mx2_vk_tex_pyramid_SOURCES        = vk_tex_pyramid/main.cpp vk_tex_pyramid/vk.cpp
-mx2_vk_tex_pyramid_LDADD          = libmxvk.la libvolk.la
+mx2_vk_tex_pyramid_LDADD          = libmx_vk.la libvolk.la
 
 mx2_vk_data_SOURCES               = vk_data/main.cpp vk_data/vk.cpp
-mx2_vk_data_LDADD                 = libmxvk.la libvolk.la
+mx2_vk_data_LDADD                 = libmx_vk.la libvolk.la
 
 mx2_vk_image_SOURCES              = vk_image/main.cpp vk_image/vk.cpp
-mx2_vk_image_LDADD                = libmxvk.la libvolk.la
+mx2_vk_image_LDADD                = libmx_vk.la libvolk.la
 
 mx2_vk_frag_SOURCES               = vk_frag/main.cpp vk_frag/vk.cpp
-mx2_vk_frag_LDADD                 = libmxvk.la libvolk.la
+mx2_vk_frag_LDADD                 = libmx_vk.la libvolk.la
 
 mx2_vk_borg_SOURCES               = vk_borg/main.cpp vk_borg/vk.cpp
-mx2_vk_borg_LDADD                 = libmxvk.la libvolk.la
+mx2_vk_borg_LDADD                 = libmx_vk.la libvolk.la
 
 mx2_vk_wire_SOURCES               = vk_wire/main.cpp vk_wire/vk.cpp
-mx2_vk_wire_LDADD                 = libmxvk.la libvolk.la
+mx2_vk_wire_LDADD                 = libmx_vk.la libvolk.la
 
 mx2_vk_text_SOURCES               = vk_text/main.cpp vk_text/vk.cpp
-mx2_vk_text_LDADD                 = libmxvk.la libvolk.la
+mx2_vk_text_LDADD                 = libmx_vk.la libvolk.la
 
 mx2_vk_stars_SOURCES              = vk_stars/main.cpp vk_stars/vk.cpp
-mx2_vk_stars_LDADD                = libmxvk.la libvolk.la
+mx2_vk_stars_LDADD                = libmx_vk.la libvolk.la
 
 mx2_vk_pong_SOURCES               = vk_pong/pong.cpp vk_pong/vk.cpp
-mx2_vk_pong_LDADD                 = libmxvk.la libvolk.la
+mx2_vk_pong_LDADD                 = libmx_vk.la libvolk.la
 
 mx2_vk_raycast_SOURCES            = vk_raycast/skeleton.cpp vk_raycast/vk.cpp
-mx2_vk_raycast_LDADD              = libmxvk.la libvolk.la
+mx2_vk_raycast_LDADD              = libmx_vk.la libvolk.la
 
 mx2_vk_matrix_SOURCES             = vk_matrix/matrix.cpp vk_matrix/vk.cpp
-mx2_vk_matrix_LDADD               = libmxvk.la libvolk.la
+mx2_vk_matrix_LDADD               = libmx_vk.la libvolk.la
 
 mx2_vk_matrix_ray_SOURCES         = vk_matrix_ray/skeleton.cpp vk_matrix_ray/vk.cpp
-mx2_vk_matrix_ray_LDADD           = libmxvk.la libvolk.la
+mx2_vk_matrix_ray_LDADD           = libmx_vk.la libvolk.la
 
 mx2_vk_sprite_SOURCES             = vk_sprite/skeleton.cpp
-mx2_vk_sprite_LDADD               = libmxvk.la libvolk.la
+mx2_vk_sprite_LDADD               = libmx_vk.la libvolk.la
 
 mx2_vk_point_sprite_SOURCES       = vk_point_sprite/skeleton.cpp
-mx2_vk_point_sprite_LDADD         = libmxvk.la libvolk.la
+mx2_vk_point_sprite_LDADD         = libmx_vk.la libvolk.la
 
 mx2_vk_point_sprite3D_SOURCES     = vk_point_sprite3D/skeleton.cpp
-mx2_vk_point_sprite3D_LDADD       = libmxvk.la libvolk.la
+mx2_vk_point_sprite3D_LDADD       = libmx_vk.la libvolk.la
 
 mx2_vk_2D_MasterPiece_SOURCES     = vk_2D_MasterPiece/skeleton.cpp
-mx2_vk_2D_MasterPiece_LDADD       = libmxvk.la libvolk.la
+mx2_vk_2D_MasterPiece_LDADD       = libmx_vk.la libvolk.la
 
 mx2_vk_spacerox_SOURCES           = vk_spacerox/space.cpp
-mx2_vk_spacerox_LDADD             = libmxvk.la libvolk.la
+mx2_vk_spacerox_LDADD             = libmx_vk.la libvolk.la
 
 mx2_vk_mxmodel_SOURCES            = vk_mxmodel/main.cpp vk_mxmodel/vk.cpp
-mx2_vk_mxmodel_LDADD              = libmxvk.la libvolk.la
+mx2_vk_mxmodel_LDADD              = libmx_vk.la libvolk.la
 
 mx2_vk_stickball_SOURCES          = vk_stickball/main.cpp
-mx2_vk_stickball_LDADD            = libmxvk.la libvolk.la
+mx2_vk_stickball_LDADD            = libmx_vk.la libvolk.la
 
 mx2_vk_abstract_model_SOURCES     = vk_abstract_model/abstract.cpp
-mx2_vk_abstract_model_LDADD       = libmxvk.la libvolk.la
+mx2_vk_abstract_model_LDADD       = libmx_vk.la libvolk.la
 
 mx2_vk_tux_SOURCES                = vk_tux/tux.cpp
-mx2_vk_tux_LDADD                  = libmxvk.la libvolk.la
+mx2_vk_tux_LDADD                  = libmx_vk.la libvolk.la
 
 ## ── Vulkan + OpenCV examples ───────────────────────────────────────────────
 
 mx2_vk_matrix_cv_SOURCES          = vk_matrix_cv/skeleton.cpp vk_matrix_cv/vk.cpp
-mx2_vk_matrix_cv_LDADD            = libmxvk.la libvolk.la $(OPENCV_LIBS)
+mx2_vk_matrix_cv_LDADD            = libmx_vk.la libvolk.la $(OPENCV_LIBS)
 
 mx2_vk_opencv_SOURCES             = vk_opencv/main.cpp
-mx2_vk_opencv_LDADD               = libmxvk_cv.la libmxvk.la libvolk.la $(OPENCV_LIBS)
+mx2_vk_opencv_LDADD               = libmx_vk_cv.la libmx_vk.la libvolk.la $(OPENCV_LIBS)
 
 mx2_vk_opencv_moon_SOURCES        = vk_opencv_moon/main.cpp
-mx2_vk_opencv_moon_LDADD          = libmxvk_cv.la libmxvk.la libvolk.la $(OPENCV_LIBS)
+mx2_vk_opencv_moon_LDADD          = libmx_vk_cv.la libmx_vk.la libvolk.la $(OPENCV_LIBS)
 
 mx2_vk_opencv_shader_SOURCES      = vk_opencv_shader/main.cpp
-mx2_vk_opencv_shader_LDADD        = libmxvk_cv.la libmxvk.la libvolk.la $(OPENCV_LIBS)
+mx2_vk_opencv_shader_LDADD        = libmx_vk_cv.la libmx_vk.la libvolk.la $(OPENCV_LIBS)
 
 mx2_vk_skybox_SOURCES             = vk_skybox/main.cpp vk_skybox/vk.cpp
-mx2_vk_skybox_LDADD               = libmxvk.la libvolk.la $(OPENCV_LIBS)
+mx2_vk_skybox_LDADD               = libmx_vk.la libvolk.la $(OPENCV_LIBS)
 
 ## ── Cross GL/VK examples ───────────────────────────────────────────────────
 
@@ -683,13 +683,13 @@ mx2_vk_cross_stars_frag_LDADD   =
 
 if CROSS_USE_VK
 mx2_cross_SOURCES               += cross/vk.cpp
-mx2_cross_LDADD                 += libmxvk.la libvolk.la
+mx2_cross_LDADD                 += libmx_vk.la libvolk.la
 mx2_moon_SOURCES                += moon/vk.cpp
-mx2_moon_LDADD                  += libmxvk.la libvolk.la
+mx2_moon_LDADD                  += libmx_vk.la libvolk.la
 mx2_vk_cross_stars_SOURCES      += vk_cross_stars/vk.cpp
-mx2_vk_cross_stars_LDADD        += libmxvk.la libvolk.la
+mx2_vk_cross_stars_LDADD        += libmx_vk.la libvolk.la
 mx2_vk_cross_stars_frag_SOURCES += vk_cross_stars_frag/vk.cpp
-mx2_vk_cross_stars_frag_LDADD   += libmxvk.la libvolk.la
+mx2_vk_cross_stars_frag_LDADD   += libmx_vk.la libvolk.la
 endif
 
 if CROSS_USE_GL

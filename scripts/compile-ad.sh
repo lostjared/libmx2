@@ -41,10 +41,10 @@ cmake .. \
     -DEXAMPLES=OFF \
     -DVULKAN=ON \
     -DOPENGL=OFF \
-    -DCMAKE_INSTALL_PREFIX=/usr/local/mxvk
+    -DCMAKE_INSTALL_PREFIX=/usr/local/mx_vk
 make -j$(nproc)
 sudo make install
-echo "✓ libmx2 built and installed to /usr/local/mxvk"
+echo "✓ libmx2 built and installed to /usr/local/mx_vk"
 
 echo ""
 echo "=== Building AcidDrop ==="
@@ -52,8 +52,8 @@ rm -rf "$ACIDDROP_DIR/ac"
 mkdir -p "$ACIDDROP_DIR/ac"
 cd "$ACIDDROP_DIR/ac"
 cmake .. \
-    -DCMAKE_PREFIX_PATH=/usr/local/mxvk \
-    -DCMAKE_INSTALL_PREFIX=/usr/local/mxvk
+    -DCMAKE_PREFIX_PATH=/usr/local/mx_vk \
+    -DCMAKE_INSTALL_PREFIX=/usr/local/mx_vk
 make -j$(nproc)
 echo "✓ AcidDrop built successfully"
 

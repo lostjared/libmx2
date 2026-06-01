@@ -4,7 +4,7 @@
 git clone https://github.com/lostjared/libmx2.git
 cd libmx2
 mkdir build && cd build
-cmake -B . -S ../libmx -DVULKAN=ON -DOPENGL=OFF -DCMAKE_INSTALL_PREFIX=/usr/local/mxvk
+cmake -B . -S ../libmx -DVULKAN=ON -DOPENGL=OFF -DCMAKE_INSTALL_PREFIX=/usr/local/mx_vk
 make -j$(nproc)
 sudo make install
 
@@ -15,7 +15,7 @@ cd AcidDrop
 
 # Build AcidDrop
 mkdir ac && cd ac
-cmake .. -DCMAKE_PREFIX_PATH=/usr/local/mxvk -DCMAKE_INSTALL_PREFIX=/usr/local/mxvk
+cmake .. -DCMAKE_PREFIX_PATH=/usr/local/mx_vk -DCMAKE_INSTALL_PREFIX=/usr/local/mx_vk
 make -j$(nproc)
 
 # Run AcidDrop (pointing to parent directory for data files)

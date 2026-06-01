@@ -83,13 +83,13 @@ if(OPENGL)
     install(FILES include/KHR/khrplatform.h DESTINATION ${INSTALL_INCLUDE_DIR}/KHR)
 endif()
 
-# ─── Vulkan library: mxvk (always static to share volk symbol table) ─────────
+# ─── Vulkan library: mx_vk (always static to share volk symbol table) ─────────
 if(VULKAN OR MOLTEN)
-    add_library(mxvk STATIC vk.cpp vk_model.cpp vk_abstract_model.cpp vk_text.cpp vk_sprite.cpp)
-    set_target_properties(mxvk PROPERTIES POSITION_INDEPENDENT_CODE ON)
-    message(STATUS "Building mxvk (Vulkan) as a static library.")
+    add_library(mx_vk STATIC vk.cpp vk_model.cpp vk_abstract_model.cpp vk_text.cpp vk_sprite.cpp)
+    set_target_properties(mx_vk PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    message(STATUS "Building mx_vk (Vulkan) as a static library.")
 
-    target_include_directories(mxvk PUBLIC
+    target_include_directories(mx_vk PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/volk>
@@ -100,23 +100,23 @@ if(VULKAN OR MOLTEN)
         ${VK_INCLUDE}
     )
 
-    target_compile_definitions(mxvk PUBLIC WITH_VK)
+    target_compile_definitions(mx_vk PUBLIC WITH_VK)
     if(MOLTEN)
-        target_compile_definitions(mxvk PUBLIC WITH_MOLTEN)
+        target_compile_definitions(mx_vk PUBLIC WITH_MOLTEN)
     endif()
 
-    target_link_libraries(mxvk PUBLIC mx ${VK_LIB})
+    target_link_libraries(mx_vk PUBLIC mx ${VK_LIB})
 
     if(MOLTEN)
-        target_link_directories(mxvk PUBLIC ${MOLTEN_LINK_DIR})
-        target_link_libraries(mxvk PUBLIC ${MOLTEN_FRAMEWORKS})
+        target_link_directories(mx_vk PUBLIC ${MOLTEN_LINK_DIR})
+        target_link_libraries(mx_vk PUBLIC ${MOLTEN_FRAMEWORKS})
     else()
-        target_link_libraries(mxvk PUBLIC volk)
+        target_link_libraries(mx_vk PUBLIC volk)
     endif()
 
-    add_library(libmx2::mxvk ALIAS mxvk)
+    add_library(libmx2::mx_vk ALIAS mx_vk)
 
-    install(TARGETS mxvk
+    install(TARGETS mx_vk
         EXPORT libmx2Targets
         LIBRARY DESTINATION ${INSTALL_LIB_DIR}
         INCLUDES DESTINATION ${INSTALL_INCLUDE_DIR}
@@ -158,10 +158,10 @@ endif()
 if(VULKAN AND CV OR MOLTEN AND CV)
 
 find_package(OpenCV REQUIRED)
-add_library(mxvk_cv SHARED vk_cv.cpp)
-add_library(libmx2::mxvk_cv ALIAS mxvk_cv)
+add_library(mx_vk_cv SHARED vk_cv.cpp)
+add_library(libmx2::mx_vk_cv ALIAS mx_vk_cv)
 
-target_include_directories(mxvk_cv PRIVATE
+target_include_directories(mx_vk_cv PRIVATE
     ${OpenCV_INCLUDE_DIRS}
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -172,8 +172,8 @@ target_include_directories(mxvk_cv PRIVATE
     ${SDL2_TTF_INCLUDE_DIRS}
     ${VK_INCLUDE}
 )
-target_link_libraries(mxvk_cv ${OpenCV_LIBS} mxvk)
-install(TARGETS mxvk_cv
+target_link_libraries(mx_vk_cv ${OpenCV_LIBS} mx_vk)
+install(TARGETS mx_vk_cv
     EXPORT libmx2Targets
     LIBRARY DESTINATION ${INSTALL_LIB_DIR}
     INCLUDES DESTINATION ${INSTALL_INCLUDE_DIR}

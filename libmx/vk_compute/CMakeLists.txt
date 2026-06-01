@@ -11,8 +11,8 @@ target_include_directories(vk_compute PRIVATE
 
 target_link_libraries(vk_compute PUBLIC
     SDL2::SDL2main
-    mxvk
-    mxvk_cv
+    mx_vk
+    mx_vk_cv
     ${OpenCV_LIBS}
     $<$<NOT:$<BOOL:${MOLTEN}>>:volk>
 )

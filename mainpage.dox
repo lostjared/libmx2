@@ -26,14 +26,14 @@
  * | **mx**  | Core module — SDL2 window management, input handling, font rendering (SDL2_ttf), PNG/JPEG loading, audio (SDL2_mixer), INI-style configuration, and general utilities. No graphics API dependency; always built. |
  * | **mxgl** | OpenGL module — GLAD/GLM initialisation, GLSL shader helpers, 3D model loading with CPU deformers, and an in-app console overlay. Built when `-DOPENGL=ON` (default). Links against **mx**. |
  * | **mxgl_cv** | OpenCV capture bridge for the OpenGL backend. Built when `-DOPENGL=ON -DCV=ON`. |
- * | **mxvk** | Vulkan module — Vulkan initialisation (via volk / MoltenVK), pipeline and shader helpers, Vulkan model/sprite/text rendering. Built when `-DVULKAN=ON`. Links against **mx**. |
- * | **mxvk_cv** | OpenCV capture bridge for the Vulkan backend. Built when `-DVULKAN=ON -DCV=ON`. |
+ * | **mx_vk** | Vulkan module — Vulkan initialisation (via volk / MoltenVK), pipeline and shader helpers, Vulkan model/sprite/text rendering. Built when `-DVULKAN=ON`. Links against **mx**. |
+ * | **mx_vk_cv** | OpenCV capture bridge for the Vulkan backend. Built when `-DVULKAN=ON -DCV=ON`. |
  *
  * OpenGL and Vulkan never depend on each other — they share only the **mx** core.
  *
  * ---
  *
- * @section cvmods OpenCV Bridge Modules (`mxgl_cv` / `mxvk_cv`)
+ * @section cvmods OpenCV Bridge Modules (`mxgl_cv` / `mx_vk_cv`)
  *
  * When OpenCV is enabled (`-DCV=ON`), libmx2 can build optional capture bridge
  * libraries that connect `cv::VideoCapture` to the rendering backends:
@@ -41,11 +41,11 @@
  * | Library | Header | Depends on | Purpose |
  * |---------|--------|------------|---------|
  * | **mxgl_cv** | `gl_cv.hpp` | `mxgl` + OpenCV | Streams decoded OpenCV frames into a `gl::GLSprite` for OpenGL rendering. |
- * | **mxvk_cv** | `vk_cv.hpp` | `mxvk` + OpenCV | Streams decoded OpenCV frames into a `mx::VKSprite` for Vulkan rendering. |
+ * | **mx_vk_cv** | `vk_cv.hpp` | `mx_vk` + OpenCV | Streams decoded OpenCV frames into a `mx::VKSprite` for Vulkan rendering. |
  *
  * Build conditions:
  * - `mxgl_cv` is built when `-DOPENGL=ON -DCV=ON`.
- * - `mxvk_cv` is built when `( -DVULKAN=ON OR -DMOLTEN=ON ) -DCV=ON`.
+ * - `mx_vk_cv` is built when `( -DVULKAN=ON OR -DMOLTEN=ON ) -DCV=ON`.
  *
  * Both bridges expose `mx::MXCapture` (backend-specific implementation) with a
  * similar API for opening camera/video sources, reading frames, and drawing
@@ -59,7 +59,7 @@
  * Provides the OpenGL-flavoured `mx::MXCapture` implementation that uploads
  * OpenCV frames to `gl::GLSprite` for rendering in `gl::GLWindow`.
  *
- * @defgroup mxvk_cv_module mxvk_cv OpenCV/Vulkan Bridge
+ * @defgroup mx_vk_cv_module mx_vk_cv OpenCV/Vulkan Bridge
  * @brief OpenCV capture integration for the Vulkan backend (`vk_cv.hpp`).
  *
  * Provides the Vulkan-flavoured `mx::MXCapture` implementation that uploads

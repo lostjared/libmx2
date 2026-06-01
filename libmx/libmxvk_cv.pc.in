@@ -3,9 +3,9 @@ exec_prefix=@exec_prefix@
 libdir=@libdir@
 includedir=@includedir@
 
-Name: libmxvk_cv
+Name: libmx_vk_cv
 Description: MX2 Vulkan + OpenCV video-capture bridge (static)
 Version: @PACKAGE_VERSION@
-Requires: libmxvk @OPENCV_PC_MODULE@
-Libs: -L${libdir} -lmxvk_cv
+Requires: libmx_vk @OPENCV_PC_MODULE@
+Libs: -L${libdir} -lmx_vk_cv
 Cflags: -I${includedir}/mx2 -DWITH_VK

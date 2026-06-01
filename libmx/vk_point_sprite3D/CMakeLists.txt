@@ -6,5 +6,5 @@ target_include_directories(vk_point_sprite3D PRIVATE
     ${OpenCV_INCLUDE_DIRS}
 )
 
-target_link_libraries(vk_point_sprite3D PUBLIC SDL2::SDL2main mxvk $<$<NOT:$<BOOL:${MOLTEN}>>:volk> mxvk_cv)
+target_link_libraries(vk_point_sprite3D PUBLIC SDL2::SDL2main mx_vk $<$<NOT:$<BOOL:${MOLTEN}>>:volk> mx_vk_cv)
 

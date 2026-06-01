@@ -38,7 +38,7 @@ libmx2 is split into three separate library modules that are built independently
 
 - **mx** — The core module. Provides SDL2 window management, input handling, font rendering, PNG/JPEG loading, audio (SDL2_mixer), configuration, and general utilities. This module has no dependency on any graphics API and is always built.
 - **mxgl** — The OpenGL module. Contains OpenGL/GLAD initialization, GL shader helpers, 3D model loading, and the in-app console overlay. Built only when `-DOPENGL=ON` (the default). Links against the core `mx` library.
-- **mxvk** — The Vulkan module. Contains Vulkan initialization (via volk), Vulkan pipeline/shader helpers, Vulkan-based model rendering, text rendering, and sprite batching. Built as a static library only when `-DVULKAN=ON`. Links against the core `mx` library.
+- **mx_vk** — The Vulkan module. Contains Vulkan initialization (via volk), Vulkan pipeline/shader helpers, Vulkan-based model rendering, text rendering, and sprite batching. Built as a static library only when `-DVULKAN=ON`. Links against the core `mx` library.
 
 This separation means you can build a project that uses only the core SDL2 features, or opt in to OpenGL, Vulkan, or both. OpenGL and Vulkan never depend on each other — they share only the common `mx` core.
 ## Getting Started

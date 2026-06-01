@@ -3,9 +3,9 @@ exec_prefix=@exec_prefix@
 libdir=@libdir@
 includedir=@includedir@
 
-Name: libmxvk
+Name: libmx_vk
 Description: MX2 Vulkan rendering library (static)
 Version: @PACKAGE_VERSION@
 Requires: libmx vulkan
-Libs: -L${libdir} -lmxvk -lvolk @DL_LIBS@
+Libs: -L${libdir} -lmx_vk -lvolk @DL_LIBS@
 Cflags: -I${includedir}/mx2 -DWITH_VK
