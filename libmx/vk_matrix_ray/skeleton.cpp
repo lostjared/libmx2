@@ -159,6 +159,9 @@ public:
 
     RaycastWindow(const std::string& path, int wx, int wy, bool full) 
         : mx::VKWindow("-[ Vulkan Raycaster ]-", wx, wy, full) {
+ 	if(TTF_Init() < 0) {
+		throw mx::Exception("Error on font init.\n");	
+	}
         setPath(path);
         lastFrameTime = SDL_GetPerformanceCounter();
         

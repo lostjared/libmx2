@@ -69,7 +69,7 @@ namespace mx {
         createDescriptorSets();
         createCommandBuffers();
         createSyncObjects();
-
+/*
         try {
             textRenderer.reset(new VKText(device, physicalDevice, graphicsQueue, commandPool, util.getFilePath("font.ttf"), 24));
             createTextDescriptorSetLayout();
@@ -79,7 +79,7 @@ namespace mx {
         } catch (const std::exception& e) {
             std::cerr << "Warning: Text rendering initialization failed: " << e.what() << std::endl;
             std::cerr << "Text rendering will be disabled." << std::endl;
-        }
+        } */
     }
 
     void VKWindow::updateTexture(SDL_Surface* newSurface) {
