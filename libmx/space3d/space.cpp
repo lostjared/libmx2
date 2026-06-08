@@ -1288,7 +1288,7 @@ public:
     
     void checkInput(gl::GLWindow *win, float deltaTime) {
 
-        if(stick.getButton(mx::Input_Button::BTN_START)) {
+        if(stick.getButton(mx::Input_Button::BTN_BACK)) {
             win->quit();
             return;
         }
@@ -1347,7 +1347,7 @@ public:
                 float moveX = 0.0f;
                 float moveY = 0.0f; 
 
-                if (!isBarrelRolling && stick.getButton(mx::Input_Button::BTN_Y)) {
+                if (!isBarrelRolling && stick.getButton(mx::Input_Button::BTN_A)) {
                         isBarrelRolling = true;
                         barrelRollAngle = 0.0f;
                     }
