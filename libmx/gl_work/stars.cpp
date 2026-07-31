@@ -949,16 +949,21 @@ int main(int argc, char **argv) {
           .addOptionSingleValue('p', "assets path")
           .addOptionDoubleValue('P', "path", "assets path")
           .addOptionSingleValue('r', "Resolution WidthxHeight")
-          .addOptionDoubleValue('R', "resolution", "Resolution WidthxHeight");
+          .addOptionDoubleValue('R', "resolution", "Resolution WidthxHeight")
+	  .addOptionSingleValue('f', "fullscreen");
 
     Argument<std::string> arg;
     std::string path;
     int value = 0;
     int tw = 1920, th = 1080;
+    bool full = false;
 
     try {
         while((value = parser.proc(arg)) != -1) {
             switch(value) {
+		case 'f':
+			full = true;
+		break;
                 case 'h':
                 case 'v':
                     parser.help(std::cout);
@@ -995,7 +1000,8 @@ int main(int argc, char **argv) {
 
     try {
         MainWindow main_window(path, tw, th);
-        main_window.loop();
+        main_window.setFullScreen(full);
+	main_window.loop();
     } catch(const mx::Exception &e) {
         mx::system_err << "mx: Exception: " << e.text() << "\n";
         mx::system_err.flush();

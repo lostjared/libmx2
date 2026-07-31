@@ -163,7 +163,7 @@ void main() {
         particle.position = origin;
         particle.velocity = glm::sphericalRand(1.0f);
         particle.lifetime = glm::linearRand(0.5f, 2.0f);
-        particle.color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f); 
+        particle.color = glm::vec4(mx::generateRandomFloat(0.2, 1.0),mx::generateRandomFloat(0.2, 1.0), mx::generateRandomFloat(0.2, 1.0), 1.0f); 
     }
 
     void ExplosionEmiter::load(gl::GLWindow *win) {

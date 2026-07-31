@@ -10,6 +10,17 @@
 <img width="1280" height="720" alt="image" src="https://github.com/user-attachments/assets/afe3d99f-daa5-4b25-bb3f-12aaec12ee18" />
 
 
+
+This project now builds with [pcons](pcons.org), a modern
+software build tool. It's simpler, cleaner & faster than CMake, since
+the build scripts are plain modern python, and it has a nice clean API
+and supports lots of languages and tools.
+
+To build with it, just `uvx pcons` if you have
+[uv](docs.astral.sh/uv/), or `python -mpip install pcons;
+pcons`.
+
+
 # Tech Specifications for MX2
 https://lostsidedead.biz/libmx2/mx.html
 
