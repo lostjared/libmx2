@@ -33,6 +33,9 @@ Install with ``PCONS_INSTALL_PREFIX`` (CMake's ``CMAKE_INSTALL_PREFIX``):
 
     uvx pcons PCONS_INSTALL_PREFIX=/usr/local && ninja install
 
+For staged/package installs, ``PCONS_FINAL_PREFIX`` sets the prefix embedded
+in pkg-config metadata without changing the staging destination.
+
 Unlike the CMake build, ``install`` also writes pkg-config files
 (``libmx.pc``, ``libmxgl.pc``, ``libmxvk.pc``) from the repository's own
 ``.pc.in`` templates, so downstream projects — acidcam-gpu among them — can
@@ -340,7 +343,8 @@ if with_opengl:
 # hunt for libmx2 by prefix instead of just asking pkg-config for it. These
 # follow the templates, with one correction: gl.hpp includes <glm/glm.hpp>, so
 # glm's include directory has to reach anyone compiling against mxgl or mx_vk.
-install_prefix = get_var("PCONS_INSTALL_PREFIX", str(project.root_dir / "dist"))
+stage_prefix = get_var("PCONS_INSTALL_PREFIX", str(project.root_dir / "dist"))
+install_prefix = get_var("PCONS_FINAL_PREFIX", stage_prefix)
 glm_cflags = " ".join(f"-I{d}" for t in glm for d in t.public.include_dirs)
 
 # Shared libraries are built with an @rpath/SONAME install name, so consumers
