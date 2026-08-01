@@ -11,7 +11,7 @@
 
 
 
-This project now builds with [pcons](pcons.org), a modern
+This project now builds with [pcons](https://pcons.org), a modern
 software build tool. It's simpler, cleaner & faster than CMake, since
 the build scripts are plain modern python, and it has a nice clean API
 and supports lots of languages and tools.

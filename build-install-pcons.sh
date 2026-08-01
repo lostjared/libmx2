@@ -135,7 +135,15 @@ while [[ ! -e "$install_parent" && "$install_parent" != "/" ]]; do
 done
 
 privilege_command=()
-if ((EUID != 0)) && [[ ! -w "$install_parent" ]]; then
+needs_privilege=0
+if ((EUID != 0)); then
+    if [[ -z "$destination_root" && ("$install_prefix" == "/usr" || "$install_prefix" == "/usr/local") ]]; then
+        needs_privilege=1
+    elif [[ ! -w "$install_parent" ]]; then
+        needs_privilege=1
+    fi
+fi
+if ((needs_privilege)); then
     if ! command -v sudo >/dev/null 2>&1; then
         echo "Installing to $INSTALL_ROOT requires root privileges, but sudo was not found." >&2
         exit 5
