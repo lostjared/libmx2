@@ -166,6 +166,11 @@ namespace gl {
     }
 
     void GLWindow::initGL(const std::string &title, int width, int height, bool resize_, int major, int minor) {
+        initGL(title, width, height, resize_, major, minor, true);
+    }
+
+    void GLWindow::initGL(const std::string &title, int width, int height, bool resize_,
+                          int major, int minor, bool enable_vsync) {
         mx::redirect();
         mx::system_out << "libmx2: GLWindow::initGL starting...\n";
         mx::system_out.flush();
@@ -286,9 +291,14 @@ namespace gl {
         mx::system_out.flush();
 
         glViewport(0, 0, w, h);
-        if (SDL_GL_SetSwapInterval(1) != 0) {
-            SDL_Log("Failed to enable vSync: %s", SDL_GetError());
+        const int swap_interval = enable_vsync ? 1 : 0;
+        if (SDL_GL_SetSwapInterval(swap_interval) != 0) {
+            SDL_Log("Failed to %s VSync: %s",
+                    enable_vsync ? "enable" : "disable", SDL_GetError());
         }
+        mx::system_out << "libmx2: VSync "
+                       << (enable_vsync ? "enabled" : "disabled") << "\n";
+        mx::system_out.flush();
     }
 
     void GLWindow::setWindowSize(int w, int h) {

@@ -479,7 +479,24 @@ namespace gl {
         GLWindow(const std::string &text, int width, int height, bool resize_ = true, GLMode mode = GLMode::DESKTOP, int major = 4, int minor = 1) : gl_mode(mode), glContext{nullptr}, window{nullptr} {
             initGL(text, width, height, resize_, major, minor);
         }
-        
+
+        /**
+         * @brief Construct a window with an explicit vertical-sync policy.
+         * @param text Window title.
+         * @param width Width in pixels.
+         * @param height Height in pixels.
+         * @param resize_ Allow window resizing if @c true.
+         * @param mode GL mode (DESKTOP or ES).
+         * @param major OpenGL major version.
+         * @param minor OpenGL minor version.
+         * @param enable_vsync Enable swap synchronization to the display refresh rate.
+         */
+        GLWindow(const std::string &text, int width, int height, bool resize_, GLMode mode,
+                 int major, int minor, bool enable_vsync)
+            : gl_mode(mode), glContext{nullptr}, window{nullptr} {
+            initGL(text, width, height, resize_, major, minor, enable_vsync);
+        }
+
         /**
          * @brief Construct a window from dimensions and mode (internal use).
          * @param width  Width.
@@ -506,6 +523,10 @@ namespace gl {
          * @param minor minor version
          */
         void initGL(const std::string &title, int width, int height, bool resize_ = true, int major = 4, int minor = 1);
+
+        /** @brief Initialise a visible GL window with an explicit VSync policy. */
+        void initGL(const std::string &title, int width, int height, bool resize_,
+                    int major, int minor, bool enable_vsync);
 
         /**
          * @brief Reinitialise with only dimensions (used by Emscripten).
