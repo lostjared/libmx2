@@ -31,7 +31,8 @@ in parentheses:
 
 Install with ``PCONS_INSTALL_PREFIX`` (CMake's ``CMAKE_INSTALL_PREFIX``):
 
-    uvx pcons PCONS_INSTALL_PREFIX=/usr/local && ninja install
+    pcons -B build/pcons PCONS_INSTALL_PREFIX=/usr/local \
+        PCONS_FINAL_PREFIX=/usr/local all install
 
 For staged/package installs, ``PCONS_FINAL_PREFIX`` sets the prefix embedded
 in pkg-config metadata without changing the staging destination.
@@ -48,9 +49,9 @@ in its tree can pull it in directly, with no install step:
     app.link(mx.mxgl)
 
 Usage:
-    uvx pcons                     # configure, generate and build
-    uvx pcons OPENGL=0 MIXER=0    # SDL2 core only
-    uvx pcons EXAMPLES=0          # libraries only
+    pcons -B build/pcons --reconfigure  # configure, generate and build
+    pcons -B build/pcons OPENGL=0 MIXER=0  # SDL2 core only
+    pcons -B build/pcons EXAMPLES=0        # libraries only
 """
 
 import os
@@ -72,6 +73,34 @@ VERSION = "2.2.1"  # project(libmx2 VERSION ...) in libmx/CMakeLists.txt
 project_dir = Path(__file__).parent
 src = project_dir / "libmx"  # the CMake source directory
 platform = get_platform()
+
+
+def configure_homebrew_paths() -> None:
+    """Make direct macOS Pcons invocations see Homebrew's keg-only packages."""
+    if not platform.is_macos:
+        return
+    package_dirs: list[str] = []
+    binary_dirs: list[str] = []
+    for prefix in (Path("/opt/homebrew"), Path("/usr/local")):
+        package_dirs.extend(
+            str(path)
+            for path in (prefix / "lib" / "pkgconfig", prefix / "share" / "pkgconfig")
+            if path.is_dir()
+        )
+        opt_dir = prefix / "opt"
+        if opt_dir.is_dir():
+            package_dirs.extend(str(path) for path in opt_dir.glob("*/lib/pkgconfig") if path.is_dir())
+            package_dirs.extend(str(path) for path in opt_dir.glob("*/share/pkgconfig") if path.is_dir())
+            binary_dirs.extend(str(path) for path in opt_dir.glob("*/bin") if path.is_dir())
+    if package_dirs:
+        os.environ["PKG_CONFIG_PATH"] = os.pathsep.join(
+            package_dirs + [os.environ.get("PKG_CONFIG_PATH", "")]
+        )
+    if binary_dirs:
+        os.environ["PATH"] = os.pathsep.join(binary_dirs + [os.environ.get("PATH", "")])
+
+
+configure_homebrew_paths()
 
 
 def option(name: str, default: bool = False) -> bool:
